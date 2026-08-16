@@ -1,0 +1,47 @@
+import mongoose from "mongoose";
+import { env } from "@/infrastructure/config/env";
+
+const CONNECTION_OPTIONS = {
+  // Fail fast on operations issued before the connection is established
+  // (no command buffering against a dead connection).
+  bufferCommands: false,
+  serverSelectionTimeoutMS: 5000,
+  maxPoolSize: 10,
+  appName: "globalmoney",
+} as const;
+
+type MongooseGlobal = typeof globalThis & {
+  /** Singleton cache — survives HMR so dev never opens a second connection. */
+  __globalmoneyMongoose?: typeof mongoose;
+};
+
+const mongooseGlobal: MongooseGlobal = globalThis as MongooseGlobal;
+
+/**
+ * Returns the cached mongoose instance, connecting once on first use.
+ * Model registration is guarded per-model in the model layer so the
+ * singleton is never re-initialized (see task 1.12).
+ */
+export async function connectDb(): Promise<typeof mongoose> {
+  if (mongooseGlobal.__globalmoneyMongoose) {
+    return mongooseGlobal.__globalmoneyMongoose;
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(env.MONGODB_URI, CONNECTION_OPTIONS);
+  }
+
+  mongooseGlobal.__globalmoneyMongoose = mongoose;
+  return mongoose;
+}
+
+export function isDbConnected(): boolean {
+  return mongoose.connection.readyState === 1;
+}
+
+export async function disconnectDb(): Promise<void> {
+  if (mongooseGlobal.__globalmoneyMongoose) {
+    await mongoose.disconnect();
+    mongooseGlobal.__globalmoneyMongoose = undefined;
+  }
+}
