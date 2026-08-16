@@ -1,6 +1,8 @@
 import { type Currency, isCurrency } from "./currency";
+import { DomainError } from "./errors";
 
-export class MoneyError extends Error {}
+/** Money-domain error, part of the shared DomainError hierarchy. */
+export class MoneyError extends DomainError {}
 
 /**
  * Guards arithmetic between Money values of different currencies.
