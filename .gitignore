@@ -43,3 +43,6 @@ next-env.d.ts
 
 # atl (agent tooling layer)
 .atl/
+
+# gga (gentleman guardian angel)
+.gga
