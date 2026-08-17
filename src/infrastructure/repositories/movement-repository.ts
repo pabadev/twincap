@@ -133,6 +133,13 @@ export class MongoMovementRepository implements MovementRepository {
     return result.length > 0 ? result[0].total : 0;
   }
 
+  async countByCategoryId(userId: string, categoryId: string): Promise<number> {
+    return MovementModel.countDocuments({
+      userId: new Types.ObjectId(userId),
+      categoryId: new Types.ObjectId(categoryId),
+    }).exec();
+  }
+
   // ─── Private helpers ───────────────────────────────────────────────
 
   /** Resolve Category + Currency for a single movement. */

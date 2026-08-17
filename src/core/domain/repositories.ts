@@ -64,6 +64,8 @@ export interface MovementRepository {
   delete(userId: string, id: string): Promise<void>;
   /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance). */
   aggregateBalance(userId: string, accountId: string): Promise<number>;
+  /** CAT-3: count movements referencing a category (deletion guard). */
+  countByCategoryId(userId: string, categoryId: string): Promise<number>;
 }
 
 // ─── Transfer ────────────────────────────────────────────────────────

@@ -41,6 +41,7 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     update: async (m) => m,
     delete: async () => {},
     aggregateBalance: async () => 0,
+    countByCategoryId: async () => 0,
   };
 }
 

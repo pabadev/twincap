@@ -13,6 +13,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     update: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
     aggregateBalance: vi.fn().mockResolvedValue(0),
+    countByCategoryId: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
