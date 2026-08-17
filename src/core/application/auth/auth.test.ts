@@ -51,6 +51,7 @@ function fakeAccountRepo(): AccountRepository & { created: Account[] } {
     },
     update: async (a) => a,
     delete: async () => {},
+    countReferences: async () => 0,
   };
 }
 

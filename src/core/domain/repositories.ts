@@ -37,6 +37,8 @@ export interface AccountRepository {
   create(account: Account): Promise<Account>;
   update(account: Account): Promise<Account>;
   delete(userId: string, id: string): Promise<void>;
+  /** ACC-4: count references across all collections (movements, transfers, credits, sales). */
+  countReferences(userId: string, accountId: string): Promise<number>;
 }
 
 // ─── Category ────────────────────────────────────────────────────────
