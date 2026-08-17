@@ -54,6 +54,9 @@ function fakeCreditReceivedRepo(
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
+    addAbono: async () => {},
+    editAbono: async () => {},
+    deleteAbono: async () => {},
   };
 }
 

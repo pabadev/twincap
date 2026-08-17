@@ -113,10 +113,11 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       id: string;
       amount: number;
       date: Date;
-      accountId: Types.ObjectId;
+      accountId: string;
       movementId?: string;
     },
   ): Promise<void> {
+    const docAbono = { ...abono, accountId: new Types.ObjectId(abono.accountId) };
     if (abono.movementId) {
       // Idempotent: skip if movementId already exists
       const result = await CreditReceivedModel.updateOne(
@@ -125,7 +126,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: docAbono } },
       ).exec();
       if (result.matchedCount === 0) {
         // Either credit not found or abono already applied — both fine
@@ -137,7 +138,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
           _id: new Types.ObjectId(creditId),
           userId: new Types.ObjectId(userId),
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: docAbono } },
       ).exec();
     }
   }

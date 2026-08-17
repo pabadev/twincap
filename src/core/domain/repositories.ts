@@ -88,6 +88,12 @@ export interface CreditReceivedRepository {
   create(credit: CreditReceived): Promise<CreditReceived>;
   update(credit: CreditReceived): Promise<CreditReceived>;
   delete(userId: string, id: string): Promise<void>;
+  /** Atomic $push — idempotent when movementId is provided (design §5). */
+  addAbono(userId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }): Promise<void>;
+  /** Atomic $set on embedded abono by abono.id (design §5). */
+  editAbono(userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
+  /** Atomic $pull on embedded abono by abono.id (design §5). */
+  deleteAbono(userId: string, creditId: string, abonoId: string): Promise<void>;
 }
 
 // ─── Credit Granted ──────────────────────────────────────────────────
