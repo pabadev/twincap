@@ -1,0 +1,498 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createCreditGranted } from './create-credit-granted';
+import { addAbono } from './add-abono';
+import { editAbono } from './edit-abono';
+import { deleteAbono } from './delete-abono';
+import { editPrincipal } from './edit-principal';
+import { deleteCreditGranted } from './delete-credit-granted';
+import { CreditGranted } from '../../domain/credit-granted';
+import { Movement } from '../../domain/movement';
+import { Money } from '../../domain/money';
+import { NotFoundError, ConflictError } from '../../domain/errors';
+import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { IdGenerator } from '../ports';
+import type { CreditAbono } from '../../domain/credit-granted';
+
+// ─── Fake factories ────────────────────────────────────────────────
+
+let idCounter = 0;
+
+interface AbonoRecord {
+  id: string;
+  amount: number;
+  date: Date;
+  accountId: string;
+  movementId?: string;
+}
+
+function fakeCreditRepo(
+  overrides: Partial<CreditGrantedRepository> = {},
+): CreditGrantedRepository & { created: CreditGranted[]; updated: CreditGranted[]; deleted: string[]; abonosAdded: { creditId: string; abono: AbonoRecord }[]; abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[]; abonosDeleted: { creditId: string; abonoId: string }[] } {
+  const created: CreditGranted[] = [];
+  const updated: CreditGranted[] = [];
+  const deleted: string[] = [];
+  const abonosAdded: { creditId: string; abono: AbonoRecord }[] = [];
+  const abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[] = [];
+  const abonosDeleted: { creditId: string; abonoId: string }[] = [];
+  return {
+    created,
+    updated,
+    deleted,
+    abonosAdded,
+    abonosEdited,
+    abonosDeleted,
+    findById: vi.fn().mockResolvedValue(null),
+    findByUserId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
+      created.push(credit);
+      return credit;
+    }),
+    update: vi.fn().mockImplementation(async (credit: CreditGranted) => {
+      updated.push(credit);
+      return credit;
+    }),
+    delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+      deleted.push(id);
+    }),
+    addAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abono: AbonoRecord) => {
+      abonosAdded.push({ creditId, abono });
+    }),
+    editAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>) => {
+      abonosEdited.push({ creditId, abonoId, updates });
+    }),
+    deleteAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abonoId: string) => {
+      abonosDeleted.push({ creditId, abonoId });
+    }),
+    ...overrides,
+  };
+}
+
+function fakeMovementRepo(
+  overrides: Partial<MovementRepository> = {},
+): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[] } {
+  const created: Movement[] = [];
+  const updated: Movement[] = [];
+  const deleted: string[] = [];
+  return {
+    created,
+    updated,
+    deleted,
+    findById: vi.fn().mockResolvedValue(null),
+    findByUserId: vi.fn().mockResolvedValue([]),
+    findByAccountId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockImplementation(async (movement: Movement) => {
+      created.push(movement);
+      return movement;
+    }),
+    update: vi.fn().mockImplementation(async (movement: Movement) => {
+      updated.push(movement);
+      return movement;
+    }),
+    delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+      deleted.push(id);
+    }),
+    aggregateBalance: vi.fn().mockResolvedValue(0),
+    countByCategoryId: vi.fn().mockResolvedValue(0),
+    ...overrides,
+  };
+}
+
+function fakeIdGen(): IdGenerator {
+  return { generate: () => `id-${++idCounter}` };
+}
+
+function makeCredit(
+  overrides: Partial<ConstructorParameters<typeof CreditGranted>[0]> = {},
+  abonos: CreditAbono[] = [],
+): CreditGranted {
+  return new CreditGranted(
+    {
+      id: 'cg-1',
+      userId: 'user-1',
+      counterparty: 'Pedro',
+      principal: new Money(100000, 'COP'),
+      accountId: 'acc-1',
+      date: new Date('2025-06-01'),
+      createdAt: new Date(),
+      ...overrides,
+    },
+    abonos,
+  );
+}
+
+function makeMovement(
+  overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
+): Movement {
+  const type = overrides.type ?? 'expense';
+  return new Movement({
+    id: 'mov-1',
+    userId: 'user-1',
+    accountId: 'acc-1',
+    category: { id: 'cat-1', userId: '', name: 'Credit', type, createdAt: new Date() },
+    type,
+    amount: new Money(50000, 'COP'),
+    date: new Date('2025-06-01'),
+    context: 'Personal',
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+beforeEach(() => {
+  idCounter = 0;
+});
+
+// ─── Create ────────────────────────────────────────────────────────
+
+describe('createCreditGranted', () => {
+  it('creates a credit and principal expense movement (CRED-G-1)', async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    const credit = await createCreditGranted(
+      'user-1',
+      {
+        counterparty: 'Pedro',
+        principal: 100000,
+        currency: 'COP',
+        accountId: 'acc-1',
+        date: new Date('2025-06-01'),
+      },
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(credit.counterparty).toBe('Pedro');
+    expect(credit.principal.amount).toBe(100000);
+    expect(credit.principal.currency).toBe('COP');
+    expect(creditRepo.created).toHaveLength(1);
+    expect(movementRepo.created).toHaveLength(1);
+
+    const movement = movementRepo.created[0];
+    expect(movement.type).toBe('expense');
+    expect(movement.amount.amount).toBe(100000);
+    expect(movement.signedAmount).toBe(-100000);
+    expect(movement.accountId).toBe('acc-1');
+    expect(movement.link?.kind).toBe('creditGrantedPrincipal');
+    expect(movement.link?.refId).toBe(credit.id);
+  });
+
+  it('creates credit with optional installments and frequency', async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    const credit = await createCreditGranted(
+      'user-1',
+      {
+        counterparty: 'Maria',
+        principal: 50000,
+        currency: 'COP',
+        accountId: 'acc-1',
+        date: new Date('2025-06-01'),
+        installments: 12,
+        frequency: 'monthly',
+      },
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(credit.installments).toBe(12);
+    expect(credit.frequency).toBe('monthly');
+  });
+});
+
+// ─── Add Abono ─────────────────────────────────────────────────────
+
+describe('addAbono', () => {
+  it('adds an abono and creates income movement (debtor pays back)', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    const result = await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(result.abonos).toHaveLength(1);
+    expect(result.abonos[0].amount.amount).toBe(25000);
+    expect(result.pending).toBe(75000);
+    expect(creditRepo.addAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.created).toHaveLength(1);
+
+    const movement = movementRepo.created[0];
+    expect(movement.type).toBe('income');
+    expect(movement.amount.amount).toBe(25000);
+    expect(movement.signedAmount).toBe(25000);
+    expect(movement.link?.kind).toBe('creditGrantedAbono');
+  });
+
+  it('throws ConflictError on overpayment (CRED-G-2)', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'cg-1',
+        { amount: 150000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        creditRepo,
+        movementRepo,
+        ids,
+      ),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'missing',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date() },
+        creditRepo,
+        movementRepo,
+        ids,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── Edit Abono ────────────────────────────────────────────────────
+
+describe('editAbono', () => {
+  it('edits abono amount and updates linked movement (income type)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({ id: 'mov-1', type: 'income', amount: new Money(25000, 'COP') });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+
+    const result = await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { amount: 30000 },
+      creditRepo,
+      movementRepo,
+    );
+
+    expect(result.abonos[0].amount.amount).toBe(30000);
+    expect(result.pending).toBe(70000);
+    expect(creditRepo.editAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated[0].amount.amount).toBe(30000);
+    expect(movementRepo.updated[0].signedAmount).toBe(30000);
+  });
+
+  it('throws ConflictError when new amount exceeds pending', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editAbono('user-1', 'cg-1', 'ab-1', { amount: 200000 }, creditRepo, movementRepo),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError when abono does not exist', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editAbono('user-1', 'cg-1', 'missing-abono', { amount: 30000 }, creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── Delete Abono ──────────────────────────────────────────────────
+
+describe('deleteAbono', () => {
+  it('removes abono and reverses linked movement', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const result = await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    expect(result.abonos).toHaveLength(0);
+    expect(result.pending).toBe(100000);
+    expect(creditRepo.deleteAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.deleted).toContain('mov-1');
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      deleteAbono('user-1', 'missing', 'ab-1', creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError when abono does not exist', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      deleteAbono('user-1', 'cg-1', 'missing-abono', creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── Edit Principal ────────────────────────────────────────────────
+
+describe('editPrincipal', () => {
+  it('updates principal and cascades to principal movement (expense type)', async () => {
+    const credit = makeCredit();
+    const principalMovement = makeMovement({
+      id: 'mov-principal',
+      type: 'expense',
+      amount: new Money(100000, 'COP'),
+      link: { kind: 'creditGrantedPrincipal', refId: 'cg-1', opId: 'op-1' },
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([principalMovement]),
+    });
+
+    const result = await editPrincipal(
+      'user-1',
+      'cg-1',
+      { principal: 200000, currency: 'COP' },
+      creditRepo,
+      movementRepo,
+    );
+
+    expect(result.principal.amount).toBe(200000);
+    expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated[0].amount.amount).toBe(200000);
+  });
+
+  it('throws ConflictError when new principal < total abonos (CRED-G-5)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(50000, 'COP'), date: new Date(), accountId: 'acc-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editPrincipal('user-1', 'cg-1', { principal: 30000, currency: 'COP' }, creditRepo, movementRepo),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editPrincipal('user-1', 'missing', { principal: 200000, currency: 'COP' }, creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── Delete Credit ─────────────────────────────────────────────────
+
+describe('deleteCreditGranted', () => {
+  it('cascade-deletes all linked movements then the credit', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
+    ]);
+    const principalMov = makeMovement({
+      id: 'mov-principal',
+      type: 'expense',
+      link: { kind: 'creditGrantedPrincipal', refId: 'cg-1', opId: 'op-1' },
+    });
+    const abonoMov = makeMovement({
+      id: 'mov-abono',
+      type: 'income',
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([principalMov, abonoMov]),
+    });
+
+    await deleteCreditGranted('user-1', 'cg-1', creditRepo, movementRepo);
+
+    expect(movementRepo.deleted).toContain('mov-principal');
+    expect(movementRepo.deleted).toContain('mov-abono');
+    expect(movementRepo.delete).toHaveBeenCalledTimes(2);
+    expect(creditRepo.deleted).toContain('cg-1');
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      deleteCreditGranted('user-1', 'missing', creditRepo, movementRepo),
+    ).rejects.toThrow(NotFoundError);
+  });
+});

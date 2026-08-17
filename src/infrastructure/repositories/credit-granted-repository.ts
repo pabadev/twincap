@@ -113,7 +113,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       id: string;
       amount: number;
       date: Date;
-      accountId: Types.ObjectId;
+      accountId: string;
       movementId?: string;
     },
   ): Promise<void> {
@@ -124,7 +124,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
       ).exec();
       if (result.matchedCount === 0) {
         return;
@@ -135,7 +135,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
           _id: new Types.ObjectId(creditId),
           userId: new Types.ObjectId(userId),
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
       ).exec();
     }
   }
