@@ -40,6 +40,8 @@ export function toSaleEntity(
       date: doc.date,
       paymentMode: doc.paymentMode,
       accountId: doc.accountId.toString(),
+      deletedAt: doc.deletedAt,
+      stockRestored: doc.stockRestored,
       createdAt: doc.createdAt,
     },
     abonos,

@@ -21,6 +21,12 @@ export function toTransferEntity(doc: TransferDocument): Transfer {
     rate: doc.rate,
     date: doc.date,
     note: doc.note,
+    movementIds: doc.movementIds
+      ? {
+          expenseId: doc.movementIds.expenseId,
+          incomeId: doc.movementIds.incomeId,
+        }
+      : undefined,
     createdAt: doc.createdAt,
   });
 }

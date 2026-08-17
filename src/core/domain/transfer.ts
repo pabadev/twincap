@@ -7,6 +7,11 @@ import { Money } from "./money";
  * one expense on the source account and one income on the destination account.
  * TRA-1..4 spec requirements.
  */
+export interface TransferMovementIds {
+  expenseId?: string;
+  incomeId?: string;
+}
+
 export interface TransferInput {
   id: string;
   userId: string;
@@ -20,6 +25,8 @@ export interface TransferInput {
   rate?: number;
   date: Date;
   note?: string;
+  /** Linked movement IDs — populated after transfer completion (design §5). */
+  movementIds?: TransferMovementIds;
   createdAt: Date;
 }
 
@@ -35,6 +42,7 @@ export class Transfer {
   readonly rate?: number;
   readonly date: Date;
   readonly note?: string;
+  readonly movementIds?: TransferMovementIds;
   readonly createdAt: Date;
 
   constructor(input: TransferInput) {
@@ -91,6 +99,7 @@ export class Transfer {
     this.rate = input.rate;
     this.date = input.date;
     this.note = input.note;
+    this.movementIds = input.movementIds;
     this.createdAt = input.createdAt;
   }
 }

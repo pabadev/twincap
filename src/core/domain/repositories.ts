@@ -72,6 +72,8 @@ export interface TransferRepository {
   create(transfer: Transfer): Promise<Transfer>;
   update(transfer: Transfer): Promise<Transfer>;
   delete(userId: string, id: string): Promise<void>;
+  /** Find by raw ObjectId without userId scope (for reconcile orphan check). */
+  findByIdRaw(id: string): Promise<Transfer | null>;
 }
 
 // ─── Credit Received ─────────────────────────────────────────────────

@@ -44,6 +44,10 @@ export interface SaleInput {
   paymentMode: PaymentMode;
   /** Account used for paid-in-full payment or abonos. */
   accountId: string;
+  /** Soft-delete timestamp (POS soft-delete). */
+  deletedAt?: Date;
+  /** Whether stock was restored after soft-delete. */
+  stockRestored?: boolean;
   createdAt: Date;
 }
 
@@ -71,6 +75,8 @@ export class Sale {
   readonly accountId: string;
   /** Computed total: Σ (quantity × unitPrice) across all line items. */
   readonly total: number;
+  readonly deletedAt?: Date;
+  readonly stockRestored: boolean;
   readonly createdAt: Date;
 
   /** Embedded abonos (POS-5/6). */
@@ -147,6 +153,8 @@ export class Sale {
     this.paymentMode = input.paymentMode;
     this.accountId = input.accountId;
     this.total = total;
+    this.deletedAt = input.deletedAt;
+    this.stockRestored = input.stockRestored ?? false;
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
