@@ -1,4 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
+import {connectDb} from './infrastructure/db/connection';
 
 const DEFAULT_LOCALE = 'es';
 const LOCALES = ['es', 'en'];
@@ -21,7 +22,12 @@ function getLocaleFromRequest(request: NextRequest): string {
   return DEFAULT_LOCALE;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
+  // Ensure DB connection is established before any route handler runs.
+  // This prevents the "Cannot call findOne() before initial connection"
+  // error on Turbopack cold start.
+  await connectDb();
+
   const locale = getLocaleFromRequest(request);
   const response = NextResponse.next();
   response.headers.set('x-locale', locale);
