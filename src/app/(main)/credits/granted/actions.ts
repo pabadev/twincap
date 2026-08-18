@@ -10,9 +10,8 @@ import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
+import { connectDb } from '../../../../infrastructure/db/connection';
 
-const creditRepo = new MongoCreditGrantedRepository();
-const movementRepo = new MongoMovementRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createCreditGrantedAction(
@@ -31,6 +30,9 @@ export async function createCreditGrantedAction(
   const frequency = (formData.get('frequency') as string) || undefined;
 
   try {
+    await connectDb();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const movementRepo = new MongoMovementRepository();
     await createCreditGranted(
       user.userId,
       { counterparty, principal, currency, accountId, date, installments, frequency },
@@ -63,6 +65,9 @@ export async function addAbonoAction(
   const date = new Date(formData.get('date') as string);
 
   try {
+    await connectDb();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const movementRepo = new MongoMovementRepository();
     await addAbono(
       user.userId,
       creditId,
@@ -89,6 +94,9 @@ export async function deleteCreditAction(formData: FormData) {
   const creditId = formData.get('creditId') as string;
 
   try {
+    await connectDb();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const movementRepo = new MongoMovementRepository();
     await deleteCreditGranted(user.userId, creditId, creditRepo, movementRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))

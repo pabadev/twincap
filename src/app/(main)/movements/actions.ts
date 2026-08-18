@@ -9,9 +9,8 @@ import type { CreateMovementInput } from '../../../core/application/movements';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 
-const movementRepo = new MongoMovementRepository();
-const categoryRepo = new MongoCategoryRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createMovementAction(
@@ -31,6 +30,9 @@ export async function createMovementAction(
   const categoryId = formData.get('categoryId') as string;
 
   try {
+    await connectDb();
+    const movementRepo = new MongoMovementRepository();
+    const categoryRepo = new MongoCategoryRepository();
     await createMovement(
       user.userId,
       { accountId, type, amount, currency, date, note, context, categoryId },
@@ -56,6 +58,8 @@ export async function deleteMovementAction(formData: FormData) {
   const movementId = formData.get('movementId') as string;
 
   try {
+    await connectDb();
+    const movementRepo = new MongoMovementRepository();
     await deleteMovement(user.userId, movementId, movementRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))

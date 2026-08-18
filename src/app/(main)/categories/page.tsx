@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getT } from '../../../i18n/server';
 import { listCategories } from '../../../core/application/categories';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
@@ -9,6 +10,9 @@ import { DeleteCategoryButton } from './delete-category-button';
 export default async function CategoriesPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  const t = await getT('Categories');
+  const tCommon = await getT('Common');
 
   await connectDb();
   const categoryRepo = new MongoCategoryRepository();
@@ -22,24 +26,24 @@ export default async function CategoriesPage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Categories
+          {t('title')}
         </h1>
       </div>
 
       {categories.length === 0 ? (
         <p className="text-zinc-500 dark:text-zinc-400">
-          No categories yet. Create your first category below.
+          {t('noCategories')}
         </p>
       ) : (
         <div className="space-y-6">
-          <CategorySection title="Income" categories={incomeCategories} />
-          <CategorySection title="Expense" categories={expenseCategories} />
+          <CategorySection title={t('income')} categories={incomeCategories} emptyMessage={t('noIncome')} nameLabel={tCommon('name')} actionsLabel={tCommon('actions')} />
+          <CategorySection title={t('expense')} categories={expenseCategories} emptyMessage={t('noExpense')} nameLabel={tCommon('name')} actionsLabel={tCommon('actions')} />
         </div>
       )}
 
       <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Add Category
+          {t('addCategory')}
         </h2>
         <CategoryForm />
       </div>
@@ -50,9 +54,15 @@ export default async function CategoriesPage() {
 function CategorySection({
   title,
   categories,
+  emptyMessage,
+  nameLabel,
+  actionsLabel,
 }: {
   title: string;
   categories: { id: string; name: string }[];
+  emptyMessage: string;
+  nameLabel: string;
+  actionsLabel: string;
 }) {
   if (categories.length === 0) {
     return (
@@ -61,7 +71,7 @@ function CategorySection({
           {title}
         </h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          No {title.toLowerCase()} categories yet.
+          {emptyMessage}
         </p>
       </div>
     );
@@ -77,10 +87,10 @@ function CategorySection({
           <thead className="bg-zinc-50 dark:bg-zinc-800">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                Name
+                {nameLabel}
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                Actions
+                {actionsLabel}
               </th>
             </tr>
           </thead>

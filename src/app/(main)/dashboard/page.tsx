@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getT } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
@@ -22,6 +23,8 @@ function formatBalance(amount: number, currency: string): string {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  const t = await getT('Dashboard');
 
   await connectDb();
   const accountRepo = new MongoAccountRepository();
@@ -47,7 +50,7 @@ export default async function DashboardPage() {
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Welcome back
+          {t('welcomeBack')}
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           {dbUser?.email ?? 'User'}
@@ -57,13 +60,13 @@ export default async function DashboardPage() {
       {/* Accounts section */}
       <div>
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Accounts
+          {t('accounts')}
         </h2>
 
         {accountBalances.length === 0 ? (
           <Card>
             <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-              No accounts yet. Create your first account to get started.
+              {t('noAccounts')}
             </p>
           </Card>
         ) : (
@@ -79,7 +82,7 @@ export default async function DashboardPage() {
                   </span>
                   {account.isFixed && (
                     <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                      Fixed
+                      {t('fixed')}
                     </span>
                   )}
                 </div>

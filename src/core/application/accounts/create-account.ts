@@ -1,7 +1,7 @@
 import { Account } from '../../domain/account';
 import { Movement } from '../../domain/movement';
-import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
+import { openingCategory } from '../../domain/synthetic-categories';
 import type { AccountRepository, MovementRepository } from '../../domain/repositories';
 import type { Currency } from '../../domain/currency';
 import type { IdGenerator } from '../ports';
@@ -11,14 +11,6 @@ export interface CreateAccountInput {
   currency: Currency;
   initialBalance: number; // 0 = no opening movement
 }
-
-const OPENING_CATEGORY: Category = new Category({
-  id: '__opening__',
-  userId: '__seed__',
-  name: 'Opening balance',
-  type: 'income',
-  createdAt: new Date(0),
-});
 
 export async function createAccount(
   userId: string,
@@ -45,7 +37,7 @@ export async function createAccount(
       id: ids.generate(),
       userId,
       accountId,
-      category: OPENING_CATEGORY,
+      category: openingCategory(),
       type: 'income',
       amount: new Money(input.initialBalance, input.currency),
       date: new Date(),

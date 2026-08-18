@@ -1,25 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import { useT, useLocale } from '../../../../i18n/client';
 import type { Account } from '../../../../core/domain/account';
 import type { CreditReceived } from '../../../../core/domain/credit-received';
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
 import { deleteCreditAction } from './actions';
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, {
+function formatDate(date: Date | string, locale?: string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
 }
 
-function formatAmount(amount: number, currency: string): string {
+function formatAmount(amount: number, currency: string, locale?: string): string {
   const exp = currency === 'COP' ? 0 : 2;
   const divisor = 10 ** exp;
   const value = amount / divisor;
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString(locale, {
     minimumFractionDigits: exp,
     maximumFractionDigits: exp,
   });
@@ -35,25 +37,28 @@ export function CreditsReceivedList({
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
+  const t = useT('CreditsReceived');
+  const tCommon = useT('Common');
+  const locale = useLocale();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Credits Received
+          {t('title')}
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? 'Cancel' : 'Add Credit'}
+          {showForm ? tCommon('cancel') : t('addCredit')}
         </button>
       </div>
 
       {showForm && (
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            New Credit Received
+            {t('newCredit')}
           </h2>
           <CreditForm accounts={accounts} />
         </div>
@@ -61,7 +66,7 @@ export function CreditsReceivedList({
 
       {credits.length === 0 ? (
         <p className="text-zinc-500 dark:text-zinc-400">
-          No credits received yet.
+          {t('noCredits')}
         </p>
       ) : (
         <div className="space-y-3">
@@ -84,19 +89,19 @@ export function CreditsReceivedList({
                       {credit.counterparty}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {formatDate(credit.date)}
-                      {credit.installments && ` · ${credit.installments} installments`}
+                      {formatDate(credit.date, locale)}
+                      {credit.installments && ` · ${credit.installments} ${t('installmentCount')}`}
                       {credit.frequency && ` · ${credit.frequency}`}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatAmount(credit.principal.amount, currency)} {currency}
+                      {formatAmount(credit.principal.amount, currency, locale)} {currency}
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {pending > 0
-                        ? `Pending: ${formatAmount(pending, currency)}`
-                        : 'Paid in full'}
+                        ? `${t('pending')} ${formatAmount(pending, currency, locale)}`
+                        : t('paidInFull')}
                     </div>
                   </div>
                   <div className="ml-4 flex items-center gap-2">
@@ -119,21 +124,21 @@ export function CreditsReceivedList({
                     {credit.abonos.length > 0 && (
                       <div className="mb-3">
                         <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                          Abonos
+                          {t('abonos')}
                         </h4>
                         <table className="min-w-full text-sm">
                           <thead>
                             <tr className="text-xs text-zinc-500 dark:text-zinc-400">
-                              <th className="pb-1 text-left">Date</th>
-                              <th className="pb-1 text-right">Amount</th>
+                              <th className="pb-1 text-left">{tCommon('date')}</th>
+                              <th className="pb-1 text-right">{tCommon('amount')}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {credit.abonos.map((abono) => (
                               <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
-                                <td className="py-1">{formatDate(abono.date)}</td>
+                                <td className="py-1">{formatDate(abono.date, locale)}</td>
                                 <td className="py-1 text-right">
-                                  −{formatAmount(abono.amount.amount, currency)} {currency}
+                                  −{formatAmount(abono.amount.amount, currency, locale)} {currency}
                                 </td>
                               </tr>
                             ))}
@@ -151,13 +156,13 @@ export function CreditsReceivedList({
                           }}
                           className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
                         >
-                          {showAbonoFormId === credit.id ? 'Cancel' : 'Add Abono'}
+                          {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
                         </button>
                       )}
                       <form
                         action={deleteCreditAction}
                         onSubmit={(e) => {
-                          if (!confirm('Delete this credit? This will also remove all linked movements.')) {
+                          if (!confirm(t('confirmDelete'))) {
                             e.preventDefault();
                           }
                         }}
@@ -168,7 +173,7 @@ export function CreditsReceivedList({
                           type="submit"
                           className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         >
-                          Delete
+                          {tCommon('delete')}
                         </button>
                       </form>
                     </div>

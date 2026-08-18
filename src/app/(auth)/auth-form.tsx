@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useT } from '../../i18n/client';
 
 type ActionFn = (
   prev: { error: string } | null,
@@ -23,6 +24,7 @@ export function AuthForm({
   alternateLabel: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
+  const t = useT('Auth');
 
   return (
     <>
@@ -40,7 +42,7 @@ export function AuthForm({
             htmlFor="email"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Email
+            {t('email')}
           </label>
           <input
             id="email"
@@ -57,7 +59,7 @@ export function AuthForm({
             htmlFor="password"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Password
+            {t('password')}
           </label>
           <input
             id="password"
@@ -75,7 +77,7 @@ export function AuthForm({
           disabled={isPending}
           className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {isPending ? 'Loading...' : submitLabel}
+          {isPending ? t('loading') : submitLabel}
         </button>
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
           {alternateText}{' '}

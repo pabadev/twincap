@@ -2,6 +2,7 @@ import { Sale } from '../../domain/sale';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { saleCategory } from '../../domain/synthetic-categories';
 import type { SaleRepository, CatalogItemRepository, MovementRepository } from '../../domain/repositories';
 import type { EditSaleLineItemInput } from './dto/sales';
 
@@ -91,7 +92,7 @@ export async function editSaleLineItem(
         id: paymentMovement.id,
         userId: paymentMovement.userId,
         accountId: paymentMovement.accountId,
-        category: { id: paymentMovement.categoryId, userId: '', name: 'Sale', type: 'income', createdAt: new Date() },
+        category: saleCategory('income'),
         type: 'income',
         amount: new Money(paymentMovement.amount.amount + delta, currency),
         date: paymentMovement.date,

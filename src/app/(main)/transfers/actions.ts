@@ -9,9 +9,8 @@ import type { CreateTransferInput } from '../../../core/application/transfers';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 
-const transferRepo = new MongoTransferRepository();
-const movementRepo = new MongoMovementRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createTransferAction(
@@ -44,6 +43,9 @@ export async function createTransferAction(
   };
 
   try {
+    await connectDb();
+    const transferRepo = new MongoTransferRepository();
+    const movementRepo = new MongoMovementRepository();
     await createTransfer(
       user.userId,
       input,
@@ -69,6 +71,9 @@ export async function deleteTransferAction(formData: FormData) {
   const transferId = formData.get('transferId') as string;
 
   try {
+    await connectDb();
+    const transferRepo = new MongoTransferRepository();
+    const movementRepo = new MongoMovementRepository();
     await deleteTransfer(user.userId, transferId, transferRepo, movementRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))

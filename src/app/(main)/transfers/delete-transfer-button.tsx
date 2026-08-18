@@ -1,13 +1,16 @@
 'use client';
 
+import { useT } from '../../../i18n/client';
 import { deleteTransferAction } from './actions';
 
 export function DeleteTransferButton({ transferId }: { transferId: string }) {
+  const t = useT('Transfers');
+
   return (
     <form
       action={deleteTransferAction}
       onSubmit={(e) => {
-        if (!confirm('Delete this transfer? This will also remove the linked movements.')) {
+        if (!confirm(t('confirmDelete'))) {
           e.preventDefault();
         }
       }}
@@ -17,7 +20,7 @@ export function DeleteTransferButton({ transferId }: { transferId: string }) {
         type="submit"
         className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
       >
-        Delete
+        {t('delete')}
       </button>
     </form>
   );

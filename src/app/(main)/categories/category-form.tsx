@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useT } from '../../../i18n/client';
 import { CATEGORY_TYPES } from '../../../core/domain/category';
 import { createCategoryAction } from './actions';
 
@@ -9,6 +10,7 @@ export function CategoryForm() {
     createCategoryAction,
     null,
   );
+  const t = useT('Categories');
 
   return (
     <form action={formAction} className="space-y-4">
@@ -23,7 +25,7 @@ export function CategoryForm() {
           htmlFor="name"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Category Name
+          {t('categoryName')}
         </label>
         <input
           id="name"
@@ -40,7 +42,7 @@ export function CategoryForm() {
           htmlFor="type"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Type
+          {t('type')}
         </label>
         <select
           id="type"
@@ -49,9 +51,9 @@ export function CategoryForm() {
           disabled={isPending}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
         >
-          {CATEGORY_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+          {CATEGORY_TYPES.map((ct) => (
+            <option key={ct} value={ct}>
+              {ct === 'income' ? t('income') : t('expense')}
             </option>
           ))}
         </select>
@@ -62,7 +64,7 @@ export function CategoryForm() {
         disabled={isPending}
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Creating...' : 'Create Category'}
+        {isPending ? t('creating') : t('createCategory')}
       </button>
     </form>
   );

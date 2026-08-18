@@ -14,10 +14,8 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
+import { connectDb } from '../../../../infrastructure/db/connection';
 
-const catalogRepo = new MongoCatalogItemRepository();
-const saleRepo = new MongoSaleRepository();
-const movementRepo = new MongoMovementRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createSaleAction(
@@ -45,6 +43,10 @@ export async function createSaleAction(
   }
 
   try {
+    await connectDb();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const saleRepo = new MongoSaleRepository();
+    const movementRepo = new MongoMovementRepository();
     await createSale(
       user.userId,
       { items, accountId, date, paymentMode, currency },
@@ -78,6 +80,9 @@ export async function addSaleAbonoAction(
   const date = new Date(formData.get('date') as string);
 
   try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const movementRepo = new MongoMovementRepository();
     await addSaleAbono(
       user.userId,
       saleId,
@@ -111,6 +116,9 @@ export async function editSaleAbonoAction(
   const date = new Date(formData.get('date') as string);
 
   try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const movementRepo = new MongoMovementRepository();
     await editSaleAbono(
       user.userId,
       saleId,
@@ -138,6 +146,9 @@ export async function deleteSaleAbonoAction(formData: FormData) {
   const abonoId = formData.get('abonoId') as string;
 
   try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const movementRepo = new MongoMovementRepository();
     await deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
@@ -154,6 +165,10 @@ export async function deleteSaleAction(formData: FormData) {
   const saleId = formData.get('saleId') as string;
 
   try {
+    await connectDb();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const saleRepo = new MongoSaleRepository();
+    const movementRepo = new MongoMovementRepository();
     await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useT } from '../../../i18n/client';
 import { createTransferAction } from './actions';
 import type { Account } from '../../../core/domain/account';
 
@@ -9,6 +10,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
     createTransferAction,
     null,
   );
+  const t = useT('Transfers');
 
   const [sourceCurrency, setSourceCurrency] = useState(accounts[0]?.currency ?? 'COP');
   const [destCurrency, setDestCurrency] = useState(accounts[0]?.currency ?? 'COP');
@@ -27,7 +29,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
           htmlFor="sourceAccountId"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          From Account
+          {t('fromAccount')}
         </label>
         <select
           id="sourceAccountId"
@@ -53,7 +55,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
           htmlFor="destinationAccountId"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          To Account
+          {t('toAccount')}
         </label>
         <select
           id="destinationAccountId"
@@ -80,7 +82,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
             htmlFor="sourceAmount"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Source Amount ({sourceCurrency})
+            {t('sourceAmount', { currency: sourceCurrency })}
           </label>
           <input
             id="sourceAmount"
@@ -100,7 +102,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
               htmlFor="destinationAmount"
               className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              Dest Amount ({destCurrency})
+              {t('destAmount', { currency: destCurrency })}
             </label>
             <input
               id="destinationAmount"
@@ -122,7 +124,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
             htmlFor="rate"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            FX Rate ({sourceCurrency} → {destCurrency})
+            {t('fxRate', { from: sourceCurrency, to: destCurrency })}
           </label>
           <input
             id="rate"
@@ -142,7 +144,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
           htmlFor="date"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Date
+          {t('date')}
         </label>
         <input
           id="date"
@@ -159,7 +161,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
           htmlFor="note"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Note
+          {t('note')}
         </label>
         <input
           id="note"
@@ -175,7 +177,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
         disabled={isPending}
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Creating...' : 'Add Transfer'}
+        {isPending ? t('creating') : t('addTransfer')}
       </button>
     </form>
   );

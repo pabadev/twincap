@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useT } from '../../../../i18n/client';
 import { createCreditReceivedAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -11,6 +12,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
     createCreditReceivedAction,
     null,
   );
+  const t = useT('CreditsReceived');
 
   const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
 
@@ -27,7 +29,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
           htmlFor="counterparty"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Counterparty (Lender)
+          {t('counterparty')}
         </label>
         <input
           id="counterparty"
@@ -45,7 +47,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
             htmlFor="principal"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Principal ({currency})
+            {t('principal', { currency })}
           </label>
           <input
             id="principal"
@@ -63,7 +65,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
             htmlFor="currency"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Currency
+            {t('currency')}
           </label>
           <select
             id="currency"
@@ -87,7 +89,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
           htmlFor="accountId"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Receiving Account
+          {t('accountId')}
         </label>
         <select
           id="accountId"
@@ -109,7 +111,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
           htmlFor="date"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Date
+          {t('date')}
         </label>
         <input
           id="date"
@@ -127,7 +129,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
             htmlFor="installments"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Installments (optional)
+            {t('installments')}
           </label>
           <input
             id="installments"
@@ -144,7 +146,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
             htmlFor="frequency"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Frequency (optional)
+            {t('frequency')}
           </label>
           <select
             id="frequency"
@@ -153,9 +155,9 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
             className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
           >
             <option value="">—</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Biweekly</option>
-            <option value="monthly">Monthly</option>
+            <option value="weekly">{t('weekly')}</option>
+            <option value="biweekly">{t('biweekly')}</option>
+            <option value="monthly">{t('monthly')}</option>
           </select>
         </div>
       </div>
@@ -165,7 +167,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
         disabled={isPending}
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Creating...' : 'Add Credit Received'}
+        {isPending ? t('creating') : t('addCreditBtn')}
       </button>
     </form>
   );

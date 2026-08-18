@@ -47,7 +47,7 @@ export async function addSaleAbono(
     id: movementId,
     userId,
     accountId: input.accountId,
-    category: saleCategory(movementId, 'income'),
+    category: saleCategory('income'),
     type: 'income',
     amount: new Money(input.amount, input.currency),
     date: input.date,

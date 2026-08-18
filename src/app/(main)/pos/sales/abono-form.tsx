@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useT } from '../../../../i18n/client';
 import { addSaleAbonoAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
 import { DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -14,6 +15,8 @@ interface AbonoFormProps {
 
 export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
   const [state, formAction, isPending] = useActionState(addSaleAbonoAction, null);
+  const t = useT('Sales');
+  const tCommon = useT('Common');
 
   const currency: Currency = accounts[0]?.currency ?? DEFAULT_CURRENCY;
 
@@ -40,7 +43,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Amount ({currency})
+            {t('amount')} ({currency})
           </label>
           <input
             id="amount"
@@ -55,7 +58,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
         <div>
           <label htmlFor="accountId" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Account
+            {t('account')}
           </label>
           <select
             id="accountId"
@@ -74,7 +77,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
         <div>
           <label htmlFor="date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Date
+            {t('date')}
           </label>
           <input
             id="date"
@@ -94,7 +97,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
           disabled={isPending}
           className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {isPending ? 'Adding...' : 'Add Payment'}
+          {isPending ? t('adding') : t('addPaymentBtn')}
         </button>
         {onDone && (
           <button
@@ -103,7 +106,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
             disabled={isPending}
             className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
         )}
       </div>

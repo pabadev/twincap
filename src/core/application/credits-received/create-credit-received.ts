@@ -1,18 +1,10 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateCreditReceivedInput } from './dto/credits-received';
-
-/**
- * Synthetic Category for credit-linked movements.
- * Credit movements are system-linked (MOV-5) and don't belong to user categories,
- * but the Movement constructor requires a Category object for MOV-2 validation.
- */
-function creditCategory(id: string, type: 'income' | 'expense') {
-  return { id, userId: '', name: 'Credit', type, createdAt: new Date() };
-}
 
 /**
  * Create a credit received (CRED-R-1).
@@ -52,7 +44,7 @@ export async function createCreditReceived(
     id: movementId,
     userId,
     accountId: input.accountId,
-    category: creditCategory(movementId, 'income'),
+    category: creditCategory('income'),
     type: 'income',
     amount: principalMoney,
     date: input.date,

@@ -11,9 +11,8 @@ import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
+import { connectDb } from '../../../../infrastructure/db/connection';
 
-const catalogRepo = new MongoCatalogItemRepository();
-const saleRepo = new MongoSaleRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createCatalogItemAction(
@@ -31,6 +30,8 @@ export async function createCatalogItemAction(
   const stock = stockRaw !== null && stockRaw !== '' ? Number(stockRaw) : undefined;
 
   try {
+    await connectDb();
+    const catalogRepo = new MongoCatalogItemRepository();
     await createCatalogItem(
       user.userId,
       { name, unitPrice, currency, type, stock },
@@ -63,6 +64,8 @@ export async function updateCatalogItemAction(
   const stock = stockRaw !== null && stockRaw !== '' ? Number(stockRaw) : undefined;
 
   try {
+    await connectDb();
+    const catalogRepo = new MongoCatalogItemRepository();
     await updateCatalogItem(
       user.userId,
       itemId,
@@ -87,6 +90,9 @@ export async function deleteCatalogItemAction(formData: FormData) {
   const itemId = formData.get('itemId') as string;
 
   try {
+    await connectDb();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const saleRepo = new MongoSaleRepository();
     await deleteCatalogItem(user.userId, itemId, catalogRepo, saleRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))

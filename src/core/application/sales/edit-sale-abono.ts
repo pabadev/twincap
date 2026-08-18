@@ -2,6 +2,7 @@ import { Sale } from '../../domain/sale';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { saleCategory } from '../../domain/synthetic-categories';
 import type { SaleRepository, MovementRepository } from '../../domain/repositories';
 import type { EditSaleAbonoInput } from './dto/sales';
 
@@ -52,7 +53,7 @@ export async function editSaleAbono(
         id: movement.id,
         userId: movement.userId,
         accountId: updatedAccountId,
-        category: { id: movement.categoryId, userId: '', name: 'Sale', type: 'income', createdAt: new Date() },
+        category: saleCategory('income'),
         type: 'income',
         amount: updatedAmount,
         date: updatedDate,

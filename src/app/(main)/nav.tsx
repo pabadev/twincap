@@ -1,30 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
 
-const NAV_LINKS = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/accounts', label: 'Accounts' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/movements', label: 'Movements' },
-  { href: '/transfers', label: 'Transfers' },
-  { href: '/credits/received', label: 'Credits Received' },
-  { href: '/credits/granted', label: 'Credits Granted' },
-  { href: '/pos/catalog', label: 'POS Catalog' },
-  { href: '/pos/sales', label: 'POS Sales' },
+const NAV_ITEMS = [
+  { href: '/', key: 'dashboard' },
+  { href: '/accounts', key: 'accounts' },
+  { href: '/categories', key: 'categories' },
+  { href: '/movements', key: 'movements' },
+  { href: '/transfers', key: 'transfers' },
+  { href: '/credits/received', key: 'creditsReceived' },
+  { href: '/credits/granted', key: 'creditsGranted' },
+  { href: '/pos/catalog', key: 'posCatalog' },
+  { href: '/pos/sales', key: 'posSales' },
 ] as const;
-
-function getNavLinks() {
-  return NAV_LINKS;
-}
 
 export function MainNav({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
+  const t = useT('Nav');
+  const tCommon = useT('Common');
+  const locale = useLocale();
   const pathname = usePathname();
-  const links = getNavLinks();
+
+  function toggleLocale() {
+    const next = locale === 'es' ? 'en' : 'es';
+    document.cookie = `NEXT_LOCALE=${next};path=/;max-age=31536000`;
+    window.location.reload();
+  }
 
   return (
     <>
@@ -33,7 +37,7 @@ export function MainNav({ email }: { email: string }) {
         type="button"
         onClick={() => setOpen(!open)}
         className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 p-2 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-        aria-label={open ? 'Close menu' : 'Open menu'}
+        aria-label={open ? tCommon('closeMenu') : tCommon('openMenu')}
       >
         <svg
           className="h-5 w-5"
@@ -83,15 +87,15 @@ export function MainNav({ email }: { email: string }) {
           {/* Nav links */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <ul className="space-y-1">
-              {links.map((link) => {
+              {NAV_ITEMS.map((item) => {
                 const isActive =
-                  link.href === '/'
+                  item.href === '/'
                     ? pathname === '/'
-                    : pathname.startsWith(link.href);
+                    : pathname.startsWith(item.href);
                 return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
                       onClick={() => setOpen(false)}
                       className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                         isActive
@@ -99,27 +103,36 @@ export function MainNav({ email }: { email: string }) {
                           : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
                       }`}
                     >
-                      {link.label}
-                    </Link>
+                      {t(item.key)}
+                    </a>
                   </li>
                 );
               })}
             </ul>
           </nav>
 
-          {/* User info + logout */}
+          {/* User info + language toggle + logout */}
           <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
             <p className="mb-3 truncate text-xs text-zinc-500 dark:text-zinc-400">
               {email}
             </p>
-            <form action={logoutAction}>
+            <div className="mb-3 flex gap-2">
               <button
-                type="submit"
-                className="w-full rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                type="button"
+                onClick={toggleLocale}
+                className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                Logout
+                {locale === 'es' ? 'EN' : 'ES'}
               </button>
-            </form>
+              <form action={logoutAction} className="flex-1">
+                <button
+                  type="submit"
+                  className="w-full rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  {t('logout')}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </aside>

@@ -2,6 +2,7 @@ import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { creditGrantedCategory } from '../../domain/synthetic-categories';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
 import type { EditPrincipalInput } from './dto/credits-granted';
 
@@ -55,7 +56,7 @@ export async function editPrincipal(
       id: principalMovement.id,
       userId: principalMovement.userId,
       accountId: principalMovement.accountId,
-      category: { id: principalMovement.categoryId, userId: '', name: 'Credit', type: 'expense', createdAt: new Date() },
+      category: creditGrantedCategory('expense'),
       type: 'expense',
       amount: updatedPrincipal,
       date: principalMovement.date,

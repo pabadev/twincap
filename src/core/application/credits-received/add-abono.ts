@@ -2,16 +2,10 @@ import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { AddAbonoInput } from './dto/credits-received';
-
-/**
- * Synthetic Category for credit-linked movements.
- */
-function creditCategory(id: string, type: 'income' | 'expense') {
-  return { id, userId: '', name: 'Credit', type, createdAt: new Date() };
-}
 
 /**
  * Add an abono to a credit received (CRED-R-2, CRED-R-3).
@@ -54,7 +48,7 @@ export async function addAbono(
     id: movementId,
     userId,
     accountId: input.accountId,
-    category: creditCategory(movementId, 'expense'),
+    category: creditCategory('expense'),
     type: 'expense',
     amount: new Money(input.amount, input.currency),
     date: input.date,

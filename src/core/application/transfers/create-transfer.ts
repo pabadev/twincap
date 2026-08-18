@@ -2,18 +2,10 @@ import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { ValidationError, ConflictError } from '../../domain/errors';
+import { transferCategory } from '../../domain/synthetic-categories';
 import type { TransferRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateTransferInput } from './dto/transfers';
-
-/**
- * Synthetic Category for transfer-linked movements.
- * Transfer movements are system-linked (MOV-5) and don't belong to user categories,
- * but the Movement constructor requires a Category object for MOV-2 validation.
- */
-function transferCategory(id: string, type: 'income' | 'expense') {
-  return { id, userId: '', name: 'Transfer', type, createdAt: new Date() };
-}
 
 /**
  * Create a transfer between two accounts (TRA-1..4).
@@ -86,7 +78,7 @@ export async function createTransfer(
     id: expenseMovementId,
     userId,
     accountId: input.sourceAccountId,
-    category: transferCategory(expenseMovementId, 'expense'),
+    category: transferCategory('expense'),
     type: 'expense',
     amount: sourceAmountMoney,
     date: input.date,
@@ -102,7 +94,7 @@ export async function createTransfer(
     id: incomeMovementId,
     userId,
     accountId: input.destinationAccountId,
-    category: transferCategory(incomeMovementId, 'income'),
+    category: transferCategory('income'),
     type: 'income',
     amount: new Money(destAmount, destCurrency),
     date: input.date,

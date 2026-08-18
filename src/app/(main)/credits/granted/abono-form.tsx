@@ -1,14 +1,15 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useT, useLocale } from '../../../../i18n/client';
 import { addAbonoAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
 
-function formatAmount(amount: number, currency: string): string {
+function formatAmount(amount: number, currency: string, locale?: string): string {
   const exp = currency === 'COP' ? 0 : 2;
   const divisor = 10 ** exp;
   const value = amount / divisor;
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString(locale, {
     minimumFractionDigits: exp,
     maximumFractionDigits: exp,
   });
@@ -29,6 +30,8 @@ export function AbonoForm({
     addAbonoAction,
     null,
   );
+  const t = useT('CreditsGranted');
+  const locale = useLocale();
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
@@ -36,7 +39,7 @@ export function AbonoForm({
       <input type="hidden" name="currency" value={currency} />
 
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Pending: {formatAmount(pending, currency)} {currency}
+        {t('pending')} {formatAmount(pending, currency, locale)} {currency}
       </p>
 
       {state?.error && (
@@ -51,7 +54,7 @@ export function AbonoForm({
             htmlFor={`amount-${creditId}`}
             className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Amount
+            {t('amount')}
           </label>
           <input
             id={`amount-${creditId}`}
@@ -70,7 +73,7 @@ export function AbonoForm({
             htmlFor={`accountId-${creditId}`}
             className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Account
+            {t('account')}
           </label>
           <select
             id={`accountId-${creditId}`}
@@ -92,7 +95,7 @@ export function AbonoForm({
             htmlFor={`date-${creditId}`}
             className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Date
+            {t('date')}
           </label>
           <input
             id={`date-${creditId}`}
@@ -110,7 +113,7 @@ export function AbonoForm({
         disabled={isPending}
         className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Adding...' : 'Add Abono'}
+        {isPending ? t('adding') : t('addAbono')}
       </button>
     </form>
   );

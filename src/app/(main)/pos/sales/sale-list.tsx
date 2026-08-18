@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useT, useLocale } from '../../../../i18n/client';
 import type { Sale } from '../../../../core/domain/sale';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import type { Account } from '../../../../core/domain/account';
@@ -8,18 +9,19 @@ import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
 import { deleteSaleAction, deleteSaleAbonoAction } from './actions';
 
-function formatAmount(amount: number, currency: string): string {
+function formatAmount(amount: number, currency: string, locale?: string): string {
   const exp = currency === 'COP' ? 0 : 2;
   const divisor = 10 ** exp;
   const value = amount / divisor;
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString(locale, {
     minimumFractionDigits: exp,
     maximumFractionDigits: exp,
   });
 }
 
-function formatDate(date: Date): string {
-  return new Date(date).toLocaleDateString();
+function formatDate(date: Date | string, locale?: string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(locale);
 }
 
 interface SaleListProps {
@@ -32,12 +34,15 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
+  const t = useT('Sales');
+  const tCommon = useT('Common');
+  const locale = useLocale();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Sales
+          {t('title')}
         </h1>
         <button
           onClick={() => {
@@ -46,14 +51,14 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
           }}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? 'Cancel' : 'New Sale'}
+          {showForm ? tCommon('cancel') : t('newSale')}
         </button>
       </div>
 
       {showForm && (
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            Create Sale
+            {t('createSale')}
           </h2>
           <SaleForm
             catalogItems={catalogItems}
@@ -66,7 +71,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
       {abonoSaleId && (
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            Add Payment (Abono)
+            {t('addPayment')}
           </h2>
           <AbonoForm
             saleId={abonoSaleId}
@@ -78,7 +83,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
 
       {sales.length === 0 ? (
         <p className="text-zinc-500 dark:text-zinc-400">
-          No sales yet.
+          {t('noSales')}
         </p>
       ) : (
         <div className="space-y-3">
@@ -94,19 +99,19 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex-1">
                     <div className="font-medium text-zinc-900 dark:text-white">
-                      {formatDate(sale.date)} — {formatAmount(sale.total, currency)} {currency}
+                      {formatDate(sale.date, locale)} — {formatAmount(sale.total, currency, locale)} {currency}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {sale.paymentMode}
+                        {sale.paymentMode === 'paid-in-full' ? t('paidInFull') : t('onCredit')}
                       </span>
                       {sale.paymentMode === 'on-credit' && (
                         <span className="ml-2">
-                          Pending: {formatAmount(sale.pending, currency)} {currency}
+                          {t('pending')} {formatAmount(sale.pending, currency, locale)} {currency}
                         </span>
                       )}
                       <span className="ml-2">
-                        {sale.items.length} item{sale.items.length !== 1 ? 's' : ''}
+                        {sale.items.length} {sale.items.length !== 1 ? 'items' : 'item'}
                       </span>
                     </div>
                   </div>
@@ -115,20 +120,20 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                       onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
                       className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
-                      {isExpanded ? 'Hide' : 'Details'}
+                      {isExpanded ? t('hide') : t('details')}
                     </button>
                     {sale.paymentMode === 'on-credit' && sale.pending > 0 && (
                       <button
                         onClick={() => setAbonoSaleId(abonoSaleId === sale.id ? null : sale.id)}
                         className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                       >
-                        Add Abono
+                        {t('addAbono')}
                       </button>
                     )}
                     <form
                       action={deleteSaleAction}
                       onSubmit={(e) => {
-                        if (!confirm('Delete this sale? This will restore stock and reverse all payments.')) {
+                        if (!confirm(t('confirmDeleteSale'))) {
                           e.preventDefault();
                         }
                       }}
@@ -138,7 +143,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                         type="submit"
                         className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       >
-                        Delete
+                        {tCommon('delete')}
                       </button>
                     </form>
                   </div>
@@ -147,13 +152,13 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                 {isExpanded && (
                   <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
                     <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Line Items
+                      {t('lineItems')}
                     </h3>
                     <div className="mb-3 space-y-1">
                       {sale.items.map((item, idx) => (
                         <div key={idx} className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                          <span>Item {idx + 1} (Qty: {item.quantity})</span>
-                          <span>{formatAmount(item.subtotal, currency)} {currency}</span>
+                          <span>{t('item')} {idx + 1} ({t('qty')}: {item.quantity})</span>
+                          <span>{formatAmount(item.subtotal, currency, locale)} {currency}</span>
                         </div>
                       ))}
                     </div>
@@ -161,18 +166,18 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                     {sale.abonos.length > 0 && (
                       <>
                         <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Abonos
+                          {t('abonos')}
                         </h3>
                         <div className="space-y-1">
                           {sale.abonos.map((abono) => (
                             <div key={abono.id} className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
                               <span>
-                                {formatDate(abono.date)} — {formatAmount(abono.amount.amount, currency)} {currency}
+                                {formatDate(abono.date, locale)} — {formatAmount(abono.amount.amount, currency, locale)} {currency}
                               </span>
                               <form
                                 action={deleteSaleAbonoAction}
                                 onSubmit={(e) => {
-                                  if (!confirm('Delete this abono?')) {
+                                  if (!confirm(t('confirmDeleteAbono'))) {
                                     e.preventDefault();
                                   }
                                 }}
@@ -184,7 +189,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                                   type="submit"
                                   className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                                 >
-                                  Remove
+                                  {t('remove')}
                                 </button>
                               </form>
                             </div>

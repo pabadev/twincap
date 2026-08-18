@@ -1,15 +1,17 @@
+import { getT } from '../../../i18n/server';
 import { loginAction } from '../actions';
 import { AuthForm } from '../auth-form';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getT('Auth');
   return (
     <AuthForm
       action={loginAction}
-      title="Sign In"
-      submitLabel="Sign In"
-      alternateText="Don't have an account?"
+      title={t('signIn')}
+      submitLabel={t('signInLabel')}
+      alternateText={t('noAccount')}
       alternateHref="/register"
-      alternateLabel="Register"
+      alternateLabel={t('registerLabel')}
     />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useT } from '../../../i18n/client';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createAccountAction } from './actions';
 
@@ -9,6 +10,7 @@ export function AccountForm() {
     createAccountAction,
     null,
   );
+  const t = useT('Accounts');
 
   return (
     <form action={formAction} className="space-y-4">
@@ -23,7 +25,7 @@ export function AccountForm() {
           htmlFor="name"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Account Name
+          {t('accountName')}
         </label>
         <input
           id="name"
@@ -40,7 +42,7 @@ export function AccountForm() {
           htmlFor="currency"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Currency
+          {t('currency')}
         </label>
         <select
           id="currency"
@@ -62,7 +64,7 @@ export function AccountForm() {
           htmlFor="initialBalance"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Initial Balance
+          {t('initialBalance')}
         </label>
         <input
           id="initialBalance"
@@ -80,7 +82,7 @@ export function AccountForm() {
         disabled={isPending}
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Creating...' : 'Create Account'}
+        {isPending ? t('creating') : t('createAccount')}
       </button>
     </form>
   );

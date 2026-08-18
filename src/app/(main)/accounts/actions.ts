@@ -9,9 +9,8 @@ import type { CreateAccountInput } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 
-const accountRepo = new MongoAccountRepository();
-const movementRepo = new MongoMovementRepository();
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createAccountAction(
@@ -26,6 +25,9 @@ export async function createAccountAction(
   const initialBalance = Number(formData.get('initialBalance') || '0');
 
   try {
+    await connectDb();
+    const accountRepo = new MongoAccountRepository();
+    const movementRepo = new MongoMovementRepository();
     await createAccount(
       user.userId,
       { name, currency, initialBalance },
@@ -51,11 +53,12 @@ export async function deleteAccountAction(formData: FormData) {
   const accountId = formData.get('accountId') as string;
 
   try {
+    await connectDb();
+    const accountRepo = new MongoAccountRepository();
     await deleteAccount(user.userId, accountId, accountRepo);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
-    // Silently ignore delete errors — user sees no change
   }
 
   redirect('/accounts');

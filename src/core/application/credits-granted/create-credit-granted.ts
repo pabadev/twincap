@@ -1,18 +1,10 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { creditGrantedCategory } from '../../domain/synthetic-categories';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateCreditGrantedInput } from './dto/credits-granted';
-
-/**
- * Synthetic Category for credit-linked movements.
- * Credit movements are system-linked (MOV-5) and don't belong to user categories,
- * but the Movement constructor requires a Category object for MOV-2 validation.
- */
-function creditGrantedCategory(id: string, type: 'income' | 'expense') {
-  return { id, userId: '', name: 'Credit', type, createdAt: new Date() };
-}
 
 /**
  * Create a credit granted (CRED-G-1).
@@ -52,7 +44,7 @@ export async function createCreditGranted(
     id: movementId,
     userId,
     accountId: input.accountId,
-    category: creditGrantedCategory(movementId, 'expense'),
+    category: creditGrantedCategory('expense'),
     type: 'expense',
     amount: principalMoney,
     date: input.date,

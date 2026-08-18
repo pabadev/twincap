@@ -1,25 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import { useT, useLocale } from '../../../i18n/client';
 import type { Account } from '../../../core/domain/account';
 import type { Movement } from '../../../core/domain/movement';
 import type { Category } from '../../../core/domain/category';
 import { MovementForm } from './movement-form';
 import { DeleteMovementButton } from './delete-movement-button';
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, {
+function formatDate(date: Date | string, locale?: string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
 }
 
-function formatAmount(amount: number, currency: string): string {
+function formatAmount(amount: number, currency: string, locale?: string): string {
   const exp = currency === 'COP' ? 0 : 2;
   const divisor = 10 ** exp;
   const value = amount / divisor;
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString(locale, {
     minimumFractionDigits: exp,
     maximumFractionDigits: exp,
   });
@@ -38,6 +40,9 @@ export function MovementsList({
     accounts[0]?.id ?? '',
   );
   const [showForm, setShowForm] = useState(false);
+  const t = useT('Movements');
+  const tCommon = useT('Common');
+  const locale = useLocale();
 
   const movements = movementsByAccount[selectedAccountId] ?? [];
 
@@ -45,14 +50,14 @@ export function MovementsList({
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Movements
+          {t('title')}
         </h1>
         {selectedAccountId && (
           <button
             onClick={() => setShowForm(!showForm)}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            {showForm ? 'Cancel' : 'Add Movement'}
+            {showForm ? tCommon('cancel') : t('addMovement')}
           </button>
         )}
       </div>
@@ -64,7 +69,7 @@ export function MovementsList({
             htmlFor="account-select"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Account
+            {t('account')}
           </label>
           <select
             id="account-select"
@@ -86,14 +91,14 @@ export function MovementsList({
 
       {accounts.length === 0 ? (
         <p className="text-zinc-500 dark:text-zinc-400">
-          No accounts yet. Create an account first.
+          {t('noAccounts')}
         </p>
       ) : (
         <>
           {showForm && (
             <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
               <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-                New Movement
+                {t('newMovement')}
               </h2>
               <MovementForm
                 accountId={selectedAccountId}
@@ -104,7 +109,7 @@ export function MovementsList({
 
           {movements.length === 0 ? (
             <p className="text-zinc-500 dark:text-zinc-400">
-              No movements for this account yet.
+              {t('noMovements')}
             </p>
           ) : (
             <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
@@ -112,19 +117,19 @@ export function MovementsList({
                 <thead className="bg-zinc-50 dark:bg-zinc-800">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      Date
+                      {tCommon('date')}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      Type
+                      {t('type')}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      Note
+                      {tCommon('note')}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      Amount
+                      {tCommon('amount')}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                      Actions
+                      {tCommon('actions')}
                     </th>
                   </tr>
                 </thead>
@@ -132,7 +137,7 @@ export function MovementsList({
                   {movements.map((movement) => (
                     <tr key={movement.id}>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        {formatDate(movement.date)}
+                        {formatDate(movement.date, locale)}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -160,6 +165,7 @@ export function MovementsList({
                           {formatAmount(
                             movement.amount.amount,
                             movement.amount.currency,
+                            locale,
                           )}{' '}
                           {movement.amount.currency}
                         </span>

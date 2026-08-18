@@ -23,9 +23,16 @@ const mongooseGlobal: MongooseGlobal = globalThis as MongooseGlobal;
  * singleton is never re-initialized (see task 1.12).
  */
 export async function connectDb(): Promise<typeof mongoose> {
-  if (mongooseGlobal.__globalmoneyMongoose) {
+  // If we have a cached instance AND the connection is still alive, return it.
+  if (
+    mongooseGlobal.__globalmoneyMongoose &&
+    mongoose.connection.readyState === 1
+  ) {
     return mongooseGlobal.__globalmoneyMongoose;
   }
+
+  // Stale cache (HMR preserved the global but the TCP connection dropped).
+  mongooseGlobal.__globalmoneyMongoose = undefined;
 
   if (mongoose.connection.readyState !== 1) {
     await mongoose.connect(env.MONGODB_URI, CONNECTION_OPTIONS);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useT } from '../../../../i18n/client';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import { CATALOG_ITEM_TYPES } from '../../../../core/domain/catalog';
@@ -15,6 +16,8 @@ interface CatalogFormProps {
 
 export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const isEdit = !!item;
+  const t = useT('Catalog');
+  const tCommon = useT('Common');
 
   const [state, formAction, isPending] = useActionState(
     isEdit ? updateCatalogItemAction : createCatalogItemAction,
@@ -32,7 +35,6 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
           e.preventDefault();
           return;
         }
-        // Allow form to submit normally; onDone called via redirect
       }}
       className="space-y-4"
     >
@@ -49,7 +51,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
           htmlFor="name"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Name
+          {t('name')}
         </label>
         <input
           id="name"
@@ -68,7 +70,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             htmlFor="unitPrice"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Unit Price ({currency})
+            {t('unitPrice', { currency })}
           </label>
           <input
             id="unitPrice"
@@ -87,7 +89,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             htmlFor="currency"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Currency
+            {t('currency')}
           </label>
           <select
             id="currency"
@@ -113,7 +115,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             htmlFor="type"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Type
+            {t('type')}
           </label>
           <select
             id="type"
@@ -124,9 +126,9 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             onChange={(e) => setType(e.target.value as CatalogItemType)}
             className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
           >
-            {CATALOG_ITEM_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+            {CATALOG_ITEM_TYPES.map((ct) => (
+              <option key={ct} value={ct}>
+                {ct.charAt(0).toUpperCase() + ct.slice(1)}
               </option>
             ))}
           </select>
@@ -138,7 +140,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
               htmlFor="stock"
               className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              Stock
+              {t('stock')}
             </label>
             <input
               id="stock"
@@ -162,11 +164,11 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
         >
           {isPending
             ? isEdit
-              ? 'Updating...'
-              : 'Creating...'
+              ? t('updating')
+              : t('creating')
             : isEdit
-              ? 'Update Item'
-              : 'Add Item'}
+              ? t('updateItem')
+              : t('addBtn')}
         </button>
         {isEdit && onDone && (
           <button
@@ -175,7 +177,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             disabled={isPending}
             className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
         )}
       </div>

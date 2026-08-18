@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getT } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
 import { getUserBalances } from '../../../core/application/balance';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
@@ -23,6 +24,8 @@ export default async function AccountsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
+  const t = await getT('Accounts');
+
   await connectDb();
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
@@ -36,13 +39,13 @@ export default async function AccountsPage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Accounts
+          {t('title')}
         </h1>
       </div>
 
       {accounts.length === 0 ? (
         <p className="text-zinc-500 dark:text-zinc-400">
-          No accounts yet. Create your first account below.
+          {t('noAccounts')}
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
@@ -50,13 +53,13 @@ export default async function AccountsPage() {
             <thead className="bg-zinc-50 dark:bg-zinc-800">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  Name
+                  {t('name')}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  Balance
+                  {t('balance')}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  Actions
+                  {t('actions')}
                 </th>
               </tr>
             </thead>
@@ -71,7 +74,7 @@ export default async function AccountsPage() {
                       </span>
                       {account.isFixed && (
                         <span className="ml-2 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          Fixed
+                          {t('fixed')}
                         </span>
                       )}
                       <span className="ml-2 text-xs text-zinc-400">
@@ -105,7 +108,7 @@ export default async function AccountsPage() {
 
       <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Add Account
+          {t('addAccount')}
         </h2>
         <AccountForm />
       </div>

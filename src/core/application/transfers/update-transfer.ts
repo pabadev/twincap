@@ -2,14 +2,8 @@ import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError } from '../../domain/errors';
+import { transferCategory } from '../../domain/synthetic-categories';
 import type { TransferRepository, MovementRepository } from '../../domain/repositories';
-
-/**
- * Synthetic Category for transfer-linked movements (same as create-transfer).
- */
-function transferCategory(id: string, type: 'income' | 'expense') {
-  return { id, userId: '', name: 'Transfer', type, createdAt: new Date() };
-}
 
 export interface UpdateTransferInput {
   sourceAmount?: number;
@@ -60,7 +54,7 @@ export async function updateTransfer(
       const updatedExpense = new Movement({
         ...expenseMovement,
         amount: updatedTransfer.sourceAmount,
-        category: transferCategory(expenseMovement.categoryId, 'expense'),
+        category: transferCategory('expense'),
       });
       await movementRepo.update(updatedExpense);
     }
@@ -73,7 +67,7 @@ export async function updateTransfer(
       const updatedIncome = new Movement({
         ...incomeMovement,
         amount: updatedTransfer.destinationAmount,
-        category: transferCategory(incomeMovement.categoryId, 'income'),
+        category: transferCategory('income'),
       });
       await movementRepo.update(updatedIncome);
     }

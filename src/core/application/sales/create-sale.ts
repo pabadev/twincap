@@ -62,7 +62,7 @@ export async function createSale(
       id: movementId,
       userId,
       accountId: input.accountId,
-      category: saleCategory(movementId, 'income'),
+      category: saleCategory('income'),
       type: 'income',
       amount: new Money(sale.total, input.currency),
       date: input.date,

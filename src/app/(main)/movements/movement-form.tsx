@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useT } from '../../../i18n/client';
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
 import { createMovementAction } from './actions';
 import type { Category } from '../../../core/domain/category';
@@ -17,6 +18,7 @@ export function MovementForm({
     null,
   );
   const [selectedType, setSelectedType] = useState<string>('income');
+  const t = useT('Movements');
 
   const filteredCategories = categories.filter((c) => c.type === selectedType);
 
@@ -35,7 +37,7 @@ export function MovementForm({
           htmlFor="type"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Type
+          {t('type')}
         </label>
         <select
           id="type"
@@ -46,9 +48,9 @@ export function MovementForm({
           onChange={(e) => setSelectedType(e.target.value)}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
         >
-          {MOVEMENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+          {MOVEMENT_TYPES.map((mt) => (
+            <option key={mt} value={mt}>
+              {mt === 'income' ? 'Income' : 'Expense'}
             </option>
           ))}
         </select>
@@ -59,7 +61,7 @@ export function MovementForm({
           htmlFor="amount"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Amount (minor units)
+          {t('amount')}
         </label>
         <input
           id="amount"
@@ -77,7 +79,7 @@ export function MovementForm({
           htmlFor="currency"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Currency
+          {t('currency')}
         </label>
         <select
           id="currency"
@@ -98,7 +100,7 @@ export function MovementForm({
           htmlFor="date"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Date
+          {t('date')}
         </label>
         <input
           id="date"
@@ -115,7 +117,7 @@ export function MovementForm({
           htmlFor="note"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Note
+          {t('note')}
         </label>
         <input
           id="note"
@@ -131,7 +133,7 @@ export function MovementForm({
           htmlFor="context"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Context
+          {t('context')}
         </label>
         <select
           id="context"
@@ -153,7 +155,7 @@ export function MovementForm({
           htmlFor="categoryId"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
-          Category
+          {t('category')}
         </label>
         <select
           id="categoryId"
@@ -175,7 +177,7 @@ export function MovementForm({
         disabled={isPending}
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
       >
-        {isPending ? 'Creating...' : 'Add Movement'}
+        {isPending ? t('creating') : t('addMovement')}
       </button>
     </form>
   );

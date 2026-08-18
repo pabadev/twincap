@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useT } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import type { Account } from '../../../../core/domain/account';
@@ -23,6 +24,8 @@ interface SaleFormProps {
 
 export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
   const [state, formAction, isPending] = useActionState(createSaleAction, null);
+  const t = useT('Sales');
+  const tCommon = useT('Common');
 
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
@@ -47,7 +50,6 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
     setLineItems(prev => prev.filter((_, idx) => idx !== index));
   }
 
-  // Auto-fill unit price when item is selected
   function handleItemSelect(index: number, itemId: string) {
     const item = catalogItems.find(c => c.id === itemId);
     if (item) {
@@ -83,7 +85,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="paymentMode" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Payment Mode
+            {t('paymentMode')}
           </label>
           <select
             id="paymentMode"
@@ -96,7 +98,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
           >
             {PAYMENT_MODES.map((m) => (
               <option key={m} value={m}>
-                {m === 'paid-in-full' ? 'Paid in Full' : 'On Credit'}
+                {m === 'paid-in-full' ? t('paidInFull') : t('onCredit')}
               </option>
             ))}
           </select>
@@ -104,7 +106,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
 
         <div>
           <label htmlFor="accountId" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Account
+            {t('account')}
           </label>
           <select
             id="accountId"
@@ -124,7 +126,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
 
       <div>
         <label htmlFor="date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Date
+          {t('date')}
         </label>
         <input
           id="date"
@@ -140,7 +142,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Line Items
+            {t('lineItems')}
           </label>
           <button
             type="button"
@@ -148,7 +150,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
             disabled={isPending}
             className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
           >
-            + Add Item
+            {t('addItem')}
           </button>
         </div>
 
@@ -157,7 +159,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
             <div key={idx} className="flex items-end gap-2">
               <div className="flex-1">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">Item</label>
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('item')}</label>
                 )}
                 <select
                   value={li.itemId}
@@ -174,7 +176,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
               </div>
               <div className="w-20">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">Qty</label>
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('qty')}</label>
                 )}
                 <input
                   type="number"
@@ -187,7 +189,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
               </div>
               <div className="w-28">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">Unit Price</label>
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('unitPrice')}</label>
                 )}
                 <input
                   type="number"
@@ -205,7 +207,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
                   disabled={isPending}
                   className="mb-0.5 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                 >
-                  Remove
+                  {t('remove')}
                 </button>
               )}
             </div>
@@ -213,7 +215,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
         </div>
 
         <div className="mt-2 text-right text-sm font-medium text-zinc-900 dark:text-white">
-          Total: {total.toLocaleString()} {currency}
+          {t('total')} {total.toLocaleString()} {currency}
         </div>
       </div>
 
@@ -223,7 +225,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
           disabled={isPending}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {isPending ? 'Creating...' : 'Create Sale'}
+          {isPending ? t('creating') : t('createSale')}
         </button>
         {onDone && (
           <button
@@ -232,7 +234,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
             disabled={isPending}
             className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
         )}
       </div>

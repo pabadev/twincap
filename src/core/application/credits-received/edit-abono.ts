@@ -2,6 +2,7 @@ import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { EditAbonoInput } from './dto/credits-received';
 
@@ -52,7 +53,7 @@ export async function editAbono(
         id: movement.id,
         userId: movement.userId,
         accountId: updatedAccountId,
-        category: { id: movement.categoryId, userId: '', name: 'Credit', type: 'expense', createdAt: new Date() },
+        category: creditCategory('expense'),
         type: 'expense',
         amount: updatedAmount,
         date: updatedDate,

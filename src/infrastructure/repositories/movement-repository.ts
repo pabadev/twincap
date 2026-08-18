@@ -9,6 +9,7 @@ import { CategoryModel, type CategoryDocument } from "../models/category";
 import { AccountModel, type AccountDocument } from "../models/account";
 import { toCategoryEntity } from "../mappers/category";
 import { toMovementEntity, toMovementDocData } from "../mappers/movement";
+import { resolveSyntheticCategory } from "../../core/domain/synthetic-categories";
 
 export class MongoMovementRepository implements MovementRepository {
   async findById(userId: string, id: string): Promise<Movement | null> {
@@ -26,6 +27,7 @@ export class MongoMovementRepository implements MovementRepository {
       userId,
       movementDoc.categoryId.toString(),
       movementDoc.accountId.toString(),
+      movementDoc.type,
     );
     return toMovementEntity(movementDoc, category, currency);
   }
@@ -72,6 +74,7 @@ export class MongoMovementRepository implements MovementRepository {
         movement.userId,
         movementDoc.categoryId.toString(),
         movementDoc.accountId.toString(),
+        movementDoc.type,
       );
       return toMovementEntity(movementDoc, category, currency);
     } catch (err: unknown) {
@@ -104,6 +107,7 @@ export class MongoMovementRepository implements MovementRepository {
       movement.userId,
       movementDoc.categoryId.toString(),
       movementDoc.accountId.toString(),
+      movementDoc.type,
     );
     return toMovementEntity(movementDoc, category, currency);
   }
@@ -151,6 +155,7 @@ export class MongoMovementRepository implements MovementRepository {
     userId: string,
     categoryId: string,
     accountId: string,
+    movementType?: string,
   ): Promise<{ category: Category; currency: Currency }> {
     const [catDoc, accDoc] = await Promise.all([
       CategoryModel.findOne({
@@ -163,9 +168,21 @@ export class MongoMovementRepository implements MovementRepository {
       }).exec(),
     ]);
 
+    // If not found in DB, try resolving as synthetic category
     if (!catDoc) {
-      throw new NotFoundError(`Category ${categoryId} not found for user ${userId}`);
+      const synthetic = resolveSyntheticCategory(categoryId, movementType as 'income' | 'expense');
+      if (!synthetic) {
+        throw new NotFoundError(`Category ${categoryId} not found for user ${userId}`);
+      }
+      if (!accDoc) {
+        throw new NotFoundError(`Account ${accountId} not found for user ${userId}`);
+      }
+      return {
+        category: synthetic,
+        currency: (accDoc as AccountDocument).currency as Currency,
+      };
     }
+
     if (!accDoc) {
       throw new NotFoundError(`Account ${accountId} not found for user ${userId}`);
     }
@@ -199,9 +216,27 @@ export class MongoMovementRepository implements MovementRepository {
       }).exec(),
     ]);
 
+    // Build category map from DB results
     const categoryMap = new Map<string, Category>();
     for (const doc of catDocs) {
       categoryMap.set(doc._id.toString(), toCategoryEntity(doc as CategoryDocument));
+    }
+
+    // For any missing categories, try to resolve as synthetic
+    // Build a lookup: categoryId -> movementType from the docs
+    const categoryTypeMap = new Map<string, string>();
+    for (const doc of docs) {
+      const catId = doc.categoryId.toString();
+      if (!categoryMap.has(catId) && !categoryTypeMap.has(catId)) {
+        categoryTypeMap.set(catId, doc.type);
+      }
+    }
+
+    for (const [catId, movementType] of categoryTypeMap) {
+      const synthetic = resolveSyntheticCategory(catId, movementType as 'income' | 'expense');
+      if (synthetic) {
+        categoryMap.set(catId, synthetic);
+      }
     }
 
     const accountMap = new Map<string, AccountDocument>();
