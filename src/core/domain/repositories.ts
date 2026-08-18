@@ -120,6 +120,10 @@ export interface CatalogItemRepository {
   create(item: CatalogItem): Promise<CatalogItem>;
   update(item: CatalogItem): Promise<CatalogItem>;
   delete(userId: string, id: string): Promise<void>;
+  /** Atomic stock decrement for products (POS-3). Returns false if insufficient stock. */
+  decrementStock(userId: string, itemId: string, quantity: number): Promise<boolean>;
+  /** Atomic stock increment for products (stock restore on sale delete). */
+  incrementStock(userId: string, itemId: string, quantity: number): Promise<void>;
 }
 
 // ─── Sale ────────────────────────────────────────────────────────────
@@ -130,4 +134,10 @@ export interface SaleRepository {
   create(sale: Sale): Promise<Sale>;
   update(sale: Sale): Promise<Sale>;
   delete(userId: string, id: string): Promise<void>;
+  /** Atomic $push — idempotent when movementId is provided (design §5). */
+  addAbono(userId: string, saleId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }): Promise<void>;
+  /** Atomic $set on embedded abono by abono.id (design §5). */
+  editAbono(userId: string, saleId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
+  /** Atomic $pull on embedded abono by abono.id (design §5). */
+  deleteAbono(userId: string, saleId: string, abonoId: string): Promise<void>;
 }

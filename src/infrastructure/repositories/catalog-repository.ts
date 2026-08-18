@@ -107,6 +107,21 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     return result.matchedCount > 0;
   }
 
+  /** Atomic stock increment for products (stock restore on sale delete). */
+  async incrementStock(
+    userId: string,
+    itemId: string,
+    quantity: number,
+  ): Promise<void> {
+    await CatalogItemModel.updateOne(
+      {
+        _id: new Types.ObjectId(itemId),
+        userId: new Types.ObjectId(userId),
+      },
+      { $inc: { stock: quantity } },
+    ).exec();
+  }
+
   // ─── Private helpers ───────────────────────────────────────────────
 
   private async resolveAccountCurrency(userId: string): Promise<Currency> {

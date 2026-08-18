@@ -82,6 +82,9 @@ function fakeSaleRepo(sales: Sale[]): SaleRepository {
     create: async (s) => s,
     update: async (s) => s,
     delete: async () => {},
+    addAbono: async () => {},
+    editAbono: async () => {},
+    deleteAbono: async () => {},
   };
 }
 

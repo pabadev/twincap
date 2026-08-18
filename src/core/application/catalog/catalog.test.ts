@@ -37,6 +37,8 @@ function fakeCatalogRepo(
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
     }),
+    decrementStock: vi.fn().mockResolvedValue(true),
+    incrementStock: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -64,6 +66,9 @@ function fakeSaleRepo(
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
     }),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
   };
 }
 

@@ -103,10 +103,11 @@ export class MongoSaleRepository implements SaleRepository {
       id: string;
       amount: number;
       date: Date;
-      accountId: Types.ObjectId;
+      accountId: string;
       movementId?: string;
     },
   ): Promise<void> {
+    const docAbono = { ...abono, accountId: new Types.ObjectId(abono.accountId) };
     if (abono.movementId) {
       const result = await SaleModel.updateOne(
         {
@@ -114,7 +115,7 @@ export class MongoSaleRepository implements SaleRepository {
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: docAbono } },
       ).exec();
       if (result.matchedCount === 0) {
         return;
@@ -125,7 +126,7 @@ export class MongoSaleRepository implements SaleRepository {
           _id: new Types.ObjectId(saleId),
           userId: new Types.ObjectId(userId),
         },
-        { $push: { abonos: abono } },
+        { $push: { abonos: docAbono } },
       ).exec();
     }
   }
