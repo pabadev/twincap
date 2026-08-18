@@ -13,7 +13,7 @@ import { toAccountEntity, toAccountDocData } from "../mappers/account";
 export class MongoAccountRepository implements AccountRepository {
   async findById(userId: string, id: string): Promise<Account | null> {
     const doc = await AccountModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -34,8 +34,8 @@ export class MongoAccountRepository implements AccountRepository {
   async create(account: Account): Promise<Account> {
     try {
       const docData = toAccountDocData(account);
-      await AccountModel.create(docData);
-      return account;
+      const created = await AccountModel.create(docData);
+      return toAccountEntity(created as AccountDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -48,14 +48,12 @@ export class MongoAccountRepository implements AccountRepository {
 
   async update(account: Account): Promise<Account> {
     const docData = toAccountDocData(account);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await AccountModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(account.id),
+        _id: account.id,
         userId: new Types.ObjectId(account.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -68,7 +66,7 @@ export class MongoAccountRepository implements AccountRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await AccountModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {

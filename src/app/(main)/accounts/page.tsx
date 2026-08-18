@@ -4,12 +4,10 @@ import { getUserBalances } from '../../../core/application/balance';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 import { CURRENCY_EXPONENTS } from '../../../core/domain/currency';
 import { AccountForm } from './account-form';
 import { DeleteAccountButton } from './delete-account-button';
-
-const accountRepo = new MongoAccountRepository();
-const movementRepo = new MongoMovementRepository();
 
 function formatBalance(amount: number, currency: string): string {
   const exp = CURRENCY_EXPONENTS[currency as keyof typeof CURRENCY_EXPONENTS] ?? 0;
@@ -24,6 +22,10 @@ function formatBalance(amount: number, currency: string): string {
 export default async function AccountsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  await connectDb();
+  const accountRepo = new MongoAccountRepository();
+  const movementRepo = new MongoMovementRepository();
 
   const [accounts, balances] = await Promise.all([
     listAccounts(user.userId, accountRepo),

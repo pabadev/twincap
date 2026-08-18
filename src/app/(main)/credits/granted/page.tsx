@@ -3,14 +3,16 @@ import { listAccounts } from '../../../../core/application/accounts';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
+import { connectDb } from '../../../../infrastructure/db/connection';
 import { CreditsGrantedList } from './credits-granted-list';
-
-const accountRepo = new MongoAccountRepository();
-const creditRepo = new MongoCreditGrantedRepository();
 
 export default async function CreditsGrantedPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  await connectDb();
+  const accountRepo = new MongoAccountRepository();
+  const creditRepo = new MongoCreditGrantedRepository();
 
   const [accounts, credits] = await Promise.all([
     listAccounts(user.userId, accountRepo),
@@ -19,8 +21,8 @@ export default async function CreditsGrantedPage() {
 
   return (
     <CreditsGrantedList
-      accounts={accounts}
-      credits={credits}
+      accounts={JSON.parse(JSON.stringify(accounts))}
+      credits={JSON.parse(JSON.stringify(credits))}
     />
   );
 }

@@ -16,7 +16,7 @@ import {
 export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   async findById(userId: string, id: string): Promise<CreditGranted | null> {
     const doc = await CreditGrantedModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -55,8 +55,12 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   async create(credit: CreditGranted): Promise<CreditGranted> {
     try {
       const docData = toCreditGrantedDocData(credit);
-      await CreditGrantedModel.create(docData);
-      return credit;
+      const created = await CreditGrantedModel.create(docData);
+      const currency = await this.resolveAccountCurrency(
+        credit.userId,
+        credit.accountId,
+      );
+      return toCreditGrantedEntity(created as CreditGrantedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -69,14 +73,12 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   async update(credit: CreditGranted): Promise<CreditGranted> {
     const docData = toCreditGrantedDocData(credit);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await CreditGrantedModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(credit.id),
+        _id: credit.id,
         userId: new Types.ObjectId(credit.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -93,7 +95,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await CreditGrantedModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -120,7 +122,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     if (abono.movementId) {
       const result = await CreditGrantedModel.updateOne(
         {
-          _id: new Types.ObjectId(creditId),
+          _id: creditId,
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
@@ -132,7 +134,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     } else {
       await CreditGrantedModel.updateOne(
         {
-          _id: new Types.ObjectId(creditId),
+          _id: creditId,
           userId: new Types.ObjectId(userId),
         },
         { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
@@ -153,7 +155,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     }
     await CreditGrantedModel.updateOne(
       {
-        _id: new Types.ObjectId(creditId),
+        _id: creditId,
         userId: new Types.ObjectId(userId),
         "abonos.id": abonoId,
       },
@@ -169,7 +171,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   ): Promise<void> {
     await CreditGrantedModel.updateOne(
       {
-        _id: new Types.ObjectId(creditId),
+        _id: creditId,
         userId: new Types.ObjectId(userId),
       },
       { $pull: { abonos: { id: abonoId } } },
@@ -183,7 +185,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
-      _id: new Types.ObjectId(accountId),
+      _id: accountId,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {

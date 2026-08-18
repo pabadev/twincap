@@ -1,11 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '../../infrastructure/auth/getCurrentUser';
 import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
+import { connectDb } from '../../infrastructure/db/connection';
 import { MainNav } from './nav';
 
 export const dynamic = 'force-dynamic';
-
-const userRepo = new MongoUserRepository();
 
 export default async function MainLayout({
   children,
@@ -15,6 +14,8 @@ export default async function MainLayout({
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
+  await connectDb();
+  const userRepo = new MongoUserRepository();
   const dbUser = await userRepo.findById(user.userId);
 
   return (

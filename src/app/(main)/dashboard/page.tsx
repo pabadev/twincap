@@ -4,13 +4,10 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 import { Card } from '../../../components/ui';
 
 export const dynamic = 'force-dynamic';
-
-const accountRepo = new MongoAccountRepository();
-const movementRepo = new MongoMovementRepository();
-const userRepo = new MongoUserRepository();
 
 function formatBalance(amount: number, currency: string): string {
   const formatted = new Intl.NumberFormat('en-US', {
@@ -25,6 +22,11 @@ function formatBalance(amount: number, currency: string): string {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  await connectDb();
+  const accountRepo = new MongoAccountRepository();
+  const movementRepo = new MongoMovementRepository();
+  const userRepo = new MongoUserRepository();
 
   const dbUser = await userRepo.findById(user.userId);
   const accounts = await listAccounts(user.userId, accountRepo);

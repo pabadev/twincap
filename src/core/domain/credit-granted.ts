@@ -97,4 +97,21 @@ export class CreditGranted {
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      counterparty: this.counterparty,
+      principal: this.principal,
+      accountId: this.accountId,
+      date: this.date,
+      installments: this.installments,
+      frequency: this.frequency,
+      createdAt: this.createdAt,
+      pending: this.pending,
+      abonos: this._abonos,
+    };
+  }
 }

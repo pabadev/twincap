@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import type { UserRepository } from "../../core/domain/repositories";
 import type { User } from "../../core/domain/user";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
@@ -7,7 +6,7 @@ import { toUserEntity, toUserDocData } from "../mappers/user";
 
 export class MongoUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
-    const doc = await UserModel.findById(new Types.ObjectId(id)).exec();
+    const doc = await UserModel.findById(id).exec();
     return doc ? toUserEntity(doc as UserDocument) : null;
   }
 
@@ -19,8 +18,8 @@ export class MongoUserRepository implements UserRepository {
   async create(user: User): Promise<User> {
     try {
       const docData = toUserDocData(user);
-      await UserModel.create(docData);
-      return user;
+      const created = await UserModel.create(docData);
+      return toUserEntity(created as UserDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(`User with email "${user.email}" already exists`);
@@ -31,12 +30,9 @@ export class MongoUserRepository implements UserRepository {
 
   async update(user: User): Promise<User> {
     const docData = toUserDocData(user);
-    // Remove _id from update data — Mongo uses the filter to target the doc
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await UserModel.findByIdAndUpdate(
-      new Types.ObjectId(user.id),
-      { $set: updateData },
+      user.id,
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -46,7 +42,7 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const result = await UserModel.findByIdAndDelete(new Types.ObjectId(id)).exec();
+    const result = await UserModel.findByIdAndDelete(id).exec();
     if (!result) {
       throw new NotFoundError(`User ${id} not found`);
     }

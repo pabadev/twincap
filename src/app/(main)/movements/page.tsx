@@ -6,15 +6,17 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
-
-const accountRepo = new MongoAccountRepository();
-const movementRepo = new MongoMovementRepository();
-const categoryRepo = new MongoCategoryRepository();
 
 export default async function MovementsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  await connectDb();
+  const accountRepo = new MongoAccountRepository();
+  const movementRepo = new MongoMovementRepository();
+  const categoryRepo = new MongoCategoryRepository();
 
   const [accounts, categories] = await Promise.all([
     listAccounts(user.userId, accountRepo),
@@ -30,11 +32,17 @@ export default async function MovementsPage() {
     }),
   );
 
+  // Serialize: convert Map to plain object and domain classes to plain objects
+  const movementsRecord: Record<string, unknown[]> = {};
+  for (const [key, val] of movementsByAccount) {
+    movementsRecord[key] = JSON.parse(JSON.stringify(val));
+  }
+
   return (
     <MovementsList
-      accounts={accounts}
-      movementsByAccount={movementsByAccount}
-      categories={categories}
+      accounts={JSON.parse(JSON.stringify(accounts))}
+      movementsByAccount={movementsRecord}
+      categories={JSON.parse(JSON.stringify(categories))}
     />
   );
 }

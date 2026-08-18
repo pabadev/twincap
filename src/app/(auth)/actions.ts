@@ -10,11 +10,17 @@ import { setSessionCookie } from '../../infrastructure/auth/session-cookie';
 import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
 import { MongoAccountRepository } from '../../infrastructure/repositories/account-repository';
 import { MongoCategoryRepository } from '../../infrastructure/repositories/category-repository';
+import { connectDb } from '../../infrastructure/db/connection';
 
-const userRepo = new MongoUserRepository();
-const accountRepo = new MongoAccountRepository();
-const categoryRepo = new MongoCategoryRepository();
 const ids = { generate: () => crypto.randomUUID() };
+
+function getRepos() {
+  return {
+    userRepo: new MongoUserRepository(),
+    accountRepo: new MongoAccountRepository(),
+    categoryRepo: new MongoCategoryRepository(),
+  };
+}
 
 export async function registerAction(
   _prev: { error: string } | null,
@@ -24,6 +30,8 @@ export async function registerAction(
   const password = formData.get('password') as string;
 
   try {
+    await connectDb();
+    const { userRepo, accountRepo, categoryRepo } = getRepos();
     const { userId } = await register(
       { email, password },
       userRepo,
@@ -51,6 +59,8 @@ export async function loginAction(
   const password = formData.get('password') as string;
 
   try {
+    await connectDb();
+    const { userRepo } = getRepos();
     const { userId } = await login(
       { email, password },
       userRepo,

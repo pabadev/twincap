@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import type { UserDocument } from "../models/user";
 import { User } from "../../core/domain/user";
 
@@ -15,7 +14,6 @@ export function toUserEntity(doc: UserDocument): User {
 /** Convert a domain User entity to plain data for Mongoose writes. */
 export function toUserDocData(entity: User): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     email: entity.email,
     passwordHash: entity.passwordHash,
   };

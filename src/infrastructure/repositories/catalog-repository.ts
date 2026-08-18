@@ -16,7 +16,7 @@ import {
 export class MongoCatalogItemRepository implements CatalogItemRepository {
   async findById(userId: string, id: string): Promise<CatalogItem | null> {
     const doc = await CatalogItemModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -44,8 +44,9 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
   async create(item: CatalogItem): Promise<CatalogItem> {
     try {
       const docData = toCatalogItemDocData(item);
-      await CatalogItemModel.create(docData);
-      return item;
+      const created = await CatalogItemModel.create(docData);
+      const currency = await this.resolveAccountCurrency(item.userId);
+      return toCatalogItemEntity(created as CatalogItemDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -58,14 +59,12 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
 
   async update(item: CatalogItem): Promise<CatalogItem> {
     const docData = toCatalogItemDocData(item);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await CatalogItemModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(item.id),
+        _id: item.id,
         userId: new Types.ObjectId(item.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -79,7 +78,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await CatalogItemModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -98,7 +97,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
   ): Promise<boolean> {
     const result = await CatalogItemModel.updateOne(
       {
-        _id: new Types.ObjectId(itemId),
+        _id: itemId,
         userId: new Types.ObjectId(userId),
         stock: { $gte: quantity },
       },
@@ -115,7 +114,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
   ): Promise<void> {
     await CatalogItemModel.updateOne(
       {
-        _id: new Types.ObjectId(itemId),
+        _id: itemId,
         userId: new Types.ObjectId(userId),
       },
       { $inc: { stock: quantity } },

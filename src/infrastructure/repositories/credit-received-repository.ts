@@ -16,7 +16,7 @@ import {
 export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   async findById(userId: string, id: string): Promise<CreditReceived | null> {
     const doc = await CreditReceivedModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -55,8 +55,12 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   async create(credit: CreditReceived): Promise<CreditReceived> {
     try {
       const docData = toCreditReceivedDocData(credit);
-      await CreditReceivedModel.create(docData);
-      return credit;
+      const created = await CreditReceivedModel.create(docData);
+      const currency = await this.resolveAccountCurrency(
+        credit.userId,
+        credit.accountId,
+      );
+      return toCreditReceivedEntity(created as CreditReceivedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -69,14 +73,12 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
 
   async update(credit: CreditReceived): Promise<CreditReceived> {
     const docData = toCreditReceivedDocData(credit);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await CreditReceivedModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(credit.id),
+        _id: credit.id,
         userId: new Types.ObjectId(credit.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -93,7 +95,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await CreditReceivedModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -122,7 +124,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       // Idempotent: skip if movementId already exists
       const result = await CreditReceivedModel.updateOne(
         {
-          _id: new Types.ObjectId(creditId),
+          _id: creditId,
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
@@ -135,7 +137,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     } else {
       await CreditReceivedModel.updateOne(
         {
-          _id: new Types.ObjectId(creditId),
+          _id: creditId,
           userId: new Types.ObjectId(userId),
         },
         { $push: { abonos: docAbono } },
@@ -156,7 +158,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     }
     await CreditReceivedModel.updateOne(
       {
-        _id: new Types.ObjectId(creditId),
+        _id: creditId,
         userId: new Types.ObjectId(userId),
         "abonos.id": abonoId,
       },
@@ -172,7 +174,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   ): Promise<void> {
     await CreditReceivedModel.updateOne(
       {
-        _id: new Types.ObjectId(creditId),
+        _id: creditId,
         userId: new Types.ObjectId(userId),
       },
       { $pull: { abonos: { id: abonoId } } },
@@ -186,7 +188,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
-      _id: new Types.ObjectId(accountId),
+      _id: accountId,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {

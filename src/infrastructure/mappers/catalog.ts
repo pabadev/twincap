@@ -34,7 +34,6 @@ export function toCatalogItemDocData(
   entity: CatalogItem,
 ): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     name: entity.name,
     unitPrice: entity.unitPrice.amount,

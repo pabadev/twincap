@@ -31,7 +31,7 @@ export function MovementsList({
   categories,
 }: {
   accounts: Account[];
-  movementsByAccount: Map<string, Movement[]>;
+  movementsByAccount: Record<string, Movement[]>;
   categories: Category[];
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState(
@@ -39,7 +39,7 @@ export function MovementsList({
   );
   const [showForm, setShowForm] = useState(false);
 
-  const movements = movementsByAccount.get(selectedAccountId) ?? [];
+  const movements = movementsByAccount[selectedAccountId] ?? [];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">

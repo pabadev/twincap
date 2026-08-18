@@ -34,19 +34,18 @@ export async function register(
     throw new ConflictError('Email already registered');
   }
 
-  // Create user
-  const userId = ids.generate();
+  // Create user — Mongoose auto-generates _id
   const passwordHash = await hasher.hash(input.password);
   const user = new User({
-    id: userId,
+    id: ids.generate(),
     email: normalizedEmail,
     passwordHash,
     createdAt: new Date(),
   });
-  await userRepo.create(user);
+  const createdUser = await userRepo.create(user);
 
   // AUTH-4: seed accounts + categories
-  await seedUser(userId, accountRepo, categoryRepo);
+  await seedUser(createdUser.id, accountRepo, categoryRepo);
 
-  return { userId };
+  return { userId: createdUser.id };
 }

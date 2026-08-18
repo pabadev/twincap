@@ -16,7 +16,6 @@ export function toCategoryEntity(doc: CategoryDocument): Category {
 /** Convert a domain Category entity to plain data for Mongoose writes. */
 export function toCategoryDocData(entity: Category): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     name: entity.name,
     type: entity.type,

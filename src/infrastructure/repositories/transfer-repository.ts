@@ -8,7 +8,7 @@ import { toTransferEntity, toTransferDocData } from "../mappers/transfer";
 export class MongoTransferRepository implements TransferRepository {
   async findById(userId: string, id: string): Promise<Transfer | null> {
     const doc = await TransferModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -29,8 +29,8 @@ export class MongoTransferRepository implements TransferRepository {
   async create(transfer: Transfer): Promise<Transfer> {
     try {
       const docData = toTransferDocData(transfer);
-      await TransferModel.create(docData);
-      return transfer;
+      const created = await TransferModel.create(docData);
+      return toTransferEntity(created as TransferDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -43,14 +43,12 @@ export class MongoTransferRepository implements TransferRepository {
 
   async update(transfer: Transfer): Promise<Transfer> {
     const docData = toTransferDocData(transfer);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await TransferModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(transfer.id),
+        _id: transfer.id,
         userId: new Types.ObjectId(transfer.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -63,7 +61,7 @@ export class MongoTransferRepository implements TransferRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await TransferModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -72,7 +70,7 @@ export class MongoTransferRepository implements TransferRepository {
   }
 
   async findByIdRaw(id: string): Promise<Transfer | null> {
-    const doc = await TransferModel.findById(new Types.ObjectId(id)).exec();
+    const doc = await TransferModel.findById(id).exec();
     return doc ? toTransferEntity(doc as TransferDocument) : null;
   }
 }

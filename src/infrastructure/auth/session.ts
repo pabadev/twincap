@@ -1,8 +1,9 @@
-import { EncryptJWT, jwtDecrypt } from "jose";
+import { EncryptJWT, jwtDecrypt, base64url } from "jose";
 import type { SessionManager } from "../../core/application/ports";
 import { env } from "../config/env";
 
-const secret = new TextEncoder().encode(env.AUTH_SECRET);
+// AUTH_SECRET is a base64url-encoded 32-byte key for A256GCM.
+const secret = base64url.decode(env.AUTH_SECRET);
 const HEADER = { alg: "dir", enc: "A256GCM" } as const;
 
 export const joseSessionManager: SessionManager = {

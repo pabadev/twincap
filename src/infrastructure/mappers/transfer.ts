@@ -34,7 +34,6 @@ export function toTransferEntity(doc: TransferDocument): Transfer {
 /** Convert a domain Transfer entity to plain data for Mongoose writes. */
 export function toTransferDocData(entity: Transfer): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     sourceAccountId: new Types.ObjectId(entity.sourceAccountId),
     destinationAccountId: new Types.ObjectId(entity.destinationAccountId),

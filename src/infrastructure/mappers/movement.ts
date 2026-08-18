@@ -44,7 +44,6 @@ export function toMovementEntity(
 /** Convert a domain Movement entity to plain data for Mongoose writes. */
 export function toMovementDocData(entity: Movement): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     accountId: new Types.ObjectId(entity.accountId),
     type: entity.type,

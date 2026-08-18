@@ -51,7 +51,6 @@ export function toSaleEntity(
 /** Convert a domain Sale entity to plain data for Mongoose writes. */
 export function toSaleDocData(entity: Sale): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     items: entity.items.map((item) => ({
       itemId: new Types.ObjectId(item.itemId),

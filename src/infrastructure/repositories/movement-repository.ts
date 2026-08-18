@@ -13,7 +13,7 @@ import { toMovementEntity, toMovementDocData } from "../mappers/movement";
 export class MongoMovementRepository implements MovementRepository {
   async findById(userId: string, id: string): Promise<Movement | null> {
     const doc = await MovementModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -66,8 +66,14 @@ export class MongoMovementRepository implements MovementRepository {
   async create(movement: Movement): Promise<Movement> {
     try {
       const docData = toMovementDocData(movement);
-      await MovementModel.create(docData);
-      return movement;
+      const created = await MovementModel.create(docData);
+      const movementDoc = created as MovementDocument;
+      const { category, currency } = await this.resolveDependencies(
+        movement.userId,
+        movementDoc.categoryId.toString(),
+        movementDoc.accountId.toString(),
+      );
+      return toMovementEntity(movementDoc, category, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -80,14 +86,12 @@ export class MongoMovementRepository implements MovementRepository {
 
   async update(movement: Movement): Promise<Movement> {
     const docData = toMovementDocData(movement);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await MovementModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(movement.id),
+        _id: movement.id,
         userId: new Types.ObjectId(movement.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -106,7 +110,7 @@ export class MongoMovementRepository implements MovementRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await MovementModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -150,11 +154,11 @@ export class MongoMovementRepository implements MovementRepository {
   ): Promise<{ category: Category; currency: Currency }> {
     const [catDoc, accDoc] = await Promise.all([
       CategoryModel.findOne({
-        _id: new Types.ObjectId(categoryId),
+        _id: categoryId,
         userId: new Types.ObjectId(userId),
       }).exec(),
       AccountModel.findOne({
-        _id: new Types.ObjectId(accountId),
+        _id: accountId,
         userId: new Types.ObjectId(userId),
       }).exec(),
     ]);

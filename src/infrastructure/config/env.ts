@@ -5,8 +5,16 @@ const envSchema = z.object({
   AUTH_SECRET: z
     .string()
     .min(1, "AUTH_SECRET is required")
-    .refine((secret) => Buffer.byteLength(secret, "utf8") >= 32, {
-      message: "AUTH_SECRET must be at least 32 bytes (jose A256GCM key)",
+    .refine((secret) => {
+      try {
+        // Must decode to exactly 32 bytes for jose A256GCM
+        const bytes = Uint8Array.from(atob(secret.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+        return bytes.length === 32;
+      } catch {
+        return false;
+      }
+    }, {
+      message: "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
     }),
 });
 

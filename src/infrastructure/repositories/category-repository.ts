@@ -8,7 +8,7 @@ import { toCategoryEntity, toCategoryDocData } from "../mappers/category";
 export class MongoCategoryRepository implements CategoryRepository {
   async findById(userId: string, id: string): Promise<Category | null> {
     const doc = await CategoryModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -42,8 +42,8 @@ export class MongoCategoryRepository implements CategoryRepository {
   async create(category: Category): Promise<Category> {
     try {
       const docData = toCategoryDocData(category);
-      await CategoryModel.create(docData);
-      return category;
+      const created = await CategoryModel.create(docData);
+      return toCategoryEntity(created as CategoryDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -56,14 +56,12 @@ export class MongoCategoryRepository implements CategoryRepository {
 
   async update(category: Category): Promise<Category> {
     const docData = toCategoryDocData(category);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await CategoryModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(category.id),
+        _id: category.id,
         userId: new Types.ObjectId(category.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -76,7 +74,7 @@ export class MongoCategoryRepository implements CategoryRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await CategoryModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {

@@ -2,14 +2,16 @@ import { redirect } from 'next/navigation';
 import { listCategories } from '../../../core/application/categories';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
+import { connectDb } from '../../../infrastructure/db/connection';
 import { CategoryForm } from './category-form';
 import { DeleteCategoryButton } from './delete-category-button';
-
-const categoryRepo = new MongoCategoryRepository();
 
 export default async function CategoriesPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  await connectDb();
+  const categoryRepo = new MongoCategoryRepository();
 
   const categories = await listCategories(user.userId, categoryRepo);
 

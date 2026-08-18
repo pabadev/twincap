@@ -44,7 +44,6 @@ export function toCreditGrantedDocData(
   entity: CreditGranted,
 ): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     counterparty: entity.counterparty,
     principal: entity.principal.amount,

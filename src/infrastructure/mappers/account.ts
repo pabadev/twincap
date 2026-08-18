@@ -18,7 +18,6 @@ export function toAccountEntity(doc: AccountDocument): Account {
 /** Convert a domain Account entity to plain data for Mongoose writes. */
 export function toAccountDocData(entity: Account): Record<string, unknown> {
   return {
-    _id: new Types.ObjectId(entity.id),
     userId: new Types.ObjectId(entity.userId),
     name: entity.name,
     currency: entity.currency,

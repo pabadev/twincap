@@ -10,7 +10,7 @@ import { toSaleEntity, toSaleDocData } from "../mappers/sale";
 export class MongoSaleRepository implements SaleRepository {
   async findById(userId: string, id: string): Promise<Sale | null> {
     const doc = await SaleModel.findOne({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {
@@ -47,8 +47,12 @@ export class MongoSaleRepository implements SaleRepository {
   async create(sale: Sale): Promise<Sale> {
     try {
       const docData = toSaleDocData(sale);
-      await SaleModel.create(docData);
-      return sale;
+      const created = await SaleModel.create(docData);
+      const currency = await this.resolveAccountCurrency(
+        sale.userId,
+        sale.accountId,
+      );
+      return toSaleEntity(created as SaleDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -61,14 +65,12 @@ export class MongoSaleRepository implements SaleRepository {
 
   async update(sale: Sale): Promise<Sale> {
     const docData = toSaleDocData(sale);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, ...updateData } = docData;
     const result = await SaleModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(sale.id),
+        _id: sale.id,
         userId: new Types.ObjectId(sale.userId),
       },
-      { $set: updateData },
+      { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
@@ -85,7 +87,7 @@ export class MongoSaleRepository implements SaleRepository {
 
   async delete(userId: string, id: string): Promise<void> {
     const result = await SaleModel.findOneAndDelete({
-      _id: new Types.ObjectId(id),
+      _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!result) {
@@ -111,7 +113,7 @@ export class MongoSaleRepository implements SaleRepository {
     if (abono.movementId) {
       const result = await SaleModel.updateOne(
         {
-          _id: new Types.ObjectId(saleId),
+          _id: saleId,
           userId: new Types.ObjectId(userId),
           "abonos.movementId": { $ne: abono.movementId },
         },
@@ -123,7 +125,7 @@ export class MongoSaleRepository implements SaleRepository {
     } else {
       await SaleModel.updateOne(
         {
-          _id: new Types.ObjectId(saleId),
+          _id: saleId,
           userId: new Types.ObjectId(userId),
         },
         { $push: { abonos: docAbono } },
@@ -144,7 +146,7 @@ export class MongoSaleRepository implements SaleRepository {
     }
     await SaleModel.updateOne(
       {
-        _id: new Types.ObjectId(saleId),
+        _id: saleId,
         userId: new Types.ObjectId(userId),
         "abonos.id": abonoId,
       },
@@ -160,7 +162,7 @@ export class MongoSaleRepository implements SaleRepository {
   ): Promise<void> {
     await SaleModel.updateOne(
       {
-        _id: new Types.ObjectId(saleId),
+        _id: saleId,
         userId: new Types.ObjectId(userId),
       },
       { $pull: { abonos: { id: abonoId } } },
@@ -174,7 +176,7 @@ export class MongoSaleRepository implements SaleRepository {
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
-      _id: new Types.ObjectId(accountId),
+      _id: accountId,
       userId: new Types.ObjectId(userId),
     }).exec();
     if (!doc) {

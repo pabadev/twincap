@@ -158,4 +158,22 @@ export class Sale {
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      items: this.items,
+      date: this.date,
+      paymentMode: this.paymentMode,
+      accountId: this.accountId,
+      total: this.total,
+      deletedAt: this.deletedAt,
+      stockRestored: this.stockRestored,
+      createdAt: this.createdAt,
+      pending: this.pending,
+      abonos: this._abonos,
+    };
+  }
 }
