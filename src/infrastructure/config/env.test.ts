@@ -43,8 +43,9 @@ describe("parseEnv", () => {
     ).toThrow(/at least 32 bytes/);
   });
 
-  it("fails fast at module load on invalid environment", async () => {
+  it("fails fast on first env access with invalid environment", async () => {
     setEnv("short");
-    await expect(import("./env")).rejects.toThrow(/Invalid environment configuration/);
+    const { getEnv } = await import("./env");
+    expect(() => getEnv()).toThrow(/Invalid environment configuration/);
   });
 });

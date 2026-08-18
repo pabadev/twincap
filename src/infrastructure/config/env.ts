@@ -31,5 +31,18 @@ export function parseEnv(source: EnvSource = process.env): Env {
   return parsed.data;
 }
 
-/** Validated environment, resolved once at module load (fail-fast). */
-export const env: Env = parseEnv(process.env);
+/** Lazy validated environment — resolved on first access, not at module load. */
+let _env: Env | undefined;
+export function getEnv(): Env {
+  if (!_env) {
+    _env = parseEnv(process.env);
+  }
+  return _env;
+}
+
+/** Backwards-compatible accessor (lazy). */
+export const env: Env = new Proxy({} as Env, {
+  get(_, prop: string) {
+    return (getEnv() as Record<string, unknown>)[prop];
+  },
+});
