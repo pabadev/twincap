@@ -42,7 +42,8 @@ export class MongoMovementRepository implements MovementRepository {
 
     return docs.map((doc) => {
       const movementDoc = doc as MovementDocument;
-      const category = categoryMap.get(movementDoc.categoryId.toString())!;
+      const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
+      const category = categoryMap.get(key)!;
       const account = accountMap.get(movementDoc.accountId.toString())!;
       return toMovementEntity(movementDoc, category, account.currency as Currency);
     });
@@ -59,7 +60,8 @@ export class MongoMovementRepository implements MovementRepository {
 
     return docs.map((doc) => {
       const movementDoc = doc as MovementDocument;
-      const category = categoryMap.get(movementDoc.categoryId.toString())!;
+      const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
+      const category = categoryMap.get(key)!;
       const account = accountMap.get(movementDoc.accountId.toString())!;
       return toMovementEntity(movementDoc, category, account.currency as Currency);
     });
@@ -217,25 +219,32 @@ export class MongoMovementRepository implements MovementRepository {
     ]);
 
     // Build category map from DB results
+    // Key: "${categoryId}:${movementType}" — synthetic categories reuse the same
+    // ID for both income and expense, so the composite key avoids collisions.
     const categoryMap = new Map<string, Category>();
     for (const doc of catDocs) {
-      categoryMap.set(doc._id.toString(), toCategoryEntity(doc as CategoryDocument));
-    }
-
-    // For any missing categories, try to resolve as synthetic
-    // Build a lookup: categoryId -> movementType from the docs
-    const categoryTypeMap = new Map<string, string>();
-    for (const doc of docs) {
-      const catId = doc.categoryId.toString();
-      if (!categoryMap.has(catId) && !categoryTypeMap.has(catId)) {
-        categoryTypeMap.set(catId, doc.type);
+      const catId = doc._id.toString();
+      const category = toCategoryEntity(doc as CategoryDocument);
+      // Map this category for all movement types that reference it
+      const typesForThisCat = new Set(
+        docs.filter(d => d.categoryId.toString() === catId).map(d => d.type),
+      );
+      for (const t of typesForThisCat) {
+        categoryMap.set(`${catId}:${t}`, category);
       }
     }
 
-    for (const [catId, movementType] of categoryTypeMap) {
-      const synthetic = resolveSyntheticCategory(catId, movementType as 'income' | 'expense');
-      if (synthetic) {
-        categoryMap.set(catId, synthetic);
+    // For any missing categories, resolve as synthetic
+    const seen = new Set<string>();
+    for (const doc of docs) {
+      const catId = doc.categoryId.toString();
+      const key = `${catId}:${doc.type}`;
+      if (!categoryMap.has(key) && !seen.has(key)) {
+        seen.add(key);
+        const synthetic = resolveSyntheticCategory(catId, doc.type as 'income' | 'expense');
+        if (synthetic) {
+          categoryMap.set(key, synthetic);
+        }
       }
     }
 
