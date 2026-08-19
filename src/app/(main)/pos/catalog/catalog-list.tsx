@@ -8,7 +8,7 @@ import { DeleteCatalogItemButton } from './delete-catalog-item-button';
 import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
-import { Input } from '../../../../components/ui/input';
+import { Modal } from '../../../../components/ui/modal';
 import { Package, Search } from 'lucide-react';
 
 export function CatalogList({ items }: { items: CatalogItem[] }) {
@@ -17,7 +17,6 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const t = useT('Catalog');
-  const tCommon = useT('Common');
   const locale = useLocale();
 
   // Debounce search query (300ms)
@@ -42,15 +41,30 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
           {t('title')}
         </h1>
         <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditingItem(null);
-          }}
+          onClick={() => setShowForm(true)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? tCommon('cancel') : t('addItem')}
+          {t('addItem')}
         </button>
       </div>
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t('newItem')}
+      >
+        <CatalogForm onDone={() => setShowForm(false)} />
+      </Modal>
+
+      <Modal
+        open={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        title={t('editItem')}
+      >
+        {editingItem && (
+          <CatalogForm item={editingItem} onDone={() => setEditingItem(null)} />
+        )}
+      </Modal>
 
       {/* Search input */}
       {items.length > 0 && (
@@ -74,24 +88,6 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
                 : t('noResults')
               : t('results', { count: String(items.length), total: String(items.length) })}
           </p>
-        </div>
-      )}
-
-      {showForm && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('newItem')}
-          </h2>
-          <CatalogForm onDone={() => setShowForm(false)} />
-        </div>
-      )}
-
-      {editingItem && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('editItem')}
-          </h2>
-          <CatalogForm item={editingItem} onDone={() => setEditingItem(null)} />
         </div>
       )}
 
@@ -140,10 +136,7 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        setEditingItem(item);
-                        setShowForm(false);
-                      }}
+                      onClick={() => setEditingItem(item)}
                       className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
                       {t('edit')}

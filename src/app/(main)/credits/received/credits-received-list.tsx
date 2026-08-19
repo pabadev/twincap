@@ -11,6 +11,7 @@ import { DeleteCreditButton } from './delete-credit-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
+import { Modal } from '../../../../components/ui/modal';
 import { ChevronDown, CreditCard } from 'lucide-react';
 
 export function CreditsReceivedList({
@@ -35,21 +36,20 @@ export function CreditsReceivedList({
           {t('title')}
         </h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => setShowForm(true)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? tCommon('cancel') : t('addCredit')}
+          {t('addCredit')}
         </button>
       </div>
 
-      {showForm && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('newCredit')}
-          </h2>
-          <CreditForm accounts={accounts} />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t('newCredit')}
+      >
+        <CreditForm accounts={accounts} />
+      </Modal>
 
       {credits.length === 0 ? (
         <EmptyState

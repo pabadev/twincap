@@ -11,6 +11,7 @@ import { formatAmount, formatDate } from '../../../lib/format';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
+import { Modal } from '../../../components/ui/modal';
 import { ArrowLeftRight } from 'lucide-react';
 
 export function MovementsList({
@@ -46,13 +47,30 @@ export function MovementsList({
         </h1>
         {selectedAccountId && (
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => setShowForm(true)}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            {showForm ? tCommon('cancel') : t('addMovement')}
+            {t('addMovement')}
           </button>
         )}
       </div>
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t('newMovement')}
+      >
+        {selectedAccountId === 'all' ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {t('selectAccountToAdd')}
+          </p>
+        ) : (
+          <MovementForm
+            accountId={selectedAccountId}
+            categories={categories}
+          />
+        )}
+      </Modal>
 
       {/* Account selector */}
       {accounts.length > 0 && (
@@ -89,24 +107,6 @@ export function MovementsList({
         />
       ) : (
         <>
-          {showForm && (
-            <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-              <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-                {t('newMovement')}
-              </h2>
-              {selectedAccountId === 'all' ? (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {t('selectAccountToAdd')}
-                </p>
-              ) : (
-                <MovementForm
-                  accountId={selectedAccountId}
-                  categories={categories}
-                />
-              )}
-            </div>
-          )}
-
           {sortedMovements.length === 0 ? (
             <EmptyState
               icon={<Icon icon={ArrowLeftRight} size="xl" />}

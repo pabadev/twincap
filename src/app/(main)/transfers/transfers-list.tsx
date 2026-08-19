@@ -9,6 +9,7 @@ import { DeleteTransferButton } from './delete-transfer-button';
 import { formatAmount, formatDate } from '../../../lib/format';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
+import { Modal } from '../../../components/ui/modal';
 import { ArrowRightLeft } from 'lucide-react';
 
 function accountName(accounts: Account[], id: string): string {
@@ -35,21 +36,20 @@ export function TransfersList({
           {t('title')}
         </h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => setShowForm(true)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? tCommon('cancel') : t('addTransfer')}
+          {t('addTransfer')}
         </button>
       </div>
 
-      {showForm && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('newTransfer')}
-          </h2>
-          <TransferForm accounts={accounts} />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t('newTransfer')}
+      >
+        <TransferForm accounts={accounts} />
+      </Modal>
 
       {transfers.length === 0 ? (
         <EmptyState

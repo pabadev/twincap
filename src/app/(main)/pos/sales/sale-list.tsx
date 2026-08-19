@@ -13,6 +13,7 @@ import { DeleteSaleAbonoButton } from './delete-sale-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
+import { Modal } from '../../../../components/ui/modal';
 import { ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
@@ -27,7 +28,6 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
   const t = useT('Sales');
-  const tCommon = useT('Common');
   const locale = useLocale();
 
   const clientMap = new Map(clients.map((c) => [c.id, c.name]));
@@ -39,42 +39,39 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
           {t('title')}
         </h1>
         <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setAbonoSaleId(null);
-          }}
+          onClick={() => setShowForm(true)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          {showForm ? tCommon('cancel') : t('newSale')}
+          {t('newSale')}
         </button>
       </div>
 
-      {showForm && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('createSale')}
-          </h2>
-          <SaleForm
-            catalogItems={catalogItems}
-            accounts={accounts}
-            clients={clients}
-            onDone={() => setShowForm(false)}
-          />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t('createSale')}
+      >
+        <SaleForm
+          catalogItems={catalogItems}
+          accounts={accounts}
+          clients={clients}
+          onDone={() => setShowForm(false)}
+        />
+      </Modal>
 
-      {abonoSaleId && (
-        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('addPayment')}
-          </h2>
+      <Modal
+        open={!!abonoSaleId}
+        onClose={() => setAbonoSaleId(null)}
+        title={t('addPayment')}
+      >
+        {abonoSaleId && (
           <AbonoForm
             saleId={abonoSaleId}
             accounts={accounts}
             onDone={() => setAbonoSaleId(null)}
           />
-        </div>
-      )}
+        )}
+      </Modal>
 
       {sales.length === 0 ? (
         <EmptyState
@@ -126,7 +123,7 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                     </button>
                     {sale.paymentMode === 'on-credit' && sale.pending > 0 && (
                       <button
-                        onClick={() => setAbonoSaleId(abonoSaleId === sale.id ? null : sale.id)}
+                        onClick={() => setAbonoSaleId(sale.id)}
                         className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                       >
                         {t('addAbono')}

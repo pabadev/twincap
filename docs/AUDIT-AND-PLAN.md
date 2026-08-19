@@ -29,12 +29,12 @@
 | 12 | Movimientos — Filtro "Todas las cuentas" por defecto, ordenamiento por fecha | `e994f36` |
 | 13 | POS Venta — Selector de cliente con "Cliente general" por defecto | `20b6a8d` |
 | 14 | POS — Búsqueda de productos con debounce (300ms), case-insensitive | `a4ffc43` |
+| 15 | Créditos — Edición de abonos con botón "Editar" en tabla | `ec82fb9` |
 
-### Pendiente ❌ (9 features del plan original)
+### Pendiente ❌ (8 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
-| 15 | Créditos — Edición de abonos | P1 | — |
 | 16 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |
 | 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 |
 | 18 | Botones de acción con iconos (edit, delete, view) | P2 | — |
