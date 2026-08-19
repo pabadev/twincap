@@ -210,7 +210,10 @@
     "addBtn": "Add Item",
     "confirmDelete": "Delete this catalog item?",
     "emptyTitle": "No catalog items yet",
-    "emptyDescription": "Add products or services to your catalog."
+    "emptyDescription": "Add products or services to your catalog.",
+    "search": "Search by name...",
+    "results": "{count} of {total} items",
+    "noResults": "No items found"
   },
   "Sales": {
     "title": "Sales",

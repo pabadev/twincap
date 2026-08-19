@@ -210,7 +210,10 @@
     "addBtn": "Agregar artículo",
     "confirmDelete": "¿Eliminar este artículo del catálogo?",
     "emptyTitle": "No hay artículos en el catálogo aún",
-    "emptyDescription": "Agregá productos o servicios a tu catálogo."
+    "emptyDescription": "Agregá productos o servicios a tu catálogo.",
+    "search": "Buscar por nombre...",
+    "results": "{count} de {total} artículos",
+    "noResults": "No se encontraron artículos"
   },
   "Sales": {
     "title": "Ventas",

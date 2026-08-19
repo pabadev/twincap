@@ -27,12 +27,12 @@
 | 10 | PWA — manifest, iconos SVG, service worker, meta tags | `5d9ac75` |
 | 11 | Performance — queries paralelas en dashboard, memoización i18n, structuredClone | `4aea037` |
 | 12 | Movimientos — Filtro "Todas las cuentas" por defecto, ordenamiento por fecha | `e994f36` |
+| 13 | POS Venta — Selector de cliente con "Cliente general" por defecto | `20b6a8d` |
 
-### Pendiente ❌ (11 features del plan original)
+### Pendiente ❌ (10 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
-| 13 | POS Venta — Selector de cliente | P1 | — (módulo clientes existe) |
 | 14 | POS Venta — Búsqueda de productos con debounce | P1 | — |
 | 15 | Créditos — Edición de abonos | P1 | — |
 | 16 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |

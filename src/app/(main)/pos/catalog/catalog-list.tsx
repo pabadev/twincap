@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import { CatalogForm } from './catalog-form';
@@ -8,14 +8,32 @@ import { DeleteCatalogItemButton } from './delete-catalog-item-button';
 import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
-import { Package } from 'lucide-react';
+import { Input } from '../../../../components/ui/input';
+import { Package, Search } from 'lucide-react';
 
 export function CatalogList({ items }: { items: CatalogItem[] }) {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const t = useT('Catalog');
   const tCommon = useT('Common');
   const locale = useLocale();
+
+  // Debounce search query (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Filter items by name (case-insensitive)
+  const filteredItems = useMemo(() => {
+    if (!debouncedQuery.trim()) return items;
+    const query = debouncedQuery.toLowerCase();
+    return items.filter((item) => item.name.toLowerCase().includes(query));
+  }, [items, debouncedQuery]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -33,6 +51,31 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
           {showForm ? tCommon('cancel') : t('addItem')}
         </button>
       </div>
+
+      {/* Search input */}
+      {items.length > 0 && (
+        <div className="mb-4">
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <Icon icon={Search} size="sm" className="text-zinc-400" />
+            </div>
+            <input
+              type="text"
+              placeholder={t('search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full rounded-lg border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500"
+            />
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {debouncedQuery.trim()
+              ? filteredItems.length > 0
+                ? t('results', { count: String(filteredItems.length), total: String(items.length) })
+                : t('noResults')
+              : t('results', { count: String(items.length), total: String(items.length) })}
+          </p>
+        </div>
+      )}
 
       {showForm && (
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
@@ -58,9 +101,15 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
           title={t('emptyTitle')}
           description={t('emptyDescription')}
         />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState
+          icon={<Icon icon={Search} size="xl" />}
+          title={t('noResults')}
+          description={t('search')}
+        />
       ) : (
         <div className="space-y-3">
-          {items.map((item) => {
+          {filteredItems.map((item) => {
             const currency = item.unitPrice.currency;
 
             return (
