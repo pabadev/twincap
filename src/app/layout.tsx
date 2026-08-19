@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TranslationsProvider } from "../i18n/client";
 import { getLocale } from "../i18n/server";
+import { ServiceWorkerRegistration } from "../components/service-worker-registration";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GlobalMoney",
   description: "Personal finance management",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GlobalMoney",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#6366f1",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default async function RootLayout({
@@ -33,6 +47,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
         <TranslationsProvider messages={messages} locale={locale}>
           {children}
         </TranslationsProvider>
