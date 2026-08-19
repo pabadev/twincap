@@ -3,6 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Design tokens — semantic colors */
+  --color-primary: oklch(0.546 0.245 262.881);
+  --color-primary-hover: oklch(0.486 0.245 262.881);
+  --color-success: oklch(0.596 0.145 163.225);
+  --color-danger: oklch(0.577 0.245 27.325);
+  --color-warning: oklch(0.769 0.188 70.08);
+  --color-info: oklch(0.646 0.222 244.38);
+  --color-debt: oklch(0.705 0.213 47.604);
+  --color-income: oklch(0.596 0.145 163.225);
+  --color-expense: oklch(0.577 0.245 27.325);
 }
 
 @theme inline {
@@ -16,6 +27,16 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --color-primary: oklch(0.707 0.165 254.624);
+    --color-primary-hover: oklch(0.657 0.195 254.624);
+    --color-success: oklch(0.696 0.17 162.48);
+    --color-danger: oklch(0.677 0.245 27.325);
+    --color-warning: oklch(0.829 0.188 70.08);
+    --color-info: oklch(0.746 0.222 244.38);
+    --color-debt: oklch(0.805 0.213 47.604);
+    --color-income: oklch(0.696 0.17 162.48);
+    --color-expense: oklch(0.677 0.245 27.325);
   }
 }
 

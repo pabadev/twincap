@@ -3,7 +3,7 @@ import { EncryptJWT } from "jose";
 
 // Set env BEFORE any module import that triggers parseEnv
 process.env.MONGODB_URI = "mongodb://localhost:27017/test";
-process.env.AUTH_SECRET = "x".repeat(32);
+process.env.AUTH_SECRET = "BOSQ3eUPIOigpsbEksIBEyDceVCvMHMXtBqSwWbA6l8";
 
 // Dynamic import after env is set
 const { joseSessionManager } = await import("./session");
