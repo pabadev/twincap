@@ -6,6 +6,9 @@ import { createCreditGrantedAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../../core/domain/currency';
 import type { Currency } from '../../../../core/domain/currency';
+import { Input } from '../../../../components/ui/input';
+import { Select } from '../../../../components/ui/select';
+import { Button } from '../../../../components/ui/button';
 
 export function CreditForm({ accounts }: { accounts: Account[] }) {
   const [state, formAction, isPending] = useActionState(
@@ -24,151 +27,93 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
         </div>
       )}
 
-      <div>
-        <label
-          htmlFor="counterparty"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('debtor')}
-        </label>
-        <input
-          id="counterparty"
-          name="counterparty"
-          type="text"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="principal"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('principal', { currency })}
-          </label>
-          <input
-            id="principal"
-            name="principal"
-            type="number"
-            min="1"
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="currency"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('currency')}
-          </label>
-          <select
-            id="currency"
-            name="currency"
-            required
-            disabled={isPending}
-            onChange={(e) => setCurrency(e.target.value as typeof currency)}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="accountId"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('accountId')}
-        </label>
-        <select
-          id="accountId"
-          name="accountId"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.currency})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('date')}
-        </label>
-        <input
-          id="date"
-          name="date"
-          type="date"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="installments"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('installments')}
-          </label>
-          <input
-            id="installments"
-            name="installments"
-            type="number"
-            min="1"
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="frequency"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('frequency')}
-          </label>
-          <select
-            id="frequency"
-            name="frequency"
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          >
-            <option value="">—</option>
-            <option value="weekly">{t('weekly')}</option>
-            <option value="biweekly">{t('biweekly')}</option>
-            <option value="monthly">{t('monthly')}</option>
-          </select>
-        </div>
-      </div>
-
-      <button
-        type="submit"
+      <Input
+        id="counterparty"
+        name="counterparty"
+        type="text"
+        label={t('debtor')}
+        required
         disabled={isPending}
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+      />
+
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          id="principal"
+          name="principal"
+          type="number"
+          label={t('principal', { currency })}
+          min="1"
+          required
+          disabled={isPending}
+        />
+
+        <Select
+          id="currency"
+          name="currency"
+          label={t('currency')}
+          required
+          disabled={isPending}
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as typeof currency)}
+          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+        />
+      </div>
+
+      <Select
+        id="accountId"
+        name="accountId"
+        label={t('accountId')}
+        required
+        disabled={isPending}
+        options={accounts.map((a) => ({
+          value: a.id,
+          label: `${a.name} (${a.currency})`,
+        }))}
+      />
+
+      <Input
+        id="date"
+        name="date"
+        type="date"
+        label={t('date')}
+        required
+        disabled={isPending}
+        defaultValue={new Date().toISOString().split('T')[0]}
+      />
+
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          id="installments"
+          name="installments"
+          type="number"
+          label={t('installments')}
+          min="1"
+          disabled={isPending}
+        />
+
+        <Select
+          id="frequency"
+          name="frequency"
+          label={t('frequency')}
+          disabled={isPending}
+          placeholder="—"
+          options={[
+            { value: 'weekly', label: t('weekly') },
+            { value: 'biweekly', label: t('biweekly') },
+            { value: 'monthly', label: t('monthly') },
+          ]}
+        />
+      </div>
+
+      <Button
+        type="submit"
+        variant="primary"
+        className="w-full"
+        disabled={isPending}
+        loading={isPending}
       >
         {isPending ? t('creating') : t('addCreditBtn')}
-      </button>
+      </Button>
     </form>
   );
 }

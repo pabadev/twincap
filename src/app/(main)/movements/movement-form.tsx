@@ -3,8 +3,12 @@
 import { useActionState, useState } from 'react';
 import { useT } from '../../../i18n/client';
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
+import { CURRENCIES } from '../../../core/domain/currency';
 import { createMovementAction } from './actions';
 import type { Category } from '../../../core/domain/category';
+import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
 
 export function MovementForm({
   accountId,
@@ -32,153 +36,90 @@ export function MovementForm({
         </div>
       )}
 
-      <div>
-        <label
-          htmlFor="type"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('type')}
-        </label>
-        <select
-          id="type"
-          name="type"
-          required
-          disabled={isPending}
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {MOVEMENT_TYPES.map((mt) => (
-            <option key={mt} value={mt}>
-              {mt === 'income' ? 'Income' : 'Expense'}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="amount"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('amount')}
-        </label>
-        <input
-          id="amount"
-          name="amount"
-          type="number"
-          min="1"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="currency"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('currency')}
-        </label>
-        <select
-          id="currency"
-          name="currency"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          <option value="COP">COP</option>
-          <option value="USD">USD</option>
-          <option value="MXN">MXN</option>
-          <option value="EUR">EUR</option>
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('date')}
-        </label>
-        <input
-          id="date"
-          name="date"
-          type="date"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="note"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('note')}
-        </label>
-        <input
-          id="note"
-          name="note"
-          type="text"
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="context"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('context')}
-        </label>
-        <select
-          id="context"
-          name="context"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {MOVEMENT_CONTEXTS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="categoryId"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('category')}
-        </label>
-        <select
-          id="categoryId"
-          name="categoryId"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {filteredCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <button
-        type="submit"
+      <Select
+        id="type"
+        name="type"
+        label={t('type')}
+        required
         disabled={isPending}
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+        value={selectedType}
+        onChange={(e) => setSelectedType(e.target.value)}
+        options={MOVEMENT_TYPES.map((mt) => ({
+          value: mt,
+          label: mt === 'income' ? t('income') : t('expense'),
+        }))}
+      />
+
+      <Input
+        id="amount"
+        name="amount"
+        type="number"
+        label={t('amount')}
+        min="1"
+        required
+        disabled={isPending}
+      />
+
+      <Select
+        id="currency"
+        name="currency"
+        label={t('currency')}
+        required
+        disabled={isPending}
+        options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+      />
+
+      <Input
+        id="date"
+        name="date"
+        type="date"
+        label={t('date')}
+        required
+        disabled={isPending}
+        defaultValue={new Date().toISOString().split('T')[0]}
+      />
+
+      <Input
+        id="note"
+        name="note"
+        type="text"
+        label={t('note')}
+        disabled={isPending}
+      />
+
+      <Select
+        id="context"
+        name="context"
+        label={t('context')}
+        required
+        disabled={isPending}
+        options={MOVEMENT_CONTEXTS.map((c) => ({
+          value: c,
+          label: c === 'Personal' ? t('personal') : t('business'),
+        }))}
+      />
+
+      <Select
+        id="categoryId"
+        name="categoryId"
+        label={t('category')}
+        required
+        disabled={isPending}
+        options={filteredCategories.map((c) => ({
+          value: c.id,
+          label: c.name,
+        }))}
+      />
+
+      <Button
+        type="submit"
+        variant="primary"
+        className="w-full"
+        disabled={isPending}
+        loading={isPending}
       >
         {isPending ? t('creating') : t('addMovement')}
-      </button>
+      </Button>
     </form>
   );
 }

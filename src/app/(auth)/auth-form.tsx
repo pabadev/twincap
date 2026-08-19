@@ -2,6 +2,8 @@
 
 import { useActionState } from 'react';
 import { useT } from '../../i18n/client';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 
 type ActionFn = (
   prev: { error: string } | null,
@@ -37,48 +39,34 @@ export function AuthForm({
             {state.error}
           </div>
         )}
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('email')}
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('password')}
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete={title === 'Sign In' ? 'current-password' : 'new-password'}
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
-        <button
-          type="submit"
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          label={t('email')}
+          required
+          autoComplete="email"
           disabled={isPending}
-          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+        />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          label={t('password')}
+          required
+          minLength={8}
+          autoComplete={title === 'Sign In' ? 'current-password' : 'new-password'}
+          disabled={isPending}
+        />
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
+          disabled={isPending}
+          loading={isPending}
         >
           {isPending ? t('loading') : submitLabel}
-        </button>
+        </Button>
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
           {alternateText}{' '}
           <a

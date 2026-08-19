@@ -6,25 +6,7 @@ import type { Account } from '../../../core/domain/account';
 import type { Transfer } from '../../../core/domain/transfer';
 import { TransferForm } from './transfer-form';
 import { DeleteTransferButton } from './delete-transfer-button';
-
-function formatDate(date: Date | string, locale?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
+import { formatAmount, formatDate } from '../../../lib/format';
 
 function accountName(accounts: Account[], id: string): string {
   const acc = accounts.find((a) => a.id === id);

@@ -8,21 +8,7 @@ import type { Account } from '../../../../core/domain/account';
 import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
 import { deleteSaleAction, deleteSaleAbonoAction } from './actions';
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
-
-function formatDate(date: Date | string, locale?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString(locale);
-}
+import { formatAmount, formatDate } from '../../../../lib/format';
 
 interface SaleListProps {
   sales: Sale[];
@@ -111,7 +97,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                         </span>
                       )}
                       <span className="ml-2">
-                        {sale.items.length} {sale.items.length !== 1 ? 'items' : 'item'}
+                        {sale.items.length} {sale.items.length !== 1 ? t('itemCount_plural') : t('itemCount')}
                       </span>
                     </div>
                   </div>

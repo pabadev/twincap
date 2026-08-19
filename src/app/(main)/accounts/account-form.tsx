@@ -4,6 +4,9 @@ import { useActionState } from 'react';
 import { useT } from '../../../i18n/client';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createAccountAction } from './actions';
+import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
 
 export function AccountForm() {
   const [state, formAction, isPending] = useActionState(
@@ -20,70 +23,43 @@ export function AccountForm() {
         </div>
       )}
 
-      <div>
-        <label
-          htmlFor="name"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('accountName')}
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="currency"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('currency')}
-        </label>
-        <select
-          id="currency"
-          name="currency"
-          required
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="initialBalance"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('initialBalance')}
-        </label>
-        <input
-          id="initialBalance"
-          name="initialBalance"
-          type="number"
-          min="0"
-          defaultValue="0"
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <button
-        type="submit"
+      <Input
+        id="name"
+        name="name"
+        type="text"
+        label={t('accountName')}
+        required
         disabled={isPending}
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+      />
+
+      <Select
+        id="currency"
+        name="currency"
+        label={t('currency')}
+        required
+        disabled={isPending}
+        options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+      />
+
+      <Input
+        id="initialBalance"
+        name="initialBalance"
+        type="number"
+        label={t('initialBalance')}
+        min="0"
+        defaultValue="0"
+        disabled={isPending}
+      />
+
+      <Button
+        type="submit"
+        variant="primary"
+        className="w-full"
+        disabled={isPending}
+        loading={isPending}
       >
         {isPending ? t('creating') : t('createAccount')}
-      </button>
+      </Button>
     </form>
   );
 }

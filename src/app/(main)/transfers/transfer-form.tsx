@@ -4,6 +4,9 @@ import { useActionState, useState } from 'react';
 import { useT } from '../../../i18n/client';
 import { createTransferAction } from './actions';
 import type { Account } from '../../../core/domain/account';
+import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
 
 export function TransferForm({ accounts }: { accounts: Account[] }) {
   const [state, formAction, isPending] = useActionState(
@@ -24,161 +27,106 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
         </div>
       )}
 
-      <div>
-        <label
-          htmlFor="sourceAccountId"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('fromAccount')}
-        </label>
-        <select
-          id="sourceAccountId"
-          name="sourceAccountId"
-          required
-          disabled={isPending}
-          onChange={(e) => {
-            const acc = accounts.find((a) => a.id === e.target.value);
-            if (acc) setSourceCurrency(acc.currency);
-          }}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.currency})
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        id="sourceAccountId"
+        name="sourceAccountId"
+        label={t('fromAccount')}
+        required
+        disabled={isPending}
+        onChange={(e) => {
+          const acc = accounts.find((a) => a.id === e.target.value);
+          if (acc) setSourceCurrency(acc.currency);
+        }}
+        options={accounts.map((a) => ({
+          value: a.id,
+          label: `${a.name} (${a.currency})`,
+        }))}
+      />
 
-      <div>
-        <label
-          htmlFor="destinationAccountId"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('toAccount')}
-        </label>
-        <select
-          id="destinationAccountId"
-          name="destinationAccountId"
-          required
-          disabled={isPending}
-          onChange={(e) => {
-            const acc = accounts.find((a) => a.id === e.target.value);
-            if (acc) setDestCurrency(acc.currency);
-          }}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        >
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.currency})
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        id="destinationAccountId"
+        name="destinationAccountId"
+        label={t('toAccount')}
+        required
+        disabled={isPending}
+        onChange={(e) => {
+          const acc = accounts.find((a) => a.id === e.target.value);
+          if (acc) setDestCurrency(acc.currency);
+        }}
+        options={accounts.map((a) => ({
+          value: a.id,
+          label: `${a.name} (${a.currency})`,
+        }))}
+      />
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="sourceAmount"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('sourceAmount', { currency: sourceCurrency })}
-          </label>
-          <input
-            id="sourceAmount"
-            name="sourceAmount"
-            type="number"
-            min="1"
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-          <input type="hidden" name="sourceCurrency" value={sourceCurrency} />
-        </div>
+        <Input
+          id="sourceAmount"
+          name="sourceAmount"
+          type="number"
+          label={t('sourceAmount', { currency: sourceCurrency })}
+          min="1"
+          required
+          disabled={isPending}
+        />
+        <input type="hidden" name="sourceCurrency" value={sourceCurrency} />
 
         {isCrossCurrency && (
-          <div>
-            <label
-              htmlFor="destinationAmount"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              {t('destAmount', { currency: destCurrency })}
-            </label>
-            <input
+          <>
+            <Input
               id="destinationAmount"
               name="destinationAmount"
               type="number"
+              label={t('destAmount', { currency: destCurrency })}
               min="1"
               required
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
             />
             <input type="hidden" name="destinationCurrency" value={destCurrency} />
-          </div>
+          </>
         )}
       </div>
 
       {isCrossCurrency && (
-        <div>
-          <label
-            htmlFor="rate"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('fxRate', { from: sourceCurrency, to: destCurrency })}
-          </label>
-          <input
-            id="rate"
-            name="rate"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
-      )}
-
-      <div>
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('date')}
-        </label>
-        <input
-          id="date"
-          name="date"
-          type="date"
+        <Input
+          id="rate"
+          name="rate"
+          type="number"
+          label={t('fxRate', { from: sourceCurrency, to: destCurrency })}
+          step="0.01"
+          min="0"
           required
           disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
         />
-      </div>
+      )}
 
-      <div>
-        <label
-          htmlFor="note"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
-          {t('note')}
-        </label>
-        <input
-          id="note"
-          name="note"
-          type="text"
-          disabled={isPending}
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-        />
-      </div>
-
-      <button
-        type="submit"
+      <Input
+        id="date"
+        name="date"
+        type="date"
+        label={t('date')}
+        required
         disabled={isPending}
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+        defaultValue={new Date().toISOString().split('T')[0]}
+      />
+
+      <Input
+        id="note"
+        name="note"
+        type="text"
+        label={t('note')}
+        disabled={isPending}
+      />
+
+      <Button
+        type="submit"
+        variant="primary"
+        className="w-full"
+        disabled={isPending}
+        loading={isPending}
       >
         {isPending ? t('creating') : t('addTransfer')}
-      </button>
+      </Button>
     </form>
   );
 }

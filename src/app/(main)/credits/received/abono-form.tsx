@@ -4,16 +4,10 @@ import { useActionState } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
 import { addAbonoAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
+import { formatAmount } from '../../../../lib/format';
+import { Input } from '../../../../components/ui/input';
+import { Select } from '../../../../components/ui/select';
+import { Button } from '../../../../components/ui/button';
 
 export function AbonoForm({
   creditId,
@@ -49,72 +43,49 @@ export function AbonoForm({
       )}
 
       <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label
-            htmlFor={`amount-${creditId}`}
-            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('amount')}
-          </label>
-          <input
-            id={`amount-${creditId}`}
-            name="amount"
-            type="number"
-            min="1"
-            max={pending}
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
+        <Input
+          id={`amount-${creditId}`}
+          name="amount"
+          type="number"
+          label={t('amount')}
+          min="1"
+          max={pending}
+          required
+          disabled={isPending}
+        />
 
-        <div>
-          <label
-            htmlFor={`accountId-${creditId}`}
-            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('account')}
-          </label>
-          <select
-            id={`accountId-${creditId}`}
-            name="accountId"
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          id={`accountId-${creditId}`}
+          name="accountId"
+          label={t('account')}
+          required
+          disabled={isPending}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: a.name,
+          }))}
+        />
 
-        <div>
-          <label
-            htmlFor={`date-${creditId}`}
-            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('date')}
-          </label>
-          <input
-            id={`date-${creditId}`}
-            name="date"
-            type="date"
-            required
-            disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          />
-        </div>
+        <Input
+          id={`date-${creditId}`}
+          name="date"
+          type="date"
+          label={t('date')}
+          required
+          disabled={isPending}
+          defaultValue={new Date().toISOString().split('T')[0]}
+        />
       </div>
 
-      <button
+      <Button
         type="submit"
+        variant="ghost"
+        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
         disabled={isPending}
-        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+        loading={isPending}
       >
         {isPending ? t('adding') : t('addAbono')}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -85,6 +85,10 @@
     "note": "Nota",
     "context": "Contexto",
     "category": "Categoría",
+    "income": "Ingreso",
+    "expense": "Egreso",
+    "personal": "Personal",
+    "business": "Negocio",
     "creating": "Creando...",
     "confirmDelete": "¿Eliminar este movimiento? Esta acción no se puede deshacer."
   },
@@ -121,12 +125,15 @@
     "biweekly": "Quincenal",
     "monthly": "Mensual",
     "creating": "Creando...",
+    "adding": "Agregando...",
     "addCreditBtn": "Agregar crédito recibido",
     "abonos": "Abonos",
     "addAbono": "Agregar abono",
     "pending": "Pendiente:",
     "paidInFull": "Pagado en su totalidad",
     "installmentCount": "cuota(s)",
+    "abonoCount": "abono",
+    "abonoCount_plural": "abonos",
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados."
   },
   "CreditsGranted": {
@@ -144,12 +151,15 @@
     "biweekly": "Quincenal",
     "monthly": "Mensual",
     "creating": "Creando...",
+    "adding": "Agregando...",
     "addCreditBtn": "Agregar crédito otorgado",
     "abonos": "Abonos",
     "addAbono": "Agregar abono",
     "pending": "Pendiente:",
     "paidInFull": "Pagado en su totalidad",
     "installmentCount": "cuota(s)",
+    "abonoCount": "abono",
+    "abonoCount_plural": "abonos",
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados."
   },
   "Catalog": {
@@ -162,6 +172,8 @@
     "unitPrice": "Precio unitario ({currency})",
     "currency": "Moneda",
     "type": "Tipo",
+    "type_product": "Producto",
+    "type_service": "Servicio",
     "stock": "Stock",
     "edit": "Editar",
     "creating": "Creando...",
@@ -197,6 +209,8 @@
     "addPaymentBtn": "Agregar pago",
     "creating": "Creando...",
     "confirmDeleteSale": "¿Eliminar esta venta? Se restaurará el stock y se revertirán todos los pagos.",
-    "confirmDeleteAbono": "¿Eliminar este abono?"
+    "confirmDeleteAbono": "¿Eliminar este abono?",
+    "itemCount": "artículo",
+    "itemCount_plural": "artículos"
   }
 }

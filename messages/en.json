@@ -85,6 +85,10 @@
     "note": "Note",
     "context": "Context",
     "category": "Category",
+    "income": "Income",
+    "expense": "Expense",
+    "personal": "Personal",
+    "business": "Business",
     "creating": "Creating...",
     "confirmDelete": "Delete this movement? This cannot be undone."
   },
@@ -121,12 +125,15 @@
     "biweekly": "Biweekly",
     "monthly": "Monthly",
     "creating": "Creating...",
+    "adding": "Adding...",
     "addCreditBtn": "Add Credit Received",
     "abonos": "Abonos",
     "addAbono": "Add Abono",
     "pending": "Pending:",
     "paidInFull": "Paid in full",
     "installmentCount": "installment(s)",
+    "abonoCount": "abono",
+    "abonoCount_plural": "abonos",
     "confirmDelete": "Delete this credit? This will also remove all linked movements."
   },
   "CreditsGranted": {
@@ -144,12 +151,15 @@
     "biweekly": "Biweekly",
     "monthly": "Monthly",
     "creating": "Creating...",
+    "adding": "Adding...",
     "addCreditBtn": "Add Credit Granted",
     "abonos": "Abonos",
     "addAbono": "Add Abono",
     "pending": "Pending:",
     "paidInFull": "Paid in full",
     "installmentCount": "installment(s)",
+    "abonoCount": "abono",
+    "abonoCount_plural": "abonos",
     "confirmDelete": "Delete this credit? This will also remove all linked movements."
   },
   "Catalog": {
@@ -162,6 +172,8 @@
     "unitPrice": "Unit Price ({currency})",
     "currency": "Currency",
     "type": "Type",
+    "type_product": "Product",
+    "type_service": "Service",
     "stock": "Stock",
     "edit": "Edit",
     "creating": "Creating...",
@@ -197,6 +209,8 @@
     "addPaymentBtn": "Add Payment",
     "creating": "Creating...",
     "confirmDeleteSale": "Delete this sale? This will restore stock and reverse all payments.",
-    "confirmDeleteAbono": "Delete this abono?"
+    "confirmDeleteAbono": "Delete this abono?",
+    "itemCount": "item",
+    "itemCount_plural": "items"
   }
 }

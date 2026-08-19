@@ -5,16 +5,7 @@ import { useT, useLocale } from '../../../../i18n/client';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import { CatalogForm } from './catalog-form';
 import { deleteCatalogItemAction } from './actions';
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
+import { formatAmount } from '../../../../lib/format';
 
 export function CatalogList({ items }: { items: CatalogItem[] }) {
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +69,7 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
                   </div>
                   <div className="text-sm text-zinc-500 dark:text-zinc-400">
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {item.type}
+                      {t(`type_${item.type}`)}
                     </span>
                     {item.type === 'product' && item.stock !== undefined && (
                       <span className="ml-2">

@@ -7,25 +7,8 @@ import type { Movement } from '../../../core/domain/movement';
 import type { Category } from '../../../core/domain/category';
 import { MovementForm } from './movement-form';
 import { DeleteMovementButton } from './delete-movement-button';
-
-function formatDate(date: Date | string, locale?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
+import { formatAmount, formatDate } from '../../../lib/format';
+import { Select } from '../../../components/ui/select';
 
 export function MovementsList({
   accounts,
@@ -71,21 +54,18 @@ export function MovementsList({
           >
             {t('account')}
           </label>
-          <select
+          <Select
             id="account-select"
             value={selectedAccountId}
             onChange={(e) => {
               setSelectedAccountId(e.target.value);
               setShowForm(false);
             }}
-            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.currency})
-              </option>
-            ))}
-          </select>
+            options={accounts.map((a) => ({
+              value: a.id,
+              label: `${a.name} (${a.currency})`,
+            }))}
+          />
         </div>
       )}
 

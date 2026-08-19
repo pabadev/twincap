@@ -7,25 +7,9 @@ import type { CreditGranted } from '../../../../core/domain/credit-granted';
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
 import { deleteCreditAction } from './actions';
-
-function formatDate(date: Date | string, locale?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const exp = currency === 'COP' ? 0 : 2;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(locale, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
+import { formatAmount, formatDate } from '../../../../lib/format';
+import { Icon } from '../../../../components/ui/icon';
+import { ChevronDown } from 'lucide-react';
 
 export function CreditsGrantedList({
   accounts,
@@ -106,16 +90,13 @@ export function CreditsGrantedList({
                   </div>
                   <div className="ml-4 flex items-center gap-2">
                     <span className="text-xs text-zinc-400">
-                      {credit.abonos.length} abono{credit.abonos.length !== 1 ? 's' : ''}
+                      {credit.abonos.length} {credit.abonos.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
                     </span>
-                    <svg
-                      className={`h-4 w-4 text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <Icon
+                      icon={ChevronDown}
+                      size="sm"
+                      className={`text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    />
                   </div>
                 </div>
 
