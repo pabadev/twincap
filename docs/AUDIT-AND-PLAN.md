@@ -26,23 +26,23 @@
 | 9 | Responsive design — tablas con overflow, forms con breakpoints, nav fix, text truncation | `065116b` |
 | 10 | PWA — manifest, iconos SVG, service worker, meta tags | `5d9ac75` |
 | 11 | Performance — queries paralelas en dashboard, memoización i18n, structuredClone | `4aea037` |
+| 12 | Movimientos — Filtro "Todas las cuentas" por defecto, ordenamiento por fecha | `e994f36` |
 
-### Pendiente ❌ (12 features del plan original)
+### Pendiente ❌ (11 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
-| 1 | Movimientos — Filtro "Todo" (todas las cuentas) | P1 | — |
-| 2 | POS Venta — Selector de cliente | P1 | #3 (módulo clientes existe) |
-| 3 | POS Venta — Búsqueda de productos con debounce | P1 | — |
-| 4 | Créditos — Edición de abonos | P1 | — |
-| 5 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |
-| 6 | Categorías — Formulario en modal (consistencia) | P2 | #5 |
-| 7 | Botones de acción con iconos (edit, delete, view) | P2 | — |
-| 8 | Selector de idioma — icono globe, diseño consistente | P2 | — |
-| 9 | Logo GlobalMoney — SVG/CSS, isotipo, favicon | P2 | — |
-| 10 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | P1 | #9 (logo) |
-| 11 | Auth en landing — sesión activa → redirect a dashboard | P1 | #10 |
-| 12 | Búsqueda de clientes en lista de clientes | P2 | — |
+| 13 | POS Venta — Selector de cliente | P1 | — (módulo clientes existe) |
+| 14 | POS Venta — Búsqueda de productos con debounce | P1 | — |
+| 15 | Créditos — Edición de abonos | P1 | — |
+| 16 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |
+| 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 |
+| 18 | Botones de acción con iconos (edit, delete, view) | P2 | — |
+| 19 | Selector de idioma — icono globe, diseño consistente | P2 | — |
+| 20 | Logo GlobalMoney — SVG/CSS, isotipo, favicon | P2 | — |
+| 21 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | P1 | #20 (logo) |
+| 22 | Auth en landing — sesión activa → redirect a dashboard | P1 | #21 |
+| 23 | Búsqueda de clientes en lista de clientes | P2 | — |
 
 ---
 

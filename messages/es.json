@@ -222,6 +222,8 @@
     "paidInFull": "Pago total",
     "onCredit": "A crédito",
     "account": "Cuenta",
+    "client": "Cliente",
+    "generalClient": "Cliente general",
     "date": "Fecha",
     "lineItems": "Artículos",
     "addItem": "+ Agregar artículo",

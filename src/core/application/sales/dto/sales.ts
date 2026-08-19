@@ -4,6 +4,7 @@ import type { PaymentMode } from '../../../domain/sale';
 export interface CreateSaleInput {
   items: { itemId: string; quantity: number; unitPrice: number }[];
   accountId: string;
+  clientId?: string;
   date: Date;
   paymentMode: PaymentMode;
   currency: Currency;

@@ -5,6 +5,7 @@ import { useT, useLocale } from '../../../../i18n/client';
 import type { Sale } from '../../../../core/domain/sale';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import type { Account } from '../../../../core/domain/account';
+import type { Client } from '../../../../core/domain/client';
 import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
 import { DeleteSaleButton } from './delete-sale-button';
@@ -18,15 +19,18 @@ interface SaleListProps {
   sales: Sale[];
   catalogItems: CatalogItem[];
   accounts: Account[];
+  clients: Client[];
 }
 
-export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
+export function SaleList({ sales, catalogItems, accounts, clients }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
   const t = useT('Sales');
   const tCommon = useT('Common');
   const locale = useLocale();
+
+  const clientMap = new Map(clients.map((c) => [c.id, c.name]));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -53,6 +57,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
           <SaleForm
             catalogItems={catalogItems}
             accounts={accounts}
+            clients={clients}
             onDone={() => setShowForm(false)}
           />
         </div>
@@ -97,6 +102,11 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                       <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         {sale.paymentMode === 'paid-in-full' ? t('paidInFull') : t('onCredit')}
                       </span>
+                      {sale.clientId && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                          {clientMap.get(sale.clientId) ?? t('generalClient')}
+                        </span>
+                      )}
                       {sale.paymentMode === 'on-credit' && (
                         <span className="ml-2">
                           {t('pending')} {formatAmount(sale.pending, currency, locale)} {currency}

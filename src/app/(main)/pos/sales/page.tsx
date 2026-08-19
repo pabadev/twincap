@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
 import { listSales } from '../../../../core/application/sales';
 import { listCatalogItems } from '../../../../core/application/catalog';
+import { listClients } from '../../../../core/application/clients';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
+import { MongoClientRepository } from '../../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { SaleList } from './sale-list';
 
@@ -16,11 +18,13 @@ export default async function SalesPage() {
   const saleRepo = new MongoSaleRepository();
   const catalogRepo = new MongoCatalogItemRepository();
   const accountRepo = new MongoAccountRepository();
+  const clientRepo = new MongoClientRepository();
 
-  const [sales, catalogItems, accounts] = await Promise.all([
+  const [sales, catalogItems, accounts, clients] = await Promise.all([
     listSales(user.userId, saleRepo),
     listCatalogItems(user.userId, catalogRepo),
     accountRepo.findByUserId(user.userId),
+    listClients(user.userId, clientRepo),
   ]);
 
   return (
@@ -28,6 +32,7 @@ export default async function SalesPage() {
       sales={structuredClone(sales)}
       catalogItems={structuredClone(catalogItems)}
       accounts={structuredClone(accounts)}
+      clients={structuredClone(clients)}
     />
   );
 }

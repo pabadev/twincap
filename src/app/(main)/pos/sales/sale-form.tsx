@@ -6,6 +6,7 @@ import { useT } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import type { Account } from '../../../../core/domain/account';
+import type { Client } from '../../../../core/domain/client';
 import type { PaymentMode } from '../../../../core/domain/sale';
 import { PAYMENT_MODES } from '../../../../core/domain/sale';
 import { DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -24,10 +25,11 @@ interface LineItem {
 interface SaleFormProps {
   catalogItems: CatalogItem[];
   accounts: Account[];
+  clients: Client[];
   onDone?: () => void;
 }
 
-export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
+export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormProps) {
   const [state, formAction, isPending] = useActionState(createSaleAction, null);
   const t = useT('Sales');
   const tCommon = useT('Common');
@@ -53,6 +55,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
 
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
+  const [clientId, setClientId] = useState<string>(''); // empty = general client
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { itemId: catalogItems[0]?.id ?? '', quantity: 1, unitPrice: catalogItems[0]?.unitPrice.amount ?? 0 },
   ]);
@@ -105,6 +108,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
 
       <input type="hidden" name="lineItems" value={JSON.stringify(lineItems)} />
       <input type="hidden" name="currency" value={currency} />
+      <input type="hidden" name="clientId" value={clientId} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Select
@@ -133,6 +137,21 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
           }))}
         />
       </div>
+
+      <Select
+        id="clientId"
+        label={t('client')}
+        disabled={isPending}
+        value={clientId}
+        onChange={(e) => setClientId(e.target.value)}
+        options={[
+          { value: '', label: t('generalClient') },
+          ...clients.map((c) => ({
+            value: c.id,
+            label: c.name,
+          })),
+        ]}
+      />
 
       <Input
         id="date"

@@ -49,6 +49,7 @@ export async function createSale(
     date: input.date,
     paymentMode: input.paymentMode,
     accountId: input.accountId,
+    clientId: input.clientId,
     createdAt: now,
   });
 

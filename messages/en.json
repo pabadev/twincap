@@ -222,6 +222,8 @@
     "paidInFull": "Paid in Full",
     "onCredit": "On Credit",
     "account": "Account",
+    "client": "Client",
+    "generalClient": "General Client",
     "date": "Date",
     "lineItems": "Line Items",
     "addItem": "+ Add Item",

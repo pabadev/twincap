@@ -40,6 +40,7 @@ export function toSaleEntity(
       date: doc.date,
       paymentMode: doc.paymentMode,
       accountId: doc.accountId.toString(),
+      clientId: doc.clientId?.toString(),
       deletedAt: doc.deletedAt,
       stockRestored: doc.stockRestored,
       createdAt: doc.createdAt,
@@ -61,6 +62,7 @@ export function toSaleDocData(entity: Sale): Record<string, unknown> {
     date: entity.date,
     paymentMode: entity.paymentMode,
     accountId: new Types.ObjectId(entity.accountId),
+    clientId: entity.clientId ? new Types.ObjectId(entity.clientId) : null,
     total: entity.total,
     abonos: entity.abonos.map((abono) => ({
       id: abono.id,

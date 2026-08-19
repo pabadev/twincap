@@ -27,6 +27,7 @@ export async function createSaleAction(
 
   const lineItemsJson = formData.get('lineItems') as string;
   const accountId = formData.get('accountId') as string;
+  const clientId = (formData.get('clientId') as string) || undefined;
   const date = new Date(formData.get('date') as string);
   const paymentMode = formData.get('paymentMode') as PaymentMode;
   const currency = formData.get('currency') as Currency;
@@ -49,7 +50,7 @@ export async function createSaleAction(
     const movementRepo = new MongoMovementRepository();
     await createSale(
       user.userId,
-      { items, accountId, date, paymentMode, currency },
+      { items, accountId, clientId, date, paymentMode, currency },
       saleRepo,
       catalogRepo,
       movementRepo,

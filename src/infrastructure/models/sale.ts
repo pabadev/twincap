@@ -24,6 +24,7 @@ export interface SaleDoc {
   date: Date;
   paymentMode: "paid-in-full" | "on-credit";
   accountId: mongoose.Types.ObjectId;
+  clientId?: mongoose.Types.ObjectId;
   total: number;
   abonos: SaleAbonoDoc[];
   deletedAt?: Date;
@@ -82,6 +83,11 @@ const SaleSchema = new Schema<SaleDoc>(
     accountId: {
       type: Schema.Types.ObjectId,
       required: true,
+    },
+    clientId: {
+      type: Schema.Types.ObjectId,
+      required: false,
+      default: null,
     },
     total: {
       type: Number,
