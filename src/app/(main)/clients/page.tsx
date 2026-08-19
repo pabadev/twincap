@@ -4,15 +4,12 @@ import { listClients } from '../../../core/application/clients';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { EmptyState } from '../../../components/ui/empty-state';
-import { Icon } from '../../../components/ui/icon';
 import { ClientForm } from './client-form';
 import { ClientsList, type SerializedClient } from './clients-list';
 
 export default async function ClientsPage() {
   const user = await getCurrentUser();
   if (!user) {
-    // Redirect is handled by proxy, but we need to satisfy the type
     return null;
   }
 
@@ -38,11 +35,13 @@ export default async function ClientsPage() {
       </div>
 
       {serializedClients.length === 0 ? (
-        <EmptyState
-          icon={<Icon icon={Users} size="xl" />}
-          title={t('noClients')}
-          description={t('emptyDescription')}
-        />
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-4 text-zinc-400">
+            <Users size={48} strokeWidth={1} />
+          </div>
+          <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">{t('noClients')}</h3>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t('emptyDescription')}</p>
+        </div>
       ) : (
         <ClientsList clients={serializedClients} />
       )}
