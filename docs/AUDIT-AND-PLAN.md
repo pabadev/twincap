@@ -28,12 +28,12 @@
 | 11 | Performance — queries paralelas en dashboard, memoización i18n, structuredClone | `4aea037` |
 | 12 | Movimientos — Filtro "Todas las cuentas" por defecto, ordenamiento por fecha | `e994f36` |
 | 13 | POS Venta — Selector de cliente con "Cliente general" por defecto | `20b6a8d` |
+| 14 | POS — Búsqueda de productos con debounce (300ms), case-insensitive | `a4ffc43` |
 
-### Pendiente ❌ (10 features del plan original)
+### Pendiente ❌ (9 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
-| 14 | POS Venta — Búsqueda de productos con debounce | P1 | — |
 | 15 | Créditos — Edición de abonos | P1 | — |
 | 16 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |
 | 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 |

@@ -3,6 +3,7 @@
 import {
   createCreditReceived,
   addAbono,
+  editAbono,
   deleteCreditReceived,
 } from '../../../../core/application/credits-received';
 import type { Currency } from '../../../../core/domain/currency';
@@ -77,6 +78,37 @@ export async function addAbonoAction(
   }
 
   return { success: 'abonoAdded' };
+}
+
+export async function editAbonoAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const creditId = formData.get('creditId') as string;
+  const abonoId = formData.get('abonoId') as string;
+  const amount = Number(formData.get('amount') || '0');
+  const date = new Date(formData.get('date') as string);
+
+  try {
+    await connectDb();
+    const creditRepo = new MongoCreditReceivedRepository();
+    const movementRepo = new MongoMovementRepository();
+    await editAbono(
+      user.userId,
+      creditId,
+      abonoId,
+      { amount, date },
+      creditRepo,
+      movementRepo,
+    );
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'abonoUpdated' };
 }
 
 export async function deleteCreditAction(

@@ -6,6 +6,7 @@ import type { Account } from '../../../../core/domain/account';
 import type { CreditReceived } from '../../../../core/domain/credit-received';
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
+import { EditAbonoForm } from './edit-abono-form';
 import { DeleteCreditButton } from './delete-credit-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
@@ -22,6 +23,7 @@ export function CreditsReceivedList({
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
+  const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
   const t = useT('CreditsReceived');
   const tCommon = useT('Common');
   const locale = useLocale();
@@ -115,6 +117,7 @@ export function CreditsReceivedList({
                             <tr className="text-xs text-zinc-500 dark:text-zinc-400">
                               <th className="pb-1 text-left">{tCommon('date')}</th>
                               <th className="pb-1 text-right">{tCommon('amount')}</th>
+                              <th className="pb-1 text-right">{tCommon('actions')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -123,6 +126,18 @@ export function CreditsReceivedList({
                                 <td className="py-1">{formatDate(abono.date, locale)}</td>
                                 <td className="py-1 text-right">
                                   −{formatAmount(abono.amount.amount, currency, locale)} {currency}
+                                </td>
+                                <td className="py-1 text-right">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
+                                      setShowAbonoFormId(null);
+                                    }}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                  >
+                                    {tCommon('edit')}
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -137,6 +152,7 @@ export function CreditsReceivedList({
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowAbonoFormId(showAbonoFormId === credit.id ? null : credit.id);
+                            setEditingAbonoId(null);
                           }}
                           className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
                         >
@@ -154,6 +170,25 @@ export function CreditsReceivedList({
                           currency={currency}
                           accounts={accounts}
                         />
+                      </div>
+                    )}
+
+                    {editingAbonoId && (
+                      <div className="mt-3">
+                        {credit.abonos
+                          .filter((a) => a.id === editingAbonoId)
+                          .map((abono) => (
+                            <EditAbonoForm
+                              key={abono.id}
+                              creditId={credit.id}
+                              abonoId={abono.id}
+                              amount={abono.amount.amount}
+                              currency={currency}
+                              date={abono.date.toISOString().split('T')[0]}
+                              accounts={accounts}
+                              onCancel={() => setEditingAbonoId(null)}
+                            />
+                          ))}
                       </div>
                     )}
                   </div>
