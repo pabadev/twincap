@@ -11,6 +11,7 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -38,11 +39,7 @@ export async function createCatalogItemAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create catalog item',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'catalogItemCreated' };
@@ -72,11 +69,7 @@ export async function updateCatalogItemAction(
       catalogRepo,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to update catalog item',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'catalogItemUpdated' };
@@ -97,11 +90,7 @@ export async function deleteCatalogItemAction(
     const saleRepo = new MongoSaleRepository();
     await deleteCatalogItem(user.userId, itemId, catalogRepo, saleRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete catalog item',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'catalogItemDeleted' };

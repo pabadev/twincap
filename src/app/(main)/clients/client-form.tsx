@@ -27,9 +27,9 @@ export function ClientForm() {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(state.error, 'error');
+      addToast(tToast(state.error), 'error');
     }
-  }, [state?.error, addToast]);
+  }, [state?.error, addToast, tToast]);
 
   return (
     <form action={formAction} className="space-y-4">

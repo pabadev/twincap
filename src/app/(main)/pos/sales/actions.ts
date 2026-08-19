@@ -14,6 +14,7 @@ import { MongoCatalogItemRepository } from '../../../../infrastructure/repositor
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -55,11 +56,7 @@ export async function createSaleAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create sale',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'saleCreated' };
@@ -91,11 +88,7 @@ export async function addSaleAbonoAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to add abono',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'abonoAdded' };
@@ -127,11 +120,7 @@ export async function editSaleAbonoAction(
       movementRepo,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to edit abono',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'abonoAdded' };
@@ -153,11 +142,7 @@ export async function deleteSaleAbonoAction(
     const movementRepo = new MongoMovementRepository();
     await deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete abono',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'abonoDeleted' };
@@ -179,11 +164,7 @@ export async function deleteSaleAction(
     const movementRepo = new MongoMovementRepository();
     await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete sale',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'saleDeleted' };

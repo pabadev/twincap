@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -32,11 +33,7 @@ export async function createCategoryAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create category',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'categoryCreated' };
@@ -57,11 +54,7 @@ export async function deleteCategoryAction(
     const movementRepo = new MongoMovementRepository();
     await deleteCategory(user.userId, categoryId, categoryRepo, movementRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete category',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'categoryDeleted' };

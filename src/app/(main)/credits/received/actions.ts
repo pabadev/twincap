@@ -10,6 +10,7 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCreditReceivedRepository } from '../../../../infrastructure/repositories/credit-received-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -40,11 +41,7 @@ export async function createCreditReceivedAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create credit',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'creditCreated' };
@@ -76,11 +73,7 @@ export async function addAbonoAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to add abono',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'abonoAdded' };
@@ -101,11 +94,7 @@ export async function deleteCreditAction(
     const movementRepo = new MongoMovementRepository();
     await deleteCreditReceived(user.userId, creditId, creditRepo, movementRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete credit',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'creditDeleted' };

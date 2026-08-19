@@ -9,6 +9,7 @@ import {
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -42,11 +43,7 @@ export async function createClientAction(
     const clientRepo = new MongoClientRepository();
     await createClient(user.userId, parsed.data, clientRepo, ids);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create client',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'clientCreated' };
@@ -78,11 +75,7 @@ export async function updateClientAction(
     const clientRepo = new MongoClientRepository();
     await updateClient(user.userId, clientId, parsed.data, clientRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to update client',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'clientUpdated' };
@@ -102,11 +95,7 @@ export async function deleteClientAction(
     const clientRepo = new MongoClientRepository();
     await deleteClient(user.userId, clientId, clientRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete client',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'clientDeleted' };

@@ -289,5 +289,15 @@
     "catalogItemDeleted": "Item deleted successfully",
     "operationFailed": "Operation failed. Please try again.",
     "unexpectedError": "An unexpected error occurred"
+  },
+  "error": {
+    "notFound": "The requested resource was not found",
+    "conflict": "A resource with that data already exists",
+    "validation": "The entered data is not valid",
+    "unauthorized": "You don't have permission to perform this operation",
+    "required": "This field is required",
+    "invalidEmail": "The email is not valid",
+    "invalidData": "The submitted data is invalid",
+    "operationFailed": "Operation failed. Please try again."
   }
 }

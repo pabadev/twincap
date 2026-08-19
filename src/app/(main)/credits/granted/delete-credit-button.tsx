@@ -26,9 +26,9 @@ export function DeleteCreditButton({ creditId }: { creditId: string }) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(state.error, 'error');
+      addToast(tToast(state.error), 'error');
     }
-  }, [state?.error, addToast]);
+  }, [state?.error, addToast, tToast]);
 
   return (
     <form

@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -53,11 +54,7 @@ export async function createTransferAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create transfer',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'transferCreated' };
@@ -78,11 +75,7 @@ export async function deleteTransferAction(
     const movementRepo = new MongoMovementRepository();
     await deleteTransfer(user.userId, transferId, transferRepo, movementRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete transfer',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'transferDeleted' };

@@ -38,9 +38,9 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(state.error, 'error');
+      addToast(tToast(state.error), 'error');
     }
-  }, [state?.error, addToast]);
+  }, [state?.error, addToast, tToast]);
 
   return (
     <form
@@ -58,7 +58,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
       {state?.error && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
+          {tToast(state.error)}
         </div>
       )}
 

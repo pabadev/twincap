@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -35,11 +36,7 @@ export async function createAccountAction(
       ids,
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to create account',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'accountCreated' };
@@ -59,11 +56,7 @@ export async function deleteAccountAction(
     const accountRepo = new MongoAccountRepository();
     await deleteAccount(user.userId, accountId, accountRepo);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-      throw error;
-    return {
-      error: error instanceof Error ? error.message : 'Failed to delete account',
-    };
+    return handleActionError(error);
   }
 
   return { success: 'accountDeleted' };

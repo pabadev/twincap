@@ -289,5 +289,15 @@
     "catalogItemDeleted": "Artículo eliminado exitosamente",
     "operationFailed": "La operación falló. Intentá de nuevo.",
     "unexpectedError": "Ocurrió un error inesperado"
+  },
+  "error": {
+    "notFound": "No se encontró el recurso solicitado",
+    "conflict": "Ya existe un recurso con esos datos",
+    "validation": "Los datos ingresados no son válidos",
+    "unauthorized": "No tenés permiso para realizar esta operación",
+    "required": "Este campo es obligatorio",
+    "invalidEmail": "El email no es válido",
+    "invalidData": "Los datos enviados son inválidos",
+    "operationFailed": "La operación falló. Intentá de nuevo."
   }
 }

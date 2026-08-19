@@ -41,9 +41,9 @@ export function AbonoForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(state.error, 'error');
+      addToast(tToast(state.error), 'error');
     }
-  }, [state?.error, addToast]);
+  }, [state?.error, addToast, tToast]);
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
