@@ -7,7 +7,7 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { ClientForm } from './client-form';
-import { ClientsList } from './clients-list';
+import { ClientsList, type SerializedClient } from './clients-list';
 
 export default async function ClientsPage() {
   const user = await getCurrentUser();
@@ -21,6 +21,13 @@ export default async function ClientsPage() {
   await connectDb();
   const clientRepo = new MongoClientRepository();
   const clients = await listClients(user.userId, clientRepo);
+  const serializedClients: SerializedClient[] = clients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone,
+    email: c.email,
+    note: c.note,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -30,14 +37,14 @@ export default async function ClientsPage() {
         </h1>
       </div>
 
-      {clients.length === 0 ? (
+      {serializedClients.length === 0 ? (
         <EmptyState
           icon={<Icon icon={Users} size="xl" />}
           title={t('noClients')}
           description={t('emptyDescription')}
         />
       ) : (
-        <ClientsList clients={clients} />
+        <ClientsList clients={serializedClients} />
       )}
 
       <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">

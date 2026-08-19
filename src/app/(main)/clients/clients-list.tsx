@@ -1,10 +1,17 @@
 'use client';
 
-import type { Client } from '../../../core/domain/client';
 import { useT } from '../../../i18n/client';
 import { DeleteClientButton } from './delete-client-button';
 
-export function ClientsList({ clients }: { clients: Client[] }) {
+export interface SerializedClient {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  note: string;
+}
+
+export function ClientsList({ clients }: { clients: SerializedClient[] }) {
   const t = useT('Clients');
 
   return (
