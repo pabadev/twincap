@@ -9,6 +9,9 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { CURRENCY_EXPONENTS } from '../../../core/domain/currency';
 import { AccountForm } from './account-form';
 import { DeleteAccountButton } from './delete-account-button';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Icon } from '../../../components/ui/icon';
+import { Wallet } from 'lucide-react';
 
 function formatBalance(amount: number, currency: string): string {
   const exp = CURRENCY_EXPONENTS[currency as keyof typeof CURRENCY_EXPONENTS] ?? 0;
@@ -44,9 +47,11 @@ export default async function AccountsPage() {
       </div>
 
       {accounts.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noAccounts')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={Wallet} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">

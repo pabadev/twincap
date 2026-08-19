@@ -6,6 +6,9 @@ import { MongoCategoryRepository } from '../../../infrastructure/repositories/ca
 import { connectDb } from '../../../infrastructure/db/connection';
 import { CategoryForm } from './category-form';
 import { DeleteCategoryButton } from './delete-category-button';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Icon } from '../../../components/ui/icon';
+import { Tags } from 'lucide-react';
 
 export default async function CategoriesPage() {
   const user = await getCurrentUser();
@@ -31,9 +34,11 @@ export default async function CategoriesPage() {
       </div>
 
       {categories.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noCategories')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={Tags} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="space-y-6">
           <CategorySection title={t('income')} categories={incomeCategories} emptyMessage={t('noIncome')} nameLabel={tCommon('name')} actionsLabel={tCommon('actions')} />

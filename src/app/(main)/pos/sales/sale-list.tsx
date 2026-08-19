@@ -9,6 +9,9 @@ import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
 import { deleteSaleAction, deleteSaleAbonoAction } from './actions';
 import { formatAmount, formatDate } from '../../../../lib/format';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { Icon } from '../../../../components/ui/icon';
+import { ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
   sales: Sale[];
@@ -68,9 +71,11 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
       )}
 
       {sales.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noSales')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={ShoppingCart} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="space-y-3">
           {sales.map((sale) => {

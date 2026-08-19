@@ -6,6 +6,9 @@ import type { CatalogItem } from '../../../../core/domain/catalog';
 import { CatalogForm } from './catalog-form';
 import { deleteCatalogItemAction } from './actions';
 import { formatAmount } from '../../../../lib/format';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { Icon } from '../../../../components/ui/icon';
+import { Package } from 'lucide-react';
 
 export function CatalogList({ items }: { items: CatalogItem[] }) {
   const [showForm, setShowForm] = useState(false);
@@ -50,9 +53,11 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
       )}
 
       {items.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noItems')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={Package} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="space-y-3">
           {items.map((item) => {

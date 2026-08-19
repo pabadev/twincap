@@ -56,7 +56,9 @@
     "initialBalance": "Saldo inicial",
     "creating": "Creando...",
     "createAccount": "Crear cuenta",
-    "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer."
+    "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer.",
+    "emptyTitle": "No tenés cuentas aún",
+    "emptyDescription": "Creá tu primera cuenta para empezar a registrar."
   },
   "Categories": {
     "title": "Categorías",
@@ -69,7 +71,9 @@
     "categoryName": "Nombre de la categoría",
     "creating": "Creando...",
     "createCategory": "Crear categoría",
-    "confirmDelete": "¿Eliminar esta categoría? Esta acción no se puede deshacer."
+    "confirmDelete": "¿Eliminar esta categoría? Esta acción no se puede deshacer.",
+    "emptyTitle": "No tenés categorías aún",
+    "emptyDescription": "Creá tu primera categoría para organizar tus finanzas."
   },
   "Movements": {
     "title": "Movimientos",
@@ -90,7 +94,11 @@
     "personal": "Personal",
     "business": "Negocio",
     "creating": "Creando...",
-    "confirmDelete": "¿Eliminar este movimiento? Esta acción no se puede deshacer."
+    "confirmDelete": "¿Eliminar este movimiento? Esta acción no se puede deshacer.",
+    "emptyTitle": "No hay movimientos aún",
+    "emptyDescription": "Registrá tu primer movimiento para empezar a registrar.",
+    "emptyNoAccountsTitle": "No tenés cuentas aún",
+    "emptyNoAccountsDescription": "Creá una cuenta primero para registrar movimientos."
   },
   "Transfers": {
     "title": "Transferencias",
@@ -108,7 +116,9 @@
     "amounts": "Montos",
     "rate": "tipo de cambio",
     "creating": "Creando...",
-    "confirmDelete": "¿Eliminar esta transferencia? También se eliminarán los movimientos vinculados."
+    "confirmDelete": "¿Eliminar esta transferencia? También se eliminarán los movimientos vinculados.",
+    "emptyTitle": "No hay transferencias aún",
+    "emptyDescription": "Transferí entre cuentas para organizar tus finanzas."
   },
   "CreditsReceived": {
     "title": "Créditos Recibidos",
@@ -134,7 +144,9 @@
     "installmentCount": "cuota(s)",
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
-    "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados."
+    "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
+    "emptyTitle": "No hay créditos recibidos aún",
+    "emptyDescription": "Seguí los créditos que recibiste de acreedores."
   },
   "CreditsGranted": {
     "title": "Créditos Otorgados",
@@ -160,7 +172,9 @@
     "installmentCount": "cuota(s)",
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
-    "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados."
+    "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
+    "emptyTitle": "No hay créditos otorgados aún",
+    "emptyDescription": "Seguí los créditos que otorgaste a otros."
   },
   "Catalog": {
     "title": "Catálogo",
@@ -180,7 +194,9 @@
     "updating": "Actualizando...",
     "updateItem": "Actualizar artículo",
     "addBtn": "Agregar artículo",
-    "confirmDelete": "¿Eliminar este artículo del catálogo?"
+    "confirmDelete": "¿Eliminar este artículo del catálogo?",
+    "emptyTitle": "No hay artículos en el catálogo aún",
+    "emptyDescription": "Agregá productos o servicios a tu catálogo."
   },
   "Sales": {
     "title": "Ventas",
@@ -211,6 +227,13 @@
     "confirmDeleteSale": "¿Eliminar esta venta? Se restaurará el stock y se revertirán todos los pagos.",
     "confirmDeleteAbono": "¿Eliminar este abono?",
     "itemCount": "artículo",
-    "itemCount_plural": "artículos"
+    "itemCount_plural": "artículos",
+    "emptyTitle": "No hay ventas aún",
+    "emptyDescription": "Creá tu primera venta para empezar a vender."
+  },
+  "Errors": {
+    "title": "Algo salió mal",
+    "description": "Ocurrió un error inesperado. Por favor, intentá de nuevo.",
+    "retry": "Reintentar"
   }
 }

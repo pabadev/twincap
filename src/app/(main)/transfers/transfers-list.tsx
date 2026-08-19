@@ -7,6 +7,9 @@ import type { Transfer } from '../../../core/domain/transfer';
 import { TransferForm } from './transfer-form';
 import { DeleteTransferButton } from './delete-transfer-button';
 import { formatAmount, formatDate } from '../../../lib/format';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Icon } from '../../../components/ui/icon';
+import { ArrowRightLeft } from 'lucide-react';
 
 function accountName(accounts: Account[], id: string): string {
   const acc = accounts.find((a) => a.id === id);
@@ -49,9 +52,11 @@ export function TransfersList({
       )}
 
       {transfers.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noTransfers')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={ArrowRightLeft} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">

@@ -56,7 +56,9 @@
     "initialBalance": "Initial Balance",
     "creating": "Creating...",
     "createAccount": "Create Account",
-    "confirmDelete": "Delete this account? This cannot be undone."
+    "confirmDelete": "Delete this account? This cannot be undone.",
+    "emptyTitle": "No accounts yet",
+    "emptyDescription": "Create your first account to start tracking."
   },
   "Categories": {
     "title": "Categories",
@@ -69,7 +71,9 @@
     "categoryName": "Category Name",
     "creating": "Creating...",
     "createCategory": "Create Category",
-    "confirmDelete": "Delete this category? This cannot be undone."
+    "confirmDelete": "Delete this category? This cannot be undone.",
+    "emptyTitle": "No categories yet",
+    "emptyDescription": "Create your first category to organize your finances."
   },
   "Movements": {
     "title": "Movements",
@@ -90,7 +94,11 @@
     "personal": "Personal",
     "business": "Business",
     "creating": "Creating...",
-    "confirmDelete": "Delete this movement? This cannot be undone."
+    "confirmDelete": "Delete this movement? This cannot be undone.",
+    "emptyTitle": "No movements yet",
+    "emptyDescription": "Record your first movement to start tracking.",
+    "emptyNoAccountsTitle": "No accounts yet",
+    "emptyNoAccountsDescription": "Create an account first to record movements."
   },
   "Transfers": {
     "title": "Transfers",
@@ -108,7 +116,9 @@
     "amounts": "Amounts",
     "rate": "rate",
     "creating": "Creating...",
-    "confirmDelete": "Delete this transfer? This will also remove the linked movements."
+    "confirmDelete": "Delete this transfer? This will also remove the linked movements.",
+    "emptyTitle": "No transfers yet",
+    "emptyDescription": "Transfer between accounts to keep your finances organized."
   },
   "CreditsReceived": {
     "title": "Credits Received",
@@ -134,7 +144,9 @@
     "installmentCount": "installment(s)",
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
-    "confirmDelete": "Delete this credit? This will also remove all linked movements."
+    "confirmDelete": "Delete this credit? This will also remove all linked movements.",
+    "emptyTitle": "No credits received yet",
+    "emptyDescription": "Track credits you've received from lenders."
   },
   "CreditsGranted": {
     "title": "Credits Granted",
@@ -160,7 +172,9 @@
     "installmentCount": "installment(s)",
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
-    "confirmDelete": "Delete this credit? This will also remove all linked movements."
+    "confirmDelete": "Delete this credit? This will also remove all linked movements.",
+    "emptyTitle": "No credits granted yet",
+    "emptyDescription": "Track credits you've granted to others."
   },
   "Catalog": {
     "title": "Catalog",
@@ -180,7 +194,9 @@
     "updating": "Updating...",
     "updateItem": "Update Item",
     "addBtn": "Add Item",
-    "confirmDelete": "Delete this catalog item?"
+    "confirmDelete": "Delete this catalog item?",
+    "emptyTitle": "No catalog items yet",
+    "emptyDescription": "Add products or services to your catalog."
   },
   "Sales": {
     "title": "Sales",
@@ -211,6 +227,13 @@
     "confirmDeleteSale": "Delete this sale? This will restore stock and reverse all payments.",
     "confirmDeleteAbono": "Delete this abono?",
     "itemCount": "item",
-    "itemCount_plural": "items"
+    "itemCount_plural": "items",
+    "emptyTitle": "No sales yet",
+    "emptyDescription": "Create your first sale to start selling."
+  },
+  "Errors": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again.",
+    "retry": "Try again"
   }
 }

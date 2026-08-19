@@ -9,6 +9,9 @@ import { MovementForm } from './movement-form';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
 import { Select } from '../../../components/ui/select';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Icon } from '../../../components/ui/icon';
+import { ArrowLeftRight } from 'lucide-react';
 
 export function MovementsList({
   accounts,
@@ -70,9 +73,11 @@ export function MovementsList({
       )}
 
       {accounts.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noAccounts')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={ArrowLeftRight} size="xl" />}
+          title={t('emptyNoAccountsTitle')}
+          description={t('emptyNoAccountsDescription')}
+        />
       ) : (
         <>
           {showForm && (
@@ -88,9 +93,11 @@ export function MovementsList({
           )}
 
           {movements.length === 0 ? (
-            <p className="text-zinc-500 dark:text-zinc-400">
-              {t('noMovements')}
-            </p>
+            <EmptyState
+              icon={<Icon icon={ArrowLeftRight} size="xl" />}
+              title={t('emptyTitle')}
+              description={t('emptyDescription')}
+            />
           ) : (
             <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
               <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">

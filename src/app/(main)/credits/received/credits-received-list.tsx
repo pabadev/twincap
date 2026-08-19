@@ -9,7 +9,8 @@ import { AbonoForm } from './abono-form';
 import { deleteCreditAction } from './actions';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
-import { ChevronDown } from 'lucide-react';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { ChevronDown, CreditCard } from 'lucide-react';
 
 export function CreditsReceivedList({
   accounts,
@@ -49,9 +50,11 @@ export function CreditsReceivedList({
       )}
 
       {credits.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t('noCredits')}
-        </p>
+        <EmptyState
+          icon={<Icon icon={CreditCard} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="space-y-3">
           {credits.map((credit) => {
