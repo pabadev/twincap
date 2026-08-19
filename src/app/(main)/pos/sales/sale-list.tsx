@@ -90,7 +90,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
               >
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex-1">
-                    <div className="font-medium text-zinc-900 dark:text-white">
+                    <div className="text-sm text-zinc-900 dark:text-white">
                       {formatDate(sale.date, locale)} — {formatAmount(sale.total, currency, locale)} {currency}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">

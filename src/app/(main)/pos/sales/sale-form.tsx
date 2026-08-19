@@ -106,7 +106,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
       <input type="hidden" name="lineItems" value={JSON.stringify(lineItems)} />
       <input type="hidden" name="currency" value={currency} />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Select
           id="paymentMode"
           name="paymentMode"
@@ -177,7 +177,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
                   }))}
                 />
               </div>
-              <div className="w-20">
+              <div className="w-16 sm:w-20">
                 {idx === 0 && (
                   <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('qty')}</label>
                 )}
@@ -190,7 +190,7 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
                   disabled={isPending}
                 />
               </div>
-              <div className="w-28">
+              <div className="w-20 sm:w-28">
                 {idx === 0 && (
                   <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('unitPrice')}</label>
                 )}

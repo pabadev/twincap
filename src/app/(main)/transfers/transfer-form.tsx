@@ -71,7 +71,7 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
         }))}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           id="sourceAmount"
           name="sourceAmount"

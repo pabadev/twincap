@@ -48,7 +48,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
         disabled={isPending}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           id="principal"
           name="principal"
@@ -93,7 +93,7 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
         defaultValue={new Date().toISOString().split('T')[0]}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           id="installments"
           name="installments"
