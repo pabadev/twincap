@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import {
   createCatalogItem,
   updateCatalogItem,
@@ -16,11 +15,11 @@ import { connectDb } from '../../../../infrastructure/db/connection';
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createCatalogItemAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const name = formData.get('name') as string;
   const unitPrice = Number(formData.get('unitPrice') || '0');
@@ -46,15 +45,15 @@ export async function createCatalogItemAction(
     };
   }
 
-  redirect('/pos/catalog');
+  return { success: 'catalogItemCreated' };
 }
 
 export async function updateCatalogItemAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const itemId = formData.get('itemId') as string;
   const name = formData.get('name') as string;
@@ -80,12 +79,15 @@ export async function updateCatalogItemAction(
     };
   }
 
-  redirect('/pos/catalog');
+  return { success: 'catalogItemUpdated' };
 }
 
-export async function deleteCatalogItemAction(formData: FormData) {
+export async function deleteCatalogItemAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const itemId = formData.get('itemId') as string;
 
@@ -97,7 +99,10 @@ export async function deleteCatalogItemAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete catalog item',
+    };
   }
 
-  redirect('/pos/catalog');
+  return { success: 'catalogItemDeleted' };
 }

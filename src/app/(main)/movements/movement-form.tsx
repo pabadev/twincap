@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
 import { CURRENCIES } from '../../../core/domain/currency';
@@ -9,6 +10,7 @@ import type { Category } from '../../../core/domain/category';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { useToast } from '../../../lib/hooks/use-toast';
 
 export function MovementForm({
   accountId,
@@ -23,18 +25,28 @@ export function MovementForm({
   );
   const [selectedType, setSelectedType] = useState<string>('income');
   const t = useT('Movements');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.push('/movements');
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   const filteredCategories = categories.filter((c) => c.type === selectedType);
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="accountId" value={accountId} />
-
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
-        </div>
-      )}
 
       <Select
         id="type"

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
 import type { CatalogItem } from '../../../../core/domain/catalog';
 import { CatalogForm } from './catalog-form';
-import { deleteCatalogItemAction } from './actions';
+import { DeleteCatalogItemButton } from './delete-catalog-item-button';
 import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
@@ -99,22 +99,7 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
                     >
                       {t('edit')}
                     </button>
-                    <form
-                      action={deleteCatalogItemAction}
-                      onSubmit={(e) => {
-                        if (!confirm(t('confirmDelete'))) {
-                          e.preventDefault();
-                        }
-                      }}
-                    >
-                      <input type="hidden" name="itemId" value={item.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        {tCommon('delete')}
-                      </button>
-                    </form>
+                    <DeleteCatalogItemButton itemId={item.id} />
                   </div>
                 </div>
               </div>

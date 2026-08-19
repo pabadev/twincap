@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
   createClient,
@@ -21,11 +20,11 @@ const clientSchema = z.object({
 });
 
 export async function createClientAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const parsed = clientSchema.safeParse({
     name: formData.get('name'),
@@ -50,15 +49,15 @@ export async function createClientAction(
     };
   }
 
-  redirect('/clients');
+  return { success: 'clientCreated' };
 }
 
 export async function updateClientAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const clientId = formData.get('clientId') as string;
   if (!clientId) return { error: 'Client ID is required' };
@@ -86,12 +85,15 @@ export async function updateClientAction(
     };
   }
 
-  redirect('/clients');
+  return { success: 'clientUpdated' };
 }
 
-export async function deleteClientAction(formData: FormData) {
+export async function deleteClientAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const clientId = formData.get('clientId') as string;
 
@@ -102,7 +104,10 @@ export async function deleteClientAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete client',
+    };
   }
 
-  redirect('/clients');
+  return { success: 'clientDeleted' };
 }

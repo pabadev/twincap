@@ -261,5 +261,33 @@
     "title": "Algo salió mal",
     "description": "Ocurrió un error inesperado. Por favor, intentá de nuevo.",
     "retry": "Reintentar"
+  },
+  "Toast": {
+    "clientCreated": "Cliente creado exitosamente",
+    "clientUpdated": "Cliente actualizado exitosamente",
+    "clientDeleted": "Cliente eliminado exitosamente",
+    "accountCreated": "Cuenta creada exitosamente",
+    "accountUpdated": "Cuenta actualizada exitosamente",
+    "accountDeleted": "Cuenta eliminada exitosamente",
+    "categoryCreated": "Categoría creada exitosamente",
+    "categoryUpdated": "Categoría actualizada exitosamente",
+    "categoryDeleted": "Categoría eliminada exitosamente",
+    "movementCreated": "Movimiento registrado exitosamente",
+    "movementUpdated": "Movimiento actualizado exitosamente",
+    "movementDeleted": "Movimiento eliminado exitosamente",
+    "transferCreated": "Transferencia realizada exitosamente",
+    "transferDeleted": "Transferencia eliminada exitosamente",
+    "creditCreated": "Crédito registrado exitosamente",
+    "creditUpdated": "Crédito actualizado exitosamente",
+    "creditDeleted": "Crédito eliminado exitosamente",
+    "abonoAdded": "Abono registrado exitosamente",
+    "abonoDeleted": "Abono eliminado exitosamente",
+    "saleCreated": "Venta registrada exitosamente",
+    "saleDeleted": "Venta eliminada exitosamente",
+    "catalogItemCreated": "Artículo agregado exitosamente",
+    "catalogItemUpdated": "Artículo actualizado exitosamente",
+    "catalogItemDeleted": "Artículo eliminado exitosamente",
+    "operationFailed": "La operación falló. Intentá de nuevo.",
+    "unexpectedError": "Ocurrió un error inesperado"
   }
 }

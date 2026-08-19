@@ -261,5 +261,33 @@
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Please try again.",
     "retry": "Try again"
+  },
+  "Toast": {
+    "clientCreated": "Client created successfully",
+    "clientUpdated": "Client updated successfully",
+    "clientDeleted": "Client deleted successfully",
+    "accountCreated": "Account created successfully",
+    "accountUpdated": "Account updated successfully",
+    "accountDeleted": "Account deleted successfully",
+    "categoryCreated": "Category created successfully",
+    "categoryUpdated": "Category updated successfully",
+    "categoryDeleted": "Category deleted successfully",
+    "movementCreated": "Movement recorded successfully",
+    "movementUpdated": "Movement updated successfully",
+    "movementDeleted": "Movement deleted successfully",
+    "transferCreated": "Transfer completed successfully",
+    "transferDeleted": "Transfer deleted successfully",
+    "creditCreated": "Credit recorded successfully",
+    "creditUpdated": "Credit updated successfully",
+    "creditDeleted": "Credit deleted successfully",
+    "abonoAdded": "Payment recorded successfully",
+    "abonoDeleted": "Payment deleted successfully",
+    "saleCreated": "Sale recorded successfully",
+    "saleDeleted": "Sale deleted successfully",
+    "catalogItemCreated": "Item added successfully",
+    "catalogItemUpdated": "Item updated successfully",
+    "catalogItemDeleted": "Item deleted successfully",
+    "operationFailed": "Operation failed. Please try again.",
+    "unexpectedError": "An unexpected error occurred"
   }
 }

@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import {
   createMovement,
   deleteMovement,
@@ -14,11 +13,11 @@ import { connectDb } from '../../../infrastructure/db/connection';
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createMovementAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const accountId = formData.get('accountId') as string;
   const type = formData.get('type') as CreateMovementInput['type'];
@@ -48,12 +47,15 @@ export async function createMovementAction(
     };
   }
 
-  redirect('/movements');
+  return { success: 'movementCreated' };
 }
 
-export async function deleteMovementAction(formData: FormData) {
+export async function deleteMovementAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const movementId = formData.get('movementId') as string;
 
@@ -64,7 +66,10 @@ export async function deleteMovementAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete movement',
+    };
   }
 
-  redirect('/movements');
+  return { success: 'movementDeleted' };
 }

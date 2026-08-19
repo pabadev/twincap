@@ -2,18 +2,18 @@
 
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { deleteMovementAction } from './actions';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
+import { useT } from '../../../../i18n/client';
+import { deleteCatalogItemAction } from './actions';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
-export function DeleteMovementButton({ movementId }: { movementId: string }) {
-  const t = useT('Movements');
+export function DeleteCatalogItemButton({ itemId }: { itemId: string }) {
+  const t = useT('Catalog');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(
-    deleteMovementAction,
+    deleteCatalogItemAction,
     null,
   );
 
@@ -39,16 +39,14 @@ export function DeleteMovementButton({ movementId }: { movementId: string }) {
         }
       }}
     >
-      <input type="hidden" name="movementId" value={movementId} />
-      <Button
+      <input type="hidden" name="itemId" value={itemId} />
+      <button
         type="submit"
-        variant="ghost"
-        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
         disabled={isPending}
-        loading={isPending}
       >
-        {t('delete')}
-      </Button>
+        {tCommon('delete')}
+      </button>
     </form>
   );
 }

@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../infrastructure/auth/getCurrentUser';
 import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
 import { connectDb } from '../../infrastructure/db/connection';
 import { MainNav } from './nav';
+import { ToastProvider } from '../../components/ui/toast-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,9 @@ export default async function MainLayout({
   return (
     <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <MainNav email={dbUser?.email ?? user.userId} />
-      <main className="flex-1 overflow-auto p-4 lg:p-8">{children}</main>
+      <ToastProvider>
+        <main className="flex-1 overflow-auto p-4 lg:p-8">{children}</main>
+      </ToastProvider>
     </div>
   );
 }

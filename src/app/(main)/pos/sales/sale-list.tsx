@@ -7,7 +7,8 @@ import type { CatalogItem } from '../../../../core/domain/catalog';
 import type { Account } from '../../../../core/domain/account';
 import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
-import { deleteSaleAction, deleteSaleAbonoAction } from './actions';
+import { DeleteSaleButton } from './delete-sale-button';
+import { DeleteSaleAbonoButton } from './delete-sale-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
@@ -121,22 +122,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                         {t('addAbono')}
                       </button>
                     )}
-                    <form
-                      action={deleteSaleAction}
-                      onSubmit={(e) => {
-                        if (!confirm(t('confirmDeleteSale'))) {
-                          e.preventDefault();
-                        }
-                      }}
-                    >
-                      <input type="hidden" name="saleId" value={sale.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        {tCommon('delete')}
-                      </button>
-                    </form>
+                    <DeleteSaleButton saleId={sale.id} />
                   </div>
                 </div>
 
@@ -165,24 +151,7 @@ export function SaleList({ sales, catalogItems, accounts }: SaleListProps) {
                               <span>
                                 {formatDate(abono.date, locale)} — {formatAmount(abono.amount.amount, currency, locale)} {currency}
                               </span>
-                              <form
-                                action={deleteSaleAbonoAction}
-                                onSubmit={(e) => {
-                                  if (!confirm(t('confirmDeleteAbono'))) {
-                                    e.preventDefault();
-                                  }
-                                }}
-                                className="inline"
-                              >
-                                <input type="hidden" name="saleId" value={sale.id} />
-                                <input type="hidden" name="abonoId" value={abono.id} />
-                                <button
-                                  type="submit"
-                                  className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                >
-                                  {t('remove')}
-                                </button>
-                              </form>
+                              <DeleteSaleAbonoButton saleId={sale.id} abonoId={abono.id} />
                             </div>
                           ))}
                         </div>

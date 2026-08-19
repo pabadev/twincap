@@ -1,12 +1,14 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createTransferAction } from './actions';
 import type { Account } from '../../../core/domain/account';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { useToast } from '../../../lib/hooks/use-toast';
 
 export function TransferForm({ accounts }: { accounts: Account[] }) {
   const [state, formAction, isPending] = useActionState(
@@ -14,19 +16,29 @@ export function TransferForm({ accounts }: { accounts: Account[] }) {
     null,
   );
   const t = useT('Transfers');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
 
   const [sourceCurrency, setSourceCurrency] = useState(accounts[0]?.currency ?? 'COP');
   const [destCurrency, setDestCurrency] = useState(accounts[0]?.currency ?? 'COP');
   const isCrossCurrency = sourceCurrency !== destCurrency;
 
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.push('/transfers');
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
+
   return (
     <form action={formAction} className="space-y-4">
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
-        </div>
-      )}
-
       <Select
         id="sourceAccountId"
         name="sourceAccountId"

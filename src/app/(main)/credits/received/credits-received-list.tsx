@@ -6,7 +6,7 @@ import type { Account } from '../../../../core/domain/account';
 import type { CreditReceived } from '../../../../core/domain/credit-received';
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
-import { deleteCreditAction } from './actions';
+import { DeleteCreditButton } from './delete-credit-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
@@ -143,23 +143,7 @@ export function CreditsReceivedList({
                           {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
                         </button>
                       )}
-                      <form
-                        action={deleteCreditAction}
-                        onSubmit={(e) => {
-                          if (!confirm(t('confirmDelete'))) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input type="hidden" name="creditId" value={credit.id} />
-                        <button
-                          type="submit"
-                          className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          {tCommon('delete')}
-                        </button>
-                      </form>
+                      <DeleteCreditButton creditId={credit.id} />
                     </div>
 
                     {showAbonoFormId === credit.id && (

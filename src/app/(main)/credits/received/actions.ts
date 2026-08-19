@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import {
   createCreditReceived,
   addAbono,
@@ -15,11 +14,11 @@ import { connectDb } from '../../../../infrastructure/db/connection';
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createCreditReceivedAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const counterparty = formData.get('counterparty') as string;
   const principal = Number(formData.get('principal') || '0');
@@ -48,15 +47,15 @@ export async function createCreditReceivedAction(
     };
   }
 
-  redirect('/credits/received');
+  return { success: 'creditCreated' };
 }
 
 export async function addAbonoAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const amount = Number(formData.get('amount') || '0');
@@ -84,12 +83,15 @@ export async function addAbonoAction(
     };
   }
 
-  redirect('/credits/received');
+  return { success: 'abonoAdded' };
 }
 
-export async function deleteCreditAction(formData: FormData) {
+export async function deleteCreditAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const creditId = formData.get('creditId') as string;
 
@@ -101,7 +103,10 @@ export async function deleteCreditAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete credit',
+    };
   }
 
-  redirect('/credits/received');
+  return { success: 'creditDeleted' };
 }

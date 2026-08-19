@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { addAbonoAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
@@ -8,6 +9,7 @@ import { formatAmount } from '../../../../lib/format';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
 export function AbonoForm({
   creditId,
@@ -25,7 +27,23 @@ export function AbonoForm({
     null,
   );
   const t = useT('CreditsGranted');
+  const tToast = useT('Toast');
   const locale = useLocale();
+  const { addToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.refresh();
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
@@ -35,12 +53,6 @@ export function AbonoForm({
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
         {t('pending')} {formatAmount(pending, currency, locale)} {currency}
       </p>
-
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
-        </div>
-      )}
 
       <div className="grid grid-cols-3 gap-3">
         <Input

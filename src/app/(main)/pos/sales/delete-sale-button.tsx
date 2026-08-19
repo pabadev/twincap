@@ -2,18 +2,18 @@
 
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { deleteMovementAction } from './actions';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
+import { useT } from '../../../../i18n/client';
+import { deleteSaleAction } from './actions';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
-export function DeleteMovementButton({ movementId }: { movementId: string }) {
-  const t = useT('Movements');
+export function DeleteSaleButton({ saleId }: { saleId: string }) {
+  const t = useT('Sales');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(
-    deleteMovementAction,
+    deleteSaleAction,
     null,
   );
 
@@ -34,21 +34,19 @@ export function DeleteMovementButton({ movementId }: { movementId: string }) {
     <form
       action={formAction}
       onSubmit={(e) => {
-        if (!confirm(t('confirmDelete'))) {
+        if (!confirm(t('confirmDeleteSale'))) {
           e.preventDefault();
         }
       }}
     >
-      <input type="hidden" name="movementId" value={movementId} />
-      <Button
+      <input type="hidden" name="saleId" value={saleId} />
+      <button
         type="submit"
-        variant="ghost"
-        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
         disabled={isPending}
-        loading={isPending}
       >
-        {t('delete')}
-      </Button>
+        {tCommon('delete')}
+      </button>
     </form>
   );
 }

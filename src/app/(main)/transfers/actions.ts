@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import {
   createTransfer,
   deleteTransfer,
@@ -14,11 +13,11 @@ import { connectDb } from '../../../infrastructure/db/connection';
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createTransferAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const sourceAccountId = formData.get('sourceAccountId') as string;
   const destinationAccountId = formData.get('destinationAccountId') as string;
@@ -61,12 +60,15 @@ export async function createTransferAction(
     };
   }
 
-  redirect('/transfers');
+  return { success: 'transferCreated' };
 }
 
-export async function deleteTransferAction(formData: FormData) {
+export async function deleteTransferAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const transferId = formData.get('transferId') as string;
 
@@ -78,7 +80,10 @@ export async function deleteTransferAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete transfer',
+    };
   }
 
-  redirect('/transfers');
+  return { success: 'transferDeleted' };
 }

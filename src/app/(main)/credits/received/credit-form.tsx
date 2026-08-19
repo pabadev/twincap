@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createCreditReceivedAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
@@ -9,6 +10,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
 export function CreditForm({ accounts }: { accounts: Account[] }) {
   const [state, formAction, isPending] = useActionState(
@@ -16,17 +18,27 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
     null,
   );
   const t = useT('CreditsReceived');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
 
   const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
 
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.push('/credits/received');
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
+
   return (
     <form action={formAction} className="space-y-4">
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
-        </div>
-      )}
-
       <Input
         id="counterparty"
         name="counterparty"

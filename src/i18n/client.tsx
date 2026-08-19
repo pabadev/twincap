@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, type ReactNode } from 'react';
 import { interpolate } from './interpolate';
 
 type NamespaceMessages = Record<string, string>;
@@ -38,7 +38,7 @@ export function TranslationsProvider({
 
 /**
  * Client-side translation hook.
- * Returns a `t(key, params?)` function scoped to the given namespace.
+ * Returns a memoized `t(key, params?)` function scoped to the given namespace.
  *
  * Usage:
  *   const t = useT('Nav');
@@ -51,10 +51,13 @@ export function useT(
   const { messages } = useContext(TranslationsContext);
   const ns = messages[namespace] || {};
 
-  return function t(key: string, params?: Record<string, string>): string {
-    const value = ns[key] ?? key;
-    return params ? interpolate(value, params) : value;
-  };
+  return useCallback(
+    function t(key: string, params?: Record<string, string>): string {
+      const value = ns[key] ?? key;
+      return params ? interpolate(value, params) : value;
+    },
+    [ns],
+  );
 }
 
 /**

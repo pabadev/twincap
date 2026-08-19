@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import {
   createSale,
   addSaleAbono,
@@ -19,11 +18,11 @@ import { connectDb } from '../../../../infrastructure/db/connection';
 const ids = { generate: () => crypto.randomUUID() };
 
 export async function createSaleAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const lineItemsJson = formData.get('lineItems') as string;
   const accountId = formData.get('accountId') as string;
@@ -63,15 +62,15 @@ export async function createSaleAction(
     };
   }
 
-  redirect('/pos/sales');
+  return { success: 'saleCreated' };
 }
 
 export async function addSaleAbonoAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const saleId = formData.get('saleId') as string;
   const amount = Number(formData.get('amount') || '0');
@@ -99,15 +98,15 @@ export async function addSaleAbonoAction(
     };
   }
 
-  redirect('/pos/sales');
+  return { success: 'abonoAdded' };
 }
 
 export async function editSaleAbonoAction(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const saleId = formData.get('saleId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -135,12 +134,15 @@ export async function editSaleAbonoAction(
     };
   }
 
-  redirect('/pos/sales');
+  return { success: 'abonoAdded' };
 }
 
-export async function deleteSaleAbonoAction(formData: FormData) {
+export async function deleteSaleAbonoAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const saleId = formData.get('saleId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -153,14 +155,20 @@ export async function deleteSaleAbonoAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete abono',
+    };
   }
 
-  redirect('/pos/sales');
+  return { success: 'abonoDeleted' };
 }
 
-export async function deleteSaleAction(formData: FormData) {
+export async function deleteSaleAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'Unauthorized' };
 
   const saleId = formData.get('saleId') as string;
 
@@ -173,7 +181,10 @@ export async function deleteSaleAction(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
       throw error;
+    return {
+      error: error instanceof Error ? error.message : 'Failed to delete sale',
+    };
   }
 
-  redirect('/pos/sales');
+  return { success: 'saleDeleted' };
 }

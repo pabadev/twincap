@@ -1,12 +1,14 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createAccountAction } from './actions';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { useToast } from '../../../lib/hooks/use-toast';
 
 export function AccountForm() {
   const [state, formAction, isPending] = useActionState(
@@ -14,15 +16,25 @@ export function AccountForm() {
     null,
   );
   const t = useT('Accounts');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.push('/accounts');
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   return (
     <form action={formAction} className="space-y-4">
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          {state.error}
-        </div>
-      )}
-
       <Input
         id="name"
         name="name"
