@@ -22,15 +22,21 @@ export function MovementsList({
   movementsByAccount: Record<string, Movement[]>;
   categories: Category[];
 }) {
-  const [selectedAccountId, setSelectedAccountId] = useState(
-    accounts[0]?.id ?? '',
-  );
+  const [selectedAccountId, setSelectedAccountId] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const t = useT('Movements');
   const tCommon = useT('Common');
   const locale = useLocale();
 
-  const movements = movementsByAccount[selectedAccountId] ?? [];
+  const allMovements = Object.values(movementsByAccount).flat();
+  const movements = selectedAccountId === 'all'
+    ? allMovements
+    : (movementsByAccount[selectedAccountId] ?? []);
+
+  // Sort by date descending
+  const sortedMovements = [...movements].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -64,10 +70,13 @@ export function MovementsList({
               setSelectedAccountId(e.target.value);
               setShowForm(false);
             }}
-            options={accounts.map((a) => ({
-              value: a.id,
-              label: `${a.name} (${a.currency})`,
-            }))}
+            options={[
+              { value: 'all', label: t('allAccounts') },
+              ...accounts.map((a) => ({
+                value: a.id,
+                label: `${a.name} (${a.currency})`,
+              })),
+            ]}
           />
         </div>
       )}
@@ -85,18 +94,24 @@ export function MovementsList({
               <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
                 {t('newMovement')}
               </h2>
-              <MovementForm
-                accountId={selectedAccountId}
-                categories={categories}
-              />
+              {selectedAccountId === 'all' ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {t('selectAccountToAdd')}
+                </p>
+              ) : (
+                <MovementForm
+                  accountId={selectedAccountId}
+                  categories={categories}
+                />
+              )}
             </div>
           )}
 
-          {movements.length === 0 ? (
+          {sortedMovements.length === 0 ? (
             <EmptyState
               icon={<Icon icon={ArrowLeftRight} size="xl" />}
-              title={t('emptyTitle')}
-              description={t('emptyDescription')}
+              title={selectedAccountId === 'all' ? t('emptyTitle') : t('emptyTitle')}
+              description={selectedAccountId === 'all' ? t('noMovementsAll') : t('emptyDescription')}
             />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
@@ -121,7 +136,7 @@ export function MovementsList({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                  {movements.map((movement) => (
+                  {sortedMovements.map((movement) => (
                     <tr key={movement.id}>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                         {formatDate(movement.date, locale)}

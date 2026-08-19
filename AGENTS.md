@@ -181,4 +181,6 @@ El workflow completo de auditoría, planificación e implementación por fases e
 
 > `docs/AUDIT-AND-PLAN.md`
 
+**⚠️ OBLIGATORIO:** Después de una compactación o al iniciar nueva sesión, lo PRIMERO es leer `docs/AUDIT-AND-PLAN.md` para identificar la fase actual y continuar desde ahí. El archivo contiene el estado completo del proyecto, las 12 fases pendientes, y el protocolo de continuación.
+
 <!-- END:globalmoney-project-rules -->

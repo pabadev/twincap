@@ -90,9 +90,11 @@
     "title": "Movimientos",
     "addMovement": "Agregar movimiento",
     "account": "Cuenta",
+    "allAccounts": "Todas las cuentas",
     "noAccounts": "No tenés cuentas aún. Creá una cuenta primero.",
     "newMovement": "Nuevo movimiento",
     "noMovements": "No hay movimientos para esta cuenta aún.",
+    "noMovementsAll": "No hay movimientos en ninguna cuenta aún.",
     "type": "Tipo",
     "amount": "Monto",
     "currency": "Moneda",
@@ -109,7 +111,8 @@
     "emptyTitle": "No hay movimientos aún",
     "emptyDescription": "Registrá tu primer movimiento para empezar a registrar.",
     "emptyNoAccountsTitle": "No tenés cuentas aún",
-    "emptyNoAccountsDescription": "Creá una cuenta primero para registrar movimientos."
+    "emptyNoAccountsDescription": "Creá una cuenta primero para registrar movimientos.",
+    "selectAccountToAdd": "Seleccioná una cuenta para agregar un movimiento"
   },
   "Transfers": {
     "title": "Transferencias",

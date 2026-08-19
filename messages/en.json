@@ -90,9 +90,11 @@
     "title": "Movements",
     "addMovement": "Add Movement",
     "account": "Account",
+    "allAccounts": "All accounts",
     "noAccounts": "No accounts yet. Create an account first.",
     "newMovement": "New Movement",
     "noMovements": "No movements for this account yet.",
+    "noMovementsAll": "No movements in any account yet.",
     "type": "Type",
     "amount": "Amount",
     "currency": "Currency",
@@ -109,7 +111,8 @@
     "emptyTitle": "No movements yet",
     "emptyDescription": "Record your first movement to start tracking.",
     "emptyNoAccountsTitle": "No accounts yet",
-    "emptyNoAccountsDescription": "Create an account first to record movements."
+    "emptyNoAccountsDescription": "Create an account first to record movements.",
+    "selectAccountToAdd": "Select an account to add a movement"
   },
   "Transfers": {
     "title": "Transfers",
