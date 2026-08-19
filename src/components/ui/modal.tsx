@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useCallback, type ReactNode } from 'react';
 import { useT } from '../../i18n/client';
 
 interface ModalProps {
@@ -13,27 +13,43 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, actions, closeLabel }: ModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const tCommon = useT('Common');
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    },
+    [onClose],
+  );
+
   useEffect(() => {
-    const el = dialogRef.current;
-    if (!el) return;
-    if (open && !el.open) {
-      el.showModal();
-    } else if (!open && el.open) {
-      el.close();
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = '';
+      };
     }
-  }, [open]);
+  }, [open, handleKeyDown]);
+
+  if (!open) return null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      suppressHydrationWarning
-      className="m-auto rounded-lg border border-zinc-200 bg-white p-0 shadow-xl backdrop:bg-black/50 dark:border-zinc-700 dark:bg-zinc-900"
-    >
-      <div className="w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Dialog */}
+      <div
+        className="relative w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="mb-4 flex items-center justify-between">
           {title && (
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -64,6 +80,6 @@ export function Modal({ open, onClose, title, children, actions, closeLabel }: M
         <div className="mb-6">{children}</div>
         {actions && <div className="flex justify-end gap-3">{actions}</div>}
       </div>
-    </dialog>
+    </div>
   );
 }
