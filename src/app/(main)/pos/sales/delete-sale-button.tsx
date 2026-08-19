@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { deleteSaleAction } from './actions';
@@ -12,13 +12,15 @@ export function DeleteSaleButton({ saleId }: { saleId: string }) {
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
   const [state, formAction, isPending] = useActionState(
     deleteSaleAction,
     null,
   );
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
     }

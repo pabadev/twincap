@@ -1,8 +1,8 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT, useLocale } from '../../../../i18n/client';
+import { useT } from '../../../../i18n/client';
 import { deleteCreditAction } from './actions';
 import { useToast } from '../../../../lib/hooks/use-toast';
 
@@ -12,13 +12,15 @@ export function DeleteCreditButton({ creditId }: { creditId: string }) {
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
   const [state, formAction, isPending] = useActionState(
     deleteCreditAction,
     null,
   );
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
@@ -26,6 +26,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   const [state, formAction, isPending] = useActionState(
     isEdit ? updateCatalogItemAction : createCatalogItemAction,
@@ -36,7 +37,8 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const [currency, setCurrency] = useState<Currency>(item?.unitPrice.currency ?? DEFAULT_CURRENCY);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onDone?.();
