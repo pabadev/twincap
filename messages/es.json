@@ -42,7 +42,17 @@
     "welcomeBack": "Bienvenido de nuevo",
     "accounts": "Cuentas",
     "fixed": "Fijo",
-    "noAccounts": "No tenés cuentas aún. Creá tu primera cuenta para empezar."
+    "noAccounts": "No tenés cuentas aún. Creá tu primera cuenta para empezar.",
+    "totalBalance": "Balance Total",
+    "incomeThisMonth": "Ingresos este mes",
+    "expensesThisMonth": "Gastos este mes",
+    "pendingCredits": "Créditos Pendientes",
+    "monthlyTrend": "Tendencia Mensual (6 meses)",
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "recentMovements": "Movimientos Recientes",
+    "uncategorized": "Sin categoría",
+    "noMovements": "No hay movimientos aún."
   },
   "Accounts": {
     "title": "Cuentas",
