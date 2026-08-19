@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
 import type { CatalogItem } from '../../../../core/domain/catalog';
@@ -11,6 +12,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface CatalogFormProps {
   item?: CatalogItem;
@@ -21,6 +23,9 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const isEdit = !!item;
   const t = useT('Catalog');
   const tCommon = useT('Common');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
 
   const [state, formAction, isPending] = useActionState(
     isEdit ? updateCatalogItemAction : createCatalogItemAction,
@@ -29,6 +34,20 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
 
   const [type, setType] = useState<CatalogItemType>(item?.type ?? 'product');
   const [currency, setCurrency] = useState<Currency>(item?.unitPrice.currency ?? DEFAULT_CURRENCY);
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.refresh();
+      onDone?.();
+    }
+  }, [state?.success, addToast, tToast, router, onDone]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   return (
     <form

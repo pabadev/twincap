@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { addSaleAbonoAction } from './actions';
 import type { Account } from '../../../../core/domain/account';
@@ -9,6 +10,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface AbonoFormProps {
   saleId: string;
@@ -20,8 +22,25 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
   const [state, formAction, isPending] = useActionState(addSaleAbonoAction, null);
   const t = useT('Sales');
   const tCommon = useT('Common');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
 
   const currency: Currency = accounts[0]?.currency ?? DEFAULT_CURRENCY;
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.refresh();
+      onDone?.();
+    }
+  }, [state?.success, addToast, tToast, router, onDone]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   return (
     <form

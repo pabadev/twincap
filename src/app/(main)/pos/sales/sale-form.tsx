@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
 import type { CatalogItem } from '../../../../core/domain/catalog';
@@ -12,6 +13,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface LineItem {
   itemId: string;
@@ -29,6 +31,23 @@ export function SaleForm({ catalogItems, accounts, onDone }: SaleFormProps) {
   const [state, formAction, isPending] = useActionState(createSaleAction, null);
   const t = useT('Sales');
   const tCommon = useT('Common');
+  const tToast = useT('Toast');
+  const { addToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) {
+      addToast(tToast(state.success), 'success');
+      router.refresh();
+      onDone?.();
+    }
+  }, [state?.success, addToast, tToast, router, onDone]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(state.error, 'error');
+    }
+  }, [state?.error, addToast]);
 
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
