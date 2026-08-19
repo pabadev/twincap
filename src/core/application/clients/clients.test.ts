@@ -143,9 +143,9 @@ describe("deleteClient", () => {
     expect(repo.delete).toHaveBeenCalledWith("u1", "c1");
   });
 
-  it("still calls delete even if findById returns null (existing behavior)", async () => {
+  it("throws NotFoundError if client not found", async () => {
     const repo = makeRepo({ findById: vi.fn().mockResolvedValue(null) });
-    await deleteClient("u1", "c1", repo);
-    expect(repo.delete).toHaveBeenCalledWith("u1", "c1");
+    await expect(deleteClient("u1", "c1", repo)).rejects.toThrow("Client not found");
+    expect(repo.delete).not.toHaveBeenCalled();
   });
 });
