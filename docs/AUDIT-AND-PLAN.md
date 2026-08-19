@@ -30,13 +30,13 @@
 | 13 | POS Venta — Selector de cliente con "Cliente general" por defecto | `20b6a8d` |
 | 14 | POS — Búsqueda de productos con debounce (300ms), case-insensitive | `a4ffc43` |
 | 15 | Créditos — Edición de abonos con botón "Editar" en tabla | `ec82fb9` |
+| 16 | Formularios en modales — patrón Button→Modal→Form en 6 módulos | `6aeb199` |
 
-### Pendiente ❌ (8 features del plan original)
+### Pendiente ❌ (7 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
-| 16 | Formularios en modales (patrón Button→Modal→Form) | P2 | — |
-| 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 |
+| 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 ✅ |
 | 18 | Botones de acción con iconos (edit, delete, view) | P2 | — |
 | 19 | Selector de idioma — icono globe, diseño consistente | P2 | — |
 | 20 | Logo GlobalMoney — SVG/CSS, isotipo, favicon | P2 | — |

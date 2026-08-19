@@ -7,7 +7,7 @@ import { MongoAccountRepository } from '../../../infrastructure/repositories/acc
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { CURRENCY_EXPONENTS } from '../../../core/domain/currency';
-import { AccountForm } from './account-form';
+import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
 import { Wallet } from 'lucide-react';
 
@@ -42,6 +42,7 @@ export default async function AccountsPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
+        <AccountsPageClient />
       </div>
 
       {accounts.length === 0 ? (
@@ -110,13 +111,6 @@ export default async function AccountsPage() {
           </table>
         </div>
       )}
-
-      <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('addAccount')}
-        </h2>
-        <AccountForm />
-      </div>
     </div>
   );
 }

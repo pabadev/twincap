@@ -1,16 +1,17 @@
+import { redirect } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { getT } from '../../../i18n/server';
 import { listClients } from '../../../core/application/clients';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { ClientForm } from './client-form';
+import { ClientsPageClient } from './clients-page-client';
 import { ClientsList, type SerializedClient } from './clients-list';
 
 export default async function ClientsPage() {
   const user = await getCurrentUser();
   if (!user) {
-    return null;
+    redirect('/login');
   }
 
   const t = await getT('Clients');
@@ -32,6 +33,7 @@ export default async function ClientsPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
+        <ClientsPageClient />
       </div>
 
       {serializedClients.length === 0 ? (
@@ -45,13 +47,6 @@ export default async function ClientsPage() {
       ) : (
         <ClientsList clients={serializedClients} />
       )}
-
-      <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('newClient')}
-        </h2>
-        <ClientForm />
-      </div>
     </div>
   );
 }

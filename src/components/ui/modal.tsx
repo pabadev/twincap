@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useT } from '../../i18n/client';
 
 interface ModalProps {
   open: boolean;
@@ -8,10 +9,12 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   actions?: ReactNode;
+  closeLabel?: string;
 }
 
-export function Modal({ open, onClose, title, children, actions }: ModalProps) {
+export function Modal({ open, onClose, title, children, actions, closeLabel }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const tCommon = useT('Common');
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -27,7 +30,8 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="rounded-lg border border-zinc-200 bg-white p-0 shadow-xl backdrop:bg-black/50 dark:border-zinc-700 dark:bg-zinc-900"
+      suppressHydrationWarning
+      className="m-auto rounded-lg border border-zinc-200 bg-white p-0 shadow-xl backdrop:bg-black/50 dark:border-zinc-700 dark:bg-zinc-900"
     >
       <div className="w-full max-w-md p-6">
         <div className="mb-4 flex items-center justify-between">
@@ -40,7 +44,7 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
             type="button"
             onClick={onClose}
             className="ml-auto rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-            aria-label="Close"
+            aria-label={closeLabel || tCommon('close')}
           >
             <svg
               className="h-5 w-5"
