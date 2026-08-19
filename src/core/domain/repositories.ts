@@ -12,6 +12,7 @@
 import type { Account } from "./account";
 import type { CatalogItem } from "./catalog";
 import type { Category } from "./category";
+import type { Client } from "./client";
 import type { CreditGranted } from "./credit-granted";
 import type { CreditReceived } from "./credit-received";
 import type { Movement } from "./movement";
@@ -110,6 +111,17 @@ export interface CreditGrantedRepository {
   editAbono(userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5). */
   deleteAbono(userId: string, creditId: string, abonoId: string): Promise<void>;
+}
+
+// ─── Client ─────────────────────────────────────────────────────────
+
+export interface ClientRepository {
+  findById(userId: string, id: string): Promise<Client | null>;
+  findByUserId(userId: string): Promise<Client[]>;
+  findByName(userId: string, name: string): Promise<Client | null>;
+  create(client: Client): Promise<Client>;
+  update(client: Client): Promise<Client>;
+  delete(userId: string, id: string): Promise<void>;
 }
 
 // ─── Catalog Item ────────────────────────────────────────────────────

@@ -22,6 +22,7 @@
     "transfers": "Transferencias",
     "creditsReceived": "Créditos Recibidos",
     "creditsGranted": "Créditos Otorgados",
+    "clients": "Clientes",
     "posCatalog": "Catálogo POS",
     "posSales": "Ventas POS",
     "logout": "Cerrar sesión"
@@ -240,6 +241,21 @@
     "itemCount_plural": "artículos",
     "emptyTitle": "No hay ventas aún",
     "emptyDescription": "Creá tu primera venta para empezar a vender."
+  },
+  "Clients": {
+    "title": "Clientes",
+    "newClient": "Nuevo Cliente",
+    "editClient": "Editar Cliente",
+    "name": "Nombre",
+    "phone": "Teléfono",
+    "email": "Correo",
+    "note": "Nota",
+    "noClients": "Aún no hay clientes",
+    "emptyDescription": "Agrega clientes para rastrear quién te debe y a quién le debes.",
+    "confirmDelete": "¿Eliminar este cliente?",
+    "confirmDeleteMessage": "Esto eliminará permanentemente este cliente. Los créditos que referencian este cliente mantendrán el nombre como texto.",
+    "adding": "Agregando...",
+    "delete": "Eliminar"
   },
   "Errors": {
     "title": "Algo salió mal",

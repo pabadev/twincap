@@ -10,6 +10,7 @@ export type Namespace =
   | 'Dashboard'
   | 'Accounts'
   | 'Categories'
+  | 'Clients'
   | 'Movements'
   | 'Transfers'
   | 'CreditsReceived'
