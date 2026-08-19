@@ -36,14 +36,14 @@ export default async function MovementsPage() {
   // Serialize: convert Map to plain object and domain classes to plain objects
   const movementsRecord: Record<string, Movement[]> = {};
   for (const [key, val] of movementsByAccount) {
-    movementsRecord[key] = JSON.parse(JSON.stringify(val)) as Movement[];
+    movementsRecord[key] = structuredClone(val);
   }
 
   return (
     <MovementsList
-      accounts={JSON.parse(JSON.stringify(accounts))}
+      accounts={structuredClone(accounts)}
       movementsByAccount={movementsRecord}
-      categories={JSON.parse(JSON.stringify(categories))}
+      categories={structuredClone(categories)}
     />
   );
 }

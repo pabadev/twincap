@@ -40,27 +40,26 @@ function formatBalance(amount: number, currency: string, locale: string): string
 
 function computeMonthlyData(movements: Movement[], currency: string): MonthData[] {
   const now = new Date();
+  const monthlyMap = new Map<string, { income: number; expenses: number }>();
+
+  // Single pass: bucket movements by month
+  for (const m of movements) {
+    if (m.amount.currency !== currency) continue;
+    const md = new Date(m.date);
+    const key = `${md.getFullYear()}-${String(md.getMonth() + 1).padStart(2, '0')}`;
+    const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
+    if (m.type === 'income') bucket.income += m.amount.amount;
+    else bucket.expenses += m.amount.amount;
+    monthlyMap.set(key, bucket);
+  }
+
+  // Build ordered array for last 6 months
   const months: MonthData[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const monthMovements = movements.filter((m) => {
-      const md = new Date(m.date);
-      return (
-        md.getFullYear() === d.getFullYear() &&
-        md.getMonth() === d.getMonth() &&
-        m.amount.currency === currency
-      );
-    });
-    months.push({
-      month: key,
-      income: monthMovements
-        .filter((m) => m.type === 'income')
-        .reduce((sum, m) => sum + m.amount.amount, 0),
-      expenses: monthMovements
-        .filter((m) => m.type === 'expense')
-        .reduce((sum, m) => sum + m.amount.amount, 0),
-    });
+    const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
+    months.push({ month: key, ...bucket });
   }
   return months;
 }
@@ -79,23 +78,29 @@ export default async function DashboardPage() {
   const categoryRepo = new MongoCategoryRepository();
   const creditReceivedRepo = new MongoCreditReceivedRepository();
 
-  const dbUser = await userRepo.findById(user.userId);
-  const accounts = await listAccounts(user.userId, accountRepo);
+  // Round 1: independent queries in parallel
+  const [dbUser, accounts] = await Promise.all([
+    userRepo.findById(user.userId),
+    listAccounts(user.userId, accountRepo),
+  ]);
 
-  const balances = await Promise.all(
-    accounts.map((account) =>
-      movementRepo.aggregateBalance(user.userId, account.id),
+  // Round 2: depends on accounts + remaining independent queries in parallel
+  const [balances, allMovements, categories, creditsReceived] = await Promise.all([
+    Promise.all(
+      accounts.map((account) =>
+        movementRepo.aggregateBalance(user.userId, account.id),
+      ),
     ),
-  );
+    movementRepo.findByUserId(user.userId),
+    categoryRepo.findByUserId(user.userId),
+    creditReceivedRepo.findByUserId(user.userId),
+  ]);
 
   const accountBalances = accounts.map((account, i) => ({
     ...account,
     balance: balances[i],
   }));
 
-  const allMovements = await movementRepo.findByUserId(user.userId);
-
-  const categories = await categoryRepo.findByUserId(user.userId);
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const now = new Date();
@@ -126,7 +131,6 @@ export default async function DashboardPage() {
     )
     .reduce((sum, m) => sum + m.amount.amount, 0);
 
-  const creditsReceived = await creditReceivedRepo.findByUserId(user.userId);
   const pendingCredits = creditsReceived
     .filter((c) => c.principal.currency === primaryCurrency)
     .reduce((sum, c) => sum + c.pending, 0);

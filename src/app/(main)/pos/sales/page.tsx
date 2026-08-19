@@ -25,9 +25,9 @@ export default async function SalesPage() {
 
   return (
     <SaleList
-      sales={JSON.parse(JSON.stringify(sales))}
-      catalogItems={JSON.parse(JSON.stringify(catalogItems))}
-      accounts={JSON.parse(JSON.stringify(accounts))}
+      sales={structuredClone(sales)}
+      catalogItems={structuredClone(catalogItems)}
+      accounts={structuredClone(accounts)}
     />
   );
 }

@@ -21,8 +21,8 @@ export default async function TransfersPage() {
 
   return (
     <TransfersList
-      accounts={JSON.parse(JSON.stringify(accounts))}
-      transfers={JSON.parse(JSON.stringify(transfers))}
+      accounts={structuredClone(accounts)}
+      transfers={structuredClone(transfers)}
     />
   );
 }

@@ -21,8 +21,8 @@ export default async function CreditsReceivedPage() {
 
   return (
     <CreditsReceivedList
-      accounts={JSON.parse(JSON.stringify(accounts))}
-      credits={JSON.parse(JSON.stringify(credits))}
+      accounts={structuredClone(accounts)}
+      credits={structuredClone(credits)}
     />
   );
 }

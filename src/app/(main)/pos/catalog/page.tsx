@@ -13,5 +13,5 @@ export default async function CatalogPage() {
   const catalogRepo = new MongoCatalogItemRepository();
   const items = await listCatalogItems(user.userId, catalogRepo);
 
-  return <CatalogList items={JSON.parse(JSON.stringify(items))} />;
+  return <CatalogList items={structuredClone(items)} />;
 }

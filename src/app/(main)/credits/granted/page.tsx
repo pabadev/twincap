@@ -21,8 +21,8 @@ export default async function CreditsGrantedPage() {
 
   return (
     <CreditsGrantedList
-      accounts={JSON.parse(JSON.stringify(accounts))}
-      credits={JSON.parse(JSON.stringify(credits))}
+      accounts={structuredClone(accounts)}
+      credits={structuredClone(credits)}
     />
   );
 }

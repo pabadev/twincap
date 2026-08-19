@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useCallback, useContext, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  type ReactNode,
+} from 'react';
 import { interpolate } from './interpolate';
 
 type NamespaceMessages = Record<string, string>;
@@ -29,8 +35,9 @@ export function TranslationsProvider({
   locale: string;
   children: ReactNode;
 }) {
+  const value = useMemo(() => ({ messages, locale }), [messages, locale]);
   return (
-    <TranslationsContext.Provider value={{ messages, locale }}>
+    <TranslationsContext.Provider value={value}>
       {children}
     </TranslationsContext.Provider>
   );
@@ -49,7 +56,10 @@ export function useT(
   namespace: string,
 ): (key: string, params?: Record<string, string>) => string {
   const { messages } = useContext(TranslationsContext);
-  const ns = messages[namespace] || {};
+  const ns = useMemo(
+    () => (messages[namespace] ?? {}) as NamespaceMessages,
+    [messages, namespace],
+  );
 
   return useCallback(
     function t(key: string, params?: Record<string, string>): string {
