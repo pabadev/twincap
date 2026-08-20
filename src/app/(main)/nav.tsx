@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   { href: '/pos/sales', key: 'posSales' },
 ] as const;
 
-export function MainNav({ email }: { email: string }) {
+export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
   const [open, setOpen] = useState(false);
   const t = useT('Nav');
   const tCommon = useT('Common');
@@ -66,58 +66,93 @@ export function MainNav({ email }: { email: string }) {
             <Logo variant="logotipo" size="md" />
           </div>
 
-          {/* Nav links */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <ul className="space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const isActive =
-                  item.href === '/'
-                    ? pathname === '/'
-                    : pathname.startsWith(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                          : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
-                      }`}
-                    >
-                      {t(item.key)}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+          {isLoggedIn ? (
+            <>
+              {/* Nav links — authenticated */}
+              <nav className="flex-1 overflow-y-auto px-3 py-4">
+                <ul className="space-y-1">
+                  {NAV_ITEMS.map((item) => {
+                    const isActive =
+                      item.href === '/'
+                        ? pathname === '/'
+                        : pathname.startsWith(item.href);
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                          className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                              : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
+                          }`}
+                        >
+                          {t(item.key)}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
 
-          {/* User info + language toggle + logout */}
-          <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
-            <p className="mb-3 truncate text-xs text-zinc-500 dark:text-zinc-400">
-              {email}
-            </p>
-            <div className="mb-3 flex gap-2">
-              <button
-                type="button"
-                onClick={toggleLocale}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                aria-label={tCommon('switchLang')}
-              >
-                <Languages className="h-4 w-4" />
-                <span className="hidden sm:inline">{locale === 'es' ? 'EN' : 'ES'}</span>
-              </button>
-              <form action={logoutAction} className="flex-1">
-                <button
-                  type="submit"
-                  className="w-full rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              {/* User info + language toggle + logout */}
+              <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
+                {email && (
+                  <p className="mb-3 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    {email}
+                  </p>
+                )}
+                <div className="mb-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleLocale}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    aria-label={tCommon('switchLang')}
+                  >
+                    <Languages className="h-4 w-4" />
+                    <span className="hidden sm:inline">{locale === 'es' ? 'EN' : 'ES'}</span>
+                  </button>
+                  <form action={logoutAction} className="flex-1">
+                    <button
+                      type="submit"
+                      className="w-full rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    >
+                      {t('logout')}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Guest: language toggle + Login/Register */
+            <div className="mt-auto border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-indigo-700"
                 >
-                  {t('logout')}
+                  {t('login')}
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-md border border-zinc-300 px-3 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  {t('register')}
+                </Link>
+                <button
+                  type="button"
+                  onClick={toggleLocale}
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  aria-label={tCommon('switchLang')}
+                >
+                  <Languages className="h-4 w-4" />
+                  <span>{locale === 'es' ? 'EN' : 'ES'}</span>
                 </button>
-              </form>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

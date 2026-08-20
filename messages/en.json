@@ -28,7 +28,9 @@
     "clients": "Clients",
     "posCatalog": "POS Catalog",
     "posSales": "POS Sales",
-    "logout": "Logout"
+    "logout": "Logout",
+    "login": "Sign In",
+    "register": "Register"
   },
   "Auth": {
     "signIn": "Sign In",

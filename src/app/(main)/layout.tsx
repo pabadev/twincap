@@ -21,7 +21,7 @@ export default async function MainLayout({
 
   return (
     <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <MainNav email={dbUser?.email ?? user.userId} />
+      <MainNav isLoggedIn={true} email={dbUser?.email ?? user.userId} />
       <ToastProvider>
         <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">{children}</main>
       </ToastProvider>

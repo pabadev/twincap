@@ -28,7 +28,9 @@
     "clients": "Clientes",
     "posCatalog": "Catálogo POS",
     "posSales": "Ventas POS",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "login": "Iniciar sesión",
+    "register": "Registrarse"
   },
   "Auth": {
     "signIn": "Iniciar sesión",

@@ -34,9 +34,10 @@
 | 17 | Botones de acción con iconos — Trash2, Pencil, Eye en 13 archivos | `1d75ca4` |
 | 18 | Selector de idioma mejorado — icono Languages, responsive | `ea18cd9` |
 | 19 | Logo TwinCap — SVG component + rename GlobalMoney→TwinCap + favicon | `a7ca089` |
-| 20 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | `pendiente` |
+| 20 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | `4ae68f5` |
+| 21 | Auth en landing — sesión activa → redirect a dashboard | `pendiente` |
 
-### Pendiente ❌ (5 features del plan original)
+### Pendiente ❌ (3 features del plan original)
 
 | # | Feature | Prioridad | Dependencias |
 |---|---------|-----------|--------------|
