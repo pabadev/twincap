@@ -16,6 +16,7 @@ export type Namespace =
   | 'CreditsReceived'
   | 'CreditsGranted'
   | 'Catalog'
-  | 'Sales';
+  | 'Sales'
+  | 'Metadata';
 
 export type Messages = Record<Namespace, Record<string, string>>;

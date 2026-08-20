@@ -14,7 +14,8 @@
     "account": "Account",
     "closeMenu": "Close menu",
     "openMenu": "Open menu",
-    "close": "Close"
+    "close": "Close",
+    "switchLang": "Switch to Spanish"
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -316,5 +317,8 @@
     "invalidEmail": "The email is not valid",
     "invalidData": "The submitted data is invalid",
     "operationFailed": "Operation failed. Please try again."
+  },
+  "Metadata": {
+    "description": "Personal and small business finance management"
   }
 }

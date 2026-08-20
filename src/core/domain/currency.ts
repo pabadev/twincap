@@ -1,5 +1,5 @@
 /**
- * ISO 4217 currency codes supported by GlobalMoney.
+ * ISO 4217 currency codes supported by TwinCap.
  * Money amounts are stored as integer minor units per each currency's
  * exponent (COP has 0 decimals; USD, MXN, EUR have 2).
  */

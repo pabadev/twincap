@@ -7,7 +7,7 @@
  * hierarchy by subclassing DomainError (see money.ts).
  */
 
-/** Base class for all GlobalMoney domain errors. */
+/** Base class for all TwinCap domain errors. */
 export class DomainError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);

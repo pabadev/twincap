@@ -60,13 +60,13 @@ export const config = {
 
 <!-- BEGIN:globalmoney-project-rules -->
 
-# GlobalMoney — Reglas Permanentes del Proyecto
+# TwinCap — Reglas Permanentes del Proyecto
 
 **ESTE ARCHIVO ES OBLIGATORIO.** Todo agente DEBE leerlo antes de implementar cualquier cambio.
 
 ## Contexto
 
-GlobalMoney es un **SaaS de finanzas personales y pequeños negocios** en etapa de prototipo funcional.
+TwinCap es un **SaaS de finanzas personales y pequeños negocios** en etapa de prototipo funcional.
 
 - NO es un proyecto nuevo — ya existe implementación funcional.
 - La funcionalidad existente tiene PRIORIDAD sobre cualquier mejora estética.

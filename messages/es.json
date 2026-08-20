@@ -14,7 +14,8 @@
     "account": "Cuenta",
     "closeMenu": "Cerrar menú",
     "openMenu": "Abrir menú",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "switchLang": "Cambiar a inglés"
   },
   "Nav": {
     "dashboard": "Inicio",
@@ -316,5 +317,8 @@
     "invalidEmail": "El email no es válido",
     "invalidData": "Los datos enviados son inválidos",
     "operationFailed": "La operación falló. Intentá de nuevo."
+  },
+  "Metadata": {
+    "description": "Gestión de finanzas personales y pequeños negocios"
   }
 }

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
-import { Languages } from 'lucide-react';
+import { Languages, Menu, X } from 'lucide-react';
+import { Logo } from '../../components/ui/logo';
 
 const NAV_ITEMS = [
   { href: '/', key: 'dashboard' },
@@ -42,27 +43,7 @@ export function MainNav({ email }: { email: string }) {
         className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 p-2 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
         aria-label={open ? tCommon('closeMenu') : tCommon('openMenu')}
       >
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-        >
-          {open ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-            />
-          )}
-        </svg>
+        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       {/* Overlay for mobile */}
@@ -82,9 +63,7 @@ export function MainNav({ email }: { email: string }) {
         <div className="flex h-full flex-col">
           {/* Brand */}
           <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-700">
-            <h1 className="text-lg font-bold text-zinc-900 dark:text-white">
-              GlobalMoney
-            </h1>
+            <Logo variant="logotipo" size="md" />
           </div>
 
           {/* Nav links */}
@@ -124,7 +103,7 @@ export function MainNav({ email }: { email: string }) {
                 type="button"
                 onClick={toggleLocale}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                aria-label={locale === 'es' ? 'Switch to English' : 'Cambiar a español'}
+                aria-label={tCommon('switchLang')}
               >
                 <Languages className="h-4 w-4" />
                 <span className="hidden sm:inline">{locale === 'es' ? 'EN' : 'ES'}</span>

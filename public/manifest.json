@@ -1,6 +1,6 @@
 {
-  "name": "GlobalMoney",
-  "short_name": "GlobalMoney",
+  "name": "TwinCap",
+  "short_name": "TwinCap",
   "description": "Personal finance management",
   "start_url": "/dashboard",
   "display": "standalone",

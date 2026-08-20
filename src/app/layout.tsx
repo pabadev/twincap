@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TranslationsProvider } from "../i18n/client";
-import { getLocale } from "../i18n/server";
+import { getLocale, getT } from "../i18n/server";
 import { ServiceWorkerRegistration } from "../components/service-worker-registration";
 import "./globals.css";
 
@@ -15,16 +15,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "GlobalMoney",
-  description: "Personal finance management",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "GlobalMoney",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT('Metadata');
+  return {
+    title: "TwinCap",
+    description: t('description'),
+    manifest: "/manifest.json",
+    icons: {
+      icon: "/favicon.svg",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "TwinCap",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#6366f1",

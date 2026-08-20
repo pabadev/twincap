@@ -32,7 +32,8 @@
 | 15 | Créditos — Edición de abonos con botón "Editar" en tabla | `ec82fb9` |
 | 16 | Formularios en modales — patrón Button→Modal→Form en 6 módulos | `6aeb199` |
 | 17 | Botones de acción con iconos — Trash2, Pencil, Eye en 13 archivos | `1d75ca4` |
-| 18 | Selector de idioma mejorado — icono Languages, responsive | `pendiente` |
+| 18 | Selector de idioma mejorado — icono Languages, responsive | `ea18cd9` |
+| 19 | Logo TwinCap — SVG component + rename GlobalMoney→TwinCap + favicon | `pendiente` |
 
 ### Pendiente ❌ (7 features del plan original)
 
@@ -41,7 +42,7 @@
 | 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 ✅ |
 | 18 | Botones de acción con iconos (edit, delete, view) | P2 | — |
 | 19 | Selector de idioma — icono globe, diseño consistente | P2 | — |
-| 20 | Logo GlobalMoney — SVG/CSS, isotipo, favicon | P2 | — |
+| 20 | Logo TwinCap — SVG/CSS, isotipo, favicon | P2 | — |
 | 21 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | P1 | #20 (logo) |
 | 22 | Auth en landing — sesión activa → redirect a dashboard | P1 | #21 |
 | 23 | Búsqueda de clientes en lista de clientes | P2 | — |
