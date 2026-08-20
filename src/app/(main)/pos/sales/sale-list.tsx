@@ -147,13 +147,13 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                       ))}
                     </div>
 
-                    {sale.abonos.length > 0 && (
+                    {sale.abonos?.length > 0 && (
                       <>
                         <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                           {t('abonos')}
                         </h3>
                         <div className="space-y-1">
-                          {sale.abonos.map((abono) => (
+                          {sale.abonos?.map((abono) => (
                             <div key={abono.id} className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
                               <span>
                                 {formatDate(abono.date, locale)} — {formatAmount(abono.amount.amount, currency, locale)} {currency}

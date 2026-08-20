@@ -95,7 +95,7 @@ export function CreditsGrantedList({
                   </div>
                   <div className="ml-4 flex items-center gap-2">
                     <span className="text-xs text-zinc-400">
-                      {credit.abonos.length} {credit.abonos.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
+                      {credit.abonos?.length} {credit.abonos?.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
                     </span>
                     <Icon
                       icon={ChevronDown}
@@ -107,7 +107,7 @@ export function CreditsGrantedList({
 
                 {isExpanded && (
                   <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
-                    {credit.abonos.length > 0 && (
+                    {credit.abonos?.length > 0 && (
                       <div className="mb-3">
                         <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
                           {t('abonos')}
@@ -121,7 +121,7 @@ export function CreditsGrantedList({
                             </tr>
                           </thead>
                           <tbody>
-                            {credit.abonos.map((abono) => (
+                            {credit.abonos?.map((abono) => (
                               <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                                 <td className="py-1">{formatDate(abono.date, locale)}</td>
                                 <td className="py-1 text-right">
