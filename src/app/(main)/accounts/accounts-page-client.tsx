@@ -23,7 +23,7 @@ export function AccountsPageClient() {
         onClose={() => setShowForm(false)}
         title={t('addAccount')}
       >
-        <AccountForm />
+        <AccountForm onSuccess={() => setShowForm(false)} />
       </Modal>
     </>
   );

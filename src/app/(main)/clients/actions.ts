@@ -9,6 +9,7 @@ import {
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
@@ -42,6 +43,8 @@ export async function createClientAction(
     await connectDb();
     const clientRepo = new MongoClientRepository();
     await createClient(user.userId, parsed.data, clientRepo, ids);
+    revalidatePath('/clients');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }
@@ -74,6 +77,8 @@ export async function updateClientAction(
     await connectDb();
     const clientRepo = new MongoClientRepository();
     await updateClient(user.userId, clientId, parsed.data, clientRepo);
+    revalidatePath('/clients');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }
@@ -94,6 +99,8 @@ export async function deleteClientAction(
     await connectDb();
     const clientRepo = new MongoClientRepository();
     await deleteClient(user.userId, clientId, clientRepo);
+    revalidatePath('/clients');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }

@@ -15,6 +15,7 @@ import { MongoSaleRepository } from '../../../../infrastructure/repositories/sal
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { handleActionError } from '../../../../lib/handle-action-error';
+import { revalidatePath } from 'next/cache';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -56,6 +57,10 @@ export async function createSaleAction(
       movementRepo,
       ids,
     );
+    revalidatePath('/pos/sales');
+    revalidatePath('/pos/catalog');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }
@@ -88,6 +93,9 @@ export async function addSaleAbonoAction(
       movementRepo,
       ids,
     );
+    revalidatePath('/pos/sales');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }
@@ -120,11 +128,13 @@ export async function editSaleAbonoAction(
       saleRepo,
       movementRepo,
     );
+    revalidatePath('/pos/sales');
+    revalidatePath('/accounts');
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoAdded' };
+  return { success: 'abonoUpdated' };
 }
 
 export async function deleteSaleAbonoAction(
@@ -142,6 +152,7 @@ export async function deleteSaleAbonoAction(
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }
@@ -164,6 +175,10 @@ export async function deleteSaleAction(
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo);
+    revalidatePath('/pos/sales');
+    revalidatePath('/pos/catalog');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }

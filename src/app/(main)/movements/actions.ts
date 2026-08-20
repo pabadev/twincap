@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
@@ -40,6 +41,9 @@ export async function createMovementAction(
       categoryRepo,
       ids,
     );
+    revalidatePath('/movements');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }
@@ -60,6 +64,9 @@ export async function deleteMovementAction(
     await connectDb();
     const movementRepo = new MongoMovementRepository();
     await deleteMovement(user.userId, movementId, movementRepo);
+    revalidatePath('/movements');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }

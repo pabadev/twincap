@@ -10,7 +10,7 @@ import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
 
-export function AccountForm() {
+export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createAccountAction,
     null,
@@ -23,9 +23,10 @@ export function AccountForm() {
   useEffect(() => {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
-      router.push('/accounts');
+      router.refresh();
+      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {

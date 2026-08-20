@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
@@ -95,7 +96,7 @@ export function MainNav({ email }: { email: string }) {
                     : pathname.startsWith(item.href);
                 return (
                   <li key={item.href}>
-                    <a
+                    <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
@@ -105,7 +106,7 @@ export function MainNav({ email }: { email: string }) {
                       }`}
                     >
                       {t(item.key)}
-                    </a>
+                    </Link>
                   </li>
                 );
               })}

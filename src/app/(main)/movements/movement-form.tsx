@@ -15,9 +15,11 @@ import { useToast } from '../../../lib/hooks/use-toast';
 export function MovementForm({
   accountId,
   categories,
+  onSuccess,
 }: {
   accountId: string;
   categories: Category[];
+  onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
     createMovementAction,
@@ -32,9 +34,10 @@ export function MovementForm({
   useEffect(() => {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
-      router.push('/movements');
+      router.refresh();
+      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {

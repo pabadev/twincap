@@ -48,7 +48,7 @@ export function TransfersList({
         onClose={() => setShowForm(false)}
         title={t('newTransfer')}
       >
-        <TransferForm accounts={accounts} />
+        <TransferForm accounts={accounts} onSuccess={() => setShowForm(false)} />
       </Modal>
 
       {transfers.length === 0 ? (

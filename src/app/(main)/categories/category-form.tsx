@@ -10,7 +10,7 @@ import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
 
-export function CategoryForm() {
+export function CategoryForm({ onSuccess }: { onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createCategoryAction,
     null,
@@ -23,9 +23,10 @@ export function CategoryForm() {
   useEffect(() => {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
-      router.push('/categories');
+      router.refresh();
+      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {

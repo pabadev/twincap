@@ -11,6 +11,7 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
@@ -38,6 +39,8 @@ export async function createCatalogItemAction(
       catalogRepo,
       ids,
     );
+    revalidatePath('/pos/catalog');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }
@@ -68,6 +71,8 @@ export async function updateCatalogItemAction(
       { name, unitPrice, currency, stock },
       catalogRepo,
     );
+    revalidatePath('/pos/catalog');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }
@@ -89,6 +94,8 @@ export async function deleteCatalogItemAction(
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
     await deleteCatalogItem(user.userId, itemId, catalogRepo, saleRepo);
+    revalidatePath('/pos/catalog');
+    revalidatePath('/pos/sales');
   } catch (error) {
     return handleActionError(error);
   }

@@ -23,7 +23,7 @@ export function CategoriesPageClient() {
         onClose={() => setShowForm(false)}
         title={t('addCategory')}
       >
-        <CategoryForm />
+        <CategoryForm onSuccess={() => setShowForm(false)} />
       </Modal>
     </>
   );

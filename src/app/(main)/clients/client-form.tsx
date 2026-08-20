@@ -8,7 +8,7 @@ import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
 
-export function ClientForm() {
+export function ClientForm({ onSuccess }: { onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createClientAction,
     null,
@@ -21,9 +21,10 @@ export function ClientForm() {
   useEffect(() => {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
-      router.push('/clients');
+      router.refresh();
+      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {

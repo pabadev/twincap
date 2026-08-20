@@ -11,6 +11,7 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCreditReceivedRepository } from '../../../../infrastructure/repositories/credit-received-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = { generate: () => crypto.randomUUID() };
@@ -41,6 +42,9 @@ export async function createCreditReceivedAction(
       movementRepo,
       ids,
     );
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }
@@ -73,6 +77,9 @@ export async function addAbonoAction(
       movementRepo,
       ids,
     );
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }
@@ -104,6 +111,8 @@ export async function editAbonoAction(
       creditRepo,
       movementRepo,
     );
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
   } catch (error) {
     return handleActionError(error);
   }
@@ -125,6 +134,9 @@ export async function deleteCreditAction(
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteCreditReceived(user.userId, creditId, creditRepo, movementRepo);
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
   } catch (error) {
     return handleActionError(error);
   }

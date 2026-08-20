@@ -23,7 +23,7 @@ export function ClientsPageClient() {
         onClose={() => setShowForm(false)}
         title={t('newClient')}
       >
-        <ClientForm />
+        <ClientForm onSuccess={() => setShowForm(false)} />
       </Modal>
     </>
   );

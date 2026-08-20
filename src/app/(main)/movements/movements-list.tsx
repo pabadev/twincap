@@ -68,6 +68,7 @@ export function MovementsList({
           <MovementForm
             accountId={selectedAccountId}
             categories={categories}
+            onSuccess={() => setShowForm(false)}
           />
         )}
       </Modal>

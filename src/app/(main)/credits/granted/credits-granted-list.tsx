@@ -48,7 +48,7 @@ export function CreditsGrantedList({
         onClose={() => setShowForm(false)}
         title={t('newCredit')}
       >
-        <CreditForm accounts={accounts} />
+        <CreditForm accounts={accounts} onSuccess={() => setShowForm(false)} />
       </Modal>
 
       {credits.length === 0 ? (

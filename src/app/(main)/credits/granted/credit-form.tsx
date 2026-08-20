@@ -12,7 +12,7 @@ import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
 
-export function CreditForm({ accounts }: { accounts: Account[] }) {
+export function CreditForm({ accounts, onSuccess }: { accounts: Account[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createCreditGrantedAction,
     null,
@@ -27,9 +27,10 @@ export function CreditForm({ accounts }: { accounts: Account[] }) {
   useEffect(() => {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
-      router.push('/credits/granted');
+      router.refresh();
+      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {
