@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
+import { Languages } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', key: 'dashboard' },
@@ -122,9 +123,11 @@ export function MainNav({ email }: { email: string }) {
               <button
                 type="button"
                 onClick={toggleLocale}
-                className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                aria-label={locale === 'es' ? 'Switch to English' : 'Cambiar a español'}
               >
-                {locale === 'es' ? 'EN' : 'ES'}
+                <Languages className="h-4 w-4" />
+                <span className="hidden sm:inline">{locale === 'es' ? 'EN' : 'ES'}</span>
               </button>
               <form action={logoutAction} className="flex-1">
                 <button
