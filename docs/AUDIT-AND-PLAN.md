@@ -35,7 +35,8 @@
 | 18 | Selector de idioma mejorado — icono Languages, responsive | `ea18cd9` |
 | 19 | Logo TwinCap — SVG component + rename GlobalMoney→TwinCap + favicon | `a7ca089` |
 | 20 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | `4ae68f5` |
-| 21 | Auth en landing — sesión activa → redirect a dashboard | `pendiente` |
+| 21 | Auth en landing — sesión activa → redirect a dashboard | `abd24a2` |
+| 22 | Búsqueda de clientes — debounce 300ms, nombre/email/teléfono | `pendiente` |
 
 ### Pendiente ❌ (3 features del plan original)
 

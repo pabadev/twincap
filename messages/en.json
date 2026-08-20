@@ -274,7 +274,10 @@
     "confirmDelete": "Delete this client?",
     "confirmDeleteMessage": "This will permanently remove this client. Credits referencing this client will keep the name as text.",
     "adding": "Adding...",
-    "delete": "Delete"
+    "delete": "Delete",
+    "searchPlaceholder": "Search by name, email, or document...",
+    "showingResults": "Showing {filtered} of {total} clients",
+    "noResults": "No clients found"
   },
   "Errors": {
     "title": "Something went wrong",

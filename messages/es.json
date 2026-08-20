@@ -274,7 +274,10 @@
     "confirmDelete": "¿Eliminar este cliente?",
     "confirmDeleteMessage": "Esto eliminará permanentemente este cliente. Los créditos que referencian este cliente mantendrán el nombre como texto.",
     "adding": "Agregando...",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "searchPlaceholder": "Buscar por nombre, email o documento...",
+    "showingResults": "Mostrando {filtered} de {total} clientes",
+    "noResults": "No se encontraron clientes"
   },
   "Errors": {
     "title": "Algo salió mal",
