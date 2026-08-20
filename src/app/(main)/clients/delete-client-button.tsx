@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { deleteClientAction } from './actions';
 import { Button } from '../../../components/ui/button';
+import { Icon } from '../../../components/ui/icon';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { Trash2 } from 'lucide-react';
 
 export function DeleteClientButton({ clientId }: { clientId: string }) {
   const t = useT('Clients');
@@ -48,7 +50,9 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
         className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
         disabled={isPending}
         loading={isPending}
+        aria-label={t('delete')}
       >
+        <Icon icon={Trash2} size="sm" />
         {t('delete')}
       </Button>
     </form>

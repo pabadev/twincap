@@ -31,6 +31,7 @@
 | 14 | POS — Búsqueda de productos con debounce (300ms), case-insensitive | `a4ffc43` |
 | 15 | Créditos — Edición de abonos con botón "Editar" en tabla | `ec82fb9` |
 | 16 | Formularios en modales — patrón Button→Modal→Form en 6 módulos | `6aeb199` |
+| 17 | Botones de acción con iconos — Trash2, Pencil, Eye en 13 archivos | `pendiente` |
 
 ### Pendiente ❌ (7 features del plan original)
 

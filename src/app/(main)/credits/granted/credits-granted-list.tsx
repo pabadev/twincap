@@ -12,7 +12,7 @@ import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Modal } from '../../../../components/ui/modal';
-import { ChevronDown, CreditCard } from 'lucide-react';
+import { ChevronDown, CreditCard, Pencil } from 'lucide-react';
 
 export function CreditsGrantedList({
   accounts,
@@ -134,8 +134,10 @@ export function CreditsGrantedList({
                                       setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
                                       setShowAbonoFormId(null);
                                     }}
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    aria-label={tCommon('edit')}
                                   >
+                                    <Icon icon={Pencil} size="sm" />
                                     {tCommon('edit')}
                                   </button>
                                 </td>

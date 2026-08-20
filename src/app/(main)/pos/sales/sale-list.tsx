@@ -14,7 +14,7 @@ import { formatAmount, formatDate } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
-import { ShoppingCart } from 'lucide-react';
+import { Eye, ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
   sales: Sale[];
@@ -117,8 +117,10 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      aria-label={isExpanded ? t('hide') : t('details')}
                     >
+                      <Icon icon={Eye} size="sm" />
                       {isExpanded ? t('hide') : t('details')}
                     </button>
                     {sale.paymentMode === 'on-credit' && sale.pending > 0 && (

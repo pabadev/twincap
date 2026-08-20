@@ -4,7 +4,9 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { deleteSaleAbonoAction } from './actions';
+import { Icon } from '../../../../components/ui/icon';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { Trash2 } from 'lucide-react';
 
 export function DeleteSaleAbonoButton({
   saleId,
@@ -51,9 +53,11 @@ export function DeleteSaleAbonoButton({
       <input type="hidden" name="abonoId" value={abonoId} />
       <button
         type="submit"
-        className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+        className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
         disabled={isPending}
+        aria-label={t('remove')}
       >
+        <Icon icon={Trash2} size="sm" />
         {t('remove')}
       </button>
     </form>

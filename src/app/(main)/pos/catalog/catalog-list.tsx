@@ -9,7 +9,7 @@ import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
-import { Package, Search } from 'lucide-react';
+import { Package, Pencil, Search } from 'lucide-react';
 
 export function CatalogList({ items }: { items: CatalogItem[] }) {
   const [showForm, setShowForm] = useState(false);
@@ -137,8 +137,10 @@ export function CatalogList({ items }: { items: CatalogItem[] }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setEditingItem(item)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      aria-label={t('edit')}
                     >
+                      <Icon icon={Pencil} size="sm" />
                       {t('edit')}
                     </button>
                     <DeleteCatalogItemButton itemId={item.id} />
