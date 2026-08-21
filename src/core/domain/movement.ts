@@ -139,4 +139,25 @@ export class Movement {
   isSystemLinked(): boolean {
     return this.link !== undefined;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      accountId: this.accountId,
+      categoryId: this.categoryId,
+      type: this.type,
+      amount: this.amount,
+      signedAmount: this.signedAmount,
+      date: this.date,
+      note: this.note,
+      context: this.context,
+      link: this.link,
+      createdAt: this.createdAt,
+    };
+  }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedMovement = ReturnType<Movement['toJSON']>;

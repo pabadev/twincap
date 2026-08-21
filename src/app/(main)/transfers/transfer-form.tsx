@@ -4,13 +4,13 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createTransferAction } from './actions';
-import type { Account } from '../../../core/domain/account';
+import type { SerializedAccount } from '../../../core/domain/account';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
 
-export function TransferForm({ accounts, onSuccess }: { accounts: Account[]; onSuccess?: () => void }) {
+export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createTransferAction,
     null,

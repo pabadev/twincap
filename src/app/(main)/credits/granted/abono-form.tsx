@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { addAbonoAction } from './actions';
-import type { Account } from '../../../../core/domain/account';
+import type { SerializedAccount } from '../../../../core/domain/account';
 import { formatAmount } from '../../../../lib/format';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
@@ -20,7 +20,7 @@ export function AbonoForm({
   creditId: string;
   pending: number;
   currency: string;
-  accounts: Account[];
+  accounts: SerializedAccount[];
 }) {
   const [state, formAction, isPending] = useActionState(
     addAbonoAction,

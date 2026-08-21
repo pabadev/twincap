@@ -8,7 +8,8 @@ import { MongoMovementRepository } from '../../../infrastructure/repositories/mo
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
-import type { Movement } from '../../../core/domain/movement';
+import { serializeEntities } from '@/lib/serialize';
+import type { SerializedMovement } from '../../../core/domain/movement';
 
 export default async function MovementsPage() {
   const user = await getCurrentUser();
@@ -34,16 +35,16 @@ export default async function MovementsPage() {
   );
 
   // Serialize: convert Map to plain object and domain classes to plain objects
-  const movementsRecord: Record<string, Movement[]> = {};
+  const movementsRecord: Record<string, SerializedMovement[]> = {};
   for (const [key, val] of movementsByAccount) {
-    movementsRecord[key] = structuredClone(val);
+    movementsRecord[key] = serializeEntities(val);
   }
 
   return (
     <MovementsList
-      accounts={structuredClone(accounts)}
+      accounts={serializeEntities(accounts)}
       movementsByAccount={movementsRecord}
-      categories={structuredClone(categories)}
+      categories={serializeEntities(categories)}
     />
   );
 }

@@ -8,6 +8,7 @@ import { MongoCatalogItemRepository } from '../../../../infrastructure/repositor
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { MongoClientRepository } from '../../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { serializeEntities } from '@/lib/serialize';
 import { SaleList } from './sale-list';
 
 export default async function SalesPage() {
@@ -29,10 +30,10 @@ export default async function SalesPage() {
 
   return (
     <SaleList
-      sales={structuredClone(sales)}
-      catalogItems={structuredClone(catalogItems)}
-      accounts={structuredClone(accounts)}
-      clients={structuredClone(clients)}
+      sales={serializeEntities(sales)}
+      catalogItems={serializeEntities(catalogItems)}
+      accounts={serializeEntities(accounts)}
+      clients={serializeEntities(clients)}
     />
   );
 }

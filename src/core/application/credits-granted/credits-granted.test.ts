@@ -7,6 +7,7 @@ import { editPrincipal } from './edit-principal';
 import { deleteCreditGranted } from './delete-credit-granted';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
+import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
@@ -128,7 +129,7 @@ function makeMovement(
     id: 'mov-1',
     userId: 'user-1',
     accountId: 'acc-1',
-    category: { id: 'cat-1', userId: '', name: 'Credit', type, createdAt: new Date() },
+    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Credit', type, createdAt: new Date() }),
     type,
     amount: new Money(50000, 'COP'),
     date: new Date('2025-06-01'),

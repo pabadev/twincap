@@ -4,6 +4,7 @@ import { updateTransfer } from './update-transfer';
 import { deleteTransfer } from './delete-transfer';
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
+import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { TransferRepository, MovementRepository } from '../../domain/repositories';
@@ -103,7 +104,7 @@ function makeMovement(
     id: 'mov-1',
     userId: 'user-1',
     accountId: 'acc-src',
-    category: { id: 'cat-1', userId: '', name: 'Transfer', type, createdAt: new Date() },
+    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Transfer', type, createdAt: new Date() }),
     type,
     amount: new Money(50000, 'COP'),
     date: new Date('2025-06-01'),

@@ -6,7 +6,7 @@ import { useT } from '../../../i18n/client';
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createMovementAction } from './actions';
-import type { Category } from '../../../core/domain/category';
+import type { SerializedCategory } from '../../../core/domain/category';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
@@ -18,7 +18,7 @@ export function MovementForm({
   onSuccess,
 }: {
   accountId: string;
-  categories: Category[];
+  categories: SerializedCategory[];
   onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(

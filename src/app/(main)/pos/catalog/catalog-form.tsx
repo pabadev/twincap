@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
-import type { CatalogItem } from '../../../../core/domain/catalog';
+import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
 import { CATALOG_ITEM_TYPES } from '../../../../core/domain/catalog';
 import type { CatalogItemType } from '../../../../core/domain/catalog';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -15,7 +15,7 @@ import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface CatalogFormProps {
-  item?: CatalogItem;
+  item?: SerializedCatalogItem;
   onDone?: () => void;
 }
 

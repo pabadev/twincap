@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { addSaleAbonoAction } from './actions';
-import type { Account } from '../../../../core/domain/account';
+import type { SerializedAccount } from '../../../../core/domain/account';
 import { DEFAULT_CURRENCY } from '../../../../core/domain/currency';
 import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
@@ -14,7 +14,7 @@ import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface AbonoFormProps {
   saleId: string;
-  accounts: Account[];
+  accounts: SerializedAccount[];
   onDone?: () => void;
 }
 

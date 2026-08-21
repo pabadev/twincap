@@ -115,3 +115,6 @@ export class CreditGranted {
     };
   }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedCreditGranted = ReturnType<CreditGranted['toJSON']>;

@@ -4,9 +4,9 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
-import type { CatalogItem } from '../../../../core/domain/catalog';
-import type { Account } from '../../../../core/domain/account';
-import type { Client } from '../../../../core/domain/client';
+import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
+import type { SerializedAccount } from '../../../../core/domain/account';
+import type { SerializedClient } from '../../../../core/domain/client';
 import type { PaymentMode } from '../../../../core/domain/sale';
 import { PAYMENT_MODES } from '../../../../core/domain/sale';
 import { DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -23,9 +23,9 @@ interface LineItem {
 }
 
 interface SaleFormProps {
-  catalogItems: CatalogItem[];
-  accounts: Account[];
-  clients: Client[];
+  catalogItems: SerializedCatalogItem[];
+  accounts: SerializedAccount[];
+  clients: SerializedClient[];
   onDone?: () => void;
 }
 
@@ -33,6 +33,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const [state, formAction, isPending] = useActionState(createSaleAction, null);
   const t = useT('Sales');
   const tCommon = useT('Common');
+  const tCatalog = useT('Catalog');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
@@ -192,7 +193,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                   disabled={isPending}
                   options={catalogItems.map((item) => ({
                     value: item.id,
-                    label: `${item.name} (${item.type})`,
+                    label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
                   }))}
                 />
               </div>

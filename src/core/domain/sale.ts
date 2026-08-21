@@ -182,3 +182,6 @@ export class Sale {
     };
   }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedSale = ReturnType<Sale['toJSON']>;

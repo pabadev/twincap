@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
-import type { Account } from '../../../core/domain/account';
-import type { Movement } from '../../../core/domain/movement';
-import type { Category } from '../../../core/domain/category';
+import type { SerializedAccount } from '../../../core/domain/account';
+import type { SerializedMovement } from '../../../core/domain/movement';
+import type { SerializedCategory } from '../../../core/domain/category';
 import { MovementForm } from './movement-form';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
@@ -19,9 +19,9 @@ export function MovementsList({
   movementsByAccount,
   categories,
 }: {
-  accounts: Account[];
-  movementsByAccount: Record<string, Movement[]>;
-  categories: Category[];
+  accounts: SerializedAccount[];
+  movementsByAccount: Record<string, SerializedMovement[]>;
+  categories: SerializedCategory[];
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   const [showForm, setShowForm] = useState(false);
@@ -150,7 +150,7 @@ export function MovementsList({
                               : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
                           }`}
                         >
-                          {movement.type}
+                          {t(movement.type)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">

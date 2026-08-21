@@ -38,4 +38,20 @@ export class Client {
     this.note = input.note.trim();
     this.createdAt = input.createdAt;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      name: this.name,
+      phone: this.phone,
+      email: this.email,
+      note: this.note,
+      createdAt: this.createdAt,
+    };
+  }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedClient = ReturnType<Client['toJSON']>;

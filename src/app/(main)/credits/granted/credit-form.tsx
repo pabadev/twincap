@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { createCreditGrantedAction } from './actions';
-import type { Account } from '../../../../core/domain/account';
+import type { SerializedAccount } from '../../../../core/domain/account';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../../core/domain/currency';
 import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
@@ -12,7 +12,7 @@ import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
 
-export function CreditForm({ accounts, onSuccess }: { accounts: Account[]; onSuccess?: () => void }) {
+export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
     createCreditGrantedAction,
     null,

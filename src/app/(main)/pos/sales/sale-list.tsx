@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
-import type { Sale } from '../../../../core/domain/sale';
-import type { CatalogItem } from '../../../../core/domain/catalog';
-import type { Account } from '../../../../core/domain/account';
-import type { Client } from '../../../../core/domain/client';
+import type { SerializedSale } from '../../../../core/domain/sale';
+import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
+import type { SerializedAccount } from '../../../../core/domain/account';
+import type { SerializedClient } from '../../../../core/domain/client';
 import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
 import { DeleteSaleButton } from './delete-sale-button';
@@ -17,10 +17,10 @@ import { Modal } from '../../../../components/ui/modal';
 import { Eye, ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
-  sales: Sale[];
-  catalogItems: CatalogItem[];
-  accounts: Account[];
-  clients: Client[];
+  sales: SerializedSale[];
+  catalogItems: SerializedCatalogItem[];
+  accounts: SerializedAccount[];
+  clients: SerializedClient[];
 }
 
 export function SaleList({ sales, catalogItems, accounts, clients }: SaleListProps) {

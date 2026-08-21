@@ -69,4 +69,20 @@ export class CatalogItem {
     this.type = input.type;
     this.createdAt = input.createdAt;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      name: this.name,
+      unitPrice: this.unitPrice,
+      type: this.type,
+      stock: this.stock,
+      createdAt: this.createdAt,
+    };
+  }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedCatalogItem = ReturnType<CatalogItem['toJSON']>;

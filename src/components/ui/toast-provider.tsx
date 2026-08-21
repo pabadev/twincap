@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { Toast } from './toast';
+import { useT } from '../../i18n/client';
 
 type ToastVariant = 'success' | 'error' | 'info';
 
@@ -35,6 +36,7 @@ let toastCounter = 0;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const tCommon = useT('Common');
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -56,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast container — fixed bottom-right */}
       <div
         aria-live="polite"
-        aria-label="Notifications"
+        aria-label={tCommon('notifications')}
         className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2 sm:max-w-sm"
       >
         {toasts.map((toast) => (

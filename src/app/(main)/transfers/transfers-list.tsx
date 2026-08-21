@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
-import type { Account } from '../../../core/domain/account';
-import type { Transfer } from '../../../core/domain/transfer';
+import type { SerializedAccount } from '../../../core/domain/account';
+import type { SerializedTransfer } from '../../../core/domain/transfer';
 import { TransferForm } from './transfer-form';
 import { DeleteTransferButton } from './delete-transfer-button';
 import { formatAmount, formatDate } from '../../../lib/format';
@@ -12,7 +12,7 @@ import { Icon } from '../../../components/ui/icon';
 import { Modal } from '../../../components/ui/modal';
 import { ArrowRightLeft } from 'lucide-react';
 
-function accountName(accounts: Account[], id: string): string {
+function accountName(accounts: SerializedAccount[], id: string): string {
   const acc = accounts.find((a) => a.id === id);
   return acc ? `${acc.name} (${acc.currency})` : id;
 }
@@ -21,8 +21,8 @@ export function TransfersList({
   accounts,
   transfers,
 }: {
-  accounts: Account[];
-  transfers: Transfer[];
+  accounts: SerializedAccount[];
+  transfers: SerializedTransfer[];
 }) {
   const [showForm, setShowForm] = useState(false);
   const t = useT('Transfers');

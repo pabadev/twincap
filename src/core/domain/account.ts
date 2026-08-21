@@ -41,4 +41,19 @@ export class Account {
     this.isFixed = input.isFixed;
     this.createdAt = input.createdAt;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      name: this.name,
+      currency: this.currency,
+      isFixed: this.isFixed,
+      createdAt: this.createdAt,
+    };
+  }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedAccount = ReturnType<Account['toJSON']>;

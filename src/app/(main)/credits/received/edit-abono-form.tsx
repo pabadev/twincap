@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { editAbonoAction } from './actions';
-import type { Account } from '../../../../core/domain/account';
+import type { SerializedAccount } from '../../../../core/domain/account';
 import { formatAmount } from '../../../../lib/format';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
@@ -24,7 +24,7 @@ export function EditAbonoForm({
   amount: number;
   currency: string;
   date: string;
-  accounts: Account[];
+  accounts: SerializedAccount[];
   onCancel: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(

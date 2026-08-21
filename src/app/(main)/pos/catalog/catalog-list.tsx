@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
-import type { CatalogItem } from '../../../../core/domain/catalog';
+import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
 import { CatalogForm } from './catalog-form';
 import { DeleteCatalogItemButton } from './delete-catalog-item-button';
 import { formatAmount } from '../../../../lib/format';
@@ -11,9 +11,9 @@ import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
 import { Package, Pencil, Search } from 'lucide-react';
 
-export function CatalogList({ items }: { items: CatalogItem[] }) {
+export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
   const [showForm, setShowForm] = useState(false);
-  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [editingItem, setEditingItem] = useState<SerializedCatalogItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const t = useT('Catalog');

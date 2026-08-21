@@ -8,6 +8,7 @@ import { deleteSale } from './delete-sale';
 import { listSales } from './list-sales';
 import { Sale } from '../../domain/sale';
 import { Movement } from '../../domain/movement';
+import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import { CatalogItem } from '../../domain/catalog';
 import { NotFoundError, ConflictError } from '../../domain/errors';
@@ -188,7 +189,7 @@ function makeMovement(
     id: 'mov-1',
     userId: 'user-1',
     accountId: 'acc-1',
-    category: { id: 'cat-1', userId: '', name: 'Sale', type, createdAt: new Date() },
+    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Sale', type, createdAt: new Date() }),
     type,
     amount: new Money(50000, 'COP'),
     date: new Date('2025-06-01'),

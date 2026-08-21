@@ -102,4 +102,26 @@ export class Transfer {
     this.movementIds = input.movementIds;
     this.createdAt = input.createdAt;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      sourceAccountId: this.sourceAccountId,
+      destinationAccountId: this.destinationAccountId,
+      sourceAmount: this.sourceAmount,
+      destinationAmount: this.destinationAmount,
+      sourceCurrency: this.sourceCurrency,
+      destinationCurrency: this.destinationCurrency,
+      rate: this.rate,
+      date: this.date,
+      note: this.note,
+      movementIds: this.movementIds,
+      createdAt: this.createdAt,
+    };
+  }
 }
+
+/** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
+export type SerializedTransfer = ReturnType<Transfer['toJSON']>;

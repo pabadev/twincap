@@ -3,6 +3,7 @@ import { listCatalogItems } from '../../../../core/application/catalog';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { serializeEntities } from '@/lib/serialize';
 import { CatalogList } from './catalog-list';
 
 export default async function CatalogPage() {
@@ -13,5 +14,5 @@ export default async function CatalogPage() {
   const catalogRepo = new MongoCatalogItemRepository();
   const items = await listCatalogItems(user.userId, catalogRepo);
 
-  return <CatalogList items={structuredClone(items)} />;
+  return <CatalogList items={serializeEntities(items)} />;
 }

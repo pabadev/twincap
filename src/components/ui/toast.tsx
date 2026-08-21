@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Icon } from './icon';
+import { useT } from '../../i18n/client';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export function Toast({
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const tCommon = useT('Common');
 
   useEffect(() => {
     // Trigger enter animation
@@ -70,7 +72,7 @@ export function Toast({
       <button
         onClick={handleDismiss}
         className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
-        aria-label="Dismiss"
+        aria-label={tCommon('dismiss')}
       >
         <Icon icon={X} size="sm" />
       </button>

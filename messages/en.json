@@ -15,6 +15,8 @@
     "closeMenu": "Close menu",
     "openMenu": "Open menu",
     "close": "Close",
+    "dismiss": "Dismiss",
+    "notifications": "Notifications",
     "switchLang": "Switch to Spanish"
   },
   "Nav": {
@@ -64,6 +66,7 @@
     "title": "Accounts",
     "name": "Name",
     "balance": "Balance",
+    "currency": "Currency",
     "actions": "Actions",
     "fixed": "Fixed",
     "noAccounts": "No accounts yet. Create your first account below.",
@@ -146,6 +149,7 @@
     "noCredits": "No credits received yet.",
     "counterparty": "Counterparty (Lender)",
     "principal": "Principal ({currency})",
+    "currency": "Currency",
     "accountId": "Receiving Account",
     "date": "Date",
     "installments": "Installments (optional)",
@@ -177,6 +181,7 @@
     "noCredits": "No credits granted yet.",
     "debtor": "Debtor",
     "principal": "Principal ({currency})",
+    "currency": "Currency",
     "accountId": "Paying Account",
     "date": "Date",
     "installments": "Installments (optional)",

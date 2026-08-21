@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useT, useLocale } from '../../../../i18n/client';
-import type { Account } from '../../../../core/domain/account';
-import type { CreditReceived } from '../../../../core/domain/credit-received';
+import type { SerializedAccount } from '../../../../core/domain/account';
+import type { SerializedCreditReceived } from '../../../../core/domain/credit-received';
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
 import { EditAbonoForm } from './edit-abono-form';
@@ -18,8 +18,8 @@ export function CreditsReceivedList({
   accounts,
   credits,
 }: {
-  accounts: Account[];
-  credits: CreditReceived[];
+  accounts: SerializedAccount[];
+  credits: SerializedCreditReceived[];
 }) {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function CreditsReceivedList({
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       {formatDate(credit.date, locale)}
                       {credit.installments && ` · ${credit.installments} ${t('installmentCount')}`}
-                      {credit.frequency && ` · ${credit.frequency}`}
+                      {credit.frequency && ` · ${t(credit.frequency)}`}
                     </div>
                   </div>
                   <div className="text-right">
