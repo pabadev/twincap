@@ -8,7 +8,7 @@
 
 ---
 
-## ESTADO ACTUAL (última actualización: 2026-08-19)
+## ESTADO ACTUAL (última actualización: 2026-08-20)
 
 ### Completado ✅
 
@@ -36,19 +36,13 @@
 | 19 | Logo TwinCap — SVG component + rename GlobalMoney→TwinCap + favicon | `a7ca089` |
 | 20 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | `4ae68f5` |
 | 21 | Auth en landing — sesión activa → redirect a dashboard | `abd24a2` |
-| 22 | Búsqueda de clientes — debounce 300ms, nombre/email/teléfono | `pendiente` |
+| 22 | Búsqueda de clientes — debounce 300ms, nombre/email/teléfono | `4fb98b6` |
 
-### Pendiente ❌ (3 features del plan original)
+### Pendiente ❌
 
-| # | Feature | Prioridad | Dependencias |
-|---|---------|-----------|--------------|
-| 17 | Categorías — Formulario en modal (consistencia) | P2 | #16 ✅ |
-| 18 | Botones de acción con iconos (edit, delete, view) | P2 | — |
-| 19 | Selector de idioma — icono globe, diseño consistente | P2 | — |
-| 20 | Logo TwinCap — SVG/CSS, isotipo, favicon | P2 | — |
-| 21 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | P1 | #20 (logo) |
-| 22 | Auth en landing — sesión activa → redirect a dashboard | P1 | #21 |
-| 23 | Búsqueda de clientes en lista de clientes | P2 | — |
+Ninguna. El plan maestro está **completo** (fases 0–22 ejecutadas y commiteadas).
+
+Las features 17–23 listadas originalmente como pendientes fueron implementadas en las fases 17–22 (ver tabla de completado). Para continuar mejorando la app, se requiere una nueva ronda de auditoría y planificación.
 
 ---
 
