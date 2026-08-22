@@ -164,6 +164,7 @@ Cada server action o route handler DEBE:
 - Commits convencionales: `feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`.
 - Un commit por unidad de trabajo lógica.
 - No commitear secrets o datos sensibles.
+- El hook de pre-commit GGA (`gga run`) está **DESHABILITADO** permanentemente (guardado como `.git/hooks/pre-commit.disabled.gga`): su sesión de revisión hace staging masivo de archivos no solicitados y al morir por timeout del proveedor deja el índice corrupto (`invalid object ... Error building trees`). NO volver a habilitarlo sin corregir primero esos defectos. Los agentes NO deben confiar en él ni reintentar commits a través del hook; la verificación de calidad se hace con `pnpm test` + `tsc --noEmit`.
 
 ### Responsive
 - Mobile-first: diseñar primero para móvil.
@@ -174,6 +175,15 @@ Cada server action o route handler DEBE:
 - Validar datos en backend siempre.
 - Sanitizar inputs del usuario.
 - Verificar autorización antes de cada operación sobre datos.
+
+### Frontera server→client (serialización)
+React solo acepta objetos planos y built-ins (`Date`, `Map`, `Set`) como props de un Server Component a un Client Component. Las instancias con prototipo de clase explotan en runtime (`Only plain objects... can be passed to Client Components`).
+
+- Dentro del `toJSON()` de una entidad, todo valor DEBE ser literal, primitivo, `Date` o una llamada explícita a `.toJSON()`.
+- NUNCA pasar instancias de clases de dominio (`Money`, entidades, etc.) directamente dentro del snapshot.
+- Todo value object serializable implementa su propio `toJSON()` (ver `src/core/domain/money.ts`).
+- La frontera NO está protegida por TypeScript: `Money` es estructuralmente idéntico a `{amount, currency}` — que compile no significa que sea JSON-safe.
+- Los tipos `Serialized*` se derivan de `ReturnType<Entidad['toJSON']>`; al agregar campos a una entidad, revisar que el snapshot no arrastre prototipos de clase.
 
 ### Documento de referencia
 
