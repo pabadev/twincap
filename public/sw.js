@@ -1,4 +1,4 @@
-const CACHE_NAME = 'globalmoney-v2';
+const CACHE_NAME = 'globalmoney-v3';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -49,17 +49,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (_next/static/, images, etc.): stale-while-revalidate
-  // These have content hashes so stale versions are safe
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.ico') ||
-    url.pathname.endsWith('.woff2')
-  ) {
+  // For static assets under /_next/static/: stale-while-revalidate
+  // Production asset URLs are content-hashed, so a cached copy is always
+  // the exact bytes for that URL. Do NOT cache non-hashed files (dev
+  // chunks change content under stable URLs and would serve stale JS).
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(request).then((cached) => {
         const fetched = fetch(request)
