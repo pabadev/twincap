@@ -7,7 +7,9 @@ import type { SerializedCreditGranted } from '../../../../core/domain/credit-gra
 import { CreditForm } from './credit-form';
 import { AbonoForm } from './abono-form';
 import { EditAbonoForm } from './edit-abono-form';
+import { EditCreditForm } from './edit-credit-form';
 import { DeleteCreditButton } from './delete-credit-button';
+import { DeleteAbonoButton } from './delete-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
@@ -26,6 +28,7 @@ export function CreditsGrantedList({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
   const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
+  const [editingCredit, setEditingCredit] = useState<SerializedCreditGranted | null>(null);
   const t = useT('CreditsGranted');
   const tCommon = useT('Common');
   const locale = useLocale();
@@ -50,6 +53,21 @@ export function CreditsGrantedList({
         title={t('newCredit')}
       >
         <CreditForm accounts={accounts} onSuccess={() => setShowForm(false)} />
+      </Modal>
+
+      <Modal
+        open={!!editingCredit}
+        onClose={() => setEditingCredit(null)}
+        title={t('editCredit')}
+      >
+        {editingCredit && (
+          <EditCreditForm
+            creditId={editingCredit.id}
+            principal={editingCredit.principal.amount}
+            currency={editingCredit.principal.currency}
+            onCancel={() => setEditingCredit(null)}
+          />
+        )}
       </Modal>
 
       {credits.length === 0 ? (
@@ -98,6 +116,15 @@ export function CreditsGrantedList({
                     <span className="text-xs text-zinc-400">
                       {credit.abonos?.length} {credit.abonos?.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
                     </span>
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={tCommon('edit')}
+                      tone="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCredit(credit);
+                      }}
+                    />
                     <Icon
                       icon={ChevronDown}
                       size="sm"
@@ -129,16 +156,19 @@ export function CreditsGrantedList({
                                   +{formatAmount(abono.amount.amount, currency, locale)} {currency}
                                 </td>
                                 <td className="py-1 text-right">
-                                  <ActionIconButton
-                                    icon={Pencil}
-                                    label={tCommon('edit')}
-                                    tone="primary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
-                                      setShowAbonoFormId(null);
-                                    }}
-                                  />
+                                  <div className="flex items-center justify-end gap-1">
+                                    <ActionIconButton
+                                      icon={Pencil}
+                                      label={tCommon('edit')}
+                                      tone="primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
+                                        setShowAbonoFormId(null);
+                                      }}
+                                    />
+                                    <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -184,9 +214,7 @@ export function CreditsGrantedList({
                               creditId={credit.id}
                               abonoId={abono.id}
                               amount={abono.amount.amount}
-                              currency={currency}
                               date={abono.date.toISOString().split('T')[0]}
-                              accounts={accounts}
                               onCancel={() => setEditingAbonoId(null)}
                             />
                           ))}

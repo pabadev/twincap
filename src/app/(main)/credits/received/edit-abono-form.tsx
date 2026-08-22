@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT, useLocale } from '../../../../i18n/client';
+import { useT } from '../../../../i18n/client';
 import { editAbonoAction } from './actions';
-import type { SerializedAccount } from '../../../../core/domain/account';
-import { formatAmount } from '../../../../lib/format';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
@@ -14,17 +12,13 @@ export function EditAbonoForm({
   creditId,
   abonoId,
   amount,
-  currency,
   date,
-  accounts,
   onCancel,
 }: {
   creditId: string;
   abonoId: string;
   amount: number;
-  currency: string;
   date: string;
-  accounts: SerializedAccount[];
   onCancel: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
@@ -34,7 +28,6 @@ export function EditAbonoForm({
   const t = useT('CreditsReceived');
   const tToast = useT('Toast');
   const tCommon = useT('Common');
-  const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);

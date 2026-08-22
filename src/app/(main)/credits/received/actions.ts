@@ -4,6 +4,8 @@ import {
   createCreditReceived,
   addAbono,
   editAbono,
+  deleteAbono,
+  editPrincipal,
   deleteCreditReceived,
 } from '../../../../core/application/credits-received';
 import type { Currency } from '../../../../core/domain/currency';
@@ -118,6 +120,63 @@ export async function editAbonoAction(
   }
 
   return { success: 'abonoUpdated' };
+}
+
+export async function editCreditReceivedAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const creditId = formData.get('creditId') as string;
+  const principal = Number(formData.get('principal') || '0');
+  const currency = formData.get('currency') as Currency;
+
+  try {
+    await connectDb();
+    const creditRepo = new MongoCreditReceivedRepository();
+    const movementRepo = new MongoMovementRepository();
+    await editPrincipal(
+      user.userId,
+      creditId,
+      { principal, currency },
+      creditRepo,
+      movementRepo,
+    );
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'creditUpdated' };
+}
+
+export async function deleteAbonoAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const creditId = formData.get('creditId') as string;
+  const abonoId = formData.get('abonoId') as string;
+
+  try {
+    await connectDb();
+    const creditRepo = new MongoCreditReceivedRepository();
+    const movementRepo = new MongoMovementRepository();
+    await deleteAbono(user.userId, creditId, abonoId, creditRepo, movementRepo);
+    revalidatePath('/credits/received');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'abonoDeleted' };
 }
 
 export async function deleteCreditAction(

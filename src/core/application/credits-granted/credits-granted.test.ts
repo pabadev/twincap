@@ -312,6 +312,58 @@ describe('editAbono', () => {
     expect(movementRepo.updated[0].signedAmount).toBe(30000);
   });
 
+  it('keeps saldo == sum(movements): embedded abono and movement move together', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({ id: 'mov-1', type: 'income', amount: new Money(25000, 'COP') });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+
+    const result = await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { amount: 40000 },
+      creditRepo,
+      movementRepo,
+    );
+
+    // Embedded abono and linked movement must end with the SAME amount
+    expect(creditRepo.abonosEdited[0].updates.amount).toBe(40000);
+    expect(movementRepo.updated[0].amount.amount).toBe(40000);
+    expect(result.pending).toBe(60000);
+  });
+
+  it('skips movement update when abono has no movementId', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const result = await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { amount: 30000 },
+      creditRepo,
+      movementRepo,
+    );
+
+    expect(result.abonos[0].amount.amount).toBe(30000);
+    expect(creditRepo.editAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.findById).not.toHaveBeenCalled();
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
   it('throws ConflictError when new amount exceeds pending', async () => {
     const credit = makeCredit({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
@@ -370,6 +422,22 @@ describe('deleteAbono', () => {
     expect(movementRepo.deleted).toContain('mov-1');
   });
 
+  it('skips movement deletion when abono has no movementId', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const result = await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    expect(result.abonos).toHaveLength(0);
+    expect(result.pending).toBe(100000);
+    expect(movementRepo.delete).not.toHaveBeenCalled();
+  });
+
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
       findByUserId: vi.fn().mockResolvedValue([]),
@@ -425,6 +493,28 @@ describe('editPrincipal', () => {
     expect(creditRepo.update).toHaveBeenCalledOnce();
     expect(movementRepo.updated).toHaveLength(1);
     expect(movementRepo.updated[0].amount.amount).toBe(200000);
+  });
+
+  it('still updates credit when principal movement does not exist', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await editPrincipal(
+      'user-1',
+      'cg-1',
+      { principal: 200000, currency: 'COP' },
+      creditRepo,
+      movementRepo,
+    );
+
+    expect(result.principal.amount).toBe(200000);
+    expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(0);
   });
 
   it('throws ConflictError when new principal < total abonos (CRED-G-5)', async () => {

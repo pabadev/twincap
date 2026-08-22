@@ -21,6 +21,12 @@ export async function deleteAbono(
   const abono = credit.abonos.find(a => a.id === abonoId);
   if (!abono) throw new NotFoundError('Abono not found');
 
+  // Atomicity note: abono removal + movement deletion are two separate writes
+  // inside this single use-case invocation. Full transactionality would
+  // require the repository ports to accept a Mongoose ClientSession (signature
+  // change across every port/implementation) plus a replica-set connection —
+  // an infrastructure change deliberately out of scope here.
+  //
   // Remove abono from embedded array (atomic $pull)
   await creditRepo.deleteAbono(userId, creditId, abonoId);
 

@@ -167,6 +167,7 @@
     "updating": "Actualizando...",
     "adding": "Agregando...",
     "addCreditBtn": "Agregar crédito recibido",
+    "editCredit": "Editar crédito recibido",
     "abonos": "Abonos",
     "addAbono": "Agregar abono",
     "editAbono": "Editar abono",
@@ -177,6 +178,7 @@
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
+    "confirmDeleteAbono": "¿Eliminar este abono? También se eliminará el movimiento vinculado.",
     "emptyTitle": "No hay créditos recibidos aún",
     "emptyDescription": "Seguí los créditos que recibiste de acreedores."
   },
@@ -199,6 +201,7 @@
     "updating": "Actualizando...",
     "adding": "Agregando...",
     "addCreditBtn": "Agregar crédito otorgado",
+    "editCredit": "Editar crédito otorgado",
     "abonos": "Abonos",
     "addAbono": "Agregar abono",
     "editAbono": "Editar abono",
@@ -209,6 +212,7 @@
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
+    "confirmDeleteAbono": "¿Eliminar este abono? También se eliminará el movimiento vinculado.",
     "emptyTitle": "No hay créditos otorgados aún",
     "emptyDescription": "Seguí los créditos que otorgaste a otros."
   },

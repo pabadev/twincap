@@ -40,6 +40,11 @@ export async function editAbono(
   const updatedAccountId = input.accountId ?? abono.accountId;
   const updatedDate = input.date ?? abono.date;
 
+  // Atomicity note: credit + linked movement are two separate writes inside
+  // this single use-case invocation. Full transactionality would require the
+  // repository ports to accept a Mongoose ClientSession (signature change
+  // across every port/implementation) plus a replica-set connection — an
+  // infrastructure change deliberately out of scope here.
   await creditRepo.editAbono(userId, creditId, abonoId, {
     amount: input.amount,
     date: input.date,

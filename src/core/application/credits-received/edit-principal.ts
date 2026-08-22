@@ -46,6 +46,12 @@ export async function editPrincipal(
   );
   await creditRepo.update(updatedCredit);
 
+  // Atomicity note: credit + principal movement are two separate writes inside
+  // this single use-case invocation. Full transactionality would require the
+  // repository ports to accept a Mongoose ClientSession (signature change
+  // across every port/implementation) plus a replica-set connection — an
+  // infrastructure change deliberately out of scope here.
+  //
   // Find and update principal movement (link.kind = creditReceivedPrincipal)
   const movements = await movementRepo.findByUserId(userId);
   const principalMovement = movements.find(

@@ -167,6 +167,7 @@
     "updating": "Updating...",
     "adding": "Adding...",
     "addCreditBtn": "Add Credit Received",
+    "editCredit": "Edit Credit Received",
     "abonos": "Abonos",
     "addAbono": "Add Abono",
     "editAbono": "Edit Abono",
@@ -177,6 +178,7 @@
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
     "confirmDelete": "Delete this credit? This will also remove all linked movements.",
+    "confirmDeleteAbono": "Delete this abono? This will also remove the linked movement.",
     "emptyTitle": "No credits received yet",
     "emptyDescription": "Track credits you've received from lenders."
   },
@@ -199,6 +201,7 @@
     "updating": "Updating...",
     "adding": "Adding...",
     "addCreditBtn": "Add Credit Granted",
+    "editCredit": "Edit Credit Granted",
     "abonos": "Abonos",
     "addAbono": "Add Abono",
     "editAbono": "Edit Abono",
@@ -209,6 +212,7 @@
     "abonoCount": "abono",
     "abonoCount_plural": "abonos",
     "confirmDelete": "Delete this credit? This will also remove all linked movements.",
+    "confirmDeleteAbono": "Delete this abono? This will also remove the linked movement.",
     "emptyTitle": "No credits granted yet",
     "emptyDescription": "Track credits you've granted to others."
   },
