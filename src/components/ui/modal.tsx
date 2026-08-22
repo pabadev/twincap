@@ -46,21 +46,21 @@ export function Modal({ open, onClose, title, children, actions, closeLabel, siz
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
         aria-hidden="true"
       />
-      {/* Dialog */}
+      {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
-        className={`relative w-full ${sizeClasses[size]} rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900`}
+        className={`relative flex max-h-full w-full ${sizeClasses[size]} flex-col rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex shrink-0 items-center justify-between">
           {title && (
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               {title}
@@ -87,8 +87,10 @@ export function Modal({ open, onClose, title, children, actions, closeLabel, siz
             </svg>
           </button>
         </div>
-        <div className="mb-6">{children}</div>
-        {actions && <div className="flex justify-end gap-3">{actions}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {actions && (
+          <div className="mt-6 flex shrink-0 justify-end gap-3">{actions}</div>
+        )}
       </div>
     </div>
   );
