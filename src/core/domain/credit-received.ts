@@ -101,14 +101,14 @@ export class CreditReceived {
       id: this.id,
       userId: this.userId,
       counterparty: this.counterparty,
-      principal: this.principal,
+      principal: this.principal.toJSON(),
       accountId: this.accountId,
       date: this.date,
       installments: this.installments,
       frequency: this.frequency,
       createdAt: this.createdAt,
       pending: this.pending,
-      abonos: this._abonos,
+      abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
     };
   }
 }

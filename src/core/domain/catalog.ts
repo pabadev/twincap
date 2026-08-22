@@ -76,7 +76,7 @@ export class CatalogItem {
       id: this.id,
       userId: this.userId,
       name: this.name,
-      unitPrice: this.unitPrice,
+      unitPrice: this.unitPrice.toJSON(),
       type: this.type,
       stock: this.stock,
       createdAt: this.createdAt,

@@ -168,7 +168,10 @@ export class Sale {
     return {
       id: this.id,
       userId: this.userId,
-      items: this.items,
+      items: this.items.map((item) => ({
+        ...item,
+        unitPrice: item.unitPrice.toJSON(),
+      })),
       date: this.date,
       paymentMode: this.paymentMode,
       accountId: this.accountId,
@@ -178,7 +181,7 @@ export class Sale {
       stockRestored: this.stockRestored,
       createdAt: this.createdAt,
       pending: this.pending,
-      abonos: this._abonos,
+      abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
     };
   }
 }

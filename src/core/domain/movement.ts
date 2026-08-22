@@ -148,7 +148,7 @@ export class Movement {
       accountId: this.accountId,
       categoryId: this.categoryId,
       type: this.type,
-      amount: this.amount,
+      amount: this.amount.toJSON(),
       signedAmount: this.signedAmount,
       date: this.date,
       note: this.note,

@@ -51,4 +51,9 @@ export class Money {
   equals(other: Money): boolean {
     return this.amount === other.amount && this.currency === other.currency;
   }
+
+  /** Serializable snapshot for Next.js server→client boundary. */
+  toJSON(): { amount: number; currency: Currency } {
+    return { amount: this.amount, currency: this.currency };
+  }
 }
