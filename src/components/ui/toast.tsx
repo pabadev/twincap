@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './icon';
 import { useT } from '../../i18n/client';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type ToastVariant = 'success' | 'error' | 'info';
+export type ToastVariant = 'success' | 'error' | 'info' | 'warning';
 
 interface ToastProps {
   id: string;
@@ -20,12 +20,14 @@ const variantStyles: Record<ToastVariant, string> = {
   success: 'bg-emerald-600 text-white',
   error: 'bg-red-600 text-white',
   info: 'bg-indigo-600 text-white',
+  warning: 'bg-amber-500 text-white',
 };
 
 const variantIcons: Record<ToastVariant, LucideIcon> = {
   success: CheckCircle,
   error: AlertCircle,
   info: Info,
+  warning: AlertTriangle,
 };
 
 export function Toast({

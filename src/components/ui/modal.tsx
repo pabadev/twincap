@@ -3,6 +3,8 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
 import { useT } from '../../i18n/client';
 
+type ModalSize = 'sm' | 'md' | 'lg';
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -10,9 +12,17 @@ interface ModalProps {
   children: ReactNode;
   actions?: ReactNode;
   closeLabel?: string;
+  /** Dialog max width: sm → max-w-sm, md → max-w-md (default), lg → max-w-2xl. */
+  size?: ModalSize;
 }
 
-export function Modal({ open, onClose, title, children, actions, closeLabel }: ModalProps) {
+const sizeClasses: Record<ModalSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-2xl',
+};
+
+export function Modal({ open, onClose, title, children, actions, closeLabel, size = 'md' }: ModalProps) {
   const tCommon = useT('Common');
 
   const handleKeyDown = useCallback(
@@ -45,7 +55,7 @@ export function Modal({ open, onClose, title, children, actions, closeLabel }: M
       />
       {/* Dialog */}
       <div
-        className="relative w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        className={`relative w-full ${sizeClasses[size]} rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -59,7 +69,7 @@ export function Modal({ open, onClose, title, children, actions, closeLabel }: M
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            className="ml-auto cursor-pointer rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
             aria-label={closeLabel || tCommon('close')}
           >
             <svg

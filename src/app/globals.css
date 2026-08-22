@@ -4,21 +4,35 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Design tokens — semantic colors */
-  --color-primary: oklch(0.546 0.245 262.881);
-  --color-primary-hover: oklch(0.486 0.245 262.881);
-  --color-success: oklch(0.596 0.145 163.225);
-  --color-danger: oklch(0.577 0.245 27.325);
-  --color-warning: oklch(0.769 0.188 70.08);
-  --color-info: oklch(0.646 0.222 244.38);
-  --color-debt: oklch(0.705 0.213 47.604);
-  --color-income: oklch(0.596 0.145 163.225);
-  --color-expense: oklch(0.577 0.245 27.325);
+  /* Design tokens — semantic colors (tc-prefixed to avoid colliding
+     with Tailwind's generated --color-* theme namespace) */
+  --tc-primary: oklch(0.546 0.245 262.881);
+  --tc-primary-hover: oklch(0.486 0.245 262.881);
+  --tc-success: oklch(0.596 0.145 163.225);
+  --tc-danger: oklch(0.577 0.245 27.325);
+  --tc-warning: oklch(0.769 0.188 70.08);
+  --tc-info: oklch(0.646 0.222 244.38);
+  --tc-debt: oklch(0.705 0.213 47.604);
+  --tc-income: oklch(0.596 0.145 163.225);
+  --tc-expense: oklch(0.577 0.245 27.325);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Semantic tokens → Tailwind utilities
+     (bg-success, text-danger, border-info, ring-primary, bg-danger/10…) */
+  --color-primary: var(--tc-primary);
+  --color-primary-hover: var(--tc-primary-hover);
+  --color-success: var(--tc-success);
+  --color-danger: var(--tc-danger);
+  --color-warning: var(--tc-warning);
+  --color-info: var(--tc-info);
+  --color-debt: var(--tc-debt);
+  --color-income: var(--tc-income);
+  --color-expense: var(--tc-expense);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -28,15 +42,15 @@
     --background: #0a0a0a;
     --foreground: #ededed;
 
-    --color-primary: oklch(0.707 0.165 254.624);
-    --color-primary-hover: oklch(0.657 0.195 254.624);
-    --color-success: oklch(0.696 0.17 162.48);
-    --color-danger: oklch(0.677 0.245 27.325);
-    --color-warning: oklch(0.829 0.188 70.08);
-    --color-info: oklch(0.746 0.222 244.38);
-    --color-debt: oklch(0.805 0.213 47.604);
-    --color-income: oklch(0.696 0.17 162.48);
-    --color-expense: oklch(0.677 0.245 27.325);
+    --tc-primary: oklch(0.707 0.165 254.624);
+    --tc-primary-hover: oklch(0.657 0.195 254.624);
+    --tc-success: oklch(0.696 0.17 162.48);
+    --tc-danger: oklch(0.677 0.245 27.325);
+    --tc-warning: oklch(0.829 0.188 70.08);
+    --tc-info: oklch(0.746 0.222 244.38);
+    --tc-debt: oklch(0.805 0.213 47.604);
+    --tc-income: oklch(0.696 0.17 162.48);
+    --tc-expense: oklch(0.677 0.245 27.325);
   }
 }
 

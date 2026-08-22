@@ -7,10 +7,8 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Toast } from './toast';
+import { Toast, type ToastVariant } from './toast';
 import { useT } from '../../i18n/client';
-
-type ToastVariant = 'success' | 'error' | 'info';
 
 interface ToastItem {
   id: string;

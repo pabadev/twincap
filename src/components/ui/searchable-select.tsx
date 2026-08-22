@@ -69,7 +69,7 @@ export function SearchableSelect({
           setOpen(!open);
           inputRef.current?.focus();
         }}
-        className={`w-full rounded-md border bg-white px-3 py-2 text-left text-sm shadow-sm dark:bg-zinc-800 ${
+        className={`flex h-10 w-full cursor-pointer items-center rounded-md border bg-white px-3 text-left text-sm shadow-sm dark:bg-zinc-800 ${
           error
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
             : 'border-zinc-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-zinc-600'
