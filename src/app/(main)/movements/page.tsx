@@ -1,11 +1,9 @@
 import { redirect } from 'next/navigation';
 import { listAccounts } from '../../../core/application/accounts';
 import { listMovements } from '../../../core/application/movements';
-import { listCategories } from '../../../core/application/categories';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
 import { serializeEntities } from '@/lib/serialize';
@@ -18,12 +16,8 @@ export default async function MovementsPage() {
   await connectDb();
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
-  const categoryRepo = new MongoCategoryRepository();
 
-  const [accounts, categories] = await Promise.all([
-    listAccounts(user.userId, accountRepo),
-    listCategories(user.userId, categoryRepo),
-  ]);
+  const accounts = await listAccounts(user.userId, accountRepo);
 
   // Fetch movements for all accounts
   const movementsByAccount = new Map<string, Awaited<ReturnType<typeof listMovements>>>();
@@ -44,7 +38,6 @@ export default async function MovementsPage() {
     <MovementsList
       accounts={serializeEntities(accounts)}
       movementsByAccount={movementsRecord}
-      categories={serializeEntities(categories)}
     />
   );
 }

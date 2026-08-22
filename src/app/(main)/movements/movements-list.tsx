@@ -4,30 +4,26 @@ import { useState } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
 import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
-import type { SerializedCategory } from '../../../core/domain/category';
-import { MovementForm } from './movement-form';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
-import { Modal } from '../../../components/ui/modal';
 import { ArrowLeftRight } from 'lucide-react';
+import { useQuickMovement } from '../global-movement-provider';
 
 export function MovementsList({
   accounts,
   movementsByAccount,
-  categories,
 }: {
   accounts: SerializedAccount[];
   movementsByAccount: Record<string, SerializedMovement[]>;
-  categories: SerializedCategory[];
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
-  const [showForm, setShowForm] = useState(false);
   const t = useT('Movements');
   const tCommon = useT('Common');
   const locale = useLocale();
+  const { openQuickMovement } = useQuickMovement();
 
   const allMovements = Object.values(movementsByAccount).flat();
   const movements = selectedAccountId === 'all'
@@ -47,31 +43,19 @@ export function MovementsList({
         </h1>
         {selectedAccountId && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() =>
+              openQuickMovement(
+                selectedAccountId === 'all'
+                  ? undefined
+                  : { accountId: selectedAccountId },
+              )
+            }
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             {t('addMovement')}
           </button>
         )}
       </div>
-
-      <Modal
-        open={showForm}
-        onClose={() => setShowForm(false)}
-        title={t('newMovement')}
-      >
-        {selectedAccountId === 'all' ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {t('selectAccountToAdd')}
-          </p>
-        ) : (
-          <MovementForm
-            accountId={selectedAccountId}
-            categories={categories}
-            onSuccess={() => setShowForm(false)}
-          />
-        )}
-      </Modal>
 
       {/* Account selector */}
       {accounts.length > 0 && (
@@ -85,10 +69,7 @@ export function MovementsList({
           <Select
             id="account-select"
             value={selectedAccountId}
-            onChange={(e) => {
-              setSelectedAccountId(e.target.value);
-              setShowForm(false);
-            }}
+            onChange={(e) => setSelectedAccountId(e.target.value)}
             options={[
               { value: 'all', label: t('allAccounts') },
               ...accounts.map((a) => ({
