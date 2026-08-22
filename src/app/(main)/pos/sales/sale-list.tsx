@@ -14,7 +14,8 @@ import { formatAmount, formatDate } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
-import { Eye, ShoppingCart } from 'lucide-react';
+import { ActionIconButton } from '../../../../components/ui/action-icon-button';
+import { Eye, EyeOff, ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
   sales: SerializedSale[];
@@ -115,14 +116,12 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <ActionIconButton
+                      icon={isExpanded ? EyeOff : Eye}
+                      label={isExpanded ? t('hide') : t('details')}
+                      tone="primary"
                       onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
-                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                      aria-label={isExpanded ? t('hide') : t('details')}
-                    >
-                      <Icon icon={Eye} size="sm" />
-                      {isExpanded ? t('hide') : t('details')}
-                    </button>
+                    />
                     {sale.paymentMode === 'on-credit' && sale.pending > 0 && (
                       <button
                         onClick={() => setAbonoSaleId(sale.id)}

@@ -23,8 +23,7 @@ export function DeleteSaleAbonoButton({
       confirmTitle={t('confirmDeleteAbono')}
       cancelLabel={tCommon('cancel')}
       icon={Trash2}
-      variant="ghost"
-      className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+      iconOnly
     />
   );
 }

@@ -2,9 +2,10 @@
 
 import { useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import type { LucideIcon } from 'lucide-react';
+import { Trash2, type LucideIcon } from 'lucide-react';
 import { Button } from './button';
 import { ConfirmDialog } from './confirm-dialog';
+import { ActionIconButton } from './action-icon-button';
 import { Icon } from './icon';
 import { useT } from '../../i18n/client';
 import { useToast } from '../../lib/hooks/use-toast';
@@ -40,6 +41,8 @@ interface EntityDeleteButtonProps {
   icon?: LucideIcon;
   /** Trigger style; defaults to filled danger. */
   variant?: 'danger' | 'ghost';
+  /** Render the trigger as an icon-only ActionIconButton (table row actions). */
+  iconOnly?: boolean;
   /** Stop click propagation (rows/cells with their own click handlers). */
   stopPropagation?: boolean;
   className?: string;
@@ -71,6 +74,7 @@ export function EntityDeleteButton({
   errorMessage,
   icon,
   variant = 'danger',
+  iconOnly = false,
   stopPropagation = false,
   className,
 }: EntityDeleteButtonProps) {
@@ -107,19 +111,30 @@ export function EntityDeleteButton({
 
   return (
     <>
-      <Button
-        type="button"
-        variant={variant === 'ghost' ? 'ghost' : 'danger'}
-        size="sm"
-        className={className}
-        disabled={pending}
-        loading={pending}
-        onClick={handleTriggerClick}
-        aria-label={label}
-      >
-        {icon && <Icon icon={icon} size="sm" />}
-        {label}
-      </Button>
+      {iconOnly ? (
+        <ActionIconButton
+          type="button"
+          icon={icon ?? Trash2}
+          tone="danger"
+          label={label}
+          loading={pending}
+          onClick={handleTriggerClick}
+        />
+      ) : (
+        <Button
+          type="button"
+          variant={variant === 'ghost' ? 'ghost' : 'danger'}
+          size="sm"
+          className={className}
+          disabled={pending}
+          loading={pending}
+          onClick={handleTriggerClick}
+          aria-label={label}
+        >
+          {icon && <Icon icon={icon} size="sm" />}
+          {label}
+        </Button>
+      )}
       <div onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}>
         <ConfirmDialog
           open={open}

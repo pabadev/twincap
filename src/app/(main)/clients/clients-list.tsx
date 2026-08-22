@@ -64,7 +64,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
       )}
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-        <table className="min-w-[500px] divide-y divide-zinc-200 dark:divide-zinc-700">
+        <table className="w-full min-w-[500px] divide-y divide-zinc-200 dark:divide-zinc-700">
           <thead className="bg-zinc-50 dark:bg-zinc-800">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">

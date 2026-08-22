@@ -12,6 +12,7 @@ import { formatAmount, formatDate } from '../../../../lib/format';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Modal } from '../../../../components/ui/modal';
+import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { ChevronDown, CreditCard, Pencil } from 'lucide-react';
 
 export function CreditsGrantedList({
@@ -128,18 +129,16 @@ export function CreditsGrantedList({
                                   +{formatAmount(abono.amount.amount, currency, locale)} {currency}
                                 </td>
                                 <td className="py-1 text-right">
-                                  <button
+                                  <ActionIconButton
+                                    icon={Pencil}
+                                    label={tCommon('edit')}
+                                    tone="primary"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
                                       setShowAbonoFormId(null);
                                     }}
-                                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    aria-label={tCommon('edit')}
-                                  >
-                                    <Icon icon={Pencil} size="sm" />
-                                    {tCommon('edit')}
-                                  </button>
+                                  />
                                 </td>
                               </tr>
                             ))}

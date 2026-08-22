@@ -9,6 +9,7 @@ import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
+import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { Package, Pencil, Search } from 'lucide-react';
 
 export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
@@ -135,14 +136,12 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={t('edit')}
+                      tone="primary"
                       onClick={() => setEditingItem(item)}
-                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                      aria-label={t('edit')}
-                    >
-                      <Icon icon={Pencil} size="sm" />
-                      {t('edit')}
-                    </button>
+                    />
                     <DeleteCatalogItemButton itemId={item.id} />
                   </div>
                 </div>

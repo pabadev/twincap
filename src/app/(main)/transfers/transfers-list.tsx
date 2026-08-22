@@ -59,7 +59,7 @@ export function TransfersList({
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-          <table className="min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
+          <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead className="bg-zinc-50 dark:bg-zinc-800">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
@@ -69,7 +69,7 @@ export function TransfersList({
                   {t('fromTo')}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {t('amounts')}
+                  {tCommon('amount')}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
                   {tCommon('note')}
@@ -82,29 +82,34 @@ export function TransfersList({
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
               {transfers.map((transfer) => (
                 <tr key={transfer.id}>
-                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-sm whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                     {formatDate(transfer.date, locale)}
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                  <td className="max-w-[280px] truncate px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                     {accountName(accounts, transfer.sourceAccountId)}
                     {' → '}
                     {accountName(accounts, transfer.destinationAccountId)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">
-                    <span className="text-red-600 dark:text-red-400">
-                      −{formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)} {transfer.sourceAmount.currency}
-                    </span>
-                    {' → '}
-                    <span className="text-green-600 dark:text-green-400">
-                      +{formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)} {transfer.destinationAmount.currency}
-                    </span>
-                    {transfer.rate && (
-                      <span className="ml-1 text-xs text-zinc-400">
-                        ({t('rate')}: {transfer.rate})
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">
+                  {transfer.sourceCurrency === transfer.destinationCurrency ? (
+                    <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
+                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}{' '}
+                      {transfer.sourceCurrency}
+                    </td>
+                  ) : (
+                    <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
+                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}{' '}
+                      {transfer.sourceCurrency}
+                      {' → '}
+                      {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}{' '}
+                      {transfer.destinationCurrency}
+                      {transfer.rate && (
+                        <span className="ml-1 text-xs font-normal text-zinc-400">
+                          ({t('rate')}: {transfer.rate})
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  <td className="max-w-[200px] px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">
                     {transfer.note || '—'}
                   </td>
                   <td className="px-4 py-3 text-right">

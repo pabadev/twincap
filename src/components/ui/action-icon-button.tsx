@@ -1,12 +1,16 @@
 'use client';
 
-import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import {
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { type LucideIcon } from 'lucide-react';
 
 type ActionIconTone = 'neutral' | 'primary' | 'danger' | 'success' | 'warning';
 
 interface ActionIconButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className' | 'onClick'> {
   icon: LucideIcon;
   /** Rendered as both aria-label and native title tooltip. */
   label: string;
@@ -14,7 +18,7 @@ interface ActionIconButtonProps
   type?: 'button' | 'submit';
   disabled?: boolean;
   loading?: boolean;
-  onClick?: () => void;
+  onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   className?: string;
 }
 
