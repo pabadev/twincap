@@ -1,7 +1,9 @@
-const CACHE_NAME = 'globalmoney-v3';
+const CACHE_NAME = 'globalmoney-v4';
+// Never precache authenticated routes: cache.addAll would persist the
+// server-rendered HTML of user-specific pages in Cache Storage, leaking one
+// user's data to whoever is served from the offline cache. Only static,
+// non-user-specific assets belong here.
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
   '/manifest.json',
   '/icon-192.svg',
   '/icon-512.svg',

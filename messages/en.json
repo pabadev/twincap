@@ -30,7 +30,7 @@
     "clients": "Clients",
     "posCatalog": "POS Catalog",
     "posSales": "POS Sales",
-    "logout": "Logout",
+    "exit": "Log out",
     "login": "Sign In",
     "register": "Register"
   },

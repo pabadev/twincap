@@ -31,7 +31,12 @@ export async function proxy(request: NextRequest) {
   const locale = getLocaleFromRequest(request);
   const response = NextResponse.next();
   response.headers.set('x-locale', locale);
-  response.cookies.set('NEXT_LOCALE', locale, {path: '/', maxAge: 60 * 60 * 24 * 365});
+  response.cookies.set('NEXT_LOCALE', locale, {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
   return response;
 }
 
