@@ -128,7 +128,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               id="quick-movement-menu"
               role="group"
               aria-label={tMovements('quickAddMenu')}
-              className="flex flex-col items-end gap-2"
+              className="relative flex flex-col items-end gap-2"
             >
               <button
                 ref={firstOptionRef}
