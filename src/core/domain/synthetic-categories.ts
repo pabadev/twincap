@@ -12,6 +12,7 @@ const SYNTHETIC_IDS = {
   transfer: '000000000000000000000003',
   sale: '000000000000000000000004',
   opening: '000000000000000000000005',
+  payable: '000000000000000000000006',
 } as const;
 
 function makeCategory(id: string, name: string, type: CategoryType): Category {
@@ -29,6 +30,8 @@ const SYNTHETIC_CATEGORIES = new Map<string, Category>([
   [`${SYNTHETIC_IDS.sale}:income`, makeCategory(SYNTHETIC_IDS.sale, 'Sale', 'income')],
   [`${SYNTHETIC_IDS.sale}:expense`, makeCategory(SYNTHETIC_IDS.sale, 'Sale', 'expense')],
   [`${SYNTHETIC_IDS.opening}:income`, makeCategory(SYNTHETIC_IDS.opening, 'Opening balance', 'income')],
+  [`${SYNTHETIC_IDS.payable}:income`, makeCategory(SYNTHETIC_IDS.payable, 'Payable', 'income')],
+  [`${SYNTHETIC_IDS.payable}:expense`, makeCategory(SYNTHETIC_IDS.payable, 'Payable', 'expense')],
 ]);
 
 /**
@@ -61,6 +64,7 @@ export const CREDIT_GRANTED_CATEGORY_ID = SYNTHETIC_IDS.creditGranted;
 export const TRANSFER_CATEGORY_ID = SYNTHETIC_IDS.transfer;
 export const SALE_CATEGORY_ID = SYNTHETIC_IDS.sale;
 export const OPENING_CATEGORY_ID = SYNTHETIC_IDS.opening;
+export const PAYABLE_CATEGORY_ID = SYNTHETIC_IDS.payable;
 
 export function creditCategory(type: CategoryType): Category {
   return makeCategory(CREDIT_CATEGORY_ID, 'Credit', type);
@@ -80,4 +84,8 @@ export function saleCategory(type: CategoryType): Category {
 
 export function openingCategory(): Category {
   return makeCategory(OPENING_CATEGORY_ID, 'Opening balance', 'income');
+}
+
+export function payableCategory(type: CategoryType): Category {
+  return makeCategory(PAYABLE_CATEGORY_ID, 'Payable', type);
 }

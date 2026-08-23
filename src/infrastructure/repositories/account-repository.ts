@@ -8,6 +8,7 @@ import { TransferModel } from "../models/transfer";
 import { CreditReceivedModel } from "../models/credit-received";
 import { CreditGrantedModel } from "../models/credit-granted";
 import { SaleModel } from "../models/sale";
+import { PayableModel } from "../models/payable";
 import { toAccountEntity, toAccountDocData } from "../mappers/account";
 
 export class MongoAccountRepository implements AccountRepository {
@@ -76,14 +77,14 @@ export class MongoAccountRepository implements AccountRepository {
 
   /**
    * ACC-4: count references to an account across all collections that
-   * reference it — movements, transfers, credits, and sales.
+   * reference it — movements, transfers, credits, sales, and payables.
    * Returns the total number of references (0 means safe to delete).
    */
   async countReferences(userId: string, accountId: string): Promise<number> {
     const uid = new Types.ObjectId(userId);
     const aid = new Types.ObjectId(accountId);
 
-    const [movements, transfersAsSource, transfersAsDest, creditsReceived, creditsGranted, sales] =
+    const [movements, transfersAsSource, transfersAsDest, creditsReceived, creditsGranted, sales, payables] =
       await Promise.all([
         MovementModel.countDocuments({ userId: uid, accountId: aid }),
         TransferModel.countDocuments({ userId: uid, sourceAccountId: aid }),
@@ -95,6 +96,7 @@ export class MongoAccountRepository implements AccountRepository {
           accountId: aid,
           deletedAt: { $exists: false },
         }),
+        PayableModel.countDocuments({ userId: uid, accountId: aid }),
       ]);
 
     return (
@@ -103,7 +105,8 @@ export class MongoAccountRepository implements AccountRepository {
       transfersAsDest +
       creditsReceived +
       creditsGranted +
-      sales
+      sales +
+      payables
     );
   }
 }

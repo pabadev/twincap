@@ -12,8 +12,9 @@ export type MovementContext = (typeof MOVEMENT_CONTEXTS)[number];
 
 /**
  * Kinds of system-linked movements (MOV-5): created by account opening,
- * transfers, credits received/granted, and sale payments. These movements
- * must not be edited or deleted directly by the user.
+ * transfers, credits received/granted, sale payments, and payables
+ * (initial payments + abonos). These movements must not be edited or
+ * deleted directly by the user.
  */
 export const MOVEMENT_LINK_KINDS = [
   "opening",
@@ -23,6 +24,8 @@ export const MOVEMENT_LINK_KINDS = [
   "creditGrantedPrincipal",
   "creditGrantedAbono",
   "salePayment",
+  "payableInitialPayment",
+  "payableAbono",
 ] as const;
 export type MovementLinkKind = (typeof MOVEMENT_LINK_KINDS)[number];
 

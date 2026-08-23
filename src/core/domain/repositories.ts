@@ -16,6 +16,7 @@ import type { Client } from "./client";
 import type { CreditGranted } from "./credit-granted";
 import type { CreditReceived } from "./credit-received";
 import type { Movement } from "./movement";
+import type { Payable } from "./payable";
 import type { Sale } from "./sale";
 import type { Transfer } from "./transfer";
 import type { User } from "./user";
@@ -111,6 +112,22 @@ export interface CreditGrantedRepository {
   editAbono(userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5). */
   deleteAbono(userId: string, creditId: string, abonoId: string): Promise<void>;
+}
+
+// ─── Payable ─────────────────────────────────────────────────────────
+
+export interface PayableRepository {
+  findById(userId: string, id: string): Promise<Payable | null>;
+  findByUserId(userId: string): Promise<Payable[]>;
+  create(payable: Payable): Promise<Payable>;
+  update(payable: Payable): Promise<Payable>;
+  delete(userId: string, id: string): Promise<void>;
+  /** Atomic $push — idempotent when movementId is provided (design §5). */
+  addAbono(userId: string, payableId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }): Promise<void>;
+  /** Atomic $set on embedded abono by abono.id (design §5). */
+  editAbono(userId: string, payableId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
+  /** Atomic $pull on embedded abono by abono.id (design §5). */
+  deleteAbono(userId: string, payableId: string, abonoId: string): Promise<void>;
 }
 
 // ─── Client ─────────────────────────────────────────────────────────

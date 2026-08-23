@@ -1,0 +1,105 @@
+'use client';
+
+import { useActionState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useT, useLocale } from '../../../i18n/client';
+import { addAbonoAction } from './actions';
+import type { SerializedAccount } from '../../../core/domain/account';
+import { formatAmount } from '../../../lib/format';
+import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
+import { useToast } from '../../../lib/hooks/use-toast';
+
+export function AbonoForm({
+  payableId,
+  pending,
+  currency,
+  accounts,
+}: {
+  payableId: string;
+  pending: number;
+  currency: string;
+  accounts: SerializedAccount[];
+}) {
+  const [state, formAction, isPending] = useActionState(
+    addAbonoAction,
+    null,
+  );
+  const t = useT('Payables');
+  const tToast = useT('Toast');
+  const locale = useLocale();
+  const { addToast } = useToast();
+  const router = useRouter();
+  const successShownRef = useRef(false);
+
+  useEffect(() => {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
+      addToast(tToast(state.success), 'success');
+      router.refresh();
+    }
+  }, [state?.success, addToast, tToast, router]);
+
+  useEffect(() => {
+    if (state?.error) {
+      addToast(tToast(state.error), 'error');
+    }
+  }, [state?.error, addToast, tToast]);
+
+  return (
+    <form action={formAction} className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+      <input type="hidden" name="payableId" value={payableId} />
+      <input type="hidden" name="currency" value={currency} />
+
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        {t('pending')} {formatAmount(pending, currency, locale)} {currency}
+      </p>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Input
+          id={`amount-${payableId}`}
+          name="amount"
+          type="number"
+          label={t('amount')}
+          min="1"
+          max={pending}
+          required
+          disabled={isPending}
+        />
+
+        <Select
+          id={`accountId-${payableId}`}
+          name="accountId"
+          label={t('account')}
+          required
+          disabled={isPending}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: a.name,
+          }))}
+        />
+
+        <Input
+          id={`date-${payableId}`}
+          name="date"
+          type="date"
+          label={t('date')}
+          required
+          disabled={isPending}
+          defaultValue={new Date().toISOString().split('T')[0]}
+        />
+      </div>
+
+      <Button
+        type="submit"
+        variant="ghost"
+        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        disabled={isPending}
+        loading={isPending}
+      >
+        {isPending ? t('adding') : t('addAbono')}
+      </Button>
+    </form>
+  );
+}
