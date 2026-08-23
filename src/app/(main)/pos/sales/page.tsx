@@ -7,6 +7,7 @@ import { MongoSaleRepository } from '../../../../infrastructure/repositories/sal
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { MongoClientRepository } from '../../../../infrastructure/repositories/client-repository';
+import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { serializeEntities } from '@/lib/serialize';
 import { SaleList } from './sale-list';
@@ -20,13 +21,25 @@ export default async function SalesPage() {
   const catalogRepo = new MongoCatalogItemRepository();
   const accountRepo = new MongoAccountRepository();
   const clientRepo = new MongoClientRepository();
+  const creditRepo = new MongoCreditGrantedRepository();
 
-  const [sales, catalogItems, accounts, clients] = await Promise.all([
+  const [sales, catalogItems, accounts, clients, creditsGranted] = await Promise.all([
     listSales(user.userId, saleRepo),
     listCatalogItems(user.userId, catalogRepo),
     accountRepo.findByUserId(user.userId),
     listClients(user.userId, clientRepo),
+    creditRepo.findByUserId(user.userId),
   ]);
+
+  // H14: linked credits own the pending of their sale. The list uses these
+  // values so both modules always show the same balance, and direct abonos
+  // are routed to Credits Granted (single ledger → no double accounting).
+  const creditPendingBySaleId: Record<string, number> = {};
+  for (const credit of creditsGranted) {
+    if (credit.saleId) {
+      creditPendingBySaleId[credit.saleId] = credit.pending;
+    }
+  }
 
   return (
     <SaleList
@@ -34,6 +47,7 @@ export default async function SalesPage() {
       catalogItems={serializeEntities(catalogItems)}
       accounts={serializeEntities(accounts)}
       clients={serializeEntities(clients)}
+      creditPendingBySaleId={creditPendingBySaleId}
     />
   );
 }

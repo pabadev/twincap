@@ -17,6 +17,11 @@ export interface CreditGrantedInput {
   installments?: number;
   /** Informational only — no auto-formulas (CRED-G-1). */
   frequency?: string;
+  /**
+   * Optional link to the POS sale that originated this credit (H14).
+   * Set automatically by createSale; never set by the standalone flow.
+   */
+  saleId?: string;
   createdAt: Date;
 }
 
@@ -38,6 +43,8 @@ export class CreditGranted {
   readonly date: Date;
   readonly installments?: number;
   readonly frequency?: string;
+  /** Origin POS sale, when the credit was born from a sale (H14). */
+  readonly saleId?: string;
   readonly createdAt: Date;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
@@ -63,8 +70,12 @@ export class CreditGranted {
     if (counterparty.length === 0) {
       throw new ValidationError("CreditGranted counterparty must not be empty");
     }
-    if (input.principal.amount <= 0) {
-      throw new ValidationError("CreditGranted principal must be positive");
+    // Principal must not be negative. Zero is valid for credits born from a
+    // POS sale fully paid upfront (initialPayment = total → born paid-in-full,
+    // pending = 0, no principal movement). The standalone create flow keeps
+    // its own positive-principal expectation at the form/DTO level.
+    if (input.principal.amount < 0) {
+      throw new ValidationError("CreditGranted principal must not be negative");
     }
     if (input.accountId.length === 0) {
       throw new ValidationError("CreditGranted accountId must not be empty");
@@ -94,6 +105,7 @@ export class CreditGranted {
     this.date = input.date;
     this.installments = input.installments;
     this.frequency = input.frequency;
+    this.saleId = input.saleId;
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
@@ -109,6 +121,7 @@ export class CreditGranted {
       date: this.date,
       installments: this.installments,
       frequency: this.frequency,
+      saleId: this.saleId,
       createdAt: this.createdAt,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),

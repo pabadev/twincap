@@ -7,12 +7,20 @@ import { editSaleLineItem } from './edit-sale-line-item';
 import { deleteSale } from './delete-sale';
 import { listSales } from './list-sales';
 import { Sale } from '../../domain/sale';
+import { CreditGranted } from '../../domain/credit-granted';
+import { Client } from '../../domain/client';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import { CatalogItem } from '../../domain/catalog';
-import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { SaleRepository, CatalogItemRepository, MovementRepository } from '../../domain/repositories';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
+import type {
+  SaleRepository,
+  CatalogItemRepository,
+  MovementRepository,
+  ClientRepository,
+  CreditGrantedRepository,
+} from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
@@ -133,6 +141,51 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
+function fakeClientRepo(
+  overrides: Partial<ClientRepository> = {},
+): ClientRepository & { client: Client } {
+  const client = new Client({
+    id: 'client-1',
+    userId: 'user-1',
+    name: 'Juan Pérez',
+    phone: '',
+    email: '',
+    note: '',
+    createdAt: new Date(),
+  });
+  return {
+    client,
+    findById: vi.fn().mockResolvedValue(client),
+    findByUserId: vi.fn().mockResolvedValue([client]),
+    findByName: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockImplementation(async (c: Client) => c),
+    update: vi.fn().mockImplementation(async (c: Client) => c),
+    delete: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function fakeCreditGrantedRepo(
+  overrides: Partial<CreditGrantedRepository> = {},
+): CreditGrantedRepository & { created: CreditGranted[] } {
+  const created: CreditGranted[] = [];
+  return {
+    created,
+    findById: vi.fn().mockResolvedValue(null),
+    findByUserId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
+      created.push(credit);
+      return credit;
+    }),
+    update: vi.fn().mockImplementation(async (credit: CreditGranted) => credit),
+    delete: vi.fn().mockResolvedValue(undefined),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function makeSale(
   overrides: Partial<ConstructorParameters<typeof Sale>[0]> = {},
   abonos: ConstructorParameters<typeof Sale>[1] = [],
@@ -213,6 +266,8 @@ describe('createSale', () => {
       findById: vi.fn().mockResolvedValue(product),
     });
     const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
     const ids = fakeIdGen();
 
     const sale = await createSale(
@@ -228,6 +283,8 @@ describe('createSale', () => {
       catalogRepo,
       movementRepo,
       ids,
+      clientRepo,
+      creditRepo,
     );
 
     expect(sale.total).toBe(100000);
@@ -237,17 +294,54 @@ describe('createSale', () => {
     expect(movementRepo.created[0].type).toBe('income');
     expect(movementRepo.created[0].amount.amount).toBe(100000);
     expect(movementRepo.created[0].link?.kind).toBe('salePayment');
+    expect(creditRepo.created).toHaveLength(0);
     expect(catalogRepo.decremented).toHaveLength(1);
     expect(catalogRepo.decremented[0].quantity).toBe(2);
   });
 
-  it('creates an on-credit sale without movements (POS-4)', async () => {
+  it('rejects a paid-in-full sale carrying an initial payment (H14)', async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
     });
     const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'paid-in-full',
+          currency: 'COP',
+          initialPayment: 10000,
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('creates an on-credit sale with a linked credit and no movements when initialPayment is omitted (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
     const ids = fakeIdGen();
 
     const sale = await createSale(
@@ -255,6 +349,7 @@ describe('createSale', () => {
       {
         items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
         accountId: 'acc-1',
+        clientId: 'client-1',
         date: new Date('2025-06-01'),
         paymentMode: 'on-credit',
         currency: 'COP',
@@ -263,12 +358,287 @@ describe('createSale', () => {
       catalogRepo,
       movementRepo,
       ids,
+      clientRepo,
+      creditRepo,
     );
 
     expect(sale.paymentMode).toBe('on-credit');
-    expect(sale.pending).toBe(50000);
     expect(movementRepo.created).toHaveLength(0);
     expect(saleRepo.created).toHaveLength(1);
+    // Net principal: total − initialPayment(0) → full total as debt.
+    expect(creditRepo.created).toHaveLength(1);
+    expect(creditRepo.created[0].principal.amount).toBe(50000);
+    expect(creditRepo.created[0].pending).toBe(50000);
+    expect(creditRepo.created[0].saleId).toBe(sale.id);
+  });
+
+  it('rejects an on-credit sale without a client (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'on-credit',
+          currency: 'COP',
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(creditRepo.created).toHaveLength(0);
+  });
+
+  it('rejects an on-credit sale with an unknown client (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo({
+      findById: vi.fn().mockResolvedValue(null),
+    });
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          clientId: 'missing-client',
+          date: new Date('2025-06-01'),
+          paymentMode: 'on-credit',
+          currency: 'COP',
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(creditRepo.created).toHaveLength(0);
+  });
+
+  it('rejects an initial payment greater than the total (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          clientId: 'client-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'on-credit',
+          currency: 'COP',
+          initialPayment: 60000,
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+      ),
+    ).rejects.toThrow(ConflictError);
+    // Validation happens before any write: no stock decrement either.
+    expect(saleRepo.created).toHaveLength(0);
+    expect(catalogRepo.decremented).toHaveLength(0);
+    expect(creditRepo.created).toHaveLength(0);
+  });
+
+  it('rejects a negative initial payment (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          clientId: 'client-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'on-credit',
+          currency: 'COP',
+          initialPayment: -1,
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(creditRepo.created).toHaveLength(0);
+  });
+
+  it('on-credit with initialPayment > 0 creates the linked credit at NET principal plus exactly one income movement (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    const sale = await createSale(
+      'user-1',
+      {
+        items: [{ itemId: 'item-1', quantity: 2, unitPrice: 50000 }],
+        accountId: 'acc-1',
+        clientId: 'client-1',
+        date: new Date('2025-06-01'),
+        paymentMode: 'on-credit',
+        currency: 'COP',
+        initialPayment: 20000,
+      },
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      ids,
+      clientRepo,
+      creditRepo,
+    );
+
+    // Exactly one income movement = initialPayment, linked to the sale.
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].type).toBe('income');
+    expect(movementRepo.created[0].amount.amount).toBe(20000);
+    expect(movementRepo.created[0].accountId).toBe('acc-1');
+    expect(movementRepo.created[0].link?.kind).toBe('salePayment');
+    expect(movementRepo.created[0].link?.refId).toBe(sale.id);
+
+    // Linked credit holds the NET debt only.
+    expect(creditRepo.created).toHaveLength(1);
+    const credit = creditRepo.created[0];
+    expect(credit.principal.amount).toBe(80000);
+    expect(credit.pending).toBe(80000);
+    expect(credit.saleId).toBe(sale.id);
+    expect(credit.counterparty).toBe('Juan Pérez');
+    expect(credit.accountId).toBe('acc-1');
+
+    // Invariant: pending == total − initialPayment − Σ abonos (no abonos yet).
+    expect(credit.pending).toBe(100000 - 20000 - 0);
+  });
+
+  it('on-credit with initialPayment = 0 creates no movement (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await createSale(
+      'user-1',
+      {
+        items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+        accountId: 'acc-1',
+        clientId: 'client-1',
+        date: new Date('2025-06-01'),
+        paymentMode: 'on-credit',
+        currency: 'COP',
+        initialPayment: 0,
+      },
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      ids,
+      clientRepo,
+      creditRepo,
+    );
+
+    expect(creditRepo.created).toHaveLength(1);
+    expect(creditRepo.created[0].principal.amount).toBe(50000);
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('allows initialPayment = total: credit born paid-in-full with zero principal and one income movement (H14)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const ids = fakeIdGen();
+
+    await createSale(
+      'user-1',
+      {
+        items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+        accountId: 'acc-1',
+        clientId: 'client-1',
+        date: new Date('2025-06-01'),
+        paymentMode: 'on-credit',
+        currency: 'COP',
+        initialPayment: 50000,
+      },
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      ids,
+      clientRepo,
+      creditRepo,
+    );
+
+    expect(creditRepo.created).toHaveLength(1);
+    expect(creditRepo.created[0].principal.amount).toBe(0);
+    expect(creditRepo.created[0].pending).toBe(0);
+    // initialPayment > 0 → exactly one income movement for the full amount
+    // (approved movement map; the credit itself adds no principal movement).
+    expect(movementRepo.created).toHaveLength(1);
+    const movement = movementRepo.created[0];
+    expect(movement.type).toBe('income');
+    expect(movement.amount.amount).toBe(50000);
+    expect(movement.link?.kind).toBe('salePayment');
+    expect(movement.link?.refId).toBe(creditRepo.created[0].saleId);
   });
 
   it('allows services without stock decrement (POS-3)', async () => {
@@ -278,6 +648,8 @@ describe('createSale', () => {
       findById: vi.fn().mockResolvedValue(service),
     });
     const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
     const ids = fakeIdGen();
 
     await createSale(
@@ -285,6 +657,7 @@ describe('createSale', () => {
       {
         items: [{ itemId: 'item-2', quantity: 1, unitPrice: 30000 }],
         accountId: 'acc-1',
+        clientId: 'client-1',
         date: new Date('2025-06-01'),
         paymentMode: 'on-credit',
         currency: 'COP',
@@ -293,6 +666,8 @@ describe('createSale', () => {
       catalogRepo,
       movementRepo,
       ids,
+      clientRepo,
+      creditRepo,
     );
 
     expect(catalogRepo.decremented).toHaveLength(0);
@@ -306,6 +681,8 @@ describe('createSale', () => {
     });
     catalogRepo.state.shouldDecrement = false;
     const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
     const ids = fakeIdGen();
 
     await expect(
@@ -314,6 +691,7 @@ describe('createSale', () => {
         {
           items: [{ itemId: 'item-1', quantity: 5, unitPrice: 50000 }],
           accountId: 'acc-1',
+          clientId: 'client-1',
           date: new Date('2025-06-01'),
           paymentMode: 'on-credit',
           currency: 'COP',
@@ -322,6 +700,8 @@ describe('createSale', () => {
         catalogRepo,
         movementRepo,
         ids,
+        clientRepo,
+        creditRepo,
       ),
     ).rejects.toThrow(ConflictError);
     expect(saleRepo.created).toHaveLength(0);

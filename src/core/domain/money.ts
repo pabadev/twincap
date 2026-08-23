@@ -38,6 +38,32 @@ export class Money {
     this.currency = currency;
   }
 
+  /**
+   * Factory for non-negative amounts (zero allowed). Reserved for positions
+   * that can legitimately be zero — e.g. a credit born fully paid from a POS
+   * sale (H14: initialPayment = total → net debt of 0). Transactional amounts
+   * (movements, payments, prices, transfer legs) keep the strict positive
+   * invariant of the regular constructor.
+   */
+  static nonNegative(amount: number, currency: Currency): Money {
+    if (!isCurrency(currency)) {
+      throw new MoneyError(`Unknown currency: ${currency}`);
+    }
+    if (!Number.isSafeInteger(amount)) {
+      throw new MoneyError(`Amount must be an integer in minor units, got ${amount}`);
+    }
+    if (amount < 0) {
+      throw new MoneyError(`Amount must not be negative, got ${amount}`);
+    }
+    // Bypass the strict constructor while keeping instances identical in
+    // shape and behavior (plus/minus construct fresh Money values).
+    const money = Object.create(Money.prototype) as Money;
+    const writable = money as { amount: number; currency: Currency };
+    writable.amount = amount;
+    writable.currency = currency;
+    return money;
+  }
+
   plus(other: Money): Money {
     assertSameCurrency(this, other);
     return new Money(this.amount + other.amount, this.currency);

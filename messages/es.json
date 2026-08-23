@@ -274,7 +274,19 @@
     "itemCount": "artículo",
     "itemCount_plural": "artículos",
     "emptyTitle": "No hay ventas aún",
-    "emptyDescription": "Creá tu primera venta para empezar a vender."
+    "emptyDescription": "Creá tu primera venta para empezar a vender.",
+    "initialPayment": "Pago inicial",
+    "clientRequiredForCredit": "Seleccioná un cliente real para vender a crédito",
+    "initialPaymentExceedsTotal": "El pago inicial no puede superar el total",
+    "saleDetail": "Detalle de venta",
+    "saleIdLabel": "ID de venta",
+    "status": "Estado",
+    "statusPaid": "Pagada",
+    "statusPending": "Pendiente",
+    "subtotal": "Subtotal",
+    "itemDeleted": "Artículo eliminado del catálogo",
+    "managedInCredits": "Esta venta tiene un crédito otorgado asociado. Gestioná sus abonos desde Créditos Otorgados.",
+    "noAbonos": "Sin abonos registrados"
   },
   "Clients": {
     "title": "Clientes",

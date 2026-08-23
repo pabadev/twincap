@@ -19,6 +19,8 @@ export interface CreditGrantedDoc {
   date: Date;
   installments?: number;
   frequency?: string;
+  /** Origin POS sale id, when the credit was born from a sale (H14). */
+  saleId?: string;
   abonos: CreditGrantedAbonoDoc[];
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +67,9 @@ const CreditGrantedSchema = new Schema<CreditGrantedDoc>(
       type: Number,
     },
     frequency: {
+      type: String,
+    },
+    saleId: {
       type: String,
     },
     abonos: {

@@ -35,6 +35,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const tCommon = useT('Common');
   const tCatalog = useT('Catalog');
   const tToast = useT('Toast');
+  const tError = useT('error');
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -57,6 +58,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
   const [clientId, setClientId] = useState<string>(''); // empty = general client
+  const [initialPayment, setInitialPayment] = useState<string>('0');
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { itemId: catalogItems[0]?.id ?? '', quantity: 1, unitPrice: catalogItems[0]?.unitPrice.amount ?? 0 },
   ]);
@@ -89,6 +91,17 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   }
 
   const total = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+
+  // H14: on-credit sales require a real client and a valid upfront payment.
+  const isOnCredit = paymentMode === 'on-credit';
+  const parsedInitialPayment = Number(initialPayment) || 0;
+  const needsClient = isOnCredit && !clientId;
+  const initialPaymentInvalid =
+    isOnCredit &&
+    (!Number.isFinite(parsedInitialPayment) ||
+      parsedInitialPayment < 0 ||
+      parsedInitialPayment > total);
+  const submitBlocked = isPending || needsClient || initialPaymentInvalid;
 
   return (
     <form
@@ -139,20 +152,51 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         />
       </div>
 
-      <Select
-        id="clientId"
-        label={t('client')}
-        disabled={isPending}
-        value={clientId}
-        onChange={(e) => setClientId(e.target.value)}
-        options={[
-          { value: '', label: t('generalClient') },
-          ...clients.map((c) => ({
-            value: c.id,
-            label: c.name,
-          })),
-        ]}
-      />
+      <div>
+        <Select
+          id="clientId"
+          label={`${t('client')}${isOnCredit ? ' *' : ''}`}
+          disabled={isPending}
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          options={[
+            { value: '', label: t('generalClient') },
+            ...clients.map((c) => ({
+              value: c.id,
+              label: c.name,
+            })),
+          ]}
+        />
+        {needsClient && (
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+            {t('clientRequiredForCredit')}
+          </p>
+        )}
+      </div>
+
+      {isOnCredit && (
+        <div>
+          <Input
+            id="initialPayment"
+            name="initialPayment"
+            type="number"
+            label={`${t('initialPayment')} (${currency})`}
+            min="0"
+            required
+            disabled={isPending}
+            value={initialPayment}
+            onChange={(e) => setInitialPayment(e.target.value)}
+            aria-invalid={initialPaymentInvalid || undefined}
+          />
+          {initialPaymentInvalid && (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+              {parsedInitialPayment > total
+                ? t('initialPaymentExceedsTotal')
+                : tError('invalidData')}
+            </p>
+          )}
+        </div>
+      )}
 
       <Input
         id="date"
@@ -246,7 +290,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         <Button
           type="submit"
           variant="primary"
-          disabled={isPending}
+          disabled={submitBlocked}
           loading={isPending}
         >
           {isPending ? t('creating') : t('createSale')}

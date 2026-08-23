@@ -28,11 +28,14 @@ export function toCreditGrantedEntity(
       id: doc._id.toString(),
       userId: doc.userId.toString(),
       counterparty: doc.counterparty,
-      principal: new Money(doc.principal, currency),
+      // H14: sale-born credits can be stored with principal 0 (born
+      // paid-in-full), so reconstruction must allow non-negative amounts.
+      principal: Money.nonNegative(doc.principal, currency),
       accountId: doc.accountId.toString(),
       date: doc.date,
       installments: doc.installments,
       frequency: doc.frequency,
+      saleId: doc.saleId,
       createdAt: doc.createdAt,
     },
     abonos,
@@ -51,6 +54,7 @@ export function toCreditGrantedDocData(
     date: entity.date,
     installments: entity.installments,
     frequency: entity.frequency,
+    saleId: entity.saleId,
     abonos: entity.abonos.map((a) => ({
       id: a.id,
       amount: a.amount.amount,

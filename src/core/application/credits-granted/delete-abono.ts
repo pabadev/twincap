@@ -45,6 +45,7 @@ export async function deleteAbono(
       date: credit.date,
       installments: credit.installments,
       frequency: credit.frequency,
+      saleId: credit.saleId,
       createdAt: credit.createdAt,
     },
     credit.abonos.filter(a => a.id !== abonoId),

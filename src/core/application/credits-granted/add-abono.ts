@@ -77,6 +77,7 @@ export async function addAbono(
       date: credit.date,
       installments: credit.installments,
       frequency: credit.frequency,
+      saleId: credit.saleId,
       createdAt: credit.createdAt,
     },
     [...credit.abonos, abono],

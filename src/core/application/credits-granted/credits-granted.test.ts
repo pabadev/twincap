@@ -8,7 +8,7 @@ import { deleteCreditGranted } from './delete-credit-granted';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
-import { Money } from '../../domain/money';
+import { Money, MoneyError } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -203,6 +203,32 @@ describe('createCreditGranted', () => {
 
     expect(credit.installments).toBe(12);
     expect(credit.frequency).toBe('monthly');
+  });
+
+  it('rejects zero principal — standalone credits stay strictly positive (H14 zero is sale-born only)', async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    // The strict Money constructor keeps the standalone flow unchanged:
+    // only createSale may mint a zero-principal credit (born paid-in-full).
+    await expect(
+      createCreditGranted(
+        'user-1',
+        {
+          counterparty: 'Pedro',
+          principal: 0,
+          currency: 'COP',
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+        },
+        creditRepo,
+        movementRepo,
+        ids,
+      ),
+    ).rejects.toThrow(MoneyError);
+    expect(creditRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
   });
 });
 

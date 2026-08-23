@@ -6,6 +6,8 @@ import {
   editSaleAbono,
   deleteSaleAbono,
   deleteSale,
+  getSaleDetail,
+  type SaleDetailSnapshot,
 } from '../../../../core/application/sales';
 import type { Currency } from '../../../../core/domain/currency';
 import type { PaymentMode } from '../../../../core/domain/sale';
@@ -13,6 +15,9 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
+import { MongoClientRepository } from '../../../../infrastructure/repositories/client-repository';
+import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
+import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
@@ -44,21 +49,33 @@ export async function createSaleAction(
     return { error: 'Sale must have at least one line item' };
   }
 
+  // H14: upfront payment applies only to on-credit sales.
+  const initialPaymentRaw = formData.get('initialPayment');
+  const initialPayment =
+    paymentMode === 'on-credit' && initialPaymentRaw !== null
+      ? Number(initialPaymentRaw)
+      : undefined;
+
   try {
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
+    const clientRepo = new MongoClientRepository();
+    const creditRepo = new MongoCreditGrantedRepository();
     await createSale(
       user.userId,
-      { items, accountId, clientId, date, paymentMode, currency },
+      { items, accountId, clientId, date, paymentMode, currency, initialPayment },
       saleRepo,
       catalogRepo,
       movementRepo,
       ids,
+      clientRepo,
+      creditRepo,
     );
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
+    revalidatePath('/credits/granted');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
   } catch (error) {
@@ -184,4 +201,40 @@ export async function deleteSaleAction(
   }
 
   return { success: 'saleDeleted' };
+}
+
+export type SaleDetailResult =
+  | { ok: true; sale: SaleDetailSnapshot }
+  | { ok: false; error: string };
+
+/**
+ * H17: full detail snapshot for one sale (read-only). The userId always comes
+ * from the session — never from the client — so the read stays tenant-scoped.
+ */
+export async function getSaleDetailAction(
+  saleId: string,
+): Promise<SaleDetailResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: 'error.unauthorized' };
+
+  try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const clientRepo = new MongoClientRepository();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const accountRepo = new MongoAccountRepository();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const snapshot = await getSaleDetail(
+      user.userId,
+      saleId,
+      saleRepo,
+      clientRepo,
+      catalogRepo,
+      accountRepo,
+      creditRepo,
+    );
+    return { ok: true, sale: snapshot };
+  } catch (error) {
+    return { ok: false, error: handleActionError(error).error };
+  }
 }

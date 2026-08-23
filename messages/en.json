@@ -274,7 +274,19 @@
     "itemCount": "item",
     "itemCount_plural": "items",
     "emptyTitle": "No sales yet",
-    "emptyDescription": "Create your first sale to start selling."
+    "emptyDescription": "Create your first sale to start selling.",
+    "initialPayment": "Initial payment",
+    "clientRequiredForCredit": "Select a real client to sell on credit",
+    "initialPaymentExceedsTotal": "Initial payment cannot exceed the total",
+    "saleDetail": "Sale Detail",
+    "saleIdLabel": "Sale ID",
+    "status": "Status",
+    "statusPaid": "Paid",
+    "statusPending": "Pending",
+    "subtotal": "Subtotal",
+    "itemDeleted": "Item removed from catalog",
+    "managedInCredits": "This sale has a linked granted credit. Manage its abonos from Credits Granted.",
+    "noAbonos": "No abonos recorded"
   },
   "Clients": {
     "title": "Clients",

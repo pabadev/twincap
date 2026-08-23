@@ -45,6 +45,8 @@ interface EntityDeleteButtonProps {
   iconOnly?: boolean;
   /** Stop click propagation (rows/cells with their own click handlers). */
   stopPropagation?: boolean;
+  /** Called after a successful deletion (toast + refresh already handled). */
+  onSuccess?: () => void;
   className?: string;
 }
 
@@ -76,6 +78,7 @@ export function EntityDeleteButton({
   variant = 'danger',
   iconOnly = false,
   stopPropagation = false,
+  onSuccess,
   className,
 }: EntityDeleteButtonProps) {
   const [open, setOpen] = useState(false);
@@ -96,6 +99,7 @@ export function EntityDeleteButton({
       if (result?.success) {
         addToast(tToast(result.success) || successMessage || result.success, 'success');
         router.refresh();
+        onSuccess?.();
       } else if (result?.error) {
         addToast(tToast(result.error) || errorMessage || result.error, 'error');
       }

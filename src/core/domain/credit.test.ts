@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CreditGranted } from "./credit-granted";
 import { CreditReceived } from "./credit-received";
 import { ValidationError } from "./errors";
-import { Money } from "./money";
+import { Money, MoneyError } from "./money";
 
 const DATE = new Date("2026-01-01T00:00:00Z");
 
@@ -243,19 +243,35 @@ describe("CreditGranted entity", () => {
     ).toThrow();
   });
 
-  it("rejects zero or negative principal (Money VO enforces > 0)", () => {
+  it("rejects negative principal (Money forbids negatives at construction)", () => {
     expect(
       () =>
         new CreditGranted({
           id: "cg1",
           userId: "u1",
           counterparty: "María",
-          principal: new Money(0, "COP"),
+          principal: new Money(-1, "COP"),
           accountId: "a1",
           date: DATE,
           createdAt: DATE,
         }),
-    ).toThrow();
+    ).toThrow(MoneyError);
+  });
+
+  it("allows zero principal for credits born paid-in-full from a POS sale (H14)", () => {
+    // initialPayment = total → net debt of zero, linked via saleId.
+    const paidInFull = new CreditGranted({
+      id: "cg2",
+      userId: "u1",
+      counterparty: "María",
+      principal: Money.nonNegative(0, "COP"),
+      accountId: "a1",
+      date: DATE,
+      saleId: "sale-1",
+      createdAt: DATE,
+    });
+    expect(paidInFull.pending).toBe(0);
+    expect(paidInFull.saleId).toBe("sale-1");
   });
 
   it("trims counterparty and rejects empty", () => {

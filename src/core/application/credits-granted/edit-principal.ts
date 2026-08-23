@@ -40,6 +40,7 @@ export async function editPrincipal(
       date: credit.date,
       installments: credit.installments,
       frequency: credit.frequency,
+      saleId: credit.saleId,
       createdAt: credit.createdAt,
     },
     [...credit.abonos],

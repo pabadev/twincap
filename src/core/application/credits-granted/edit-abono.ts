@@ -81,6 +81,7 @@ export async function editAbono(
       date: credit.date,
       installments: credit.installments,
       frequency: credit.frequency,
+      saleId: credit.saleId,
       createdAt: credit.createdAt,
     },
     credit.abonos.map(a =>

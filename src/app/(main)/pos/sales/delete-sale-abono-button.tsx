@@ -8,9 +8,12 @@ import { Trash2 } from 'lucide-react';
 export function DeleteSaleAbonoButton({
   saleId,
   abonoId,
+  onDeleted,
 }: {
   saleId: string;
   abonoId: string;
+  /** Optional callback fired after a successful deletion. */
+  onDeleted?: () => void;
 }) {
   const t = useT('Sales');
   const tCommon = useT('Common');
@@ -24,6 +27,7 @@ export function DeleteSaleAbonoButton({
       cancelLabel={tCommon('cancel')}
       icon={Trash2}
       iconOnly
+      onSuccess={onDeleted}
     />
   );
 }

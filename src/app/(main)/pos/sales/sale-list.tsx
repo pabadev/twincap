@@ -8,25 +8,27 @@ import type { SerializedAccount } from '../../../../core/domain/account';
 import type { SerializedClient } from '../../../../core/domain/client';
 import { SaleForm } from './sale-form';
 import { AbonoForm } from './abono-form';
+import { SaleDetailModal } from './sale-detail-modal';
 import { DeleteSaleButton } from './delete-sale-button';
-import { DeleteSaleAbonoButton } from './delete-sale-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
-import { Eye, EyeOff, ShoppingCart } from 'lucide-react';
+import { Eye, ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
   sales: SerializedSale[];
   catalogItems: SerializedCatalogItem[];
   accounts: SerializedAccount[];
   clients: SerializedClient[];
+  /** H14: pending per sale owned by its linked CreditGranted, when one exists. */
+  creditPendingBySaleId?: Record<string, number>;
 }
 
-export function SaleList({ sales, catalogItems, accounts, clients }: SaleListProps) {
+export function SaleList({ sales, catalogItems, accounts, clients, creditPendingBySaleId }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
-  const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
+  const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
   const t = useT('Sales');
   const locale = useLocale();
@@ -74,6 +76,8 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
         )}
       </Modal>
 
+      <SaleDetailModal saleId={detailSaleId} onClose={() => setDetailSaleId(null)} />
+
       {sales.length === 0 ? (
         <EmptyState
           icon={<Icon icon={ShoppingCart} size="xl" />}
@@ -84,7 +88,11 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
         <div className="space-y-3">
           {sales.map((sale) => {
             const currency = sale.items[0]?.unitPrice.currency ?? 'COP';
-            const isExpanded = expandedSaleId === sale.id;
+            // H14: a linked credit owns the real pending of the sale.
+            const hasLinkedCredit = Object.prototype.hasOwnProperty.call(creditPendingBySaleId ?? {}, sale.id);
+            const effectivePending = hasLinkedCredit
+              ? (creditPendingBySaleId as Record<string, number>)[sale.id]
+              : sale.pending;
 
             return (
               <div
@@ -107,7 +115,7 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                       )}
                       {sale.paymentMode === 'on-credit' && (
                         <span className="ml-2">
-                          {t('pending')} {formatAmount(sale.pending, currency, locale)} {currency}
+                          {t('pending')} {formatAmount(effectivePending, currency, locale)} {currency}
                         </span>
                       )}
                       <span className="ml-2">
@@ -117,12 +125,12 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                   </div>
                   <div className="flex items-center gap-2">
                     <ActionIconButton
-                      icon={isExpanded ? EyeOff : Eye}
-                      label={isExpanded ? t('hide') : t('details')}
+                      icon={Eye}
+                      label={t('details')}
                       tone="primary"
-                      onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
+                      onClick={() => setDetailSaleId(sale.id)}
                     />
-                    {sale.paymentMode === 'on-credit' && sale.pending > 0 && (
+                    {sale.paymentMode === 'on-credit' && !hasLinkedCredit && effectivePending > 0 && (
                       <button
                         onClick={() => setAbonoSaleId(sale.id)}
                         className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
@@ -134,37 +142,11 @@ export function SaleList({ sales, catalogItems, accounts, clients }: SaleListPro
                   </div>
                 </div>
 
-                {isExpanded && (
-                  <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
-                    <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {t('lineItems')}
-                    </h3>
-                    <div className="mb-3 space-y-1">
-                      {sale.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                          <span>{t('item')} {idx + 1} ({t('qty')}: {item.quantity})</span>
-                          <span>{formatAmount(item.subtotal, currency, locale)} {currency}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {sale.abonos?.length > 0 && (
-                      <>
-                        <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          {t('abonos')}
-                        </h3>
-                        <div className="space-y-1">
-                          {sale.abonos?.map((abono) => (
-                            <div key={abono.id} className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                              <span>
-                                {formatDate(abono.date, locale)} — {formatAmount(abono.amount.amount, currency, locale)} {currency}
-                              </span>
-                              <DeleteSaleAbonoButton saleId={sale.id} abonoId={abono.id} />
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                {hasLinkedCredit && sale.paymentMode === 'on-credit' && effectivePending > 0 && (
+                  <div className="border-t border-zinc-200 px-4 py-2 dark:border-zinc-700">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {t('managedInCredits')}
+                    </p>
                   </div>
                 )}
               </div>
