@@ -27,7 +27,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
             {label}
-            {required && <span className="ml-0.5 text-red-500">*</span>}
+            {required && <span className="ml-0.5 text-danger">*</span>}
           </label>
         )}
         <div className="relative">
@@ -37,7 +37,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             required={required}
             className={`block h-10 w-full cursor-pointer appearance-none rounded-md border py-0 pl-3 pr-9 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-600 dark:bg-zinc-800 dark:text-white ${
               error
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                ? 'border-danger focus:border-danger focus:ring-danger'
                 : 'border-zinc-300'
             } ${className}`}
             {...props}
@@ -58,7 +58,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           />
         </div>
         {error && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>
+          <p className="mt-1 text-xs text-danger">{error}</p>
         )}
       </div>
     );

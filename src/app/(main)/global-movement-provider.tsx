@@ -139,7 +139,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
                 <Icon
                   icon={TrendingUp}
                   size="sm"
-                  className="text-green-600 dark:text-green-400"
+                  className="text-income"
                 />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
                   {tMovements('income')}
@@ -153,7 +153,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
                 <Icon
                   icon={TrendingDown}
                   size="sm"
-                  className="text-red-600 dark:text-red-400"
+                  className="text-expense"
                 />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
                   {tMovements('expense')}

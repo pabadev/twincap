@@ -127,8 +127,8 @@ export function MovementsList({
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                             movement.type === 'income'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                              ? 'bg-income/10 text-income'
+                              : 'bg-expense/10 text-expense'
                           }`}
                         >
                           {t(movement.type)}
@@ -141,8 +141,8 @@ export function MovementsList({
                         <span
                           className={`text-sm font-medium ${
                             movement.type === 'income'
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
+                              ? 'text-income'
+                              : 'text-expense'
                           }`}
                         >
                           {movement.type === 'income' ? '+' : '−'}

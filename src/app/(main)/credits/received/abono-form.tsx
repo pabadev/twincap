@@ -93,8 +93,8 @@ export function AbonoForm({
 
       <Button
         type="submit"
-        variant="ghost"
-        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        variant="success"
+        size="sm"
         disabled={isPending}
         loading={isPending}
       >

@@ -40,7 +40,7 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <div
-                  className="h-4 rounded bg-green-400 dark:bg-green-500"
+                  className="h-4 rounded bg-income"
                   style={{ width: `${(d.income / maxValue) * 100}%`, minWidth: d.income > 0 ? '4px' : '0' }}
                 />
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -49,7 +49,7 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
               </div>
               <div className="flex items-center gap-2">
                 <div
-                  className="h-4 rounded bg-red-400 dark:bg-red-500"
+                  className="h-4 rounded bg-expense"
                   style={{ width: `${(d.expenses / maxValue) * 100}%`, minWidth: d.expenses > 0 ? '4px' : '0' }}
                 />
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -62,10 +62,10 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
       </div>
       <div className="mt-3 flex gap-4 text-xs text-zinc-500 dark:text-zinc-400">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-full bg-green-400" /> {t('income')}
+          <span className="inline-block h-2 w-2 rounded-full bg-income" /> {t('income')}
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-full bg-red-400" /> {t('expenses')}
+          <span className="inline-block h-2 w-2 rounded-full bg-expense" /> {t('expenses')}
         </span>
       </div>
     </Card>

@@ -192,7 +192,7 @@ export function PayablesList({
                             setShowAbonoFormId(showAbonoFormId === payable.id ? null : payable.id);
                             setEditingAbonoId(null);
                           }}
-                          className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                          className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-white hover:bg-success/90"
                         >
                           {showAbonoFormId === payable.id ? tCommon('cancel') : t('addAbono')}
                         </button>

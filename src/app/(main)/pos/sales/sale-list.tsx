@@ -109,7 +109,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                         {sale.paymentMode === 'paid-in-full' ? t('paidInFull') : t('onCredit')}
                       </span>
                       {sale.clientId && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                        <span className="ml-2 inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
                           {clientMap.get(sale.clientId) ?? t('generalClient')}
                         </span>
                       )}
@@ -133,7 +133,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                     {sale.paymentMode === 'on-credit' && !hasLinkedCredit && effectivePending > 0 && (
                       <button
                         onClick={() => setAbonoSaleId(sale.id)}
-                        className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                        className="text-xs text-success hover:text-success/80"
                       >
                         {t('addAbono')}
                       </button>

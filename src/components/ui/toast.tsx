@@ -17,10 +17,10 @@ interface ToastProps {
 }
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: 'bg-emerald-600 text-white',
-  error: 'bg-red-600 text-white',
+  success: 'bg-success text-white',
+  error: 'bg-danger text-white',
   info: 'bg-indigo-600 text-white',
-  warning: 'bg-amber-500 text-white',
+  warning: 'bg-warning text-white',
 };
 
 const variantIcons: Record<ToastVariant, LucideIcon> = {

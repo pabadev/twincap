@@ -65,7 +65,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
       {isEdit && <input type="hidden" name="itemId" value={item.id} />}
 
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {tToast(state.error)}
         </div>
       )}

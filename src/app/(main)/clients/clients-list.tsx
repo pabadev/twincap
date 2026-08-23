@@ -18,6 +18,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const t = useT('Clients');
+  const tCommon = useT('Common');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,7 +78,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                 {t('email')}
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                {t('delete')}
+                {tCommon('actions')}
               </th>
             </tr>
           </thead>

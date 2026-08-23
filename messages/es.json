@@ -142,7 +142,6 @@
     "date": "Fecha",
     "note": "Nota",
     "fromTo": "Origen → Destino",
-    "amounts": "Montos",
     "rate": "tipo de cambio",
     "creating": "Creando...",
     "confirmDelete": "¿Eliminar esta transferencia? También se eliminarán los movimientos vinculados.",

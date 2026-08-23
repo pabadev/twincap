@@ -59,7 +59,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
       <input type="hidden" name="currency" value={currency} />
 
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {tToast(state.error)}
         </div>
       )}
@@ -101,8 +101,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
       <div className="flex items-center gap-3">
         <Button
           type="submit"
-          variant="ghost"
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          variant="success"
           disabled={isPending}
           loading={isPending}
         >

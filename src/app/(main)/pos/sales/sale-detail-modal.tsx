@@ -72,7 +72,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
       )}
 
       {!loading && errorKey && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+        <p className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {tError(errorKey.replace('error.', ''))}
         </p>
       )}
@@ -106,8 +106,8 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                     snapshot.status === 'paid'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-warning/10 text-warning'
                   }`}
                 >
                   {snapshot.status === 'paid' ? t('statusPaid') : t('statusPending')}
@@ -172,8 +172,8 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                   <dd
                     className={`font-medium ${
                       snapshot.pending > 0
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-green-600 dark:text-green-400'
+                        ? 'text-debt'
+                        : 'text-success'
                     }`}
                   >
                     {formatAmount(snapshot.pending, snapshot.currency, locale)} {snapshot.currency}

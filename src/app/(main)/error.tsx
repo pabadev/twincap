@@ -21,7 +21,7 @@ export default function Error({
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Icon icon={AlertTriangle} size="xl" className="mb-4 text-amber-500" />
+      <Icon icon={AlertTriangle} size="xl" className="mb-4 text-warning" />
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         {t('title')}
       </h2>

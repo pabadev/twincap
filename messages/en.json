@@ -142,7 +142,6 @@
     "date": "Date",
     "note": "Note",
     "fromTo": "From → To",
-    "amounts": "Amounts",
     "rate": "rate",
     "creating": "Creating...",
     "confirmDelete": "Delete this transfer? This will also remove the linked movements.",

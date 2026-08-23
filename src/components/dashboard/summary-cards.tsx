@@ -29,8 +29,8 @@ export function SummaryCards({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Card className="p-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
-            <Icon icon={Wallet} size="md" className="text-blue-600 dark:text-blue-400" />
+          <div className="rounded-lg bg-info/10 p-2">
+            <Icon icon={Wallet} size="md" className="text-info" />
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('totalBalance')}</p>
@@ -43,12 +43,12 @@ export function SummaryCards({
 
       <Card className="p-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
-            <Icon icon={TrendingUp} size="md" className="text-green-600 dark:text-green-400" />
+          <div className="rounded-lg bg-income/10 p-2">
+            <Icon icon={TrendingUp} size="md" className="text-income" />
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('incomeThisMonth')}</p>
-            <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+            <p className="text-lg font-semibold text-income">
               +{formatAmount(monthlyIncome, currency, locale)}
             </p>
           </div>
@@ -57,12 +57,12 @@ export function SummaryCards({
 
       <Card className="p-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-red-100 p-2 dark:bg-red-900/30">
-            <Icon icon={TrendingDown} size="md" className="text-red-600 dark:text-red-400" />
+          <div className="rounded-lg bg-expense/10 p-2">
+            <Icon icon={TrendingDown} size="md" className="text-expense" />
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('expensesThisMonth')}</p>
-            <p className="text-lg font-semibold text-red-600 dark:text-red-400">
+            <p className="text-lg font-semibold text-expense">
               −{formatAmount(monthlyExpenses, currency, locale)}
             </p>
           </div>
@@ -71,12 +71,12 @@ export function SummaryCards({
 
       <Card className="p-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
-            <Icon icon={Clock} size="md" className="text-amber-600 dark:text-amber-400" />
+          <div className="rounded-lg bg-debt/10 p-2">
+            <Icon icon={Clock} size="md" className="text-debt" />
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('pendingCredits')}</p>
-            <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">
+            <p className="text-lg font-semibold text-debt">
               {formatAmount(pendingCredits, currency, locale)}
             </p>
           </div>

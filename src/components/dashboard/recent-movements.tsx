@@ -55,8 +55,8 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
             <span
               className={`text-sm font-medium ${
                 m.type === 'income'
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
+                  ? 'text-income'
+                  : 'text-expense'
               }`}
             >
               {m.type === 'income' ? '+' : '−'}

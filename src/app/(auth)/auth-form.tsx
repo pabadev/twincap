@@ -35,7 +35,7 @@ export function AuthForm({
       </h2>
       <form action={formAction} className="mt-8 space-y-5">
         {state?.error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
             {state.error}
           </div>
         )}

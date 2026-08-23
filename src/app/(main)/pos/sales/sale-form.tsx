@@ -115,7 +115,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       className="space-y-4"
     >
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {tToast(state.error)}
         </div>
       )}
@@ -168,7 +168,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           ]}
         />
         {needsClient && (
-          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+          <p className="mt-1 text-xs text-warning">
             {t('clientRequiredForCredit')}
           </p>
         )}
@@ -189,7 +189,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             aria-invalid={initialPaymentInvalid || undefined}
           />
           {initialPaymentInvalid && (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            <p className="mt-1 text-xs text-danger">
               {parsedInitialPayment > total
                 ? t('initialPaymentExceedsTotal')
                 : tError('invalidData')}
@@ -272,7 +272,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                   type="button"
                   onClick={() => removeLineItem(idx)}
                   disabled={isPending}
-                  className="mb-0.5 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  className="mb-0.5 text-xs text-danger hover:text-danger/80"
                 >
                   {t('remove')}
                 </button>
