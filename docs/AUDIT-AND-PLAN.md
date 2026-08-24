@@ -1,4 +1,4 @@
-# TWINCAP — PLAN DE IMPLEMENTACIÓN · RONDA 2
+# TWINCAP — PLAN DE IMPLEMENTACIÓN · RONDA 3
 
 > **Este documento es el plan maestro y documento de continuidad del proyecto.**
 >
@@ -6,340 +6,235 @@
 >
 > **Después de una compactación o en una nueva sesión, lo PRIMERO es leer este archivo.**
 >
-> Lineamientos de la ronda actual: `Ronda 2.md` (raíz del repositorio).
+> Lineamientos de la ronda actual: `TwinCap Ronda 3.md` (raíz del repositorio) — documento de requerimientos, NO archivo de estado.
 
 ---
 
-## ESTADO ACTUAL (última actualización: 2026-08-21)
+## ESTADO ACTUAL (última actualización: 2026-08-24)
 
 | Ronda | Estado |
 |-------|--------|
-| Ronda 1 — fases 0–22 | ✅ Completa (última fase commiteada: `4fb98b6`) |
-| **Ronda 2 — Auditoría y mejoras** | ✅ **COMPLETA** — Fase 0 ✅ · Fase 1 ✅ (`72f9814`) · Fase 2 ✅ (`1a79b95`) · Fase 3 ✅ (`73d2d7d`) · Fase 4 ✅ (`51a3a3f`) · Fase 5 ✅ (`a0e912c` + fixes `09a7c23`, `1c536d2`) · Fase 6 ✅ (`6d720ca`) · Fase 7 ✅ (`5473ede`) · Fase 8 ✅ (`1cf77d4`) · Fase 9 ✅ (`e101adc`) · **Fase 10 ✅ implementada 2026-08-23 — cierre de la ronda** |
+| Ronda 1 — fases 0–22 | ✅ Completa |
+| Ronda 2 — Auditoría y mejoras | ✅ Completa (Fases 0–10 + post-ronda branding; detalle en git history del doc y `Ronda 2.md`) |
+| **Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional** | 🔵 **EN CURSO — Plan APROBADO (2026-08-24; D1–D8 según recomendación). HR3-27 incorporado → F5. FASE 1 COMPLETADA y verificada (commits `9ac8ea4`, `93aaf48`, `c7edd57`, `cb7cd46`; suite 358/358 en 36 archivos; tsc limpio). Esperando aviso explícito para FASE 2.** |
 
-> ⚠️ **REGLA CRÍTICA DE LA RONDA 2:** la ronda comienza con **AUDITORÍA**, no con implementación.
+> ⚠️ **REGLA CRÍTICA (heredada de Ronda 2):** la ronda comienza con **AUDITORÍA**, no con implementación.
 > Prohibido escribir código hasta presentar el plan definitivo por fases y recibir aprobación explícita del usuario.
+> Cada fase se implementa SOLO con su aviso explícito (protocolo R3.13).
 
 ---
 
-## RONDA 1 — RESUMEN HISTÓRICO (cerrada)
+## RONDAS ANTERIORES — RESUMEN HISTÓRICO
 
-| Fase | Descripción | Commit |
-|------|-------------|--------|
-| 0 | Auditoría completa del proyecto | — |
-| 1 | Design system tokens + componentes UI base (Button, Input, Card, Modal, Table, Select, Icon, EmptyState) | — |
-| 2 | Refactor de formularios — UI compartida, formato centralizado, i18n, fechas por defecto | — |
-| 3 | Empty states, loading skeletons, error boundaries en 8 páginas de listas | — |
-| 4 | Dashboard — tarjetas resumen, gráfico mensual, movimientos recientes | — |
-| 5 | Módulo Clientes — CRUD completo (dominio, use cases, repositorio, actions, páginas) | — |
-| 6 | Sistema toast — 9 server actions refactorizados, 10 componentes de delete | — |
-| 7 | Testing — 273 tests en 28 archivos | — |
-| 8 | Manejo centralizado de errores — `handleActionError`, 22 formularios | `d1c69da` |
-| 9 | Responsive — tablas, forms, nav, text truncation | `065116b` |
-| 10 | PWA — manifest, iconos SVG, service worker, meta tags | `5d9ac75` |
-| 11 | Performance — queries paralelas, memoización i18n, structuredClone | `4aea037` |
-| 12 | Movimientos — filtro "Todas las cuentas" por defecto | `e994f36` |
-| 13 | POS Venta — selector de cliente con "Cliente general" | `20b6a8d` |
-| 14 | POS — búsqueda de productos con debounce 300ms | `a4ffc43` |
-| 15 | Créditos — edición de abonos | `ec82fb9` |
-| 16 | Formularios en modales — patrón Button→Modal→Form en 6 módulos | `6aeb199` |
-| 17 | Botones de acción con iconos — Trash2, Pencil, Eye en 13 archivos | `1d75ca4` |
-| 18 | Selector de idioma mejorado — icono Languages, responsive | `ea18cd9` |
-| 19 | Logo TwinCap — SVG + rename GlobalMoney→TwinCap + favicon | `a7ca089` |
-| 20 | Landing page pública — Hero, Features, Benefits, FAQ, CTA, Footer | `4ae68f5` |
-| 21 | Auth en landing — sesión activa → redirect a dashboard | `abd24a2` |
-| 22 | Búsqueda de clientes — debounce 300ms | `4fb98b6` |
+### Ronda 1 (cerrada 2026-08-20)
 
-Las especificaciones detalladas de estas fases quedaron en el historial de git; este documento fue reescrito el 2026-08-21 para dar paso a la Ronda 2.
+22 fases: design system + componentes UI base, refactor formularios, empty/loading/error states, dashboard base, módulo Clientes, sistema toast, testing (273 tests), manejo centralizado de errores, responsive, PWA base, performance, filtros movimientos, POS (cliente general, búsqueda), edición de abonos, formularios en modales, acciones icon-only, selector de idioma, logo TwinCap, landing pública, auth redirect, búsqueda clientes. Última fase: `4fb98b6`. Detalle completo en git history.
+
+### Ronda 2 (cerrada 2026-08-23)
+
+Auditoría Fase 0 (causas raíz H1–H20 verificadas + 13 hallazgos adicionales P1–P13) y 10 fases implementadas:
+
+| Fase | Contenido | Commit |
+|------|-----------|--------|
+| 1 | Serialización `toJSON()` (reemplazó `structuredClone`) + i18n crítico | `72f9814` |
+| 2 | Fundaciones UI: tokens oklch → utilidades, alturas h-10, Modal sm/md/lg, ActionIconButton, ConfirmDialog/EntityDeleteButton | `1a79b95` |
+| 3 | Layout: sidebar viewport-lock desktop, drawer accesible, navegación directa, loading skeletons | `73d2d7d` |
+| 4 | Tablas w-full + acciones icon-only + monto único en transferencias | `51a3a3f` |
+| 5 | Movimientos: compuerta eliminada, form compacto 2 col, FAB global ingreso/gasto (+fixes `09a7c23`, `1c536d2`) | `a0e912c` |
+| 6 | Créditos: edición principal + borrado de abonos ×2 | `6d720ca` |
+| 7 | POS: venta a crédito → crédito vinculado neto + pago inicial + detalle completo de venta | `5473ede` |
+| 8 | Payables: módulo cuentas por pagar (Alternativa A espejo CreditReceived) | `1cf77d4` |
+| 9 | Paleta semántica única vía tokens oklch (155 usos → 0) | `e101adc` |
+| 10 | Estabilización: contrato findById ×10 repos, dead code, JWT con claim email | `6673e44` |
+
+Post-ronda: rebranding PWA (íconos PNG desde pack blanco + 44 splash iOS vía scripts sharp, `25e1a57`); logo in-app PNG oficial `isotipo-twincap.png` + wordmark Sora bicolor (`750d56c`, `911dd6b`). **Pendiente heredado:** regenerar TODOS los íconos PWA desde `isotipo_twincap_ok.png` transparente (decisión del usuario 2026-08-24) → absorbido por F11.
+
+Estado técnico al cierre: 342/342 tests (34 archivos), lint 0/0, tsc ✅, build ✅.
 
 ---
 
-# RONDA 2 — AUDITORÍA, CORRECCIÓN, UX/UI Y EVOLUCIÓN FUNCIONAL
+# RONDA 3 — AUDITORÍA INTEGRAL, CORRECCIÓN FINANCIERA Y EVOLUCIÓN FUNCIONAL
 
-Iniciada: 2026-08-21 · Fuente autoritativa: `Ronda 2.md`
+Iniciada: 2026-08-24 · Fuente autoritativa: `TwinCap Ronda 3.md`
 
-## R2.1 — Contexto y objetivos
+## R3.1 — Contexto y objetivos
 
-Segunda ronda de auditoría y mejora sobre TwinCap. Los hallazgos provienen de **pruebas reales sobre la aplicación**: son hechos verificados, no hipótesis.
+Objetivos de la ronda (del documento fuente): **A)** corrección financiera (fechas, ingresos/gastos, transferencias, créditos, ventas, abonos, payables, balances, dashboard); **B)** UX/UI y consistencia móvil+desktop; **C)** dashboard financiero potente; **D)** evolución funcional con criterio; **E)** preparación comercial.
 
-Objetivos de la ronda:
+Restricciones permanentes reconfirmadas: cada usuario administra exclusivamente sus datos; NO introducir equipos/colaboradores/roles salvo auditoría que lo demuestre indispensable y aprobación previa; NO crear módulo Compras automáticamente; no reescribir TwinCap.
 
-1. Corregir los problemas funcionales encontrados.
-2. Corregir problemas de responsive.
-3. Mejorar la consistencia de la UI.
-4. Mejorar la experiencia de formularios.
-5. Mejorar el sistema de feedback al usuario.
-6. Resolver correctamente el flujo financiero de compras a crédito.
-7. Consolidar un sistema visual coherente.
-8. Revisar la arquitectura antes de introducir nuevas entidades financieras.
-9. Detectar problemas adicionales.
-10. Documentar todo el trabajo en este archivo.
-
-**Principio final:** mejorar sin romper. TwinCap ya funciona; no se reescribe. Cada cambio debe responder sí a: *¿esto hace a TwinCap más correcta, consistente, usable, mantenible o preparada para crecer?*
-
-## R2.2 — Flujo obligatorio de la ronda
+## R3.2 — Flujo obligatorio de la ronda
 
 ```
-LEER CONTEXTO → AUDITAR → ANALIZAR → IDENTIFICAR DEPENDENCIAS → PLANIFICAR
-→ DOCUMENTAR → PRESENTAR PLAN → ESPERAR APROBACIÓN → IMPLEMENTAR FASE
-→ PROBAR → DOCUMENTAR → DETENERSE
+LEER CONTEXTO → INSPECCIONAR → AUDITAR → ANALIZAR → DEPENDENCIAS → PRIORIZAR
+→ DOCUMENTAR (este archivo) → PRESENTAR PLAN → ESPERAR APROBACIÓN
+→ IMPLEMENTAR FASE → PROBAR → DOCUMENTAR → DETENERSE
 ```
 
-- NO implementar mejoras en la etapa de auditoría.
-- NO modificar código hasta que el usuario apruebe la primera fase.
-- La auditoría (Fase 0) debe producir los entregables de R2.9.
+Prohibido durante la auditoría: escribir código, fixes "aprovechando que ya estamos ahí", modificar archivos para probar hipótesis. Problemas nuevos descubiertos se documentan (R3.6) sin corregirlos todavía.
 
-## R2.3 — Reglas inquebrantables
+## R3.3 — Reglas inquebrantables
 
-**Stack fijo** (no migrar, no sustituir): Next.js 16.3.1 · React 19 · TypeScript 5 strict · Tailwind CSS 4 · MongoDB Atlas · Mongoose 8 · Jose · bcryptjs · Zod 4 · Vitest · pnpm 11 · Lucide React.
+Stack fijo (no migrar/sustituir): Next.js 16 · React 19 · TypeScript strict · Tailwind CSS 4 · MongoDB Atlas · Mongoose 8 · Jose · bcryptjs · Zod · Vitest · pnpm · Lucide React. Arquitectura hexagonal intacta. `connectDb()` antes de repositories. Multi-tenancy verificado en backend. i18n es/en paridad, español neutro, textos automáticos localizables (ver reglas nuevas en AGENTS.md). Principios financieros §7 del documento fuente (ya consignados como regla permanente en AGENTS.md). Máximo UNA dependencia nueva por fase con justificación. Testing por fase (`pnpm test` + lint + build/tsc). Sin hook GGA. Fechas: PROHIBIDO compensar con ±1 día sin entender causa raíz.
 
-- **pnpm únicamente** — prohibido npm/yarn.
-- **Arquitectura Clean/Hexagonal** (`core/domain`, `core/application`, `infrastructure`, `components`, `i18n`, `app`): no romperla para resolver rápido un problema. `core/domain` sin imports de infraestructura; `core/application` depende de ports, no de implementaciones; `components` solo presentación; `app` conecta rutas/actions/UI.
-- **Base de datos:** todo server action o route handler con Mongoose ejecuta `await connectDb()` primero y crea los repositories después, nunca a nivel de módulo.
-- **Multi-tenancy:** cada usuario administra exclusivamente sus datos. Autorización verificada en backend en toda operación sensible. Sin equipos, colaboradores ni permisos internos.
-- **i18n:** todo texto visible nuevo en `messages/es.json` y `messages/en.json`. Cero textos hardcodeados. Ya se detectaron sin traducir: `Tipo`, `Currency`, `Logout`.
-- **Iconografía:** solo Lucide React vía wrapper `src/components/ui/icon.tsx`. No instalar otra librería ni crear SVG manuales cuando Lucide cubra la necesidad.
-- **Testing:** `pnpm test`. Cada fase que modifique comportamiento funcional incluye/actualiza tests. Nunca ocultar ni eliminar tests fallidos.
-- **Verificación de fin de fase:** `pnpm test` + `pnpm lint` + `pnpm build` (cuando corresponda).
+## R3.4 — Auditoría Fase 0 (2026-08-24) — método y salud general
 
-## R2.4 — Hallazgos de la ronda (H1–H21)
+Método: 6 exploraciones paralelas de solo lectura sobre el código real (fechas+serialización temporal · dominio financiero/dashboard/agregaciones · i18n/notas automáticas/formato monetario/español · UI consistencia/branding/filtros · auth/temas/PWA · invalidación/perfil/transversal). Sin modificaciones.
 
-| ID | Hallazgo | Notas clave | Fase sugerida* |
-|----|----------|-------------|:---:|
-| H1 | Menú hamburguesa no funciona en pantallas pequeñas | Debe abrir/cerrar el sidebar/nav móvil, funcionar con teclado, cerrarse al navegar, no producir overflow, respetar sesión. Auditar layout, sidebar, estado del menú, breakpoints, problemas Server/Client Component | 2 |
-| H2 | Tablas más angostas que su contenedor | Auditar TODAS las tablas (Movimientos, Clientes, Transferencias, Créditos, Ventas, Catálogo y otras). Crear comportamiento común: width, min-width, columnas, padding, responsive, encabezados, acciones | 2 |
-| H3 | Navegación a `/` recarga toda la página o no hay feedback | Analizar navegación completa vs App Router, `loading.tsx`, Server/Client split, redirects innecesarios. Objetivo: transición fluida. **No introducir solución artificial que oculte una recarga real** | 2 |
-| H4 | Acciones de tabla deben ser solo iconos | Icon-only cuando el significado sea claro. Cada icono: tooltip accesible, `aria-label`, hover, focus, disabled. Hover con fondo circular. Color semántico: editar neutro/primario, eliminar rojo, confirmar verde, advertencia ámbar, cerrar neutro. Sin exagerar color. Auditar todos los módulos | 1 |
-| H5 | Columna "Tipo" de Movimientos siempre en inglés | ES: Ingreso/Gasto · EN: Income/Expense. Vía sistema i18n, no lógica hardcodeada en la tabla. Auditar otros campos similares | 1 |
-| H6 | "Agregar movimiento" bloqueado con filtro "Todas las cuentas" | El filtro de la tabla y la cuenta del nuevo movimiento son conceptos distintos. El botón SIEMPRE abre el formulario; la cuenta se solicita dentro (dato obligatorio). Si hay cuenta concreta filtrada, evaluar preselección por conveniencia UX — analizar antes de implementar | 4 |
-| H7 | Formularios demasiado largos (especialmente Nuevo Movimiento) | Menos espacio vertical, tipografía compacta, inputs delgados, 2 columnas en desktop / 1 en móvil, agrupación lógica. Preferencia: Grupo 1 Selección (cuenta, tipo, categoría, fecha, opciones) → Grupo 2 Datos introducidos (monto, descripción, notas). Evaluar según lógica de cada formulario, no aplicar ciegamente | 3 |
-| H8 | Acceso global a ingresos y gastos | Acción accesible desde cualquier vista autenticada (botón flotante, persistente o acción rápida — analizar cuál da mejor UX sin cubrir contenido). Desde Dashboard, Movimientos, Cuentas, Transferencias, Créditos, POS, Catálogo, Clientes y cualquier módulo autenticado. Reutilizar el formulario de movimientos, permitir iniciar directo en Nuevo ingreso o Nuevo gasto. Respetar cuenta, categoría, fecha, moneda, validaciones, i18n, reglas de dominio | 3 |
-| H9 | Créditos recibidos/otorgados: edición y registro de abonos fallan | Contradice el estado documentado (use cases ya contemplan lifecycle y abonos). **NO asumir que falta backend.** Auditar primero: entidades, use cases, repositories, server actions, componentes, modales, formularios, relaciones con movimientos, cálculos de saldo. Determinar si el problema es backend, frontend, conexión UI→use case, validación, permisos, estado, modal, i18n o errores silenciosos. Corregir la causa real | 5 |
-| H10 | **Compras a crédito / obligaciones por pagar** | **Requisito funcional más importante de la ronda. Requiere análisis de dominio ANTES de programar** (ver R2.5). Caso: compra de un bien a crédito sin recepción de dinero, con obligación frente al proveedor. NO implementar automáticamente como "Crédito Recibido". NO crear módulo de Compras; dejar base razonable para el futuro | 7 |
-| H11 | Sidebar debe ocupar exactamente la altura disponible | Fijo/sticky según arquitectura actual, sin desplazarse con el contenido, manteniendo visibles usuario/email, selector de idioma y botón Salir. Funcionar en distintas alturas y en móvil. Evitar alturas mágicas tipo `height: 100vh` si rompen headers/safe areas; analizar el layout real y usar solución robusta | 2 |
-| H12 | Botones de idioma y Salir inconsistentes | Dimensiones consistentes; el texto no debe alterar la altura. Cambiar "Cerrar sesión" por "Salir" + icono apropiado. Altura constante, ES/EN, hover/focus, tooltip si el sidebar está colapsado | 2 |
-| H13 | Alturas de inputs inconsistentes (selects más delgados que inputs) | Unificar input, select, date, number, textarea y botones de formulario: tipografía ligeramente compacta, padding, line-height, border y radius unificados. Estilo preferido: controles compactos/delgados. **Resolver en los componentes UI reutilizables** (`src/components/ui/input.tsx`, `select.tsx`, …), no con decenas de correcciones individuales | 1 |
-| H14 | Ventas POS a crédito | "Cliente general" NO válido para venta a crédito (cliente real obligatorio). Pago inicial registrable: 0 o monto positivo. La venta debe reflejarse en **Créditos Otorgados** permitiendo visualizar, registrar abonos, editar y calcular saldo. Coherencia: Venta POS → Cliente → Pago inicial → Crédito otorgado → Abonos → Saldo. **Sin duplicar movimientos ni contabilizar dos veces el dinero.** Auditar el flujo financiero existente antes de modificarlo | 6 |
-| H15 | Tabla de transferencias muestra el valor dos veces | Mostrar UNA sola vez, color neutro, mismo tamaño tipográfico que el resto de tablas, ancho de columna razonable. Redistribuir columnas para aprovechar el contenedor | 8 |
-| H16 | "Currency" sin traducir en Agregar Cuenta | Localizar correctamente. Auditar otros campos similares | 1 |
-| H17 | Detalle de venta con información insuficiente | Mostrar como mínimo, cuando los datos existan: número/id de venta, fecha, cliente, estado, productos, cantidades, precios, subtotal, total, pago inicial, saldo pendiente, método de pago, información del crédito si corresponde. **No inventar datos que el dominio no tenga**; si falta información fundamental en la entidad Sale, indicarlo primero. Debe servir para venta de contado y a crédito | 6 |
-| H18 | `alert()` nativos del navegador | Eliminarlos progresivamente. Acciones destructivas → Modal de confirmación; operaciones → Toast. Ejemplo: eliminar venta = modal "¿Deseas eliminar esta venta?" (Cancelar/Eliminar) + toast "Venta eliminada correctamente". Revisar TODAS las acciones destructivas (catálogo, movimientos, clientes, cuentas, créditos, etc.), no solo ejemplos | 1 |
-| H19 | Aplicación demasiado sobria — falta color | Incorporar más color SIN saturar: usarlo para estados, acciones, categorías, métricas, ingresos, gastos, créditos, alertas, navegación y elementos destacados. Base neutra + design system existente; evitar colores arbitrarios por pantalla | 1 |
-| H20 | Cursor pointer faltante en elementos interactivos | Ya solicitado antes y aún incumplido. Auditar TODOS los interactivos: botones, links, icon buttons, tabs, selects custom, acciones de tabla, menú, selector de idioma, sidebar, cards clicables, botones flotantes. Solución **centralizada en componentes UI**, no `cursor-pointer` manual por pantalla | 1 |
-| H21 | Perfil de usuario | **NO implementar en esta ronda** → registrado como Roadmap (R2.14). Podría incluir: foto, nombre, datos personales, email, preferencias, idioma, eliminación de cuenta, cambio de contraseña | — |
+Salud general verificada:
 
-\* Fase sugerida según la estructura preliminar de R2.8; la auditoría puede reordenarla si demuestra un orden técnicamente superior.
+- `connectDb()` 100% en actions/pages/layouts que tocan DB; cero repositories a nivel de módulo ✓
+- Cero violaciones de capas (ningún componente importa infrastructure/application) ✓
+- Tenant isolation consistente en spot-checks (delete account/category, abonos crédito/payable, ventas) ✓
+- Frontera server→client limpia: todas las páginas serializan vía `toJSON()`; cero `structuredClone` remanente ✓
+- Cero TODO/FIXME/HACK en src ✓
+- 342/342 tests en 34 archivos ✓
 
-## R2.5 — H10 en detalle: obligaciones por compras a crédito
+## R3.5 — Matriz de hallazgos verificados
 
-Caso real: el usuario compra un producto a crédito (ej. un perfume). No recibió dinero; tiene una obligación de pago. Datos posibles: valor total, pago inicial, saldo pendiente, abonos posteriores, fecha de compra, fecha de vencimiento opcional, descripción/proveedor. Actualmente no hay forma adecuada de registrar este escenario.
+Prioridades: P0 crítico · P1 alto · P2 medio · P3 bajo.
 
-**Diferencia conceptual obligatoria:**
+| ID | Requisito (doc §) | Estado real verificado | Causa raíz | Prioridad | Fase |
+|----|-------------------|------------------------|------------|:---:|:---:|
+| HR3-01 | 5.1 Bug fechas | CONFIRMADO sistémico en TODAS las entidades con fecha | `new Date("YYYY-MM-DD")` parsea a medianoche UTC (13 call sites en actions); almacenado así en Mongo; cliente formatea con `formatDate` SIN `timeZone` (`src/lib/format.ts:25-31`) → browser America/Bogota resuelve 00:00Z como día anterior 19:00 → desplazamiento −1 día uniforme en movements/transfers/créditos+abonos/ventas+abonos/payables(+dueDate)/dashboard recent. Cofecto: prefill de forms usa `new Date().toISOString().split('T')[0]` = fecha UTC → "mañana" después de las 19:00 local (10 forms). Latente: bucketing mensual del dashboard en UTC (bordes de mes ±5h). Tests sin TZ fijada y `format.test.ts` evita asertar el día → CI era ciego al bug | P0 | F1 |
+| HR3-02 | 5.3 Transferencias inflan resultados | CONFIRMADO leak financiero | Cards mensuales + chart filtran SOLO por `type`+moneda+fecha (`dashboard/page.tsx:111-127`, `computeMonthlyData:40-53`): ambas piernas de cada transferencia entran (income+500k / expense+500k). Ejemplo doc: salario 2M + transferencia 500k ⇒ muestra $2.5M ingreso / $500k gasto (real: $2M / $0). Balances de cuenta CORRECTOS (signedAmount, aggregateBalance). `link.kind` jamás filtrado en read-path. También: opening balance cuenta como income; principal de crédito recibido cuenta como income (política a decidir, D2) | P0 | F1 |
+| HR3-03 | 5.14 Gráfico barras iguales | CONFIRMADO mecanismo exacto | Barras dimensionadas % del ancho de fila junto a label numérico inflexible dentro de flex row (`monthly-chart.tsx:41-58`): overflow absorbido por la barra (label tiene min-width auto) → toda barra significativa colapsa a ≈ container−label−gap. En fila ~260px con label ~120px: 100% y 67% convergen a ~132px ambos. No es CSS puntual ni datos: es estructura del track | P0 | F1 |
+| HR3-04 | 5.8 Doble "COP COP" | CONFIRMADO estructural | `formatAmount(style:'currency')` ya emite código ("12.345,67 COP" con locale es genérico); ~15 JSX concatenan `{currency}` otra vez (transfers ×2 piernas, créditos ×3 c/u, sale-detail-modal ×6, payables ×3, sale-list, catalog, movements, abono-forms ×3). Además 4 implementaciones de formateo divergentes: canonical `lib/format.ts` + duplicado privado en dashboard (`page.tsx:28-38`) + accounts `toLocaleString` sin style y exponent `??0` (`accounts/page.tsx:14-22`) + raw en sale-form:285 | P0 | F1 |
+| HR3-05 | 5.7 Notas automáticas en inglés | CONFIRMADO persistidas | 10 generadores construyen texto inglés EN CREACIÓN dentro de use cases y lo persisten en `Movement.note` (create-sale:173, add-sale-abono:54, create/edit principal+abonos de créditos ×4, payables ×2, transfer default :85/101, account opening:44). Los editores copian el texto viejo verbatim. Render muestra nota cruda (movements-list:138, transfers-list:113). CLAVE A FAVOR: `link.kind` (enum de 9 valores) + counterparty en padres YA están persistidos → texto derivable en render sin migración. Synthetic categories son constantes in-memory (no persistidas) pero dashboard cae en "uncategorized" porque su categoryMap solo trae categorías reales (hallazgo A5) | P1 | F2 |
+| HR3-06 | 5.10 Label "type" categorías | CONFIRMADO | Clave `Categories.type` ausente en AMBOS messages JSON; fallback imprime key cruda. El parity test valida ES↔EN pero NO cobertura de uso (claves referenciadas inexistentes pasan inadvertidas) | P1 | F2 |
+| HR3-07 | 5.19 Español neutral | CONFIRMADO ~24 claves voseo cordobés | Landing casi entera (heroSubtitle, heroCta "Empezá gratis", featuresTitle "necesitás", feature/benefit/faq/cta…), Auth ("¿Ya tenés cuenta?"), Dashboard/Accounts/Categories/Movements/Catalog empty states, error.unauthorized, Errors.description, Toast.operationFailed | P1 | F2 |
+| HR3-08 | 5.12 Personal/Negocio | PARCIALMENTE CONSTRUIDO, sin usar | `Movement.context` EXISTE ('Personal'\|'Business', persistido, elegible en form manual) pero TODOS los movimientos sistema hardcodean 'Personal' (transfers:86/103, credits×4, sales:174, payables:61, opening:45). Account y Category SIN campo scope. Cero queries/agregaciones por context. "Todo mi negocio" hoy NO es respondible. Decisión D3 (fuente de verdad) | P1 | F3 |
+| HR3-09 | 5.13 Dashboard filtros | NO EXISTEN filtros combinables | Solo: cuenta (movements), búsqueda (catalog/clients). Agregaciones in-JS tras cargar TODOS los movimientos (findByUserId sin límite); `primaryCurrency = accounts[0].currency` excluye silenciosamente otras monedas en cards/chart/pendingCredits | P1 | F4 |
+| HR3-10 | 5.15 Activos/Pasivos | DATOS DISPONIBLES, sin agregar | Getters `pending` existen en CreditGranted/CreditReceived/Payable. Receivables NUNCA consultados en dashboard; tarjeta "pendingCredits" es EN REALIDAD deuda (CreditReceived.pending = pasivo) mal etiquetada; Payable.pending jamás agregado; inventario sin valoración (stock×precio ambiguo sin cost basis). Multi-moneda requiere agrupar por moneda (no hay FX y no debe inventarse). Definiciones a aprobar (D4) | P1 | F4 |
+| HR3-11 | 5.4 Tabla resumida ventas | CONFIRMADO | Fila colapsada muestra fecha−total, badge modo, cliente, pendiente y CONTEO de ítems; nombre del primer artículo ausente hasta abrir modal (detalle modal-only, no fila expandible). Fallback ítem eliminado existe (`Sales.itemDeleted`) | P2 | F5 |
+| HR3-12 | 5.23 Filtros en tablas | INVENTARIO COMPLETO → matriz R3.8 | Movements: cuenta. Transfers/Credits×2/Payables/Sales: nada. Catalog/Clients: búsqueda debounce (bloque duplicado entre ambos). Accounts/Categories: nada. Cero filtros fecha/tipo/categoría/ámbito en todo el app | P2 | F5 |
+| HR3-13 | 5.9 Botón "Agregar abono" | CONFIRMADO inconsistente | Credits received/granted + payables: pill success idéntica BYTE-A-BYTE copy-paste ×3; sales: text-link `text-xs text-success` distinto; submit de abono de venta usa Button md vs sm en el resto. `<Button variant="success" size="sm">` ya modela el tratamiento | P2 | F5 |
+| HR3-14 | 5.16 Invalidación categorías/cuentas | CAUSA RAÍZ DISTINTA A LA SUPUESTA | Actions SÍ llaman revalidatePath y forms SÍ hacen router.refresh() (listas propias se actualizan). Culpable real: caché ONE-SHOT de `GlobalMovementProvider` (`global-movement-provider.tsx:79-96`, guard `data !== null`) sobrevive router.refresh() y navegación; MovementForm vive SOLO ahí → pickers de cuenta/categoría del FAB sirven snapshot stale hasta hard reload; borrar categoría y usarla lanza ValidationError visible. Gaps adicionales revalidatePath: deleteSaleAbonoAction solo `/pos/sales` (borra movimiento → saldos /accounts+/dashboard stale), editPayable sin `/accounts`, editAbono ×3 sin `/dashboard` — HOY enmascarados por comportamiento temporal de Next 16.3.1 (refresh blanket on navigate), frágil si upstream lo quita | P0 | F6 |
+| HR3-15 | 5.5 Ojo contraseña | NO EXISTE toggle en todo el codebase | Un solo input password (auth-form compartido login/register); Eye/EyeOff solo usados como acción "ver detalle" en ventas | P1 | F7 |
+| HR3-16 | 5.6 Autocompletado | BUG REAL confirmado | `autoComplete={title === 'Sign In' ? 'current-password' : 'new-password'}` compara contra título i18n → login en ESPAÑOL recibe 'new-password' (induce generación/guardado de credencial nueva en login). Register correcto ('new-password'). Email OK. Sin confirm-password en registro (decisión menor) | P0 | F7 |
+| HR3-17 | 5.2 Logo y branding | CONFIRMADA colisión móvil | Drawer <lg: botón cerrar z-50 (`nav.tsx:81`) pinta DIRECTAMENTE sobre el isotipo del drawer z-40 (`nav.tsx:100`, brand block sin reserva de espacio `:106-108`): glyph X (24..44px) cae dentro del área del isotipo (24..56px). Wordmark sobrevive por ~12px (crowding). Desktop: Logo size md=32px; slogan/tagline inexistente en ningún lado ni claves i18n. Smell adicional: hero renderiza Logo lg + `<h1>TwinCap</h1>` hardcoded fuera de i18n (marca duplicada, A10) | P2 | F8 |
+| HR3-18 | 5.18 Landing "Registrarse" | CONFIRMADO riesgo estructural | Hero CTA: `<Button variant="primary" className="bg-white text-indigo-700 hover:bg-indigo-50">` SIN !important → conflicto de propiedades resuelto por ORDEN DEL CSS GENERADO (suerte de cascada): combinaciones perdedoras = blanco-sobre-blanco o indigo-sobre-indigo. Ghost login igual (`text-white hover:bg-white/10` vs dark:text-zinc-300 del ghost). Patrón repetido ×3 en edit-abono forms (ghost+bg-indigo-600) | P2 | F8 |
+| HR3-19 | 5.22 Sidebar largo | CONFIRMADO plano | NAV_ITEMS flat 11 entradas sin metadatos de grupo; un solo `<ul space-y-1>`; sin primitivas collapsible/acordeón en nav.tsx. Altura/scroll correctos post-R2 | P2 | F8 |
+| HR3-20 | 5.21 Tema claro/oscuro | ARQUITECTURA PARCIAL | Tokens semánticos tienen paridad light/dark 1:1 PERO no existen tokens de superficie (--tc-bg/card/border/muted) → 355 pares `dark:` manuales en 50 archivos + bg-white×33 apareados a mano. Sin switcher (solo prefers-color-scheme); sin `color-scheme`; Button primary hardcodea indigo-600 mientras token --tc-primary (blue-600) está SIN USO → 3 azules conviven; toast info indigo-600 hardcode; warning claro con contraste dudoso sobre texto blanco; themeColor estático indigo-500 (ignora tema OS); manifest bg blanco. Light mode probablemente funcional (pares manuales) pero frágil y de mantenimiento caro. Decisión D6 (switcher manual sí/no) | P1 | F9 |
+| HR3-21 | 5.17 Perfil | ROADMAP CONFIRMADO | User = id/email/passwordHash/createdAt únicamente; sin name/foto/preferencias; sin rutas ni actions de perfil; sesión porta sub+email; bootstrap seeding existe. Análisis alcance en R3.10, decisión D5 | P2 | F10 |
+| HR3-22 | 5.24 Iconos PWA | PENDIENTE HEREDADO confirmado | Todos los launcher icons derivan de MASTER blanco (`pwa_pack/splash_screens/icon.png`, generate-icons.mjs:25); maskable compone sobre canvas BLANCO ×0.74; isotipo transparente SOLO vive en logo in-app. Consecuencia: flash blanco en launchers oscuros. sw v5 network-first, HTML nunca precacheado, splash excluidas del precache | P2 | F11 |
+| HR3-23 | 5.20 PWA ruta inicial | VERIFICADO, decisión de producto | start_url=/dashboard; proxy NO hace auth; sin sesión: bounce servidor → /login (efectivo hoy); con sesión: directo dashboard; cookie gm_session 30 días; offline no arranca ninguna entrada (HTML network-first sin fallback page). Decisión D7 (recomendar mantener) | P3 | F11 |
+| HR3-24 | 5.11 Módulo Compras | ANÁLISIS en R3.9 | Payable (R2-F8) ya cubre obligaciones por compra con pagos/abonos/vencimiento. Falta para Compras completo: proveedores, líneas de compra, inventario, costos. Decisión D8 | — | roadmap |
+| HR3-25 | 5.25 Features comerciales | ANÁLISIS en R3.11 | — | — | roadmap |
+| HR3-26 | 5.26 Blog interno | REGISTRADO roadmap | Ver R3.15 | — | roadmap |
 
-- **Crédito recibido:** el usuario recibe dinero/prestación financiera y queda obligado a devolverlo.
-- **Compra a crédito / cuenta por pagar:** el usuario adquiere un bien o servicio y queda con una obligación frente al proveedor/vendedor.
+## R3.6 — Hallazgos adicionales (no estaban en la especificación)
 
-Son conceptos diferentes. Determinar el modelo de dominio más coherente con TwinCap comparando al menos:
+| ID | Hallazgo | Impacto | Fase |
+|----|----------|---------|:---:|
+| A1 | Dashboard carga TODOS los movimientos (sin límite/proyección) para cards+chart+recent (`slice(0,5)` sobre array completo) — latencia degradará con el tiempo | Performance | F4 |
+| A2 | Cross-currency: totals excluyen silenciosamente monedas ≠ primera cuenta — números incompletos presentados como completos | Financiero | F4 |
+| A3 | Tarjeta "pendingCredits" presenta un PASIVO como métrica genérica — semánticamente engañosa | Financiero/UI | F4 |
+| A4 | Movimientos sistema caen en "uncategorized" del dashboard (categoryMap sin categorías sintéticas) | UI/i18n | F2 |
+| A5 | 10 CTAs "Agregar X" hand-rolled `rounded-md bg-indigo-600 px-4 py-2 …` en vez de `<Button variant="primary">`; +3 conflictos ghost+indigo en edit-abono forms | Mantenibilidad | F8 |
+| A6 | Accounts y Categories hand-roll markup de EmptyState pixel-equivalente al componente `ui/empty-state.tsx`, con lucide raw en vez de wrapper Icon | Consistencia | F8 |
+| A7 | `title={selectedAccountId === 'all' ? t('emptyTitle') : t('emptyTitle')}` dead conditional (movements-list:95) | Limpieza | F5 |
+| A8 | Sale rows derivan moneda de items[0] con fallback silencioso 'COP' (`sale-list.tsx:90`) | Datos | F5 |
+| A9 | Chip de abonos hidden sm:inline en Payables pero siempre visible en credits lists — drift responsive | Consistencia | F5 |
+| A10 | Hero landing: Logo lg encima de `<h1>TwinCap</h1>` hardcodeado fuera de i18n — marca duplicada | Branding/i18n | F8 |
+| A11 | Tests: vitest sin TZ fijada; fixtures UTC-midnight; format test evita asertar día → clase entera de bugs de fecha invisible para CI | Testing | F1 |
+| A12 | Cero tests de agregaciones dashboard (monthlyIncome/Expenses/computeMonthlyData inline en page.tsx); cero tests de wiring revalidatePath; repos Mongo sin integración; cross-currency sin cubrir | Testing | F1/F4 |
+| A13 | AGENTS.md describía proxy.ts con auth protection — FALSO (auditado: solo locale+warmup). Corregido en AGENTS.md esta misma sesión | Docs | ✅ |
+| A14 | Abonos edit-dialogs muestran fecha CORRECTA (`toISOString().slice(0,10)` roundtrip) mientras la lista de arriba muestra ayer — inconsistencia visible que confirma HR3-01 | Evidencia | F1 |
+| A15 | Toast warning: token claro pálido + texto blanco = contraste dudoso; toast info hardcode indigo-600 | UI/a11y | F9 |
+| A16 | Offline: cold start PWA falla en cualquiera de las dos rutas (HTML nunca cacheado, sin offline fallback page) | PWA | F11 (nota) |
 
-- **Alternativa A:** entidad **Cuenta por pagar / Payable**
-- **Alternativa B:** entidad **Compra a crédito** que genera una obligación asociada
-- **Alternativa C:** extender el modelo de créditos recibidos
-- **Alternativa D:** otra solución arquitectónicamente más adecuada
+## R3.7 — Decisiones de dominio que requieren aprobación del usuario
 
-No elegir solo por facilidad de implementación. Evaluar: semántica financiera, futuras compras, proveedores, pagos iniciales, abonos, saldo, reportes, dashboard, movimientos, cuentas, posibilidad futura de módulo Compras y compatibilidad con Clean/Hexagonal.
+| # | Decisión | Opciones | Recomendación |
+|---|----------|----------|---------------|
+| D1 | Convención de fechas financieras (HR3-01) | (a) **Fecha civil codificada como medianoche UTC + formateo SIEMPRE con `timeZone:'UTC'`** en el formateador único + prefill calculado con fecha LOCAL del dispositivo + tests con TZ fijada (America/Bogota y UTC). (b) Value Object DateOnly/string end-to-end (migración de tipos en 13 sites + entidades). (c) Zona fija America/Bogota acoplada al producto | **(a)**: cero migración de datos, corrige display/prefill/bucketing con UNA convención explícita documentada; la fecha almacenada ES el día civil ingresado |
+| D2 | Política de flujos en ingresos/gastos del dashboard (HR3-02) | (a) **Excluir `link.kind='transfer'` (ambas piernas) y `opening`** de income/expense/cards/chart; créditos/ventas/payables conservan tratamiento actual (modelo caja coherente, anti-doble-contabilidad ya validado). (b) Devengo estricto: reclasificar principales de créditos como financiamiento y abonos de créditos otorgados como cobros-no-ingreso | **(a)**: corrige lo inequívoco (transferencias/apertura NO son resultado económico) sin cambiar todos los números del usuario; el refinamiento devengo queda como posible evolución del dashboard |
+| D3 | Fuente de verdad Personal/Negocio (HR3-08) | (a) **Account.scope** (enum required, default 'Personal', backfill inicial guiado): movimientos sistema heredan automáticamente el scope de su cuenta — elimina los hardcode 'Personal'; categoría permanece transversal; queries filtran vía cuenta. (b) Movement.context como fuente (obliga pedir scope en cada flujo sistema). (c) Híbrido cuenta-default + override por movimiento | **(a)**: modelo mental natural ("mis cuentas del negocio"), cero fricción en flujos sistema, una sola verdad |
+| D4 | Definiciones Activos/Pasivos (HR3-10) | Activos = Σ saldos de cuentas + Σ CreditGranted.pending (por cobrar). Pasivos = Σ CreditReceived.pending + Σ Payable.pending. Presentación agrupada POR MONEDA sin conversión FX. Renombrar/reclasificar tarjeta pendingCredits | **Aprobación de definición nominal-pendiente por moneda** (disponibilidad/nominal/FX quedan fuera hasta existir tasa real) |
+| D5 | Alcance Perfil (HR3-21) | (a) **Mínimo viable**: nombre + cambio de contraseña + preferencia de idioma persistida + bienvenida dashboard con nombre. (b) Ídem + foto vía Cloudinary (dependencia externa). (c) Ídem + foto self-hosted (GridFS/storage propio — complejidad serverless) | **(a)** ahora; foto como decisión separada post-aprobación (Cloudinary solo si el usuario acepta la dependencia) |
+| D6 | Arquitectura de temas (HR3-20) | (a) **Modo dual completo con switcher manual**: tokens de superficie (--tc-bg/card/border/muted), estrategia dark por clase (@custom-variant) + script anti-flash + persistencia, migración progresiva empezando por ui kit, color-scheme, themeColor dinámico. (b) Mantener solo-OSS: sanear tokens/brand blues/contrastes sin toggle | **(a)**: expectativa estándar en PWA; el costo mayor es la migración de pares manuales, que (b) también paga parcialmente |
+| D7 | Ruta inicial PWA (HR3-23) | Mantener start_url=/dashboard (guest → bounce a login; user → directo) vs cambiar a / (landing primero, +2 taps) | **Mantener**: producto autenticado-first; usuarios recurrentes ganan; conversión de nuevos pasa por landing web, no por la app instalada |
+| D8 | Módulo Compras (HR3-24) | A) No implementar en R3. B) Versión mínima compras. C) Evolucionar Payable hacia Compras posteriormente. D) Otra | **A + camino C documentado en roadmap**: payable ya resuelve la necesidad actual; Compras exige proveedores/inventario/costos — gate comercial antes de construirla |
 
-**Pago inicial:** puede ser 0, mayor que 0, nunca superior al valor total. Recalcular `saldo = total − pagoInicial − suma(abonos)` (adaptar al modelo de dominio). Validar en backend, nunca confiar solo en el frontend.
+## R3.8 — Matriz de filtros propuesta (post-D3)
 
-**Mini propuesta de dominio obligatoria antes de implementar** — debe responder:
+Ámbito P/N aplica vía cuenta (fuente de verdad = Account.scope). Sin imponer ámbito donde no aporta valor.
 
-1. ¿Qué entidad representa una obligación por compra?
-2. ¿Es diferente de CreditReceived?
-3. ¿Cómo se relaciona con una cuenta?
-4. ¿Cómo se registra el pago inicial?
-5. ¿Cómo se registran abonos?
-6. ¿Cómo se calcula saldo?
-7. ¿Cómo afecta los movimientos?
-8. ¿Cómo afecta los balances?
-9. ¿Cómo se relacionará posteriormente con proveedores?
-10. ¿Cómo podría evolucionar hacia un futuro módulo Compras?
+| Tabla | Ámbito | Fecha/rango | Categoría | Tipo | Estado | Búsqueda |
+|-------|:---:|:---:|:---:|:---:|:---:|:---:|
+| Movements | ✔ (vía cuenta) | ✔ | ✔ | ✔ ing/egr | — | — |
+| Transfers | ✔ (cuenta origen/destino) | ✔ | — | — | — | — |
+| Credits recibidos/otorgados | ✔ (vía cuenta) | opcional | — | — | ✔ pendiente/pagado | ✔ contraparte |
+| Payables | ✔ (vía cuenta) | vencimiento | — | — | ✔ pendiente/pagado | ✔ contraparte |
+| Sales (POS) | ✔ (vía cuenta) | ✔ | — | — | ✔ contado/crédito | ✔ cliente |
+| Catalog | — | — | — | tipo prod/serv | — | ✔ (existe) |
+| Clients | — | — | — | — | — | ✔ (existe) |
+| Accounts | selector/agrupación visual | — | — | — | — | — |
+| Categories | — | — | — | split ing/egr existente basta | — | — |
 
-**No implementar hasta que el usuario apruebe la decisión de dominio.**
+Dashboard: sistema central de filtros composables (ámbito → cuenta → categoría → período) — F4.
 
-## R2.6 — Sistemas transversales
+## R3.9 — Análisis del módulo Compras (HR3-24)
 
-**Toast:** auditar el existente (creado en Ronda 1, Fase 6). Si existe, reutilizarlo y extenderlo; si no, diseñar uno ligero y coherente con la arquitectura, sin librería adicional sin justificar. Debe contemplar: éxito, error, advertencia, información, duración, cierre manual y accesibilidad.
+Qué resolvería: registrar adquisiciones con vínculo catálogo/proveedor, incremento de inventario, documentos de compra (líneas), costos para margen. Relaciones necesarias hoy inexistentes: Suppliers (entidad nueva), Inventory (valoración/cost basis), líneas de compra (patrón Sale.items), integración contable gasto-inventario (devengo).
 
-**Confirmación:** modales de confirmación consistentes en toda la app: título, descripción, cancelar, confirmar, estado loading, ESC cuando sea apropiado, focus management, feedback posterior. **Una sola implementación compartida — no duplicar por módulo.**
+Comparativa: **A) No implementar** — Payable ya registra la obligación con pagos parciales y vencimiento; el dolor restante es inventario/costos, no la obligación. **B) Compra mínima** — duplicaría semántica con Payable o exigiría refactor inmediato del mismo. **C) Evolución Payable→Compras** — camino natural: añadir proveedor estructurado + referencia opcional a ítems cuando exista inventario. **D)** n/a.
 
-## R2.7 — Auditoría transversal obligatoria
+**Recomendación: A ahora + roadmap C** (gate: validación comercial + diseño de inventario). Queda PROHIBIDO crear el módulo sin nueva aprobación explícita.
 
-Además de H1–H21, revisar:
+## R3.10 — Análisis del perfil (HR3-21)
 
-- **UX:** estados vacíos, loading, errores, confirmaciones, feedback, navegación, accesibilidad.
-- **Responsive:** probar conceptualmente 375px, 768px y 1280px.
-- **i18n:** buscar textos visibles hardcodeados.
-- **UI:** botones inconsistentes, alturas diferentes, iconos diferentes, tamaños de texto inconsistentes, spacing inconsistente, colores arbitrarios.
-- **Accesibilidad:** labels, aria-label, navegación por teclado, focus, contraste, modales, tooltips, botones icon-only.
-- **Arquitectura:** lógica de negocio en componentes, duplicación, imports incorrectos entre capas, repositories mal instanciados, llamadas a DB sin `connectDb()`.
-- **Seguridad:** acceso cruzado entre tenants, endpoints sin autorización, IDs manipulables, operaciones sensibles protegidas solo en frontend.
+Necesario para el producto actual: nombre visible (bienvenida), cambio de contraseña (seguridad básica ausente), idioma persistido server-side. Diferible: foto (requiere servicio externo o storage propio — decisión de dependencias), eliminación de cuenta (flujo sensible, mejor con soporte definido), preferencias avanzadas. Recomendación D5(a): F10 implementa mínimo viable sin dependencias nuevas; foto se decide aparte.
 
-## R2.8 — Principios de solución
+## R3.11 — Auditoría comercial priorizada (HR3-25)
 
-**Una solución estructural, no N parches (obligatorio):**
+Criterio valor/esfuerzo/dependencia — NO convertir en lista infinita:
 
-- Diez botones de eliminar inconsistentes → NO diez soluciones: crear/mejorar `ActionIconButton` o equivalente existente.
-- Diez formularios con alturas distintas → corregir `Input`, `Select`, `DateInput`, etc., en `src/components/ui/`.
-- Diez tablas con problemas → crear un patrón común, no copiar estilos.
+1. **Alto valor, bajo costo**: exportación CSV (movimientos/ventas), comparación mes vs mes anterior, labels de estado claros.
+2. **Alto valor, costo medio**: presupuestos mensuales básicos, flujo de caja simple (proyección desde balances+pendientes), recurrencias.
+3. **Mediano plazo**: metas/alertas, reportes por período, indicadores de negocio (requiere costos/inventario), proveedores (pre-Compras).
+4. **Largo plazo / comercial**: planes y límites, features premium, onboarding guiado, conciliación, BI/análisis avanzado, capacidades IA.
 
-La meta: una corrección estructural mejore múltiples módulos.
+Ninguna entra en Ronda 3 salvo lo ya planificado (F4 dashboard); resto alimenta roadmap (R3.15).
 
-**Componentización:** antes de crear un componente → (1) buscar si ya existe, (2) determinar si puede reutilizarse, (3) extenderlo si es apropiado, (4) crear uno nuevo solo si tiene sentido. Genéricos en `src/components/ui/`; específicos en `src/components/[feature]/`.
+## R3.12 — Plan DEFINITIVO por fases (propuesta post-auditoría — REQUIERE APROBACIÓN)
 
-## R2.9 — Entregables de la auditoría (resultado esperado ANTES de implementar)
-
-En la primera interacción de trabajo de esta ronda, **sin escribir código**, entregar:
-
-1. **Resumen ejecutivo** — estado actual de TwinCap.
-2. **Auditoría técnica** — qué se encontró en el código.
-3. **Matriz de hallazgos** — para cada H: estado, causa probable, impacto, prioridad, complejidad, dependencias, fase sugerida.
-4. **Problemas adicionales** — hallazgos no presentes en la lista original.
-5. **Propuesta de arquitectura para obligaciones/compras a crédito** — comparar alternativas A–D y recomendar una.
-6. **Propuesta de evolución visual** — cómo aumentar ligeramente el color sin perder el carácter financiero/profesional.
-7. **Propuesta de componentes reutilizables** — qué crear o mejorar.
-8. **Plan definitivo por fases** — ordenado por dependencia, riesgo, impacto y prioridad.
-9. **Criterios de aceptación por fase.**
-10. **Cambios que NO deben hacerse** — documentado explícitamente.
-11. **Preguntas** — solo si existe una decisión que no pueda resolverse inspeccionando el código.
-
-## R2.10 — Plan DEFINITIVO por fases (post-auditoría, reemplaza la estructura preliminar)
-
-Reordenado tras la auditoría de Fase 0 (ver R2.16) según dependencias reales del código. La auditoría demostró que un bug sistémico (`structuredClone` sobre entidades, P1) explica los síntomas de H9/H14/H17 y debe corregirse antes que cualquier trabajo visual o funcional sobre créditos/POS. Requiere aprobación explícita del usuario.
+Ordenado por: dependencias → riesgo financiero → impacto UX → complejidad → valor. Compuertas: D1+D2 aprueban F1 · D3 aprueba F3 · D4 aprueba F4 · D5 aprueba F10 · D6 aprueba F9 · decisiones menores se consultan al iniciar su fase.
 
 | Fase | Contenido | Hallazgos | Criterios de aceptación clave |
 |------|-----------|-----------|-------------------------------|
-| 0 | Auditoría completa + documentación (entregables R2.9) | R2.16 | ✅ Completada 2026-08-21 |
-| 1 | **Serialización de entidades + i18n crítico**: reemplazar `structuredClone(entidad)` por serialización que preserve getters/toJSON en las 6 páginas afectadas; claves faltantes `Accounts.currency`, `CreditsReceived.currency`, `CreditsGranted.currency` (es/en); mapear enums crudos vía i18n (tipo de movimiento H5, tipo ítem POS, frecuencia de créditos); aria-labels del toast a i18n. Tests del helper de serialización | P1, H5, H16 | Saldo/pending visibles y botón "abonar" presente en créditos y ventas; "Tipo" localizado ES/EN; label de moneda localizado; sin NaN en ventas |
-| 2 | **Fundaciones UI compartidas**: conectar tokens oklch existentes a `@theme` para generar utilidades; `cursor-pointer` centralizado en componentes ui (H20); alturas unificadas input/select/textarea con altura explícita + `appearance-none` en select (H13); variantes de tamaño de Modal (sm/md/lg); componente `ActionIconButton` icon-only con aria-label/tooltip/hover circular/colores semánticos/disabled (H4); adoptar y generalizar el `ConfirmDeleteButton` muerto → `ConfirmDialog` compartido y migrar los 10 `confirm()` nativos (H18); variante warning del toast | H13, H19 base, H20, H4, H18 | Un solo patrón de acción por icono en toda la app; cero `confirm()` nativos; selects e inputs misma altura; cursor pointer en todos los interactivos vía componentes compartidos |
-| 3 | **Layout, navegación y carga**: sidebar desktop fijado al viewport (wrapper `lg:h-screen`, main con scroll propio; móvil ya correcto con `fixed inset-y-0`) (H11); unificar botones inferiores + icono LogOut + clave nueva "Salir" es/en (H12); depurar hamburguesa en runtime — sospecha principal: service worker sirviendo JS stale (probar network-first/skipWaiting para navigations y JS) — y añadir a11y: aria-expanded/controls, Escape, bloqueo de scroll de fondo (H1); corregir cadena `/`→redirect→dashboard: evaluar destino directo del link según sesión y/o loading.tsx en raíz y dashboard (sin ocultar recargas artificiales) (H3); añadir loading.tsx faltantes (raíz, dashboard, clients); cookie NEXT_LOCALE con SameSite/Secure; evaluar reemplazo de `window.location.reload()` del toggle de idioma | H1, H3, H11, H12 | Sidebar con controles inferiores siempre visibles en desktop; navegación a inicio fluida con skeleton; drawer operable por teclado y accesible |
-| 4 | **Tablas y acciones**: decidir entre revivir `ui/table.tsx` (preferido, ya trae min-w-full) o parche estructural `w-full` + `min-w` en las 8 tablas hand-rolled (H2); migrar todas las acciones de tabla a `ActionIconButton` de Fase 2 (movements, transfers, clients, accounts, categories ×2, abonos de créditos, listas POS) (H4 fin); transferencias: monto UNA vez, color neutro, redistribución de columnas (H15) | H2, H4, H15 | Ninguna tabla deja espacio muerto a la derecha; montos de transferencia una sola vez; acciones consistentes con tooltip y aria |
-| 5 | **Movimientos**: eliminar compuerta del filtro — el formulario SIEMPRE abre con cuenta como campo obligatorio dentro; preselección de cuenta si hay filtro concreto (decidir UX al iniciar la fase) (H6); compactar Nuevo Movimiento: agrupación Selección→Datos introducidos, 2 columnas desktop usando modal lg de Fase 2, 1 columna móvil (H7); acción global ingreso/gasto desde cualquier vista autenticada: provider hermano de ToastProvider en `(main)/layout` + trigger flotante, fetch perezoso de cuentas/categorías al abrir, reutilizando el mismo formulario (H8) | H6, H7, H8 | Agregar movimiento funciona con filtro "Todas las cuentas"; formulario compacto; ingreso/gasto alcanzable desde todos los módulos autenticados |
-| 6 | **Créditos**: cablear `edit-principal` (use case existe y está testeado en ambas variantes): server actions received+granted + formulario de edición (H9); agregar delete-abono para créditos (paridad con ventas: use case existe, faltan action+botón); corregir deriva de saldo: `editAbono` debe actualizar también el movimiento vinculado (atómico); verificación end-to-end de editar crédito / registrar / editar / borrar abono post-Fase 1 | H9 | Editar monto de crédito refleja movimiento principal (ya cascada) y editar/borrar abono mantiene saldo == movimientos; UI completa operable |
-| 7 | **POS Ventas**: cliente real obligatorio cuando paymentMode=on-credit (validación backend + form) (H14); pago inicial: campo DTO + form (0 permitido, ≤ total), genera 1 movimiento income parcial kind salePayment; vínculo venta↔crédito otorgado (campo de referencia nuevo), visible/editable/abonable desde Créditos Otorgados; SIN doble contabilidad (diseñar mapa de movimientos antes de codear y presentarlo) ; detalle de venta completo: id, fecha, cliente, modo/estado, ítems con nombre resuelto (join catálogo), cantidad, precio unitario, subtotal, total, pago inicial, pendiente, abonos, cuenta, moneda; contado y crédito (H17) | H14, H17 | Venta a crédito aparece en Créditos Otorgados con saldo correcto; abono único genera un único movimiento; detalle muestra todo dato existente en la entidad sin inventar campos |
-| 8 | **Obligaciones / compras a crédito** — COMPUERTA: mini propuesta de dominio (R2.5, 10 preguntas, alternativas A–D) → aprobación del usuario → implementación. Recomendación previa de auditoría: Alternativa A (+patrones de D): entidad `Payable` espejo del stack CreditReceived (template identificado en R2.16), abonos embebidos, saldo derivado, movimientos system-linked kinds nuevos (`payableInitialPayment`, `payableAbono`); pago inicial 0 ⇒ 0 movimientos al crear. NO módulo Compras | H10 | Dominio aprobado; CRUD completo con pagos iniciales, abonos y saldo consistente con movimientos/balances; base lista para futuro Compras |
-| 9 | **Consistencia visual y módulos restantes**: migrar colores semánticos hardcodeados (green/emerald/rose/red dispersos ~90 usos) a utilidades de tokens de Fase 2 — estandariza emerald vs green y rose vs red (H19 fin); pulido cuentas/categorías/dashboard; barrido de traducciones restantes; estados vacíos y feedback revisados | H19, residuales H5/H16 | Paleta semántica única vía tokens; cero colores arbitrarios por pantalla; dark mode intacto |
-| 10 | **Auditoría transversal final + estabilización**: barridos UX/responsive 375-768-1280/i18n/accesibilidad/seguridad/arquitectura de R2.7; resolver deuda detectada en auditoría: contrato findById (port vs NotFoundError), campos dropeados en add-sale-abono, dead code (editSaleLineItem wire-o-remove, ui/table decisión final); roundtrip extra de DB por navegación ((main)/layout solo para email); `pnpm test` + `pnpm lint` + `pnpm build` verdes; actualización de este documento y roadmap (perfil usuario sigue en roadmap) | R2.7, P-lista | Los tres comandos en verde; checklist transversal sin CRITICAL pendiente |
+| ~~F0~~ | ~~Auditoría completa + este plan~~ | ~~R3.4–R3.11~~ | ✅ Completada 2026-08-24 |
+| **F1** | **Corrección financiera fundamental**: convención de fechas D1 (parse/prefill/format/bucketing coherentes + tests TZ-fijados America/Bogota y UTC); exclusión transfer+opening de resultados económicos D2 (extraer agregaciones a use case testeable); fix estructural del track del gráfico (barras proporcionales reales); unificación del formato monetario (un solo formatter, eliminar 3 duplicados y ~15 concatenaciones, guard test) | HR3-01/02/03/04, A2, A11, A14 | Fechas estables en las 7 entidades con fecha en TZ Bogota; ejemplo salario 2M+transfer 500k ⇒ 2M/0; barras 9M vs 6M claramente distintas en 375px; cero "COP COP"; suite verde con TZ forzada |
+| **F2** | **Textos automáticos e i18n estructural**: notas sistema derivadas en render de `link.kind` + counterparty (fallback nota persistida si padre eliminado); categorías sintéticas resueltas vía i18n en dashboard (mata "uncategorized"); clave Categories.type + test de cobertura de uso i18n (detecta claves referenciadas faltantes); barrido español neutral (~24 claves) | HR3-05/06/07, A4 | Cero notas inglesas visibles en ES; cambiar idioma cambia notas históricas; "type" localizado; parity+usage tests verdes; cero voseo |
+| **F3** | **Clasificación Personal/Negocio (D3)**: Account.scope + migración/backfill + herencia automática en movimientos sistema (elimina hardcodes 'Personal'); filtro ámbito en Movements; base de queries para dashboard | HR3-08 | Consultar "todo mi negocio" posible sin duplicar datos; movimientos sistema clasificados por cuenta; migración reversible y testeada |
+| **F4** | **Dashboard financiero avanzado (D4)**: sistema central de filtros composables (ámbito/cuenta/categoría/período); sección Activos y Pasivos con definiciones aprobadas y presentación por moneda; reclasificación tarjeta pendingCredits; gráfico evolución mensual anual (línea vs barras: decidir con evidencia en fase); extraer agregaciones a use cases con tests; queries acotadas (recent limitado, proyecciones) | HR3-09/10, A1, A2, A3 | Filtros combinables sin explosión de estados; activos/pasivos cuadran con listas; multi-moneda honesta (agrupada, no silenciosa); agregaciones testeadas |
+| **F5** | **Consistencia de tablas y ventas**: aplicar matriz R3.8 por módulo (filtros secundarios); **orden cronológico descendente uniforme** (fecha de negocio DESC + desempate createdAt DESC, verificado repo por repo — HR3-27); fila resumida de ventas con primer artículo + indicador "+N más"; variante compartida para CTAs de abono (Button success sm) incluida paridad de tamaño; limpieza residuales (dead conditional, silent COP fallback, chip responsive) | HR3-11/12/13/**27**, A7, A8, A9 | Filtros según matriz aprobada; TODAS las tablas muestran más recientes primero con desempate horario correcto (test: dos registros del mismo día 5:41:19 pm vs 5:41:18 pm); nombre de artículo visible pre-detalle con fallback i18n; un solo patrón de botón abono |
+| **F6** | **Invalidación y datos frescos**: corregir caché one-shot del GlobalMovementProvider (refetch-on-open/TTL o invalidación tras mutations); completar matriz revalidatePath (deleteSaleAbono→/accounts+/dashboard; editPayable→/accounts; editAbono×3→/dashboard); patrón documentado para futuras entidades | HR3-14 | Crear/borrar categoría o cuenta refleja en formularios del FAB sin reload duro; saldos consistentes tras borrar abono de venta; sin window.location.reload |
+| **F7** | **UX de autenticación**: ui/password-input.tsx con toggle ojo accesible (aria-label i18n, aria-pressed, tooltip); fix autoComplete por modo (prop, NO título i18n) en login/register; decisión menor confirm-password; revisión de otros formularios de contraseña | HR3-15/16 | Login ES y EN autocompleta como existing-password; toggle operable por teclado y lector; registro induce generación correcta |
+| **F8** | **Branding, landing y navegación**: header drawer móvil con reserva de espacio/z-index (logo nunca bajo botón cerrar) — evaluar logo-en-header vs logo-en-drawer según arquitectura real; logo desktop ampliado + slogan i18n (D9 candidatos en fase); hero sin marca duplicada (h1→i18n); CTA landing con variante segura del Button (sin overrides en cascada); adopción Button primary en 10 CTAs hand-rolled + fix ghost×3; EmptyState component adoption ×2; sidebar agrupada (Finanzas/Crédito/Negocio) collapsible desktop + acordeón drawer con a11y completa | HR3-17/18/19, A5, A6, A10 | 375px sin solapamiento; slogan ES/EN neutral; cascada determinista en todos los botones; sidebar agrupada usable con teclado/Escape en ambos modos |
+| **F9** | **Tema claro/oscuro completo (D6)**: tokens superficie + color-scheme + unificación brand blues (Button→token --tc-primary) + toast info/warning contrastes + themeColor dinámico + switcher persistente (clase .dark + script anti-flash) + migración progresiva de pares manuales empezando por ui kit + verificación por superficie (lista §5.21: login/registro/landing/dashboard/tablas/forms/modales/toast/gráficos/badges/nav/PWA) | HR3-20, A15 | Ambos modos completos y legibles en la lista de superficies; switcher respeta OSS inicial; un solo azul primario |
+| **F10** | **Perfil de usuario mínimo (D5)**: campos name/locale en User (entidad+modelo+backfill trivial), página perfil, actions con scoping, cambio de contraseña (bcrypt verify), bienvenida dashboard con nombre; foto SOLO si usuario aprueba servicio (Cloudinary u otro) como decisión separada | HR3-21 | CRUD propio sin exponer datos cruzados; contraseña cambiada invalida sesión correctamente según política definida; i18n paridad |
+| **F11** | **PWA final**: regenerar icon-192/512/maskable/apple-touch/favicon desde isotipo transparente con fondo sólido bajo maskable (safe area 40%); splash coherentes con marca; verificar manifest/sw tras regeneración (cache bump obligatorio); ruta inicial D7 (mantener, documentado); nota offline A16 registrada | HR3-22/23, A16 | Sin flash blanco en launchers oscuros; instalación Android+iOS+navegador coherente; sw bump sin romper clientes instalados |
+| **F12** | **Cierre de ronda**: checklist transversal §6 del doc fuente (arquitectura/seguridad/i18n/responsive 375-768-1280/a11y/testing); resolver deuda detectada en fases; roadmap comercial final (R3.11 + blog); `pnpm test` + lint + build + tsc verdes; actualización de este documento | Transversal | Checklist sin CRITICAL; comandos verdes; docs al día |
 
-Compuertas de aprobación dentro del flujo: Fase 8 (decisión de dominio H10). Decisiones menores que se presentan al iniciar su fase: preselección de cuenta (F5), mapa de movimientos POS (F7).
+## R3.13 — Protocolo de implementación por fase
 
-La numeración respeta la estructura preliminar del usuario salvo: fundaciones divididas en dos (serialización primero porque desbloquea créditos/POS), tablas separadas de layout (dependen de ActionIconButton de Fase 2), y consistencia visual al final (aplica tokens construidos en Fase 2).
+**Antes:** explicar brevemente qué se hará, archivos probables, riesgos y pruebas. Decisiones menores de la fase se presentan ANTES de codear.
+**Durante:** implementar ÚNICAMENTE la fase aprobada. Dependencia fuera de alcance → DETENERSE y explicar (por qué, archivos, riesgo, alternativas, recomendación).
+**Después:** `pnpm test` + lint + build/tsc cuando corresponda; informar cambios/archivos/tests/resultados/problemas/pendientes/nuevos hallazgos; commit convencional por unidad lógica; **DETENERSE Y ESPERAR APROBACIÓN** para la siguiente fase.
+Criterios de fase terminada: funciona, no rompe, respeta arquitectura/i18n/multi-tenancy/dominio financiero, móvil+desktop, loading/error/empty cuando corresponda, feedback al usuario, tests cuando haya lógica nueva.
 
-## R2.11 — Protocolo de implementación por fase
+## R3.14 — Cambios que NO deben hacerse
 
-**Antes:** explicar brevemente qué se modificará, archivos probables, riesgos y pruebas.
+No implementar nada antes de aprobar este plan y sus compuertas D1–D8 · no crear módulo Compras · no crear multiusuario/equipos/colaboradores · no cambiar stack ni librerías UI/iconos/charts externas · no reescribir TwinCap · no compensar fechas con offsets ±1 día · no contar transferencias internas como ingreso/gasto · no persistir nuevo texto humano generado por el dominio · no hardcodear textos visibles · no soluciones por-pantalla para problemas compartidos · no `window.location.reload()` como solución general · no ocultar/eliminar tests fallidos · no habilitar el hook GGA · no instalar dependencias sin justificar (máx 1/fase) · no inventar FX/conversiones de moneda · no implementar features del análisis comercial sin aprobación.
 
-**Durante:** implementar ÚNICAMENTE la fase aprobada. No introducir funcionalidades de otras fases. Si aparece una dependencia crítica: DETENERSE y explicarla.
+## R3.15 — Roadmap futuro (registrado, fuera de esta ronda)
 
-**Después:** ejecutar `pnpm test`, `pnpm lint`, `pnpm build` (cuando corresponda) e informar:
-
-- Cambios realizados
-- Archivos modificados
-- Tests
-- Resultado
-- Problemas encontrados
-- Pendientes
-- Nuevos hallazgos
-
-Luego: **DETENERSE Y ESPERAR APROBACIÓN.**
-
-## R2.12 — Criterios de aceptación de una fase
-
-Compilar NO basta. Una fase está terminada cuando:
-
-- Funciona.
-- No rompe funcionalidades anteriores.
-- Respeta arquitectura, i18n y multi-tenancy.
-- Funciona en móvil y desktop.
-- Maneja loading, error y estado vacío cuando corresponda.
-- Tiene feedback al usuario.
-- Incluye tests cuando haya lógica funcional nueva.
-
-## R2.13 — Reglas de alcance y dependencias
-
-**Cambios de alcance:** si durante una fase algo requiere modificar código fuera de su alcance, NO hacerlo automáticamente. Explicar por qué es necesario, qué archivos afecta, qué riesgo tiene y qué alternativas existen. Solicitar aprobación.
-
-**Dependencias:** no instalar nuevas salvo necesidad real. Escalafón de preferencia: (1) código existente, (2) componentes existentes, (3) APIs nativas, (4) capacidades de Next.js/React, (5) capacidades de Tailwind, (6) dependencias ya instaladas, (7) nueva dependencia como último recurso. Máximo UNA nueva por fase salvo justificación excepcional. Si se propone una: explicar por qué, qué problema resuelve, por qué no puede resolverse con lo existente y qué impacto tiene.
-
-## R2.14 — Cambios que NO deben hacerse
-
-- No implementar nada antes de la aprobación del plan definitivo (incluida la decisión de dominio de H10).
-- No crear un módulo de Compras — solo dejar base razonable para el futuro.
-- No cambiar el stack, ni migrar frameworks, ni introducir otra librería de componentes UI o de iconos.
-- No reescribir la aplicación; no introducir soluciones artificiales que solo oculten recargas reales (H3).
-- No implementar el módulo de perfil de usuario en esta ronda (roadmap).
-- No crear una solución diferente por pantalla para el mismo problema — ir siempre al componente/patrón compartido.
-- No hardcodear textos visibles ni confiar en validaciones solo-frontend.
-- No ocultar ni eliminar tests fallidos.
-
-## R2.15 — Roadmap futuro (registrado, fuera de esta ronda)
-
-- **Perfil de usuario (H21):** foto, nombre, datos personales, email, preferencias, idioma, eliminación de cuenta, cambio de contraseña. Implementar solo si el análisis encuentra una dependencia directa.
-- **Módulo Compras:** evolución natural de H10; la solución de obligaciones debe dejar la base lista para que exista posteriormente.
-
-## R2.16 — Resultados de la auditoría (Fase 0, 2026-08-21)
-
-Método: 4 exploraciones paralelas de solo lectura sobre el código real (layout/navegación · dominio créditos/ventas · tablas/feedback · formularios/i18n). Sin modificaciones.
-
-### Salud general verificada
-
-- `connectDb()` en 29/30 actions (la excepción es logout, sin DB) ✓ — sin repositories a nivel de módulo ✓
-- Capas limpias: ningún componente importa models/repos; scoping por userId consistente en todo el stack, incluidos `$push/$pull` ✓
-- i18n: paridad es/en perfecta (327/327 claves) ✓
-- Cero `alert()` nativos; cero doble contabilidad hoy (venta a crédito genera 0 movimientos)
-
-### Causas raíz verificadas (H1–H20)
-
-| H | Estado | Causa raíz (evidencia) |
-|---|--------|------------------------|
-| H1 | Código estático correcto; falla runtime | Sospecha principal: `public/sw.js` stale-while-revalidate sirve JS viejo tras redeploy → hidratación muerta (`return cached \|\| fetched`). Agravado: drawer sin aria-expanded/Escape/focus-trap y con scroll de fondo |
-| H2 | Confirmado estructural | Tablas hand-rolled con `min-w-[Npx]` SIN `w-full` → shrink-to-fit. `ui/table.tsx` existe pero es DEAD CODE (0 imports). 8+ tablas duplican el patrón |
-| H3 | Confirmado | `/` redirige authed→`/dashboard` (commit abd24a2): doble fetch RSC, ambos force-dynamic con queries DB, sin loading.tsx en ninguna pata. Toggle de idioma además usa `window.location.reload()`. Faltan loading.tsx en raíz/(main)/dashboard/clients |
-| H4 | Confirmado | Botones Trash2/Pencil/Eye con TEXTO, no icon-only; sin ActionIconButton compartido; estilos dispersos (ghost rojo vs raw indigo) |
-| H5 | Confirmado trivial | `movements-list.tsx:153` renderiza `{movement.type}` crudo ("income"/"expense"). Claves YA existen (`Movements.income`=Ingreso). Mismo patrón crudo: tipo ítem POS (`sale-form.tsx:195`) y frecuencia de créditos (×2 listas `:83`) |
-| H6 | Confirmado | Compuerta DENTRO del modal: `selectedAccountId==='all'` muestra mensaje estático en vez del form (`movements-list.tsx:63-73`). El botón siempre abre el modal; filtro es useState local |
-| H7 | Confirmado | `movement-form.tsx` 7 campos apilados `space-y-4`; TODOS los modales limitados a `max-w-md` (`modal.tsx:48`) → imposible 2 columnas. Violadores también: account/category/client forms |
-| H8 | Confirmado | Form montado SOLO en movements-list. Montaje global viable: provider hermano de ToastProvider en `(main)/layout`; fetch perezoso recomendado para no penalizar cada página |
-| H9 | **NO es backend** | `structuredClone(entidad)` en pages destruye getters de prototipo → `credit.pending`===undefined client-side → botón "abonar" oculto (`pending>0` falso), tabla de abonos oculta, badge "paidInFull". Backend completo y correcto. Además: edit-principal existe+testeado pero SIN action ni form; delete-abono sin action/botón en créditos; ⚠️ P10 desactualizada: la cascada de editAbono SÍ existía desde 08c4d13 (ver corrección en Fase 6) |
-| H10 | Sin concepto existente | Venta on-credit: NO crea CreditGranted, sin campo de linkage, sin pago inicial (ni DTO ni form), "Cliente general" permitido en ambos modos. Template a replicar identificado (stack CreditReceived completo) |
-| H11 | Confirmado desktop-only | Wrapper `flex min-h-screen` (no viewport-lock) + aside `lg:static` → sidebar crece con el contenido; controles inferiores quedan fuera de pantalla. Móvil OK (`fixed inset-y-0`) |
-| H12 | Confirmado | Idioma: outline+icono vs Salida: filled solo-texto; clave actual "Cerrar sesión"/"Logout"; no existe "Salir"; literales 'EN'/'ES' hardcodeados (nav.tsx:113,151) |
-| H13 | Confirmado | Clases de input/select BYTE-IDénticas; la diferencia es rendering nativo del `<select>` → fix = altura explícita (h-10) / appearance-none en componentes compartidos |
-| H14 | Confirmado | Ver H10 + falta validación de cliente real; sin riesgo de doble conteo hoy porque no se genera nada |
-| H15 | Confirmado | `transfers-list.tsx:93-106`: celda única renderiza SIEMPRE −monto y +monto aunque sea misma moneda |
-| H16 | Confirmado trivial | Clave `Accounts.currency` NO existe → fallback `ns[key]??key` imprime literal "currency" en ambos idiomas. Igual en CreditsReceived/CreditsGranted. (Catalog.currency sí existe) |
-| H17 | Confirmado | Detalle = fila expandida (`sale-list.tsx:138-170`): faltan nombres de ítems (itemId nunca resuelto), precio unitario, cuenta, createdAt, visibilidad soft-delete; moneda heurística (primer ítem) |
-| H18 | Parcial | 0 alert(); 10 `confirm()` nativos copy-paste en deletes. `ConfirmDeleteButton` en ui/ EXISTE pero DEAD CODE (0 imports). Abonos de crédito no son borrables (sí los de venta) |
-| H19 | Base construida y sin usar | Tokens oklch semánticos DEFINIDOS en globals.css (success/danger/warning/info/debt/income/expense, light+dark) pero generan 0 utilidades (@theme inline solo mapea bg/fg/fonts) y nadie los consume. Realidad: indigo/zinc + green(30)/red(57)/emerald/rose/amber/sky/orange dispersos e inconsistentes |
-| H20 | Confirmado masivo | Solo 2 usos de cursor-pointer en toda la app (filas de créditos); Button/Select/Modal/Card/SearchableSelect todos lo carecen (Tailwind v4 quitó pointer default) |
-
-### Hallazgos adicionales (no estaban en la lista)
-
-- **P1 (crítico, sistémico):** `structuredClone(entidad)` en 6 páginas (credits ×2, transfers, pos/sales, pos/catalog, movements) destruye getters/toJSON — causa única de los síntomas H9/H14/H17 del lado UI.
-- P2: dead code — `ui/table.tsx`, `ConfirmDeleteButton`, use case `editSaleLineItem` (exportado, jamás cableado).
-- P3: `add-sale-abono.ts:69-80` reconstruye Sale dropeando clientId/deletedAt/stockRestored (trampa latente).
-- P4: contrato repos `findById`: port declara `Promise<X|null>` pero implementaciones lanzan NotFoundError.
-- P5: roundtrip extra de DB por navegación: `(main)/layout` corre getCurrentUser+findById solo para renderizar un email.
-- P6: cookie NEXT_LOCALE sin SameSite/Secure.
-- P7: toast sin variante warning; aria-labels en inglés hardcodeado ("Dismiss", "Notifications").
-- P8: inconsistencia semántica de color emerald vs green y rose vs red entre Badge/Toast/listas.
-- P9: drawer móvil sin focus management ni Escape ni bloqueo de scroll; links sin aria-current.
-- P10: ~~edit-abono de crédito no actualiza movimiento vinculado~~ **CORREGIDO 2026-08-22 (Fase 6): afirmación desactualizada** — la cascada SÍ existía desde `08c4d13` (17/08, previo a esta auditoría), verificada en use case + mapper + `$set` + tests preexistentes.
-- P11: falta delete-abono en créditos (paridad con ventas).
-- P12: toggle de idioma fuerza recarga completa (window.location.reload).
-- P13: detalle de venta no distingue ventas soft-deleted.
-
-### Template para Payable (Fase 8) — stack CreditReceived a replicar
-
-domain/credit-received.ts (+port en repositories.ts) → infrastructure/models → mappers → repositories → core/application/credits-received/{create,add-abono,edit-abono,delete-abono,delete,edit-principal}+dto → app/(main)/credits/received/{actions,page,*-form,*-list}.
+- **Blog interno** (HR3-26): educación financiera + SEO + autoridad de marca. Iniciativa futura documentada; no implementar salvo que una auditoría lo justifique.
+- **Evolución Compras** (camino C de D8): Payable → proveedores estructurados + líneas de compra + inventario/costos, tras validación comercial.
+- **Features comerciales** priorizadas en R3.11 (exportación, presupuestos, flujo de caja, recurrencias, planes/monetización a largo plazo).
+- **Refinamiento devengo opcional**: separar flujos de financiamiento del resultado operativo (extensión de D2) si el negocio lo demanda.
 
 ---
 
@@ -349,10 +244,10 @@ Si el contexto se compacta o inicia nueva sesión:
 
 1. **Leer este archivo completo** (`docs/AUDIT-AND-PLAN.md`)
 2. **Leer `AGENTS.md`**
-3. **Buscar en Engram:** `mem_search(query: "TwinCap ronda 2 fase", project: "globalmoney")`
-4. **Identificar la fase actual** comparando el último commit con la tabla de estado de arriba
-5. **Continuar desde la fase pendiente**, respetando el protocolo R2.11 (detenerse y esperar aprobación al terminar cada fase)
-6. Recordar: si el estado es "auditoría pendiente" o "plan sin aprobar", NO implementar nada
+3. **Buscar en Engram:** `mem_search(query: "TwinCap ronda 3", project: "globalmoney")`
+4. **Identificar la fase actual** comparando el último commit con la tabla R3.12 y la BITÁCORA
+5. **Continuar desde la fase pendiente**, respetando el protocolo R3.13 (detenerse y esperar aprobación al terminar cada fase)
+6. Recordar: si el estado es "plan sin aprobar", NO implementar nada; las decisiones D1–D8 aprobadas quedarán anotadas en la BITÁCORA
 
 ---
 
@@ -360,17 +255,7 @@ Si el contexto se compacta o inicia nueva sesión:
 
 - 2026-08-19 — Creación del plan maestro (Ronda 1, 12 fases identificadas).
 - 2026-08-20 — Ronda 1 completada: fases 0–22 ejecutadas y commiteadas.
-- 2026-08-21 — Reescritura del documento para la **Ronda 2** (fuente: `Ronda 2.md`). Estado: Fase 0 (auditoría) pendiente; implementación bloqueada hasta aprobación del plan.
-- 2026-08-21 — **Fase 0 completada.** Auditoría técnica del código real (4 exploraciones paralelas, read-only). Causas raíz verificadas H1–H20 + 13 hallazgos adicionales → sección R2.16. Descubrimiento clave: bug sistémico P1 (`structuredClone` destruye getters) explica los síntomas de H9/H14/H17 — el backend de créditos/abonos está completo y correcto. R2.10 reemplazada por el plan definitivo de 10 fases reordenado por dependencias reales. Esperando aprobación del usuario para iniciar Fase 1.
-- 2026-08-21 — **Fase 1 implementada (serialización + i18n crítico).** Plan aprobado por el usuario. Cambios: helper `src/lib/serialize.ts` (`serializeEntity`/`serializeEntities` vía `toJSON()`) + tests; `toJSON()` + tipos `Serialized*` agregados a Account, Category, Client, CatalogItem, Movement, Transfer (Credit/Sale ya los tenían, se exportaron sus DTO types); las 6 páginas afectadas (credits ×2, transfers, pos/sales, pos/catalog, movements) serializan con `toJSON` en vez de `structuredClone`; componentes cliente re-tipados a `Serialized*`. i18n: claves nuevas `Common.dismiss/notifications`, `Accounts.currency`, `CreditsReceived.currency`, `CreditsGranted.currency` (es/en, paridad intacta); enums crudos mapeados: tipo de movimiento → `t(movement.type)` (claves existentes), tipo ítem POS → `tCatalog(type_*)`, frecuencia créditos → `t(credit.frequency)` (claves weekly/biweekly/monthly existentes); aria-labels del toast a i18n. Verificación: **279/279 tests ✅ · lint 0 errores (8 warnings preexistentes en edit-abono-forms, se limpian en Fase 6) · build ✅**. Fix manual post-agente: fixtures de 4 test files usaban `userId: ''` en `new Category(...)` y el constructor lo valida — corregido a `'user-1'`. Commit de la fase + `Ronda 2.md` (lineamientos de la ronda, antes sin trackear) en un solo commit. **PAUSA: el usuario pedirá explícitamente continuar con Fase 2.**
-- 2026-08-21 — **Fase 2 implementada (fundaciones UI compartidas).** Aviso explícito del usuario recibido. Cambios: (1) tokens oklch semánticos ahora generan utilidades Tailwind — vars renombradas a `--tc-*` en `:root` + dark media query, mapeadas en `@theme inline` como `--color-*` → utilidades dinámicas `bg-success`, `text-danger`, `ring-primary`, modificadores de opacidad incluidos; grep previo confirmó cero consumidores externos de los nombres viejos; dark mode intacto (prefers-color-scheme). (2) `cursor-pointer` centralizado en Button/Select/SearchableSelect/Modal-close (H20). (3) Alturas unificadas `h-10` en Input/Select/SearchableSelect-trigger; Select con `appearance-none` + chevron Lucide posicionado, sigue server-renderable con forwardRef (H13). (4) Modal `size?: sm|md|lg` (default md = comportamiento actual píxel-idéntico; lg=max-w-2xl para Fase 5). (5) Nuevo `ui/action-icon-button.tsx`: icon-only circular, tonos neutral/primary/danger/success/warning mapeados a utilidades de token, aria-label + title tooltip, loading/disabled (H4 — adopción masiva en Fase 4). (6) H18: nuevo `ui/entity-delete-button.tsx` (flujo único: trigger→ConfirmDialog→action imperativa `(null, formData)`→toast→refresh, soporta multi-campo y stopPropagation para filas clickeables) + `ui/confirm-dialog.tsx` (sobre Modal size=sm); los 10 delete buttons migrados a wrappers finos (−586/+208 líneas); **cero `confirm()` nativos**; dead code `ui/confirm-delete-button.tsx` eliminado. Desviaciones intencionales documentadas: triggers mantienen su visual previo (ghost+rojo, no danger filled), diálogo permanece abierto con spinner durante la petición, errores thrown ahora logueados por consola, bug preexistente corregido (accounts/movements/transfers/categories mostraban label literal "delete" por clave faltante → ahora `Common.delete`). (7) Toast variante `warning` (amber-500 + AlertTriangle); tipo `ToastVariant` unificado en una sola fuente. Test nuevo: `src/i18n/messages-parity.test.ts` (paridad recursiva es/en — sin claves nuevas necesarias). Verificación: **281/281 tests ✅ · lint 0 errores (mismos 8 warnings conocidos) · build ✅**. Pendiente consciente: dropdown nativo del Select conserva opciones del OS (delta visual solo en el control cerrado). Commit único de la fase. **PAUSA: el usuario pedirá explícitamente continuar con Fase 3 (layout/navegación/carga).**
-- 2026-08-21 — **Fase 3 implementada (layout, navegación y carga).** Aviso explícito del usuario recibido. Cambios: (H11) wrapper `(main)/layout` → `min-h-screen lg:h-screen lg:overflow-hidden`; aside interno flex-col (nav `flex-1 overflow-y-auto`, bloque inferior `mt-auto`) → desktop sin scroll de página, `<main>` único scroll, controles inferiores siempre visibles; móvil intacto. (H12) claves nuevas `Nav.exit` "Salir"/"Log out" + eliminada la muerta `Nav.logout` (única consumidora era nav.tsx); botón Salir con icono LogOut y estilo idéntico al selector de idioma (ambos h-10 outline); literales 'EN'/'ES' se mantienen a propósito (autónimos del idioma, práctica estándar — decisión documentada). (H1) runtime ya mitigado por 9cb9c51 (SW network-first) — esta fase NO tocó la estrategia; se corrigió el hallazgo pendiente de review: STATIC_ASSETS deja de precachear `/` y `/dashboard` (HTML autenticado persistido cross-user) → CACHE_NAME v4; drawer: aria-expanded/aria-controls, Escape cierra, scroll-lock de fondo (con guard matchMedia ≥lg para no trabar el body si se redimensiona con drawer abierto), aria-current="page", focus al primer link al abrir y retorno al hamburguesa al cerrar. (H3) NAV_ITEMS[0] ahora apunta directo a `/dashboard` (elimina la cadena `/`→redirect→dashboard en el click normal; el redirect de `/` queda para bookmarks); loading.tsx nuevos en raíz (mínimo), dashboard (espeja estructura real: header+4 cards+2 col+accounts) y clients (mismo contenedor max-w-3xl). (P6) cookie NEXT_LOCALE con `sameSite:'lax'` + `secure` en producción. (P12) toggle de idioma: `router.refresh()` en vez de `window.location.reload()` — seguro porque los mensajes fluyen server→cliente por props en cada pasada RSC sin caché module-level (verificado en mapeo); html lang se actualiza vía RSC. Verificación: **281/281 tests ✅ · lint 0 errores (mismos 8 warnings conocidos) · build ✅**. Pendiente de prueba humana en browser: drawer por teclado, scrollbar única en desktop, toggle ES↔EN sin recarga visible, purga de cache v3 del SW. Commit único de la fase. **PAUSA: el usuario pedirá explícitamente continuar con Fase 4 (tablas y acciones).**
-- 2026-08-22 — **Fase 4 implementada (tablas y acciones).** Aviso explícito del usuario recibido. Antes de la fase se diagnosticó (Engram obs #91) el error móvil al entrar tras cada deploy: teléfono con el SW viejo v1 (stale-first para TODO + precache de HTML autenticado de `/dashboard`); resuelto por el usuario limpiando datos del sitio — el sw.js actual (v4, network-first) ya era correcto; mejora opcional pendiente: auto-recuperación ante chunks stale (purge + un solo reload por sesión). Cambios de la fase (23 archivos, +103/−89): (H2) DECISIÓN DOCUMENTADA: NO revivir `ui/table.tsx` — su API genérica `Column<T>` no apta para filas con badges/celdas compuestas/acciones interactivas (reescritura de alto churn sin beneficio); parche estructural elegido: `w-full` junto al `min-w-[Npx]` existente en las 5 tablas hand-rolled (transfers 700 · movements 600 · clients 500 · accounts 400 · categories 300) → llenan el contenedor en desktop, mantienen scroll horizontal a 375px; contenedores overflow-x verificados; abonos sub-tables ya estaban bien (`min-w-full`); `ui/table.tsx` sigue dead code — remoción final decidida en Fase 10. (H4 fin) todas las acciones de fila ahora icon-only vía `ActionIconButton`: `EntityDeleteButton` extendido con prop `iconOnly` (trigger = ActionIconButton tone danger, fallback Trash2) reutilizando íntegro el pipeline ConfirmDialog→action→toast→refresh + stopPropagation; los 10 delete buttons migrados sin overrides divergentes (accounts ganó su Trash2 faltante); inline: editar abono ×2 → Pencil/primary (stopPropagation preservado), detalles venta → Eye/EyeOff primary con label dinámico `Sales.details`/`Sales.hide`, editar catálogo → Pencil/primary con `Catalog.edit`; `ActionIconButton.onClick` ahora recibe MouseEvent (cero consumidores previos, verificado); los CTAs etiquetados "Agregar abono"/Cancelar NO se convirtieron a propósito (toggle icon-only destruiría la affordance cancelar). (H15) transferencias: misma moneda → UN solo monto neutro (`font-medium text-zinc-900 dark:text-white text-sm nowrap`, mismo tamaño que otras tablas); monedas distintas → `X CUR → Y CUR` + rate existente; header plural `Transfers.amounts` → reutilizada `Common.amount`; espacio redistribuido (fecha nowrap, descripción 200→280px, nota cap 200px). i18n: única clave nueva `Common.edit` es/en (paridad ✅); `Transfers.amounts` quedó huérfana → barrido Fase 9. Verificación: **281/281 tests ✅ · lint 0 errores (8 warnings conocidos) · build ✅ · tsc --noEmit ✅** — re-verificado independientemente por el orquestador tras el agente. Hallazgos fuera de alcance registrados: header de columna de acciones en clients usa `Clients.delete` ("Eliminar") en vez de "Acciones" como el resto (cosmético); heurística de moneda en sale-list sigue pendiente (H17/Fase 7). Pendiente de prueba humana: tap targets a 375px en panel expandido de créditos (CTA Plus + trash cercanos). **PAUSA: el usuario pedirá explícitamente continuar con Fase 5 (movimientos).**
-- 2026-08-22 — **Fase 5 implementada (movimientos).** Aviso explícito del usuario recibido. Decisión menor presentada al iniciar la fase y aprobada: PRESELECCIÓN DE CUENTA activada (filtro de cuenta concreta ⇒ form abre con esa cuenta; filtro "Todas las cuentas" ⇒ vacía). Cambios: (H6) compuerta eliminada — "Agregar movimiento" SIEMPRE abre el formulario; cuenta ahora es select obligatorio dentro del form; validación backend verificada intacta (constructor `Movement` lanza con accountId vacío, movement.ts:103). (H7) form compacto en dos fieldsets etiquetados "Selección"/"Datos ingresados", grid 1 col móvil / 2 cols sm+ dentro de `Modal size="lg"` (max-w-2xl de Fase 2); cero campos removidos, semántica de validación intacta. (H8) nuevo `GlobalMovementProvider` en `(main)/layout.tsx`: contexto `useQuickMovement() → openQuickMovement({type?, accountId?})`; DESVIACIÓN JUSTIFICADA del plan: monta DENTRO de ToastProvider envolviendo `<main>` (no hermano) porque MovementForm consume useToast que lanza fuera del provider; FAB fija bottom-right con safe-area insets, z-30 (bajo drawer z-40 y Modal/Toast z-50), speed-dial Ingreso/Egreso (TrendingUp/TrendingDown) con Plus↔X morph, capa transparente outside-tap, Escape, aria-expanded/controls, focus al abrir vuelve al FAB al cerrar; fetch perezoso UNA sola vez por sesión (caché one-shot con estado error→retry) vía NUEVAS actions read-only `listAccountsAction`/`listCategoriesAction` (getCurrentUser → connectDb → repos dentro de la función → serializeEntities, boundary respetado); movements-list elimina su modal local y rutea por el provider (UNA sola instancia del patrón formulario); presets aplican frescos porque Modal hace `if (!open) return null` (remount). Helper puro nuevo `resolveDefaultAccountId` (+`filterCategoriesByType` extraído) en src/lib/movement-form.ts con 8 tests. i18n: 5 claves nuevas `Movements.quickAdd`, `quickAddMenu`, `groupSelection`, `groupDetails`, `selectAccount` es/en (paridad ✅); reutilizadas income/expense/newMovement/noAccounts/loading/retry. Verificación: **289/289 tests (31 archivos) · lint 0 errores (8 warnings conocidos) · build ✅ · tsc --noEmit ✅** — re-verificado independientemente por el orquestador. ⚠️ Hallazgo fuera de alcance PRIORIZABLE: `create-movement` NO verifica existencia/ownership de la cuenta — un accountId fabricado crearía un movimiento huérfano (sin leak cross-user: balances derivan de queries scoped por userId; gap de integridad referencial). Requiere agregar repo de cuentas como param del use case → tratar en Fase 10 o fix puntual aprobado. Otros registrados: currency del form no se alinea automáticamente con la moneda de la cuenta elegida (preexistente); clave muerta `Movements.selectAccountToAdd` y condición residual → Fase 10. Pendiente prueba humana: FAB vs CTAs de página a 375px, legends en dark mode. **PAUSA: el usuario pedirá explícitamente continuar con Fase 6 (créditos).**
-- 2026-08-22 — **Fases 5/6 fixes post-prueba humana + Fase 6 implementada (créditos).** Fixes de la Fase 5 reportados por el usuario y verificados: (09a7c23) el speed-dial del FAB no lanzaba el modal — capa invisible outside-tap (positioned) pintaba sobre los botones estáticos del menú (paint order CSS); fix: `relative` en el contenedor del menú, mismo patrón del Modal propio. GOTCHA registrado: jsdom/vitest NO detectan bugs de paint-order/hit-testing — testing manual obligatorio para overlays. (1c536d2) Modal compartido sin max-height ni scroll: formularios largos quedaban recortados arriba/abajo por centrado flex; fix estructural en ui/modal.tsx: root p-4, diálogo flex max-h-full flex-col, header/actions shrink-0, cuerpo min-h-0 flex-1 overflow-y-auto — TODOS los modales de la app heredan el arreglo. FASE 6: (H9a) edit-principal cableado ×2: actions `editCreditReceivedAction`/`editCreditGrantedAction` + forms nuevos `edit-credit-form.tsx` (Modal md, patrón catalog-list editingItem; Pencil ActionIconButton en fila header con stopPropagation; moneda oculta a propósito — es derivada de la cuenta al leer, los mappers persisten solo principal.amount, un select editable sería no-op silencioso). (H9b) delete-abono ×2 con paridad total de ventas: actions nuevas + EntityDeleteButton iconOnly en tablas de abonos; los use cases ya hacían `$pull` del abono embebido + delete del movimiento vinculado vía abono.movementId. (P10) **CORRECCIÓN DE AUDITORÍA**: la cascada editAbono→movimiento ya existía desde `08c4d13` (17/08, ANTERIOR a la auditoría del 21/08) — verificada por el orquestador con evidencia (git show + tests preexistentes "keeps saldo == sum(movements)"). No se re-implementó; se endurecieron tests (+8: invariante embedded abono == movimiento, skip sin movementId, errores). Atomicidad: SIN transacción Mongo — ports no aceptan ClientSession y cambiar todas las firmas es rediseño de infraestructura fuera de alcance; dual-writes dentro de la invocación única del use case con limitación documentada en comentarios en los 6 use cases dual-write (create/add/edit/delete abono, editPrincipal, deleteCredit). (Item 4 prometido desde Fase 1) los 8 warnings históricos de edit-abono-forms eliminados → lint queda 0 errores / 0 warnings. i18n: 4 claves nuevas `CreditsReceived.editCredit`, `CreditsReceived.confirmDeleteAbono`, `CreditsGranted.editCredit`, `CreditsGranted.confirmDeleteAbono` es/en; toasts reutilizados. Verificación: **297/297 tests (31 archivos) · lint 0 err / 0 warnings · build ✅ · tsc ✅** — re-verificado independientemente por el orquestador. Hallazgos fuera de alcance: P4 muerde créditos — findById lanza NotFoundError vs port Promise<X|null>: si el usuario borra directamente un movimiento vinculado desde Movements, editar/borrar ese abono falla duro ("Movement not found") → Fase 10; drift latente: EditAbonoInput.accountId llega al movimiento pero nunca se persiste al abono embebido (creditRepo.editAbono carece del campo) — hoy inexercitado; SIN guard para borrar movimientos system-linked desde Movements (rompe saldo↔balance por diseño) → decisión de producto Fase 10. Pendiente E2E humano: editar monto principal refleja movimiento y recalcula pending; add/edit/delete abono mantiene saldo==balance tras refresh; principal < suma abonos muestra toast de conflicto; delete-abono elimina el movimiento de la lista; ES/EN del modal nuevo; pencil/trash no disparan expansión de fila. **PAUSA: el usuario pedirá explícitamente continuar con Fase 7 (POS ventas).**
-- 2026-08-22 — **Fase 6 desplegada (`6d720ca` push) + Fase 7 implementada (POS Ventas).** MAPA DE MOVIMIENTOS presentado al usuario y aprobado ANTES de codear (regla R2.10 anti doble-contabilidad), versión aprobada: contado sin cambios (1 income total, kind `salePayment`); venta a crédito auto-crea CreditGranted VINCULADO con campo nuevo `saleId`, principal guardado = total − pagoInicial (deuda NETA), SIN movimiento de principal (salió mercadería, no dinero); pagoInicial>0 → exactamente 1 income kind `salePayment`; abonos posteriores ya existentes (income, `creditGrantedAbono`). Invariante: pending ≡ total − inicial − Σabonos. Decisión del usuario: pagoInicial = total PERMITIDO → crédito nace pagado. Cuotas/frecuencia vacías para créditos de venta (pago libre). El crédito standalone NO cambia (sigue con su gasto de principal). Implementación: (H14 backend) `CreateSaleInput.initialPayment?: number` + validación UP-FRONT antes de cualquier write (on-credit exige cliente real existente del usuario; inicial ∈ [0,total]); params nuevos del use case: ClientRepository + CreditGrantedRepository; helper `buildSalePaymentMovement` deduplica el movimiento de pago. (H14 form) selector de cliente obligatorio en modo crédito + campo pagoInicial solo visible en crédito, default 0, validación client-side ≤ total. (H17) use case `get-sale-detail` + action + `sale-detail-modal.tsx`: id, fecha, cliente resuelto, modo, estado derivado paid/pending, cuenta, tabla de ítems con nombre resuelto por join de catálogo (deleted→fallback i18n), cantidad, precio unitario, subtotal, total, inicial y pendiente condicionales a on-credit, abonos del crédito vinculado (si está gestionado en Créditos muestra nota `managedInCredits` sin acciones inline). **Hallazgo de dominio:** `Money` exigía amount>0 globalmente → un crédito nacido pagado (principal=0) era irrepresentable; solución acotada `Money.nonNegative()` SOLO para principals de crédito (constructor estricto intacto para los ~15 flujos transaccionales); mapper reconstruction actualizado o el 0 persistido explotaba al cargar. Edge conocido: edit-principal sigue usando Money estricto → no se puede editar principal HACIA 0 (ya es 0 en ese caso). Fix post-agente por orquestador: error lint `react-hooks/set-state-in-effect` en sale-detail-modal (setState síncrono en effect, incluida la traza dentro de fetchDetail) → reestructurado a ESTADO DERIVADO (loading ≔ detail.id !== saleId; setState solo en continuaciones async con guard `cancelled`; caché se limpia en handleClose) + 4 type-imports sin usar en el test eliminados. Lección: la regla nueva de react-hooks traza funciones llamadas desde el effect body — derivar en render es la salida canónica, no microtasks. Verificación: **314/314 tests (32 archivos, +1) · lint 0 err / 0 warnings · tsc ✅ · build ✅** — re-verificado independientemente por el orquestador. Pendiente E2E humano: venta a crédito sin cliente real → bloqueada en form y backend; inicial > total → rechazada; crédito aparece en Créditos Otorgados con saldo neto correcto; detalle muestra todos los campos; inicial = total → badge pagado; abonar desde Otorgados actualiza el pendiente del detalle tras reabrir. **PAUSA: Fase 8 (espejo para payables/cuentas por pagar) espera aviso explícito.**
-- 2026-08-22 — **Fase 7 desplegada (`5473ede` push) + Fase 8 implementada (Payables / cuentas por pagar).** COMPUERTA DE DOMINIO H10 cumplida: mini propuesta R2.5 presentada al usuario con las 10 preguntas respondidas y comparación de alternativas A–D; usuario aprobó **Alternativa A**: entidad `Payable` propia, espejo semántico del stack CreditReceived (B descartada: sobre-ingeniería sin módulo Compras; C descartada: contamina semántica dinero-vs-bien). Diseño aprobado: guarda el TOTAL (Money estricto, nunca deuda neta → pending 0 solo derivado, `Money.nonNegative` no hizo falta acá); campos counterparty texto libre, initialPayment, accountId, date, dueDate opcional, note opcional, abonos embebidos {id, amount, date, accountId, movementId}; getter pending = total − inicial − Σabonos (fórmula literal del plan). Mapa anti doble-contabilidad espejo de Fase 7: crear genera movimientos SOLO si inicial>0 (1 gasto kind `payableInitialPayment`); cada abono 1 gasto `payableAbono`; editar/borrar abono cascada vía movementId; delete payable cascada todos los movimientos por link.refId; el total NUNCA genera movimiento. Kinds nuevos tipados en domain/movement + categoría sintética `payableCategory` (...006). Use cases espejo: create/add-abono/edit-abono/delete-abono/**edit-total** (valida nuevo total ≥ pagado, ConflictError; sin cascada porque no existe movimiento de principal)/delete-payable. Módulo `/payables` completo (page/loading/actions/list/forms/delete buttons con EntityDeleteButton iconOnly), nav tras Créditos Otorgados ("Cuentas por pagar"/"Payables"), i18n ES/EN paridad. **Fuera de alcance justificado (R2.13, aceptado por orquestador tras revisar diff):** ACC-4 `countReferences` ahora cuenta Payables — un payable con inicial=0 y sin abonos tiene CERO movimientos y habría permitido borrar su cuenta dejando referencia colgante que crasheaba la resolución de moneda de la página. Verificación: **350/350 tests (34 archivos, +2: dominio + use cases, +36) · lint 0 err / 0 warnings · tsc ✅ · build ✅ con ruta /payables** — re-verificado independientemente por el orquestador. Residuales conocidos: dual-writes sin transacción (limitación documentada igual que créditos/ventas); toasts de error muestran claves crudas app-wide (preexistente, Fase 10); sin tests automatizados de actions/UI (convención del proyecto). Pendiente E2E humano: crear payable sin inicial → cero movimientos; con inicial → gasto en la cuenta; saldo correcto; abonar/editar/borrar mantiene saldo==movimientos tras refresh; borrar payable limpia movimientos; intentar borrar la cuenta usada por un payable → bloqueada; badge nav en ES/EN. **PAUSA: Fase 9 (consistencia visual/tokens semánticos H19 fin) espera aviso explícito.**
-- 2026-08-22 — **Fase 8 desplegada (`1cf77d4` push) + Fase 9 implementada (consistencia visual, H19 fin).** Migración completa de la paleta semántica hardcodeada a tokens oklch de Fase 2: **155 ocurrencias en 28 archivos → 0** (verificado por orquestador con patrón preciso de clases: `(text|bg|border|ring|from|to|fill|stroke|hover)-*-(green|emerald|rose|red|amber|sky|orange)-[0-9]` = 0 matches; NOTA metodológica: greps laxos con palabras sueltas matchean subcadenas tipo "required" — usar siempre el patrón anclado a prefijos de utilidad). Semántica canónica única app-wide: dinero que entra → `income`; sale → `expense`; estados pagado/completado + CTAs de abono → `success` (NUEVO variante success del Button reemplazó 4 overrides duplicados de className); errores/destructivo → `danger`; pendiente/caución → `warning`; saldos y obligaciones de crédito → `debt` (incl. tarjeta pendingCredits del dashboard); acentos informativos → `info` (bonus: tarjeta billetera azul y badge de cliente también migrados). Cada par `bg-*-100 … dark:bg-*-900/20` colapsó a un solo `bg-{token}/10` — dark mode intacto por construcción (los tokens llevan ambos valores); esquema primario indigo/zinc sin tocar; CERO cambios de lógica de negocio o actions (+73/−73 simétrico). Pulido aprovechado: header de tabla de clientes `t('delete')`→`Common.actions` (paridad con todas las tablas, cerraba hallazgo residual de Fase 4/5) y clave huérfana `Transfers.amounts` eliminada de ambos locales (pendiente desde Fase 4). Barrido de traducciones: sin strings hardcodeados restantes; todos los list modules ya tienen empty states verificados. Verificación: **350/350 tests (34 archivos, paridad i18n incluida) · lint 0 err / 0 warnings · tsc ✅ · build ✅ 15 rutas** — re-verificado independientemente por el orquestador. Riesgo consciente: los tonos token difieren sutilmente de la paleta Tailwind (warning ≈ amber-600, un poco más oscuro que el amber-500 previo del toast — mejor contraste). Pendiente E2E humano en claro Y oscuro: tarjetas/gráfico dashboard, badges de movimientos, estados del detalle de venta, CTAs de abono, errores de formularios, banner de error del login. **PAUSA: Fase 10 (limpieza final: P4 NotFoundError-vs-null, guard movimientos system-linked, ui/table.tsx dead code, claves huérfanas restantes) espera aviso explícito.**
-- 2026-08-23 — **Fase 9 desplegada (`e101adc` push) + Fase 10 implementada (auditoría transversal final — CIERRE DE LA RONDA 2).** Las 4 correcciones planificadas más 3 hallazgos nuevos: **(P4 contrato findById)** alineación impl→port en los 10 repositorios (`account`, `catalog`, `category`, `client`, `credit-granted`, `credit-received`, `movement`, `payable`, `sale`, `transfer`): `if (!doc) return null;` reemplaza el `throw new NotFoundError(...)` que violaba la firma del port; todos los callers auditados null-safe (única excepción previa: `UserRepository`, que ya honraba el contrato); drift de `get-sale-detail` eliminado (helper `resolveName` fuera, lecturas directas con comentario "Optional joins...", test de dangling-ref reescrito con repos falsos que devuelven `null` en lugar de simular NotFoundError). **(P3 campos dropeados)** reconstrucciones fieles de `add-sale-abono.ts` y `delete-sale-abono.ts` (incluyen clientId/deletedAt/stockRestored). **(P2 dead code)** borrados `sales/edit-sale-line-item.ts`, `ui/table.tsx` Y `sales/edit-sale-abono.ts` — hallazgo nuevo: la cadena completa editSaleAbono (use case + action + tests) tenía CERO consumidores de UI, así que se removió entera en lugar de cablearse; limpieza de barrel `sales/index.ts`, `dto/sales.ts` (EditSaleAbonoInput/EditSaleLineItemInput), `pos/sales/actions.ts` (action + import), `sales.test.ts` (2 describe blocks), y export `Table` del barrel `ui/index.ts` detectado por tsc tras el borrado. **(P5 roundtrip extra por navegación)** JWT ahora porta claim `email`: port `SessionManager` migrado a `create(claims: SessionClaims)`/`verify → SessionClaims | null` (interface nueva `{ sub: string; email?: string }`), login/register retornan email requerido, `(auth)/actions.ts` firma cookie con claims completos, `(main)/layout.tsx` y dashboard ELIMINAN su query paralela a DB (layout ya no conecta ni instancia MongoUserRepository; fallback `'User'` hardcodeado del dashboard muerto — usa `user.email ?? user.userId`); sesiones legacy sin claim caen a `user.userId` hasta re-login. **Hallazgos verificados SIN acción:** guards MOV-5 presentes en update-movement Y delete-movement (ítem candidato de Fase 9 cubierto); gap latente documentado pero NO tocado — los ports/repo `editAbono` no persisten accountId del abono embebido (inaccesible desde UI en todos los módulos; murió con edit-sale-abono). **Barrido i18n:** script de claves huérfanas sobre 388 hojas → 9 claves muertas REALES removidas de ambos locales (Categories.noCategories, Movements.selectAccountToAdd [gate H6], Transfers.noTransfers, CreditsReceived.noCredits, CreditsGranted.noCredits, Catalog.noItems, Sales.noSales, Sales.hide [toggle simplificado a label estático], Clients.editClient) — las restantes señaladas por el scan son falsos positivos de consumo dinámico (`t('type_' + tipo)`, loop Landing `` t(`${key}Title`) ``, toasts vía clave retornada `tToast(state.success)`). **Decisión pendiente para el usuario (NO resuelta en esta fase):** los use cases `updateMovement`, `updateAccount`, `updateCategory` existen, están testeados y pasan, pero NO tienen action ni UI (no hay edición de movimientos/cuentas/categorías en el producto); sus 4 claves Toast.* (`accountUpdated/categoryUpdated/movementUpdated/unexpectedError`) + `error.invalidEmail` se CONSERVARON hasta decidir si se cablean o se borran junto con los use cases. Nota metodológica anti-regresión: el fix de comas JSON al remover la ÚLTIMA clave de un bloque (línea previa pierde su coma) es donde ocurren los errores — verificar siempre con `JSON.parse` de ambos locales antes de commitear. Verificación: **342/342 tests (34 archivos; 350 − 9 tests de cadenas muertas + 1 test nuevo de sesión legacy) · lint 0 err / 0 warnings · tsc ✅ · build ✅ 15 rutas** — re-verificado independientemente por el orquestador. Diff total Fase 10: 36 archivos, +83/−658. Pendiente E2E humano: login/logout/register con sesión nueva muestra email en nav; sesión vieja (cookie pre-deploy) sigue funcionando con userId como fallback hasta re-login; dashboard sin queries extra (mismo contenido); ninguna ruta rompe por ui/table eliminado. **ROADMAP para Ronda 3 (propuesta, no comprometida):** editar abonos de ventas standalone (recrear cadena con consumers reales); decidir wire-or-remove de los tres use cases update* sin UI; persistir accountId en abonos embebidos si se implementa esa edición; transacciones multi-write (Mongo sessions) para créditos/payables/ventas. **RONDA 2 COMPLETA — pausa; siguiente paso requiere aviso explícito.**
-- 2026-08-23 — **Post-ronda: rebranding PWA completo (íconos TwinCap reemplazan al "GM").** Origen del síntoma del usuario: `public/icon-192.svg`/`icon-512.svg` tenían `<text>GM</text>` hardcodeado y eran los íconos del manifiesto. Defectos PWA preexistentes corregidos: (1) manifiesto con SVG que muchos launchers Android no renderizan → ahora PNG; (2) `"purpose": "any maskable"` en una sola entrada sin diseño maskable → variantes separadas, con la obra escalada a 74% sobre lienzo blanco para que los corners del arte (292×467 en canvas 512, casi a sangre vertical) queden dentro del círculo seguro de radio 40% ((146s)²+(233.5s)² ≤ 204.8² ⇒ s≈0.74) — sin ese padding el recorte circular le cortaba arriba y abajo; (3) `apple-touch-icon` inexistente → 180×180 opaco; (4) sin iOS splash screens → pack del usuario (44 imágenes por media-query de dispositivo, generadas con fondo blanco + elemento cian) copiado a `public/splash_screens/` y las 44 tags `apple-touch-startup-image` renderizadas vía hoisting de React 19 desde `src/components/pwa/splash-links.ts` (autogenerado desde `pwa_pack/readme.txt` por script). Pipeline reproducible: `sharp` como devDependency única justificada + `scripts/generate-icons.mjs` y `scripts/generate-splash-links.mjs` versionados (fuente: `pwa_pack/splash_screens/icon.png` 512×512). `sw.js`: cache bump `globalmoney-v4`→`twincap-v5` OBLIGATORIO (los clientes instalados precacheaban los SVG viejos; además el install habría muerto con 404 tras borrarlos), splash screens deliberadamente NO precacheadas (cada dispositivo baja solo la suya). `background_color` del manifiesto #09090b→#ffffff para que el splash de Android no muestre el tile blanco del ícono flotando sobre fondo oscuro. favicon.svg (T-mark indigo vieja) eliminado → `favicon-32.png`. **Pendiente de decisión de marca (NO resuelto):** el logo IN-APP (`ui/logo.tsx`, T indigo vectorial usada en nav/landing/login/register) sigue siendo la marca vieja — el usuario debe elegir: (a) raster PNG downscaled, (b) recrear SVG descrito por él, o (c) exportar el SVG desde su herramienta. Discrepancia visual señalada al usuario: `logo_concept.png` (fondo casi negro ~78%) vs pack PWA (fondo blanco + cian) son renders distintos — él confirma cuál es la definitiva. Materiales fuente locales (`pwa_pack/`, zips, conceptos PNG) ignorados vía .gitignore. Verificación: 342/342 tests · lint 0/0 · tsc ✅ · build ✅ · manifest JSON válido · 45 archivos en public/splash_screens. E2E humano pendiente (requiere reinstalar la PWA o refrescar desde el launcher): ícono nuevo en home Android/iOS, splash correcto por orientación, sin recorte circular del arte, favicon nuevo en tab del navegador.
-- 2026-08-23 — **Post-ronda: logo in-app definitivo (PNG oficial + wordmark bicolor).** La vectorización (`isotipo_twincap2.svg`, limpiada a dif 0.16% en commit anterior) perdió demasiado detalle según el usuario → reemplazada por su PNG oficial `isotipo_twincap_ok.png` (500×500 RGBA, 70% transparencia — mejor que el tile blanco del pack PWA). Optimizado a `public/isotipo-twincap.png` 256×256/68KB (suficiente para display ≤48px retina ×5); SVG eliminado. Wordmark "TwinCap" ahora tipografía **Sora 700** (next/font Google, variable `--font-sora` → token `font-display`) con "Twin" turquesa y "Cap" dorada vía tokens nuevos `--tc-brand-teal`/`--tc-brand-gold` (#028A95/#C97B06 claro, #21E6E0/#F8C838 oscuro — tonos sampleados de la obra, ajustados por contraste WCAG por modo). Usado en nav, landing hero/footer, login/register. Verificación: 342/342 · lint 0/0 · tsc ✅ · build ✅. Pendiente ANOTADO POR DECISIÓN DEL USUARIO (2026-08-24): regenerar TODOS los íconos PWA desde `isotipo_twincap_ok.png` (transparente) en lugar del pack blanco — el maskable llevaría fondo sólido debajo de la obra; ejecución diferida a próxima sesión.
+- 2026-08-21 → 2026-08-23 — Ronda 2 completa: auditoría Fase 0 (H1–H20 + P1–P13), plan definitivo de 10 fases, fases 1–10 implementadas y commiteadas (ver tabla histórica arriba). Post-ronda: rebranding PWA + logo in-app definitivo. Detalle fase a fase: git history de este documento.
+- 2026-08-24 — **Reescritura del documento para la RONDA 3** (fuente: `TwinCap Ronda 3.md`, aportada por el usuario con especificaciones estructuradas). **Fase 0 completada:** auditoría técnica del código real mediante 6 exploraciones paralelas de solo lectura. Causas raíz verificadas HR3-01…26 + 16 hallazgos adicionales (R3.6). Claves: bug de fechas = medianoche UTC + formatter sin timezone (desplazamiento −1 día universal); leak confirmado de transferencias en resultados del dashboard (balances correctos); mecanismo exacto del gráfico comprimido por flex-shrink; doble COP = concatenación sobre salida currency-styled ×15 sites; síntoma de invalidación = caché one-shot del GlobalMovementProvider (las actions SÍ revalidaban); autoComplete de login roto bajo español; colisión real logo/botón-cerrar en drawer móvil; temas sin tokens de superficie (355 pares dark: manuales). Plan definitivo de 12 fases propuesto (R3.12) + 8 decisiones de dominio para aprobación (R3.7). AGENTS.md actualizado: principios financieros permanentes, español neutro, textos automáticos localizables, corrección de la descripción del proxy (no hace auth). ~~ESPERANDO APROBACIÓN del usuario~~.
+- 2026-08-24 (mismo día) — **PLAN APROBADO por el usuario**, decisiones D1–D8 según recomendación, sin ajustes solicitados. Requerimiento adicional incorporado: **orden cronológico descendente en tablas** (fecha + hora, más recientes arriba, desempate al segundo dentro del mismo día) → registrado como HR3-27, asignado a F5 con criterios de aceptación propios. **Inicio de FASE 1** (corrección financiera fundamental).
+- 2026-08-24 (mismo día) — **FASE 1 COMPLETADA** en 4 unidades de trabajo commiteadas: WU1 `9ac8ea4` convención de fechas civiles (`formatDate` fija `timeZone:'UTC'`; nuevo `src/lib/date.ts` con `toDateInputValue` local / `businessDateToInputValue` UTC para prefills de edición; TZ America/Bogota fijada vía `env.TZ` del config de vitest — setupFiles solo no alcanza porque los workers ya arrancaron; bucketing mensual UTC explícito); WU2 `93aaf48` use case `compute-dashboard-summary` excluye transferencias (ambas piernas) y opening de ingresos/gastos, créditos/ventas/payables conservan tratamiento (semántica D2 congelada en tests); WU3 `c7edd57` track del gráfico `flex-1 min-w-0` con labels fuera del track proporcional (9M vs 6M ⇒ ~98px vs ~66px a 260px); WU4 `cb7cd46` formateo monetario unificado (~22 concatenaciones `{currency}` eliminadas en 13 componentes; duplicados dashboard/accounts/sale-form eliminados). Suite final 358/358 en 36 archivos, `tsc --noEmit` limpio, verificación independiente del orquestador. Desvíos justificados: prefills de edit-dialogs usan getters UTC (fechas almacenadas) mientras "hoy" usa getters locales; filtro de mes de las cards movido a igualdad de clave UTC (corrige exclusión del día 1 en Bogota). Observaciones fuera de alcance registradas para sus fases: label `(COP)` de abono-form (contexto field-label), silent `?? 'COP'` sale-list (F5), caché one-shot GlobalMovementProvider (F6), cargas completas (F4). **Esperando aviso explícito para FASE 2.**

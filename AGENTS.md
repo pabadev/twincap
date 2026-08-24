@@ -40,21 +40,10 @@ Next.js 16 **no longer uses `middleware.ts`**. The equivalent is `src/proxy.ts`.
 This project uses `src/proxy.ts` for:
 - DB connection on cold start
 - Locale detection and cookie setting
-- **Auth protection** (checking session cookie, redirecting to /login)
 
-Do NOT create a `middleware.ts` file. All request-level interception goes in `src/proxy.ts`.
+**Auth protection does NOT live in the proxy.** It lives in the route tree: `src/app/(main)/layout.tsx` calls `getCurrentUser()` and redirects to `/login` when there is no session (this guards all `(main)` routes), `/` redirects authenticated users to `/dashboard`, and `dashboard/page.tsx` re-checks. Do not assume the proxy validates JWTs.
 
-```ts
-// src/proxy.ts — the single entry point for request interception
-export async function proxy(request: NextRequest) {
-  await connectDb();
-  // ... locale, auth checks, redirects
-}
-
-export const config = {
-  matcher: ['/((?!api|_next|.*\\..*).*)']
-};
-```
+Do NOT create a `middleware.ts` file. Request-level locale/DB interception goes in `src/proxy.ts`.
 
 ---
 
@@ -144,6 +133,16 @@ Cada server action o route handler DEBE:
 - Todo texto visible nuevo DEBE existir en `messages/es.json` y `messages/en.json`.
 - NUNCA escribir textos directamente en componentes.
 - Mantener el patrón i18n existente.
+- El español de TwinCap es NEUTRO: prohibido voseo y regionalismos (escribir "tienes/crea/puedes", nunca "tenés/creá/podés").
+- Los textos que el dominio genera automáticamente (notas de movimientos sistema, nombres de categorías sintéticas) NUNCA deben persistirse como lenguaje humano acoplado a un idioma: se deriva su presentación en render vía `link.kind`/identificadores estructurados + i18n.
+
+### Principios financieros (inquebrantables)
+1. **Transferencia interna ≠ ingreso ni gasto**: mover dinero entre cuentas propias cambia dónde está el dinero, no el resultado económico.
+2. **Saldo de cuenta ≠ resultado económico**: el flujo de dinero y el resultado financiero son cosas distintas.
+3. **Crédito recibido ≠ compra a crédito**: recibir financiamiento es deuda; adquirir un bien a crédito es una obligación (`Payable`). El total de un `Payable` NUNCA se recontabiliza como gasto cuando se registran sus pagos.
+4. **Venta ≠ cobro necesariamente**: una venta a crédito genera cuenta por cobrar sin que el dinero haya entrado.
+5. Las métricas del dashboard deben derivar del `kind`/naturaleza de cada movimiento — jamás sumar ciegamente por `type`.
+6. **Fechas financieras = fechas civiles**: distinguir instante temporal de fecha de negocio; PROHIBIDO compensar con offsets ±1 día sin entender la causa raíz; toda conversión/formateo debe ser explícito respecto de timezone.
 
 ### Componentes UI
 - Antes de crear, verificar si `src/components/ui/` ya tiene uno equivalente.
@@ -191,6 +190,6 @@ El workflow completo de auditoría, planificación e implementación por fases e
 
 > `docs/AUDIT-AND-PLAN.md`
 
-**⚠️ OBLIGATORIO:** Después de una compactación o al iniciar nueva sesión, lo PRIMERO es leer `docs/AUDIT-AND-PLAN.md` para identificar la fase actual y continuar desde ahí. El archivo contiene el estado completo del proyecto, las 12 fases pendientes, y el protocolo de continuación.
+**⚠️ OBLIGATORIO:** Después de una compactación o al iniciar nueva sesión, lo PRIMERO es leer `docs/AUDIT-AND-PLAN.md` para identificar la fase actual y continuar desde ahí. El archivo contiene el estado completo del proyecto, las fases de la ronda vigente y el protocolo de continuación.
 
 <!-- END:globalmoney-project-rules -->
