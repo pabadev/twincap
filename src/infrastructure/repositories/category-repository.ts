@@ -11,11 +11,7 @@ export class MongoCategoryRepository implements CategoryRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Category ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     return toCategoryEntity(doc as CategoryDocument);
   }
 

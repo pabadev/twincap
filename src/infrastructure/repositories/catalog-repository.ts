@@ -19,11 +19,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `CatalogItem ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     const currency = await this.resolveAccountCurrency(userId);
     return toCatalogItemEntity(doc as CatalogItemDocument, currency);
   }

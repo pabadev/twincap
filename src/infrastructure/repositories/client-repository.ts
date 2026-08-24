@@ -11,11 +11,7 @@ export class MongoClientRepository implements ClientRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Client ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     return toClientEntity(doc as ClientDocument);
   }
 

@@ -16,11 +16,7 @@ export class MongoPayableRepository implements PayableRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Payable ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       userId,
       (doc as PayableDocument).accountId.toString(),

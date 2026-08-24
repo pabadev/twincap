@@ -9,10 +9,20 @@ process.env.AUTH_SECRET = "BOSQ3eUPIOigpsbEksIBEyDceVCvMHMXtBqSwWbA6l8";
 const { joseSessionManager } = await import("./session");
 
 describe("joseSessionManager", () => {
-  it("creates a verifiable JWE token", async () => {
-    const token = await joseSessionManager.create("user-123");
+  it("creates a verifiable JWE token with sub + email claims", async () => {
+    const token = await joseSessionManager.create({
+      sub: "user-123",
+      email: "user@example.com",
+    });
     expect(typeof token).toBe("string");
     expect(token.length).toBeGreaterThan(0);
+
+    const payload = await joseSessionManager.verify(token);
+    expect(payload).toEqual({ sub: "user-123", email: "user@example.com" });
+  });
+
+  it("supports sessions without an email claim (legacy shape)", async () => {
+    const token = await joseSessionManager.create({ sub: "user-123" });
 
     const payload = await joseSessionManager.verify(token);
     expect(payload).toEqual({ sub: "user-123" });

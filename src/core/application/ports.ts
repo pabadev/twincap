@@ -14,12 +14,23 @@ export interface PasswordHasher {
 }
 
 /**
- * Session management — jose JWE A256GCM, payload {sub} (design §6).
- * create() returns an encrypted JWE token; verify() returns the payload or null.
+ * Claims carried inside the encrypted session token.
+ * `email` is denormalized into the session so layouts can render it without
+ * a per-navigation DB roundtrip (P5). Absent in sessions created before this
+ * field existed — consumers must fall back gracefully.
+ */
+export interface SessionClaims {
+  sub: string;
+  email?: string;
+}
+
+/**
+ * Session management — jose JWE A256GCM (design §6).
+ * create() returns an encrypted JWE token; verify() returns the claims or null.
  */
 export interface SessionManager {
-  create(userId: string): Promise<string>;
-  verify(token: string): Promise<{ sub: string } | null>;
+  create(claims: SessionClaims): Promise<string>;
+  verify(token: string): Promise<SessionClaims | null>;
 }
 
 /** Abstract time source for testability. */

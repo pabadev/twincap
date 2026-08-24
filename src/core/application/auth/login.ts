@@ -9,6 +9,8 @@ export interface LoginInput {
 
 export interface LoginOutput {
   userId: string;
+  /** Denormalized into the session token so layouts skip the DB roundtrip (P5). */
+  email: string;
 }
 
 export async function login(
@@ -29,5 +31,5 @@ export async function login(
     throw new ValidationError('Invalid email or password');
   }
 
-  return { userId: user.id };
+  return { userId: user.id, email: user.email };
 }

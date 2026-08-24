@@ -11,6 +11,8 @@ export interface RegisterInput {
 
 export interface RegisterOutput {
   userId: string;
+  /** Denormalized into the session token so layouts skip the DB roundtrip (P5). */
+  email: string;
 }
 
 export async function register(
@@ -19,7 +21,6 @@ export async function register(
   accountRepo: AccountRepository,
   categoryRepo: CategoryRepository,
   hasher: PasswordHasher,
-  _sessions: unknown,
   ids: IdGenerator,
 ): Promise<RegisterOutput> {
   // AUTH-1: normalized email, min 8 chars password
@@ -47,5 +48,5 @@ export async function register(
   // AUTH-4: seed accounts + categories
   await seedUser(createdUser.id, accountRepo, categoryRepo);
 
-  return { userId: createdUser.id };
+  return { userId: createdUser.id, email: createdUser.email };
 }

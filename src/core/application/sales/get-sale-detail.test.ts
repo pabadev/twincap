@@ -283,12 +283,12 @@ describe('getSaleDetail', () => {
       'user-1',
       'sale-1',
       fakeSaleRepo(sale),
-      // Client exists but its findById throws (Mongo impl contract drift P4).
-      { ...fakeClientRepo(null), findById: vi.fn().mockRejectedValue(new NotFoundError('gone')) },
+      // Client deleted → findById resolves null (repos honor the nullable port).
+      fakeClientRepo(null),
       // Catalog item deleted → name unresolvable.
       fakeCatalogRepo([]),
       // Account deleted → name unresolvable.
-      { ...fakeAccountRepo(null), findById: vi.fn().mockRejectedValue(new NotFoundError('gone')) },
+      fakeAccountRepo(null),
       fakeCreditGrantedRepo([]),
     );
 

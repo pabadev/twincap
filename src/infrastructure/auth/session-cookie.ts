@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { SessionManager } from "../../core/application/ports";
+import type { SessionClaims, SessionManager } from "../../core/application/ports";
 
 const COOKIE_NAME = "gm_session";
 
@@ -13,16 +13,16 @@ const COOKIE_OPTIONS = {
 
 export async function setSessionCookie(
   sessionManager: SessionManager,
-  userId: string,
+  claims: SessionClaims,
 ) {
-  const token = await sessionManager.create(userId);
+  const token = await sessionManager.create(claims);
   const store = await cookies();
   store.set(COOKIE_NAME, token, COOKIE_OPTIONS);
 }
 
 export async function getSessionCookie(
   sessionManager: SessionManager,
-): Promise<{ sub: string } | null> {
+): Promise<SessionClaims | null> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;

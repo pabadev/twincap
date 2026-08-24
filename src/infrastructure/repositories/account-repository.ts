@@ -17,11 +17,7 @@ export class MongoAccountRepository implements AccountRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Account ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     return toAccountEntity(doc as AccountDocument);
   }
 

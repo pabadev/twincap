@@ -13,11 +13,7 @@ export class MongoSaleRepository implements SaleRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Sale ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       userId,
       (doc as SaleDocument).accountId.toString(),

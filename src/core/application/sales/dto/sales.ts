@@ -22,18 +22,6 @@ export interface AddSaleAbonoInput {
   date: Date;
 }
 
-export interface EditSaleAbonoInput {
-  amount?: number;
-  accountId?: string;
-  date?: Date;
-  currency?: Currency;
-}
-
-export interface EditSaleLineItemInput {
-  quantity?: number;
-  unitPrice?: number; // minor units, > 0
-}
-
 /**
  * H17: read model for the sale detail modal. Plain literals and Dates only —
  * safe to cross the server→client boundary.

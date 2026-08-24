@@ -2,7 +2,6 @@ export { Button } from './button';
 export { Input } from './input';
 export { Card } from './card';
 export { Modal } from './modal';
-export { Table } from './table';
 export { Select } from './select';
 export { Icon } from './icon';
 export { Badge } from './badge';

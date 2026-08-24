@@ -32,16 +32,15 @@ export async function registerAction(
   try {
     await connectDb();
     const { userRepo, accountRepo, categoryRepo } = getRepos();
-    const { userId } = await register(
+    const { userId, email: sessionEmail } = await register(
       { email, password },
       userRepo,
       accountRepo,
       categoryRepo,
       bcryptPasswordHasher,
-      joseSessionManager,
       ids,
     );
-    await setSessionCookie(joseSessionManager, userId);
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: error instanceof Error ? error.message : 'Registration failed' };
@@ -61,12 +60,12 @@ export async function loginAction(
   try {
     await connectDb();
     const { userRepo } = getRepos();
-    const { userId } = await login(
+    const { userId, email: sessionEmail } = await login(
       { email, password },
       userRepo,
       bcryptPasswordHasher,
     );
-    await setSessionCookie(joseSessionManager, userId);
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: error instanceof Error ? error.message : 'Login failed' };

@@ -3,7 +3,6 @@
 import {
   createSale,
   addSaleAbono,
-  editSaleAbono,
   deleteSaleAbono,
   deleteSale,
   getSaleDetail,
@@ -118,40 +117,6 @@ export async function addSaleAbonoAction(
   }
 
   return { success: 'abonoAdded' };
-}
-
-export async function editSaleAbonoAction(
-  _prev: { error?: string; success?: string } | null,
-  formData: FormData,
-): Promise<{ error?: string; success?: string }> {
-  const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
-
-  const saleId = formData.get('saleId') as string;
-  const abonoId = formData.get('abonoId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-
-  try {
-    await connectDb();
-    const saleRepo = new MongoSaleRepository();
-    const movementRepo = new MongoMovementRepository();
-    await editSaleAbono(
-      user.userId,
-      saleId,
-      abonoId,
-      { amount, accountId, date },
-      saleRepo,
-      movementRepo,
-    );
-    revalidatePath('/pos/sales');
-    revalidatePath('/accounts');
-  } catch (error) {
-    return handleActionError(error);
-  }
-
-  return { success: 'abonoUpdated' };
 }
 
 export async function deleteSaleAbonoAction(

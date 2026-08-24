@@ -11,11 +11,7 @@ export class MongoTransferRepository implements TransferRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `Transfer ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     return toTransferEntity(doc as TransferDocument);
   }
 

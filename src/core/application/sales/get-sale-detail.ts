@@ -42,18 +42,12 @@ export async function getSaleDetail(
   const catalogItems = await catalogRepo.findByUserId(userId);
   const itemNameById = new Map(catalogItems.map((item) => [item.id, item.name]));
 
-  // Repo ports declare nullable returns; the Mongo implementations may throw
-  // NotFoundError instead (known contract drift P4). Defensive reads keep the
-  // detail view resilient to dangling references.
-  const accountName = await resolveName(
-    () => accountRepo.findById(userId, sale.accountId),
-    (account) => account?.name ?? null,
-  );
+  // Optional joins: repos honor the nullable port contract, so a dangling
+  // reference simply resolves to null instead of failing the detail view.
+  const account = await accountRepo.findById(userId, sale.accountId);
+  const accountName = account?.name ?? null;
   const clientName = sale.clientId
-    ? await resolveName(
-        () => clientRepo.findById(userId, sale.clientId as string),
-        (client) => client?.name ?? null,
-      )
+    ? ((await clientRepo.findById(userId, sale.clientId))?.name ?? null)
     : null;
 
   const credits = await creditRepo.findByUserId(userId);
@@ -106,15 +100,4 @@ export async function getSaleDetail(
     accountName,
     currency,
   };
-}
-
-async function resolveName<T>(
-  read: () => Promise<T>,
-  pickName: (value: T | null) => string | null,
-): Promise<string | null> {
-  try {
-    return pickName(await read());
-  } catch {
-    return null;
-  }
 }

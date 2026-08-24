@@ -82,8 +82,6 @@ function fakeIdGen(id = 'test-user-id'): IdGenerator {
   return { generate: () => id };
 }
 
-const fakeSessions = { create: vi.fn(), verify: vi.fn() };
-
 // ─── Register ──────────────────────────────────────────────────────
 
 describe('register', () => {
@@ -100,11 +98,11 @@ describe('register', () => {
       accountRepo,
       categoryRepo,
       hasher,
-      fakeSessions,
       ids,
     );
 
     expect(result.userId).toBe('test-user-id');
+    expect(result.email).toBe('test@example.com');
     expect(userRepo.created).toHaveLength(1);
     expect(userRepo.created[0].email).toBe('test@example.com');
     expect(seedUser).toHaveBeenCalledWith('test-user-id', accountRepo, categoryRepo);
@@ -126,7 +124,6 @@ describe('register', () => {
         fakeAccountRepo(),
         fakeCategoryRepo(),
         fakeHasher(),
-        fakeSessions,
         fakeIdGen(),
       ),
     ).rejects.toThrow(ConflictError);
@@ -140,7 +137,6 @@ describe('register', () => {
         fakeAccountRepo(),
         fakeCategoryRepo(),
         fakeHasher(),
-        fakeSessions,
         fakeIdGen(),
       ),
     ).rejects.toThrow(ValidationError);
@@ -166,6 +162,7 @@ describe('login', () => {
     );
 
     expect(result.userId).toBe('user-1');
+    expect(result.email).toBe('test@example.com');
   });
 
   it('rejects wrong password with generic message', async () => {

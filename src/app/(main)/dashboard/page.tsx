@@ -4,7 +4,6 @@ import { listAccounts } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
@@ -74,15 +73,11 @@ export default async function DashboardPage() {
   await connectDb();
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
-  const userRepo = new MongoUserRepository();
   const categoryRepo = new MongoCategoryRepository();
   const creditReceivedRepo = new MongoCreditReceivedRepository();
 
-  // Round 1: independent queries in parallel
-  const [dbUser, accounts] = await Promise.all([
-    userRepo.findById(user.userId),
-    listAccounts(user.userId, accountRepo),
-  ]);
+  // Round 1: accounts (user identity comes from the session claims — P5).
+  const accounts = await listAccounts(user.userId, accountRepo);
 
   // Round 2: depends on accounts + remaining independent queries in parallel
   const [balances, allMovements, categories, creditsReceived] = await Promise.all([
@@ -155,7 +150,7 @@ export default async function DashboardPage() {
           {t('welcomeBack')}
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {dbUser?.email ?? 'User'}
+          {user.email ?? user.userId}
         </p>
       </div>
 

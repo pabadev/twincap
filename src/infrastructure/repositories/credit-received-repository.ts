@@ -19,11 +19,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       _id: id,
       userId: new Types.ObjectId(userId),
     }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `CreditReceived ${id} not found for user ${userId}`,
-      );
-    }
+    if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       userId,
       (doc as CreditReceivedDocument).accountId.toString(),

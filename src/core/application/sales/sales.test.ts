@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSale } from './create-sale';
 import { addSaleAbono } from './add-sale-abono';
-import { editSaleAbono } from './edit-sale-abono';
 import { deleteSaleAbono } from './delete-sale-abono';
-import { editSaleLineItem } from './edit-sale-line-item';
 import { deleteSale } from './delete-sale';
 import { listSales } from './list-sales';
 import { Sale } from '../../domain/sale';
@@ -777,76 +775,6 @@ describe('addSaleAbono', () => {
   });
 });
 
-// ─── Edit Sale Abono ───────────────────────────────────────────────
-
-describe('editSaleAbono', () => {
-  it('edits abono amount and updates linked movement (POS-6)', async () => {
-    const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
-    ]);
-    const existingMovement = makeMovement({ id: 'mov-1', amount: new Money(25000, 'COP') });
-
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const movementRepo = fakeMovementRepo({
-      findById: vi.fn().mockResolvedValue(existingMovement),
-    });
-
-    const result = await editSaleAbono(
-      'user-1',
-      'sale-1',
-      'ab-1',
-      { amount: 30000 },
-      saleRepo,
-      movementRepo,
-    );
-
-    expect(result.abonos[0].amount.amount).toBe(30000);
-    expect(result.pending).toBe(70000);
-    expect(saleRepo.editAbono).toHaveBeenCalledOnce();
-    expect(movementRepo.updated).toHaveLength(1);
-    expect(movementRepo.updated[0].amount.amount).toBe(30000);
-  });
-
-  it('rejects new amount exceeding pending (POS-5)', async () => {
-    const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
-    ]);
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const movementRepo = fakeMovementRepo();
-
-    await expect(
-      editSaleAbono('user-1', 'sale-1', 'ab-1', { amount: 200000 }, saleRepo, movementRepo),
-    ).rejects.toThrow(ConflictError);
-  });
-
-  it('rejects when sale not found', async () => {
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
-    });
-    const movementRepo = fakeMovementRepo();
-
-    await expect(
-      editSaleAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, saleRepo, movementRepo),
-    ).rejects.toThrow(NotFoundError);
-  });
-
-  it('rejects when abono not found', async () => {
-    const sale = makeSale();
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const movementRepo = fakeMovementRepo();
-
-    await expect(
-      editSaleAbono('user-1', 'sale-1', 'missing-abono', { amount: 30000 }, saleRepo, movementRepo),
-    ).rejects.toThrow(NotFoundError);
-  });
-});
-
 // ─── Delete Sale Abono ─────────────────────────────────────────────
 
 describe('deleteSaleAbono', () => {
@@ -887,131 +815,6 @@ describe('deleteSaleAbono', () => {
 
     await expect(
       deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo),
-    ).rejects.toThrow(NotFoundError);
-  });
-});
-
-// ─── Edit Sale Line Item ───────────────────────────────────────────
-
-describe('editSaleLineItem', () => {
-  it('updates quantity and recalculates total (POS-7)', async () => {
-    const product = makeProduct();
-    const sale = makeSale({
-      items: [{ itemId: 'item-1', quantity: 2, unitPrice: new Money(50000, 'COP') }],
-    });
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const catalogRepo = fakeCatalogRepo({
-      findById: vi.fn().mockResolvedValue(product),
-    });
-    const movementRepo = fakeMovementRepo();
-
-    const result = await editSaleLineItem(
-      'user-1',
-      'sale-1',
-      0,
-      { quantity: 3 },
-      saleRepo,
-      catalogRepo,
-      movementRepo,
-    );
-
-    expect(result.total).toBe(150000);
-    expect(result.items[0].quantity).toBe(3);
-    expect(catalogRepo.decremented).toHaveLength(1);
-    expect(catalogRepo.decremented[0].quantity).toBe(1); // delta = 3 - 2
-    expect(saleRepo.update).toHaveBeenCalledOnce();
-  });
-
-  it('adjusts stock by delta for products (POS-7)', async () => {
-    const product = makeProduct();
-    const sale = makeSale({
-      items: [{ itemId: 'item-1', quantity: 5, unitPrice: new Money(50000, 'COP') }],
-    });
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const catalogRepo = fakeCatalogRepo({
-      findById: vi.fn().mockResolvedValue(product),
-    });
-    const movementRepo = fakeMovementRepo();
-
-    // Decrease quantity from 5 to 3 → delta = -2 → increment stock by 2
-    await editSaleLineItem(
-      'user-1',
-      'sale-1',
-      0,
-      { quantity: 3 },
-      saleRepo,
-      catalogRepo,
-      movementRepo,
-    );
-
-    expect(catalogRepo.incremented).toHaveLength(1);
-    expect(catalogRepo.incremented[0].quantity).toBe(2);
-  });
-
-  it('adjusts paid-in-full payment movement by delta (POS-7)', async () => {
-    const product = makeProduct();
-    const sale = makeSale({
-      paymentMode: 'paid-in-full',
-      items: [{ itemId: 'item-1', quantity: 2, unitPrice: new Money(50000, 'COP') }],
-    });
-    const paymentMovement = makeMovement({
-      id: 'mov-payment',
-      type: 'income',
-      amount: new Money(100000, 'COP'),
-      link: { kind: 'salePayment', refId: 'sale-1', opId: 'op-1' },
-    });
-
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const catalogRepo = fakeCatalogRepo({
-      findById: vi.fn().mockResolvedValue(product),
-    });
-    const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([paymentMovement]),
-    });
-
-    const result = await editSaleLineItem(
-      'user-1',
-      'sale-1',
-      0,
-      { quantity: 3 },
-      saleRepo,
-      catalogRepo,
-      movementRepo,
-    );
-
-    expect(result.total).toBe(150000);
-    expect(movementRepo.updated).toHaveLength(1);
-    expect(movementRepo.updated[0].amount.amount).toBe(150000);
-  });
-
-  it('rejects when sale not found', async () => {
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
-    });
-    const catalogRepo = fakeCatalogRepo();
-    const movementRepo = fakeMovementRepo();
-
-    await expect(
-      editSaleLineItem('user-1', 'missing', 0, { quantity: 3 }, saleRepo, catalogRepo, movementRepo),
-    ).rejects.toThrow(NotFoundError);
-  });
-
-  it('rejects when line item index is out of bounds', async () => {
-    const sale = makeSale();
-    const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
-    });
-    const catalogRepo = fakeCatalogRepo();
-    const movementRepo = fakeMovementRepo();
-
-    await expect(
-      editSaleLineItem('user-1', 'sale-1', 5, { quantity: 3 }, saleRepo, catalogRepo, movementRepo),
     ).rejects.toThrow(NotFoundError);
   });
 });
