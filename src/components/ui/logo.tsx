@@ -12,20 +12,19 @@ const sizeConfig = {
 } as const;
 
 /**
- * Brand mark sourced from public/isotipo-twincap.svg (cleaned vectorization
- * of the official logo). Rendered as <img> so the ~1k paths stay out of the
- * React tree and the browser caches a single asset across pages.
+ * Brand mark: public/isotipo-twincap.png (256px, transparent background).
+ * Rendered as <img> so the browser caches one asset across pages.
  */
 function LogoIcon({ size, decorative }: { size: number; decorative: boolean }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static brand asset, one URL, no optimization pipeline needed
     <img
-      src="/isotipo-twincap.svg"
+      src="/isotipo-twincap.png"
       width={size}
       height={size}
       alt={decorative ? '' : 'TwinCap'}
       aria-hidden={decorative || undefined}
-      className="rounded-lg"
+      className="object-contain"
       draggable={false}
     />
   );
@@ -42,9 +41,10 @@ export function Logo({ variant = 'logotipo', size = 'md' }: LogoProps) {
     <div className={`flex items-center ${config.gap}`}>
       <LogoIcon size={config.icon} decorative />
       <span
-        className={`font-bold tracking-tight text-zinc-900 dark:text-white ${config.text}`}
+        className={`font-display font-bold tracking-tight ${config.text}`}
       >
-        TwinCap
+        <span className="text-brand-teal">Twin</span>
+        <span className="text-brand-gold">Cap</span>
       </span>
     </div>
   );
