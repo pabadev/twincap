@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT } from '../../../../i18n/client';
+import { useT, useLocale } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
 import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
 import type { SerializedAccount } from '../../../../core/domain/account';
@@ -15,6 +15,7 @@ import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { formatAmount } from '../../../../lib/format';
 import { toDateInputValue } from '../../../../lib/date';
 
 interface LineItem {
@@ -37,6 +38,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const tCatalog = useT('Catalog');
   const tToast = useT('Toast');
   const tError = useT('error');
+  const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -283,7 +285,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         </div>
 
         <div className="mt-2 text-right text-sm font-medium text-zinc-900 dark:text-white">
-          {t('total')} {total.toLocaleString()} {currency}
+          {t('total')} {formatAmount(total, currency, locale)}
         </div>
       </div>
 

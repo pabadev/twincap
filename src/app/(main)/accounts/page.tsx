@@ -1,31 +1,22 @@
 import { redirect } from 'next/navigation';
-import { getT } from '../../../i18n/server';
+import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
 import { getUserBalances } from '../../../core/application/balance';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { CURRENCY_EXPONENTS } from '../../../core/domain/currency';
 import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
+import { formatAmount } from '../../../lib/format';
 import { Wallet } from 'lucide-react';
-
-function formatBalance(amount: number, currency: string): string {
-  const exp = CURRENCY_EXPONENTS[currency as keyof typeof CURRENCY_EXPONENTS] ?? 0;
-  const divisor = 10 ** exp;
-  const value = amount / divisor;
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: exp,
-    maximumFractionDigits: exp,
-  });
-}
 
 export default async function AccountsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const t = await getT('Accounts');
+  const locale = await getLocale();
 
   await connectDb();
   const accountRepo = new MongoAccountRepository();
@@ -95,8 +86,7 @@ export default async function AccountsPage() {
                             : 'text-expense'
                         }`}
                       >
-                        {formatBalance(balance, account.currency)}{' '}
-                        {account.currency}
+                        {formatAmount(balance, account.currency, locale)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">

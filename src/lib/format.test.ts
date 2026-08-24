@@ -35,6 +35,18 @@ describe("formatAmount", () => {
     const result = formatAmount(100000000, "COP", "es");
     expect(result).toContain("100");
   });
+
+  it("emits the currency code exactly once (guard against double formatting)", () => {
+    // JSX must not append {currency} after formatAmount output — these
+    // assertions lock that contract.
+    expect(formatAmount(50000, "COP", "es").match(/COP/g)).toHaveLength(1);
+    expect(formatAmount(10000, "MXN", "es").match(/MXN/g)).toHaveLength(1);
+  });
+
+  it("emits the currency symbol exactly once for symbol-styled locales", () => {
+    expect(formatAmount(1599, "USD", "en").match(/\$/g)).toHaveLength(1);
+    expect(formatAmount(2500, "EUR", "en").match(/€/g)).toHaveLength(1);
+  });
 });
 
 describe("formatDate", () => {

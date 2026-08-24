@@ -102,7 +102,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex-1">
                     <div className="text-sm text-zinc-900 dark:text-white">
-                      {formatDate(sale.date, locale)} — {formatAmount(sale.total, currency, locale)} {currency}
+                      {formatDate(sale.date, locale)} — {formatAmount(sale.total, currency, locale)}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
@@ -115,7 +115,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                       )}
                       {sale.paymentMode === 'on-credit' && (
                         <span className="ml-2">
-                          {t('pending')} {formatAmount(effectivePending, currency, locale)} {currency}
+                          {t('pending')} {formatAmount(effectivePending, currency, locale)}
                         </span>
                       )}
                       <span className="ml-2">

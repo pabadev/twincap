@@ -15,21 +15,10 @@ import {
   RecentMovements,
   type SerializedMovement,
 } from '../../../components/dashboard/recent-movements';
-import { CURRENCY_EXPONENTS, type Currency } from '../../../core/domain/currency';
+import { formatAmount } from '../../../lib/format';
+import type { Currency } from '../../../core/domain/currency';
 
 export const dynamic = 'force-dynamic';
-
-function formatBalance(amount: number, currency: string, locale: string): string {
-  const exponent = (CURRENCY_EXPONENTS as Record<string, number>)[currency] ?? 2;
-  const value = amount / Math.pow(10, exponent);
-  const formatted = new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: exponent,
-    maximumFractionDigits: exponent,
-  }).format(value);
-  return formatted;
-}
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -148,7 +137,7 @@ export default async function DashboardPage() {
                     {account.currency}
                   </span>
                   <span className="text-xl font-semibold text-zinc-900 dark:text-white">
-                    {formatBalance(account.balance, account.currency, locale)}
+                    {formatAmount(account.balance, account.currency, locale)}
                   </span>
                   {account.isFixed && (
                     <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">

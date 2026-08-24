@@ -105,7 +105,7 @@ export function CreditsGrantedList({
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatAmount(credit.principal.amount, currency, locale)} {currency}
+                      {formatAmount(credit.principal.amount, currency, locale)}
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {pending > 0
@@ -154,7 +154,7 @@ export function CreditsGrantedList({
                               <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                                 <td className="py-1">{formatDate(abono.date, locale)}</td>
                                 <td className="py-1 text-right">
-                                  +{formatAmount(abono.amount.amount, currency, locale)} {currency}
+                                  +{formatAmount(abono.amount.amount, currency, locale)}
                                 </td>
                                 <td className="py-1 text-right">
                                   <div className="flex items-center justify-end gap-1">

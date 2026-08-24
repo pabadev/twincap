@@ -140,10 +140,10 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                       <td className="py-1.5">{item.itemName ?? t('itemDeleted')}</td>
                       <td className="py-1.5 text-right">{item.quantity}</td>
                       <td className="py-1.5 text-right">
-                        {formatAmount(item.unitPrice.amount, item.unitPrice.currency, locale)} {item.unitPrice.currency}
+                        {formatAmount(item.unitPrice.amount, item.unitPrice.currency, locale)}
                       </td>
                       <td className="py-1.5 text-right">
-                        {formatAmount(item.subtotal, snapshot.currency, locale)} {snapshot.currency}
+                        {formatAmount(item.subtotal, snapshot.currency, locale)}
                       </td>
                     </tr>
                   ))}
@@ -156,7 +156,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             <div className="flex justify-between">
               <dt className="text-zinc-500 dark:text-zinc-400">{t('total')}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
-                {formatAmount(snapshot.total, snapshot.currency, locale)} {snapshot.currency}
+                {formatAmount(snapshot.total, snapshot.currency, locale)}
               </dd>
             </div>
             {snapshot.paymentMode === 'on-credit' && (
@@ -164,7 +164,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 <div className="flex justify-between">
                   <dt className="text-zinc-500 dark:text-zinc-400">{t('initialPayment')}</dt>
                   <dd className="text-zinc-900 dark:text-white">
-                    {formatAmount(snapshot.initialPayment, snapshot.currency, locale)} {snapshot.currency}
+                    {formatAmount(snapshot.initialPayment, snapshot.currency, locale)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -176,7 +176,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                         : 'text-success'
                     }`}
                   >
-                    {formatAmount(snapshot.pending, snapshot.currency, locale)} {snapshot.currency}
+                    {formatAmount(snapshot.pending, snapshot.currency, locale)}
                   </dd>
                 </div>
               </>
@@ -210,7 +210,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                         <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                           <td className="py-1.5">{formatDate(abono.date, locale)}</td>
                           <td className="py-1.5 text-right">
-                            +{formatAmount(abono.amount.amount, abono.amount.currency, locale)} {abono.amount.currency}
+                            +{formatAmount(abono.amount.amount, abono.amount.currency, locale)}
                           </td>
                           {!snapshot.hasLinkedCredit && (
                             <td className="py-1.5 text-right">

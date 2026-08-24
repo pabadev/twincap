@@ -54,7 +54,7 @@ export function AbonoForm({
       <input type="hidden" name="currency" value={currency} />
 
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        {t('pending')} {formatAmount(pending, currency, locale)} {currency}
+        {t('pending')} {formatAmount(pending, currency, locale)}
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

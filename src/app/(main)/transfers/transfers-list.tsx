@@ -92,16 +92,13 @@ export function TransfersList({
                   </td>
                   {transfer.sourceCurrency === transfer.destinationCurrency ? (
                     <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
-                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}{' '}
-                      {transfer.sourceCurrency}
+                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
                     </td>
                   ) : (
                     <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
-                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}{' '}
-                      {transfer.sourceCurrency}
+                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
                       {' → '}
-                      {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}{' '}
-                      {transfer.destinationCurrency}
+                      {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}
                       {transfer.rate && (
                         <span className="ml-1 text-xs font-normal text-zinc-400">
                           ({t('rate')}: {transfer.rate})

@@ -132,7 +132,7 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatAmount(item.unitPrice.amount, currency, locale)} {currency}
+                      {formatAmount(item.unitPrice.amount, currency, locale)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
