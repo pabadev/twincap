@@ -37,22 +37,29 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
             <span className="w-8 text-xs text-zinc-500 dark:text-zinc-400">
               {formatMonth(d.month)}
             </span>
-            <div className="flex-1 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1">
+              {/* Proportional track (flex-1 min-w-0) holds ONLY the bar; the
+                  numeric label lives outside it so bars keep true widths
+                  instead of absorbing the label's overflow via flex-shrink. */}
               <div className="flex items-center gap-2">
-                <div
-                  className="h-4 rounded bg-income"
-                  style={{ width: `${(d.income / maxValue) * 100}%`, minWidth: d.income > 0 ? '4px' : '0' }}
-                />
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="h-4 min-w-0 flex-1">
+                  <div
+                    className="h-full rounded bg-income"
+                    style={{ width: `${(d.income / maxValue) * 100}%`, minWidth: d.income > 0 ? '4px' : '0' }}
+                  />
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500 dark:text-zinc-400">
                   {d.income > 0 ? `+${formatAmount(d.income, currency, locale)}` : '—'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div
-                  className="h-4 rounded bg-expense"
-                  style={{ width: `${(d.expenses / maxValue) * 100}%`, minWidth: d.expenses > 0 ? '4px' : '0' }}
-                />
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="h-4 min-w-0 flex-1">
+                  <div
+                    className="h-full rounded bg-expense"
+                    style={{ width: `${(d.expenses / maxValue) * 100}%`, minWidth: d.expenses > 0 ? '4px' : '0' }}
+                  />
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500 dark:text-zinc-400">
                   {d.expenses > 0 ? `−${formatAmount(d.expenses, currency, locale)}` : '—'}
                 </span>
               </div>
