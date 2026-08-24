@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TranslationsProvider } from "../i18n/client";
 import { getLocale, getT } from "../i18n/server";
+import { SPLASH_SCREENS } from "../components/pwa/splash-links";
 import { ServiceWorkerRegistration } from "../components/service-worker-registration";
 import "./globals.css";
 
@@ -22,7 +23,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t('description'),
     manifest: "/manifest.json",
     icons: {
-      icon: "/favicon.svg",
+      icon: [
+        { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      ],
+      apple: "/apple-touch-icon.png",
     },
     appleWebApp: {
       capable: true,
@@ -53,6 +58,15 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* React 19 hoists these <link> elements into <head>. */}
+        {SPLASH_SCREENS.map(({ media, href }) => (
+          <link
+            key={href}
+            rel="apple-touch-startup-image"
+            media={media}
+            href={href}
+          />
+        ))}
         <ServiceWorkerRegistration />
         <TranslationsProvider messages={messages} locale={locale}>
           {children}

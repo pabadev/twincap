@@ -46,3 +46,9 @@ next-env.d.ts
 
 # gga (gentleman guardian angel)
 .gga
+
+# local design source material (brand assets pending integration)
+pwa_pack/
+*.zip
+logo_concept*.png
+isotipo_*.png
