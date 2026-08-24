@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
+import { computeDashboardSummary } from '../../../core/application/compute-dashboard-summary';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -14,16 +15,9 @@ import {
   RecentMovements,
   type SerializedMovement,
 } from '../../../components/dashboard/recent-movements';
-import type { Movement } from '../../../core/domain/movement';
 import { CURRENCY_EXPONENTS, type Currency } from '../../../core/domain/currency';
 
 export const dynamic = 'force-dynamic';
-
-interface MonthData {
-  month: string;
-  income: number;
-  expenses: number;
-}
 
 function formatBalance(amount: number, currency: string, locale: string): string {
   const exponent = (CURRENCY_EXPONENTS as Record<string, number>)[currency] ?? 2;
@@ -35,37 +29,6 @@ function formatBalance(amount: number, currency: string, locale: string): string
     maximumFractionDigits: exponent,
   }).format(value);
   return formatted;
-}
-
-/** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
-function utcMonthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-function computeMonthlyData(movements: Movement[], currency: string): MonthData[] {
-  const now = new Date();
-  const monthlyMap = new Map<string, { income: number; expenses: number }>();
-
-  // Single pass: bucket movements by the UTC year-month of the stored
-  // business date (D1 — explicit, not host-local).
-  for (const m of movements) {
-    if (m.amount.currency !== currency) continue;
-    const key = utcMonthKey(m.date);
-    const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
-    if (m.type === 'income') bucket.income += m.amount.amount;
-    else bucket.expenses += m.amount.amount;
-    monthlyMap.set(key, bucket);
-  }
-
-  // Build ordered array for last 6 months, keyed in the same UTC frame.
-  const months: MonthData[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-    const key = utcMonthKey(d);
-    const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
-    months.push({ month: key, ...bucket });
-  }
-  return months;
 }
 
 export default async function DashboardPage() {
@@ -103,9 +66,6 @@ export default async function DashboardPage() {
 
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
-  const now = new Date();
-  const currentMonthKey = utcMonthKey(now);
-
   const primaryCurrency: Currency =
     accounts.length > 0 ? accounts[0].currency : 'COP';
 
@@ -113,29 +73,17 @@ export default async function DashboardPage() {
     .filter((a) => a.currency === primaryCurrency)
     .reduce((sum, a) => sum + a.balance, 0);
 
-  const monthlyIncome = allMovements
-    .filter(
-      (m) =>
-        m.type === 'income' &&
-        m.amount.currency === primaryCurrency &&
-        utcMonthKey(m.date) === currentMonthKey,
-    )
-    .reduce((sum, m) => sum + m.amount.amount, 0);
-
-  const monthlyExpenses = allMovements
-    .filter(
-      (m) =>
-        m.type === 'expense' &&
-        m.amount.currency === primaryCurrency &&
-        utcMonthKey(m.date) === currentMonthKey,
-    )
-    .reduce((sum, m) => sum + m.amount.amount, 0);
+  // D2: internal transfers (both legs) and opening balances are NOT economic
+  // result — excluded inside the use case.
+  const { monthlyIncome, monthlyExpenses, months: monthlyData } =
+    computeDashboardSummary({
+      movements: allMovements,
+      currency: primaryCurrency,
+    });
 
   const pendingCredits = creditsReceived
     .filter((c) => c.principal.currency === primaryCurrency)
     .reduce((sum, c) => sum + c.pending, 0);
-
-  const monthlyData = computeMonthlyData(allMovements, primaryCurrency);
 
   const recentMovements: SerializedMovement[] = allMovements
     .slice(0, 5)
