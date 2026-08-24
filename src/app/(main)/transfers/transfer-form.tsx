@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { toDateInputValue } from '../../../lib/date';
 
 export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
@@ -120,7 +121,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
         label={t('date')}
         required
         disabled={isPending}
-        defaultValue={new Date().toISOString().split('T')[0]}
+        defaultValue={toDateInputValue()}
       />
 
       <Input

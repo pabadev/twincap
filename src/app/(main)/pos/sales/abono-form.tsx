@@ -11,6 +11,7 @@ import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { toDateInputValue } from '../../../../lib/date';
 
 interface AbonoFormProps {
   saleId: string;
@@ -94,7 +95,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
           label={t('date')}
           required
           disabled={isPending}
-          defaultValue={new Date().toISOString().split('T')[0]}
+          defaultValue={toDateInputValue()}
         />
       </div>
 

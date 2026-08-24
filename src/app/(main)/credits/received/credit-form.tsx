@@ -11,6 +11,7 @@ import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { toDateInputValue } from '../../../../lib/date';
 
 export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
@@ -91,7 +92,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
         label={t('date')}
         required
         disabled={isPending}
-        defaultValue={new Date().toISOString().split('T')[0]}
+        defaultValue={toDateInputValue()}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

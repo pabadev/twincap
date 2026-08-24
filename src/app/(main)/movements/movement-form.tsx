@@ -17,6 +17,7 @@ import {
   filterCategoriesByType,
   resolveDefaultAccountId,
 } from '../../../lib/movement-form';
+import { toDateInputValue } from '../../../lib/date';
 
 function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -122,7 +123,7 @@ export function MovementForm({
           label={t('date')}
           required
           disabled={isPending}
-          defaultValue={new Date().toISOString().split('T')[0]}
+          defaultValue={toDateInputValue()}
         />
 
         <Select

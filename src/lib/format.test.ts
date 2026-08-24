@@ -38,23 +38,26 @@ describe("formatAmount", () => {
 });
 
 describe("formatDate", () => {
-  it("formats ISO date string", () => {
-    const result = formatDate("2026-03-15", "en");
-    expect(result).toContain("2026");
-    // Month abbreviation — day may shift due to timezone, just check month+year
-    expect(result).toMatch(/\w+ \d+, 2026/);
+  // Business dates are civil dates encoded as midnight UTC; formatDate pins
+  // timeZone: 'UTC', so these EXACT strings hold on any host timezone
+  // (the suite forces TZ=America/Bogota via vitest.setup.ts).
+  it("formats an ISO date string as the stored civil date", () => {
+    expect(formatDate("2026-03-15", "en")).toBe("Mar 15, 2026");
   });
 
-  it("formats Date object", () => {
-    const date = new Date(2026, 6, 4); // July 4 in local time
-    const result = formatDate(date, "en");
-    expect(result).toContain("Jul");
-    expect(result).toContain("4");
+  it("does NOT shift a midnight-UTC date on west-of-UTC hosts", () => {
+    // Without the UTC pin, a Bogota host would render this as "Mar 14".
+    const result = formatDate(new Date("2026-03-15T00:00:00Z"), "en");
+    expect(result).toBe("Mar 15, 2026");
+  });
+
+  it("renders a Date through its UTC calendar parts", () => {
+    // Built via Date.UTC so its UTC parts are identical on every host.
+    const date = new Date(Date.UTC(2026, 6, 4));
+    expect(formatDate(date, "en")).toBe("Jul 4, 2026");
   });
 
   it("formats in Spanish locale", () => {
-    const result = formatDate("2026-01-20", "es");
-    expect(result).toContain("20");
-    expect(result).toContain("2026");
+    expect(formatDate("2026-01-20", "es")).toBe("20 ene 2026");
   });
 });

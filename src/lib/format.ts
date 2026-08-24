@@ -18,8 +18,15 @@ export function formatAmount(amount: number, currency: string, locale: string): 
 }
 
 /**
- * Format a date string using Intl.DateTimeFormat.
- * @param dateStr - ISO date string (YYYY-MM-DD) or Date object
+ * Format a BUSINESS date using Intl.DateTimeFormat.
+ *
+ * Business dates (movement/transfer/credit/sale/payable dates) are stored as
+ * civil dates encoded as midnight UTC (decision D1). Rendering them MUST pin
+ * `timeZone: 'UTC'` so the displayed calendar date matches the stored civil
+ * date on any host timezone. Do NOT use this formatter for true instants
+ * (createdAt/updatedAt) — those should render in local time.
+ *
+ * @param date - ISO date string (YYYY-MM-DD) or Date object
  * @param locale - Locale string (es, en)
  */
 export function formatDate(date: Date | string, locale: string): string {
@@ -28,5 +35,6 @@ export function formatDate(date: Date | string, locale: string): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'UTC',
   }).format(d);
 }

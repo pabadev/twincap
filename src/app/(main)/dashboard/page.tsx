@@ -37,26 +37,31 @@ function formatBalance(amount: number, currency: string, locale: string): string
   return formatted;
 }
 
+/** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
+function utcMonthKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 function computeMonthlyData(movements: Movement[], currency: string): MonthData[] {
   const now = new Date();
   const monthlyMap = new Map<string, { income: number; expenses: number }>();
 
-  // Single pass: bucket movements by month
+  // Single pass: bucket movements by the UTC year-month of the stored
+  // business date (D1 — explicit, not host-local).
   for (const m of movements) {
     if (m.amount.currency !== currency) continue;
-    const md = new Date(m.date);
-    const key = `${md.getFullYear()}-${String(md.getMonth() + 1).padStart(2, '0')}`;
+    const key = utcMonthKey(m.date);
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
     if (m.type === 'income') bucket.income += m.amount.amount;
     else bucket.expenses += m.amount.amount;
     monthlyMap.set(key, bucket);
   }
 
-  // Build ordered array for last 6 months
+  // Build ordered array for last 6 months, keyed in the same UTC frame.
   const months: MonthData[] = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const key = utcMonthKey(d);
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
     months.push({ month: key, ...bucket });
   }
@@ -99,7 +104,7 @@ export default async function DashboardPage() {
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentMonthKey = utcMonthKey(now);
 
   const primaryCurrency: Currency =
     accounts.length > 0 ? accounts[0].currency : 'COP';
@@ -113,7 +118,7 @@ export default async function DashboardPage() {
       (m) =>
         m.type === 'income' &&
         m.amount.currency === primaryCurrency &&
-        new Date(m.date) >= thisMonthStart,
+        utcMonthKey(m.date) === currentMonthKey,
     )
     .reduce((sum, m) => sum + m.amount.amount, 0);
 
@@ -122,7 +127,7 @@ export default async function DashboardPage() {
       (m) =>
         m.type === 'expense' &&
         m.amount.currency === primaryCurrency &&
-        new Date(m.date) >= thisMonthStart,
+        utcMonthKey(m.date) === currentMonthKey,
     )
     .reduce((sum, m) => sum + m.amount.amount, 0);
 

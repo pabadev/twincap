@@ -11,6 +11,7 @@ import { EditCreditForm } from './edit-credit-form';
 import { DeleteCreditButton } from './delete-credit-button';
 import { DeleteAbonoButton } from './delete-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
+import { businessDateToInputValue } from '../../../../lib/date';
 import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Modal } from '../../../../components/ui/modal';
@@ -214,7 +215,7 @@ export function CreditsGrantedList({
                               creditId={credit.id}
                               abonoId={abono.id}
                               amount={abono.amount.amount}
-                              date={abono.date.toISOString().split('T')[0]}
+                              date={businessDateToInputValue(abono.date)}
                               onCancel={() => setEditingAbonoId(null)}
                             />
                           ))}
