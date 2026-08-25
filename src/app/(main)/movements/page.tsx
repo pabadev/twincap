@@ -9,10 +9,14 @@ import { MongoCreditGrantedRepository } from '../../../infrastructure/repositori
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
+import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
 import { serializeEntities } from '@/lib/serialize';
 import type { SerializedMovement } from '../../../core/domain/movement';
+import type { Account } from '../../../core/domain/account';
+import type { Transfer } from '../../../core/domain/transfer';
+import type { TransferLegsInfo } from '../../../lib/system-note';
 
 /**
  * Counterparty label per parent operation id (credit/sale/payable), used by
@@ -37,6 +41,34 @@ function buildRefLabels(
   return refLabels;
 }
 
+/**
+ * D3 remediation: per-transfer endpoint data (account id, name, raw scope)
+ * so each movement leg can render a directional note naming the counterpart
+ * account and its scope. Transfers whose endpoint account no longer resolves
+ * are omitted → the plain fallback template applies.
+ */
+function buildTransferLegs(
+  transfers: Pick<Transfer, 'id' | 'sourceAccountId' | 'destinationAccountId'>[],
+  accounts: Account[],
+): Record<string, TransferLegsInfo> {
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const legs: Record<string, TransferLegsInfo> = {};
+  for (const tr of transfers) {
+    const origin = byId.get(tr.sourceAccountId);
+    const destination = byId.get(tr.destinationAccountId);
+    if (!origin || !destination) continue;
+    legs[tr.id] = {
+      origin: { accountId: origin.id, name: origin.name, scope: origin.scope },
+      destination: {
+        accountId: destination.id,
+        name: destination.name,
+        scope: destination.scope,
+      },
+    };
+  }
+  return legs;
+}
+
 export default async function MovementsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -49,6 +81,7 @@ export default async function MovementsPage() {
   const payableRepo = new MongoPayableRepository();
   const saleRepo = new MongoSaleRepository();
   const clientRepo = new MongoClientRepository();
+  const transferRepo = new MongoTransferRepository();
 
   const accounts = await listAccounts(user.userId, accountRepo);
 
@@ -59,6 +92,7 @@ export default async function MovementsPage() {
     payables,
     sales,
     clients,
+    transfers,
     ...movementsPerAccount
   ] = await Promise.all([
     creditReceivedRepo.findByUserId(user.userId),
@@ -66,6 +100,7 @@ export default async function MovementsPage() {
     payableRepo.findByUserId(user.userId),
     saleRepo.findByUserId(user.userId),
     clientRepo.findByUserId(user.userId),
+    transferRepo.findByUserId(user.userId),
     ...accounts.map((account) =>
       listMovements(user.userId, account.id, movementRepo),
     ),
@@ -84,6 +119,8 @@ export default async function MovementsPage() {
     new Map(clients.map((c) => [c.id, c.name])),
   );
 
+  const transferLegs = buildTransferLegs(transfers, accounts);
+
   // Serialize: convert Map to plain object and domain classes to plain objects
   const movementsRecord: Record<string, SerializedMovement[]> = {};
   for (const [key, val] of movementsByAccount) {
@@ -95,6 +132,7 @@ export default async function MovementsPage() {
       accounts={serializeEntities(accounts)}
       movementsByAccount={movementsRecord}
       refLabels={refLabels}
+      transferLegs={transferLegs}
     />
   );
 }

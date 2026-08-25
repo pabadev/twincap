@@ -3,6 +3,7 @@
 import {
   createAccount,
   deleteAccount,
+  updateAccountScope,
 } from '../../../core/application/accounts';
 import type { CreateAccountInput } from '../../../core/application/accounts';
 import { isAccountScope } from '../../../core/domain/account';
@@ -78,4 +79,36 @@ export async function deleteAccountAction(
   }
 
   return { success: 'accountDeleted' };
+}
+
+/**
+ * D3 remediation: change ONLY an existing account's Personal/Business scope.
+ * Balances and movements are untouched — scope filters resolve live via the
+ * account map. Scope is validated server-side; every other field is ignored.
+ */
+export async function updateAccountScopeAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const accountId = formData.get('accountId') as string;
+  const scopeRaw = formData.get('scope');
+  if (typeof scopeRaw !== 'string' || !isAccountScope(scopeRaw)) {
+    return { error: 'error.validation' };
+  }
+
+  try {
+    await connectDb();
+    const accountRepo = new MongoAccountRepository();
+    await updateAccountScope(user.userId, { accountId, scope: scopeRaw }, accountRepo);
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'accountUpdated' };
 }

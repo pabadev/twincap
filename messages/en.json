@@ -82,7 +82,8 @@
     "createAccount": "Create Account",
     "confirmDelete": "Delete this account? This cannot be undone.",
     "emptyTitle": "No accounts yet",
-    "emptyDescription": "Create your first account to start tracking."
+    "emptyDescription": "Create your first account to start tracking.",
+    "editScope": "Change scope"
   },
   "Categories": {
     "title": "Categories",
@@ -155,7 +156,11 @@
     "categoryTransfer": "Transfer",
     "categorySale": "Sale",
     "categoryOpening": "Opening balance",
-    "categoryPayable": "Payable"
+    "categoryPayable": "Payable",
+    "transferTo": "Transfer to {name} ({scope})",
+    "transferFrom": "Transfer from {name} ({scope})",
+    "scopePersonal": "Personal",
+    "scopeBusiness": "Business"
   },
   "Transfers": {
     "title": "Transfers",

@@ -17,7 +17,22 @@ export const SYSTEM_NOTES_NAMESPACE = 'SystemNotes';
 /** Minimal structural shape needed to derive a display note. */
 export interface SystemNoteSource {
   note?: string;
+  /** Needed to resolve which transfer leg this movement is (D3 remediation). */
+  accountId?: string;
   link?: { kind: string; refId: string };
+}
+
+/** One endpoint of a transfer, with its account's raw scope enum value. */
+export interface TransferEndpointInfo {
+  accountId: string;
+  name: string;
+  scope: string;
+}
+
+/** Per-transfer lookup entry built by the caller from loaded accounts. */
+export interface TransferLegsInfo {
+  origin: TransferEndpointInfo;
+  destination: TransferEndpointInfo;
 }
 
 /** Kinds whose parent operation carries a counterparty/client label. */
@@ -73,6 +88,9 @@ function persistedNoteIsUserAuthored(source: SystemNoteSource): boolean {
  *   1. User-authored persisted note (transfer form note) — shown verbatim.
  *   2. Localized template from link.kind (+ counterparty label when the
  *      parent operation is available in `refLabels`, plain variant otherwise).
+ *      Transfers additionally render directionally with the counterpart
+ *      account name + its localized scope when `transferLegs` has an entry
+ *      for `link.refId` (D3 remediation); plain template otherwise.
  *   3. undefined → caller falls back to the raw persisted note (historical
  *      rows) or an em dash.
  *
@@ -82,11 +100,16 @@ export function deriveSystemNote(
   source: SystemNoteSource,
   t: TranslateFn,
   refLabels?: Record<string, string>,
+  transferLegs?: Record<string, TransferLegsInfo>,
 ): string | undefined {
   if (!source.link || persistedNoteIsUserAuthored(source)) return undefined;
 
   const templateKey = systemNoteTemplateKey(source.link.kind);
   if (!templateKey) return undefined;
+
+  if (templateKey === 'transfer') {
+    return deriveTransferNote(source, t, transferLegs);
+  }
 
   if (COUNTERPARTY_KINDS.has(templateKey as MovementLinkKind)) {
     const label = refLabels?.[source.link.refId];
@@ -97,4 +120,41 @@ export function deriveSystemNote(
   }
 
   return t(templateKey);
+}
+
+/**
+ * Directional transfer note (D3 remediation): the leg whose account is the
+ * rendered movement's account names the COUNTERPART account + its scope,
+ * e.g. "Transferencia hacia Efectivo (Negocio)". Falls back to the plain
+ * "own accounts" template when the transfer is unknown, the movement's
+ * account matches neither endpoint, or the counterpart data is blank —
+ * never showing a directional claim that cannot be backed by data.
+ */
+function deriveTransferNote(
+  source: SystemNoteSource,
+  t: TranslateFn,
+  transferLegs?: Record<string, TransferLegsInfo>,
+): string {
+  const legs = source.link ? transferLegs?.[source.link.refId] : undefined;
+  const accountId = source.accountId;
+  if (!legs || !accountId) return t('transfer');
+
+  let counterpart: TransferEndpointInfo;
+  let templateKey: string;
+  if (legs.origin.accountId === accountId) {
+    counterpart = legs.destination;
+    templateKey = 'transferTo';
+  } else if (legs.destination.accountId === accountId) {
+    counterpart = legs.origin;
+    templateKey = 'transferFrom';
+  } else {
+    return t('transfer');
+  }
+
+  const name = counterpart.name.trim();
+  if (name.length === 0) return t('transfer');
+
+  const scopeLabel =
+    counterpart.scope === 'Business' ? t('scopeBusiness') : t('scopePersonal');
+  return t(templateKey, { name, scope: scopeLabel });
 }

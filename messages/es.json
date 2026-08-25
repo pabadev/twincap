@@ -82,7 +82,8 @@
     "createAccount": "Crear cuenta",
     "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer.",
     "emptyTitle": "No tienes cuentas aún",
-    "emptyDescription": "Crea tu primera cuenta para empezar a registrar."
+    "emptyDescription": "Crea tu primera cuenta para empezar a registrar.",
+    "editScope": "Cambiar ámbito"
   },
   "Categories": {
     "title": "Categorías",
@@ -155,7 +156,11 @@
     "categoryTransfer": "Transferencia",
     "categorySale": "Venta",
     "categoryOpening": "Saldo inicial",
-    "categoryPayable": "Cuenta por pagar"
+    "categoryPayable": "Cuenta por pagar",
+    "transferTo": "Transferencia hacia {name} ({scope})",
+    "transferFrom": "Transferencia desde {name} ({scope})",
+    "scopePersonal": "Personal",
+    "scopeBusiness": "Negocio"
   },
   "Transfers": {
     "title": "Transferencias",

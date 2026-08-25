@@ -25,15 +25,29 @@ function makeT(locale: 'es' | 'en'): TranslateFn {
 const tEs = makeT('es');
 const tEn = makeT('en');
 
-function movement(partial: { note?: string; kind?: string; refId?: string }) {
+function movement(partial: {
+  note?: string;
+  kind?: string;
+  refId?: string;
+  accountId?: string;
+}) {
   return {
     note: partial.note,
+    accountId: partial.accountId,
     link:
       partial.kind === undefined
         ? undefined
         : { kind: partial.kind, refId: partial.refId ?? 'ref-1', opId: 'op-1' },
   };
 }
+
+/** D3 remediation fixture: Efectivo (Personal) → Nequi (Business). */
+const legsFixture = {
+  'tr-1': {
+    origin: { accountId: 'acc-A', name: 'Efectivo', scope: 'Personal' },
+    destination: { accountId: 'acc-B', name: 'Nequi', scope: 'Business' },
+  },
+};
 
 describe('systemNoteTemplateKey', () => {
   it('maps all nine known link kinds', () => {
@@ -186,5 +200,89 @@ describe('deriveSystemNote', () => {
   it('returns undefined for unknown kinds so callers can fall back', () => {
     const m = movement({ kind: 'mysteryKind', note: 'Legacy text' });
     expect(deriveSystemNote(m, tEs)).toBeUndefined();
+  });
+
+  describe('transfer legs (D3 remediation)', () => {
+    it('renders the outgoing leg toward the destination account + its scope', () => {
+      const m = movement({ kind: 'transfer', refId: 'tr-1', accountId: 'acc-A' });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Transferencia hacia Nequi (Negocio)',
+      );
+      expect(deriveSystemNote(m, tEn, {}, legsFixture)).toBe(
+        'Transfer to Nequi (Business)',
+      );
+    });
+
+    it('renders the incoming leg from the origin account + its scope', () => {
+      const m = movement({ kind: 'transfer', refId: 'tr-1', accountId: 'acc-B' });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Transferencia desde Efectivo (Personal)',
+      );
+      expect(deriveSystemNote(m, tEn, {}, legsFixture)).toBe(
+        'Transfer from Efectivo (Personal)',
+      );
+    });
+
+    it('falls back to the plain template when the transfer is unknown/deleted', () => {
+      const m = movement({ kind: 'transfer', refId: 'tr-gone', accountId: 'acc-A' });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Transferencia entre cuentas propias',
+      );
+      expect(deriveSystemNote(m, tEn, {})).toBe(
+        'Internal transfer between own accounts',
+      );
+    });
+
+    it('falls back to the plain template when the account matches neither endpoint', () => {
+      const m = movement({ kind: 'transfer', refId: 'tr-1', accountId: 'acc-X' });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Transferencia entre cuentas propias',
+      );
+      expect(deriveSystemNote(m, tEn, {}, legsFixture)).toBe(
+        'Internal transfer between own accounts',
+      );
+    });
+
+    it('falls back to the plain template when the counterpart name is blank', () => {
+      const blankLegs = {
+        'tr-1': {
+          origin: { accountId: 'acc-A', name: '   ', scope: 'Personal' },
+          destination: { accountId: 'acc-B', name: 'Nequi', scope: 'Business' },
+        },
+      };
+      const m = movement({ kind: 'transfer', refId: 'tr-1', accountId: 'acc-B' });
+      expect(deriveSystemNote(m, tEs, {}, blankLegs)).toBe(
+        'Transferencia entre cuentas propias',
+      );
+    });
+
+    it('still lets a user-typed persisted note win over the derived leg text', () => {
+      const m = movement({
+        note: 'Ahorros de diciembre',
+        kind: 'transfer',
+        refId: 'tr-1',
+        accountId: 'acc-A',
+      });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBeUndefined();
+    });
+
+    it("derives the labeled note for legacy auto 'Transfer' rows", () => {
+      const m = movement({
+        note: 'Transfer',
+        kind: 'transfer',
+        refId: 'tr-1',
+        accountId: 'acc-B',
+      });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Transferencia desde Efectivo (Personal)',
+      );
+    });
+
+    it('does not affect other fixed templates like opening', () => {
+      const m = movement({ kind: 'opening', refId: 'tr-1', accountId: 'acc-A' });
+      expect(deriveSystemNote(m, tEs, {}, legsFixture)).toBe(
+        'Saldo inicial de la cuenta',
+      );
+    });
   });
 });
