@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
+import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
+import { syntheticCategoryLabel } from '../../../lib/synthetic-category-label';
 import { listAccounts } from '../../../core/application/accounts';
 import { computeDashboardSummary } from '../../../core/application/compute-dashboard-summary';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
@@ -26,6 +28,10 @@ export default async function DashboardPage() {
 
   const t = await getT('Dashboard');
   const locale = await getLocale();
+  // Synthetic (system) categories are in-memory constants — resolve their
+  // localized labels at render so system movements don't fall into
+  // "uncategorized" (A4).
+  const tSystemNotes = await getT(SYSTEM_NOTES_NAMESPACE);
 
   await connectDb();
   const accountRepo = new MongoAccountRepository();
@@ -82,7 +88,10 @@ export default async function DashboardPage() {
       amount: m.amount.amount,
       currency: m.amount.currency,
       date: m.date.toISOString(),
-      categoryName: categoryMap.get(m.categoryId) ?? '',
+      categoryName:
+        categoryMap.get(m.categoryId) ??
+        syntheticCategoryLabel(m.categoryId, tSystemNotes) ??
+        '',
     }));
 
   return (

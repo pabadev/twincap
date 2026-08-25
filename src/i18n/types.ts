@@ -15,9 +15,11 @@ export type Namespace =
   | 'Transfers'
   | 'CreditsReceived'
   | 'CreditsGranted'
+  | 'Payables'
   | 'Catalog'
   | 'Sales'
   | 'Metadata'
-  | 'Landing';
+  | 'Landing'
+  | 'SystemNotes';
 
 export type Messages = Record<Namespace, Record<string, string>>;

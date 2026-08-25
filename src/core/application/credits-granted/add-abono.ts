@@ -52,7 +52,7 @@ export async function addAbono(
     type: 'income',
     amount: new Money(input.amount, input.currency),
     date: input.date,
-    note: `Abono for credit granted to ${credit.counterparty}`,
+    // No persisted note: display text derives at render from link.kind.
     context: 'Personal',
     link: { kind: 'creditGrantedAbono', refId: creditId, opId: ids.generate() },
     createdAt: now,

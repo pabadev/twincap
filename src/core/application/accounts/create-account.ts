@@ -41,7 +41,7 @@ export async function createAccount(
       type: 'income',
       amount: new Money(input.initialBalance, input.currency),
       date: new Date(),
-      note: 'Opening balance',
+      // No persisted note: display text derives at render from link.kind.
       context: 'Personal',
       link: { kind: 'opening', refId: accountId, opId: ids.generate() },
       createdAt: new Date(),

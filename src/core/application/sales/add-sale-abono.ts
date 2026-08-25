@@ -51,7 +51,7 @@ export async function addSaleAbono(
     type: 'income',
     amount: new Money(input.amount, input.currency),
     date: input.date,
-    note: 'Sale abono',
+    // No persisted note: display text derives at render from link.kind.
     context: 'Personal',
     link: { kind: 'salePayment', refId: saleId, opId: ids.generate() },
     createdAt: now,

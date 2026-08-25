@@ -57,7 +57,7 @@ export async function createPayable(
       type: 'expense',
       amount: new Money(payable.initialPayment, input.currency),
       date: input.date,
-      note: `Initial payment for purchase from ${input.counterparty}`,
+      // No persisted note: display text derives at render from link.kind.
       context: 'Personal',
       link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
       createdAt: now,

@@ -48,7 +48,7 @@ export async function createCreditReceived(
     type: 'income',
     amount: principalMoney,
     date: input.date,
-    note: `Credit received from ${input.counterparty}`,
+    // No persisted note: display text derives at render from link.kind.
     context: 'Personal',
     link: { kind: 'creditReceivedPrincipal', refId: creditId, opId },
     createdAt: now,

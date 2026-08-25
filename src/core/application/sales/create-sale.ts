@@ -170,7 +170,7 @@ function buildSalePaymentMovement(args: {
     type: 'income',
     amount: new Money(args.amount, args.currency),
     date: args.date,
-    note: 'Sale payment',
+    // No persisted note: display text derives at render from link.kind.
     context: 'Personal',
     link: { kind: 'salePayment', refId: args.saleId, opId: args.ids.generate() },
     createdAt: args.now,

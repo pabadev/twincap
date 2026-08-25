@@ -6,6 +6,7 @@ import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
+import { deriveSystemNote } from '../../../lib/system-note';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
@@ -15,13 +16,17 @@ import { useQuickMovement } from '../global-movement-provider';
 export function MovementsList({
   accounts,
   movementsByAccount,
+  refLabels = {},
 }: {
   accounts: SerializedAccount[];
   movementsByAccount: Record<string, SerializedMovement[]>;
+  /** Parent counterparty labels (credit/sale/payable id → name) for note derivation. */
+  refLabels?: Record<string, string>;
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   const t = useT('Movements');
   const tCommon = useT('Common');
+  const tSystemNotes = useT('SystemNotes');
   const locale = useLocale();
   const { openQuickMovement } = useQuickMovement();
 
@@ -135,7 +140,9 @@ export function MovementsList({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        {movement.note || '—'}
+                        {movement.link
+                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
+                          : (movement.note || '—')}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span

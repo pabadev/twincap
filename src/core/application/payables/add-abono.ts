@@ -57,7 +57,7 @@ export async function addAbono(
     type: 'expense',
     amount: new Money(input.amount, input.currency),
     date: input.date,
-    note: `Abono for purchase from ${payable.counterparty}`,
+    // No persisted note: display text derives at render from link.kind.
     context: 'Personal',
     link: { kind: 'payableAbono', refId: payableId, opId: ids.generate() },
     createdAt: now,
