@@ -12,8 +12,7 @@ import type { AddAbonoInput } from './dto/payables';
  *
  * Pending = total − initialPayment − Σ abonos. Overpayment is rejected.
  * Produces exactly ONE linked expense movement (kind 'payableAbono').
- * D3: the movement inherits the payment account's scope (the abono may be
- * paid from a different account than the payable's own account).
+ * Movement context: always 'Personal' — payable abonos are personal purchases.
  */
 export async function addAbono(
   userId: string,
@@ -30,7 +29,7 @@ export async function addAbono(
   if (!payable) throw new NotFoundError('Payable not found');
 
   // D3: resolve the PAYMENT account (may differ from the payable's account) —
-  // validates existence/ownership and provides the inherited scope.
+  // validates existence/ownership.
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
@@ -68,7 +67,7 @@ export async function addAbono(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: account.scope,
+    context: 'Personal',
     link: { kind: 'payableAbono', refId: payableId, opId: ids.generate() },
     createdAt: now,
   });

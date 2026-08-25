@@ -19,7 +19,7 @@ export interface MovementDoc {
   signedAmount: number;
   date: Date;
   note?: string;
-  context: "Personal" | "Business";
+  context?: "Personal" | "Business";
   categoryId: mongoose.Types.ObjectId;
   link?: MovementLinkDoc;
   createdAt: Date;
@@ -71,7 +71,6 @@ const MovementSchema = new Schema<MovementDoc>(
     },
     context: {
       type: String,
-      required: true,
       enum: ["Personal", "Business"],
     },
     categoryId: {

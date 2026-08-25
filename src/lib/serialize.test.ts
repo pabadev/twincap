@@ -51,7 +51,6 @@ describe("serializeEntity", () => {
       name: "Efectivo",
       currency: "COP",
       isFixed: true,
-      scope: "Personal",
       createdAt: date,
     });
   });

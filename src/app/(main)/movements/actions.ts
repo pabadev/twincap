@@ -5,6 +5,8 @@ import {
   deleteMovement,
 } from '../../../core/application/movements';
 import type { CreateMovementInput } from '../../../core/application/movements';
+import type { MovementContext } from '../../../core/domain/movement';
+import { isMovementContext } from '../../../core/domain/movement';
 import { listAccounts } from '../../../core/application/accounts';
 import { listCategories } from '../../../core/application/categories';
 import type { SerializedAccount } from '../../../core/domain/account';
@@ -34,16 +36,20 @@ export async function createMovementAction(
   const date = new Date(formData.get('date') as string);
   const note = (formData.get('note') as string) || undefined;
   const categoryId = formData.get('categoryId') as string;
+  const contextRaw = formData.get('context') as string | null;
+  let context: MovementContext | undefined;
+  if (contextRaw && isMovementContext(contextRaw)) {
+    context = contextRaw;
+  }
 
   try {
     await connectDb();
     const movementRepo = new MongoMovementRepository();
     const categoryRepo = new MongoCategoryRepository();
     const accountRepo = new MongoAccountRepository();
-    // D3: no client-sent context — scope derives server-side from the account.
     await createMovement(
       user.userId,
-      { accountId, type, amount, currency, date, note, categoryId },
+      { accountId, type, amount, currency, date, note, categoryId, context },
       movementRepo,
       categoryRepo,
       ids,

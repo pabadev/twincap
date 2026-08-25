@@ -3,10 +3,8 @@
 import {
   createAccount,
   deleteAccount,
-  updateAccountScope,
 } from '../../../core/application/accounts';
 import type { CreateAccountInput } from '../../../core/application/accounts';
-import { isAccountScope } from '../../../core/domain/account';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -26,15 +24,6 @@ export async function createAccountAction(
   const name = formData.get('name') as string;
   const currency = formData.get('currency') as CreateAccountInput['currency'];
   const initialBalance = Number(formData.get('initialBalance') || '0');
-  const scopeRaw = formData.get('scope');
-  // D3: validate server-side; absent value falls through to the domain default.
-  let scope: CreateAccountInput['scope'];
-  if (typeof scopeRaw === 'string' && scopeRaw.length > 0) {
-    if (!isAccountScope(scopeRaw)) {
-      return { error: 'error.validation' };
-    }
-    scope = scopeRaw;
-  }
 
   try {
     await connectDb();
@@ -42,7 +31,7 @@ export async function createAccountAction(
     const movementRepo = new MongoMovementRepository();
     await createAccount(
       user.userId,
-      { name, currency, initialBalance, scope },
+      { name, currency, initialBalance },
       accountRepo,
       movementRepo,
       ids,
@@ -79,36 +68,4 @@ export async function deleteAccountAction(
   }
 
   return { success: 'accountDeleted' };
-}
-
-/**
- * D3 remediation: change ONLY an existing account's Personal/Business scope.
- * Balances and movements are untouched — scope filters resolve live via the
- * account map. Scope is validated server-side; every other field is ignored.
- */
-export async function updateAccountScopeAction(
-  _prev: { error?: string; success?: string } | null,
-  formData: FormData,
-): Promise<{ error?: string; success?: string }> {
-  const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
-
-  const accountId = formData.get('accountId') as string;
-  const scopeRaw = formData.get('scope');
-  if (typeof scopeRaw !== 'string' || !isAccountScope(scopeRaw)) {
-    return { error: 'error.validation' };
-  }
-
-  try {
-    await connectDb();
-    const accountRepo = new MongoAccountRepository();
-    await updateAccountScope(user.userId, { accountId, scope: scopeRaw }, accountRepo);
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
-  } catch (error) {
-    return handleActionError(error);
-  }
-
-  return { success: 'accountUpdated' };
 }

@@ -56,9 +56,14 @@ describe("Movement entity", () => {
     expect(movement().categoryId).toBe("cat-expense");
   });
 
-  it("rejects unknown movement types and missing Personal/Business context (MOV-1)", () => {
+  it("rejects unknown movement types and unknown context values (MOV-1)", () => {
     expect(() => movement({ type: "transfer" as never })).toThrow(ValidationError);
     expect(() => movement({ context: "Work" as never })).toThrow(ValidationError);
+  });
+
+  it("accepts undefined context for system-linked movements (neutral)", () => {
+    const neutral = movement({ context: undefined });
+    expect(neutral.context).toBeUndefined();
   });
 
   it("accepts every system link kind and marks the movement as system-linked", () => {

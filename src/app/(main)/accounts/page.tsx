@@ -8,7 +8,6 @@ import { MongoMovementRepository } from '../../../infrastructure/repositories/mo
 import { connectDb } from '../../../infrastructure/db/connection';
 import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
-import { AccountScopeButton } from './account-scope-button';
 import { formatAmount } from '../../../lib/format';
 import { Wallet } from 'lucide-react';
 
@@ -75,12 +74,6 @@ export default async function AccountsPage() {
                           {t('fixed')}
                         </span>
                       )}
-                      {/* D3: scope chip — only Business is flagged; Personal is the silent default. */}
-                      {account.scope === 'Business' && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          {t('business')}
-                        </span>
-                      )}
                       <span className="ml-2 text-xs text-zinc-400">
                         {account.currency}
                       </span>
@@ -97,10 +90,7 @@ export default async function AccountsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* D3 remediation: scope reclassification is available
-                          for every account (fixed included). */}
                       <div className="flex items-center justify-end gap-1">
-                        <AccountScopeButton accountId={account.id} scope={account.scope} />
                         {!account.isFixed && (
                           <DeleteAccountButton accountId={account.id} />
                         )}

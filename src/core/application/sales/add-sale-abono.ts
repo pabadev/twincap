@@ -12,8 +12,7 @@ import { saleCategory } from './helpers';
  *
  * Pending = total − Σ abonos. Overpayment is rejected.
  * Each abono creates an income movement on the chosen account.
- * D3: the movement inherits the receiving account's scope (the abono may be
- * collected into a different account than the sale's own account).
+ * Movement context: always 'Business' — sale movements are economic activity.
  */
 export async function addSaleAbono(
   userId: string,
@@ -62,7 +61,7 @@ export async function addSaleAbono(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: account.scope,
+    context: 'Business',
     link: { kind: 'salePayment', refId: saleId, opId: ids.generate() },
     createdAt: now,
   });

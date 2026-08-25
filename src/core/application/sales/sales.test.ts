@@ -203,7 +203,6 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
-  scope: 'Personal' | 'Business' = 'Personal',
 ): Account {
   return new Account({
     id,
@@ -211,7 +210,6 @@ function makeAccount(
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
-    scope,
     createdAt: new Date(),
   });
 }
@@ -793,16 +791,15 @@ describe('addSaleAbono', () => {
     expect(movementRepo.created[0].link?.kind).toBe('salePayment');
   });
 
-  it('inherits scope from the RECEIVING account, not the sale account (D3)', async () => {
+  it('sets context to Business (hardcoded) regardless of account', async () => {
     const sale = makeSale(); // sale.accountId = acc-1
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    // Abono collected into a Business account different from the sale's own.
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-1'),
-      makeAccount('acc-biz', 'Business'),
+      makeAccount('acc-biz'),
     ]);
     const ids = fakeIdGen();
 

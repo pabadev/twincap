@@ -6,7 +6,7 @@ import { Money } from "./money";
 export const MOVEMENT_TYPES = ["income", "expense"] as const;
 export type MovementType = (typeof MOVEMENT_TYPES)[number];
 
-/** Mandatory Personal/Business context (MOV-1). */
+/** Movement context: manual Personal/Business classification on manual movements; derived by system flows. */
 export const MOVEMENT_CONTEXTS = ["Personal", "Business"] as const;
 export type MovementContext = (typeof MOVEMENT_CONTEXTS)[number];
 
@@ -75,7 +75,7 @@ export interface MovementInput {
   amount: Money;
   date: Date;
   note?: string;
-  context: MovementContext;
+  context?: MovementContext;
   link?: MovementLink;
   createdAt: Date;
 }
@@ -91,7 +91,7 @@ export class Movement {
   readonly signedAmount: number;
   readonly date: Date;
   readonly note?: string;
-  readonly context: MovementContext;
+  readonly context?: MovementContext;
   /** Present only for system-linked movements (opening/transfer/credit/sale). */
   readonly link?: MovementLink;
   readonly createdAt: Date;
@@ -109,7 +109,7 @@ export class Movement {
     if (!isMovementType(input.type)) {
       throw new ValidationError(`Unknown movement type: ${input.type}`);
     }
-    if (!isMovementContext(input.context)) {
+    if (input.context !== undefined && !isMovementContext(input.context)) {
       throw new ValidationError(`Unknown movement context: ${String(input.context)}`);
     }
     assertCategoryMatchesMovement(input.category, input.type);

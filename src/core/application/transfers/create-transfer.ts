@@ -14,8 +14,8 @@ import type { CreateTransferInput } from './dto/transfers';
  * an income on the destination account. Both are system-linked (MOV-5)
  * and thus not directly editable by the user.
  *
- * D3: each leg inherits the scope of ITS OWN account — a cross-scope
- * transfer legitimately produces one Business and one Personal movement.
+ * Movement context: undefined (neutral) — transfers move money between accounts
+ * without economic classification.
  */
 export async function createTransfer(
   userId: string,
@@ -30,8 +30,7 @@ export async function createTransfer(
     throw new ValidationError('Source and destination accounts must be different');
   }
 
-  // D3: resolve both accounts up front — validates existence/ownership and
-  // provides each leg's scope.
+  // D3: resolve both accounts up front — validates existence/ownership.
   const [sourceAccount, destinationAccount] = await Promise.all([
     accountRepo.findById(userId, input.sourceAccountId),
     accountRepo.findById(userId, input.destinationAccountId),
@@ -100,7 +99,6 @@ export async function createTransfer(
     amount: sourceAmountMoney,
     date: input.date,
     note: input.note,
-    context: sourceAccount.scope,
     link: { kind: 'transfer', refId: transferId, opId: expenseOpId },
     createdAt: now,
   });
@@ -116,7 +114,6 @@ export async function createTransfer(
     amount: new Money(destAmount, destCurrency),
     date: input.date,
     note: input.note,
-    context: destinationAccount.scope,
     link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
     createdAt: now,
   });

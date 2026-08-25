@@ -1,4 +1,5 @@
 import { Movement } from '../../domain/movement';
+import type { MovementContext } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import type { MovementRepository, CategoryRepository } from '../../domain/repositories';
 import type { Category } from '../../domain/category';
@@ -11,6 +12,7 @@ export interface UpdateMovementInput {
   categoryId?: string;
   date?: Date;
   note?: string;
+  context?: MovementContext;
 }
 
 export async function updateMovement(
@@ -55,7 +57,7 @@ export async function updateMovement(
       : existing.amount,
     date: input.date ?? existing.date,
     note: input.note ?? existing.note,
-    context: existing.context,
+    context: input.context ?? existing.context,
     link: existing.link,
     createdAt: existing.createdAt,
   });

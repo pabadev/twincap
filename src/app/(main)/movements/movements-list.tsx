@@ -6,7 +6,7 @@ import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
-import { deriveSystemNote, type TransferLegsInfo } from '../../../lib/system-note';
+import { deriveSystemNote } from '../../../lib/system-note';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
@@ -17,14 +17,11 @@ export function MovementsList({
   accounts,
   movementsByAccount,
   refLabels = {},
-  transferLegs = {},
 }: {
   accounts: SerializedAccount[];
   movementsByAccount: Record<string, SerializedMovement[]>;
   /** Parent counterparty labels (credit/sale/payable id → name) for note derivation. */
   refLabels?: Record<string, string>;
-  /** D3 remediation: per-transfer endpoint info for directional leg notes. */
-  transferLegs?: Record<string, TransferLegsInfo>;
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   /** D3 scope filter — only meaningful while 'all accounts' is active. */
@@ -35,14 +32,12 @@ export function MovementsList({
   const locale = useLocale();
   const { openQuickMovement } = useQuickMovement();
 
-  // D3: resolve each movement's scope via its account (account is the source
-  // of truth; stored Movement.context is never trusted for filtering).
-  const scopeByAccountId = new Map(accounts.map((a) => [a.id, a.scope]));
+  // D3: scope filter uses Movement.context (the source of truth).
   const allMovements = Object.values(movementsByAccount)
     .flat()
     .filter((m) =>
       selectedAccountId === 'all'
-        ? selectedScope === 'all' || scopeByAccountId.get(m.accountId) === selectedScope
+        ? selectedScope === 'all' || m.context === selectedScope
         : true,
     );
   const movements =
@@ -187,7 +182,7 @@ export function MovementsList({
                       </td>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                         {movement.link
-                          ? (deriveSystemNote(movement, tSystemNotes, refLabels, transferLegs) ?? movement.note) || '—'
+                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
                           : (movement.note || '—')}
                       </td>
                       <td className="px-4 py-3 text-right">

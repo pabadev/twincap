@@ -3,7 +3,6 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
-import { ACCOUNT_SCOPES } from '../../../core/domain/account';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createAccountAction } from './actions';
 import { Input } from '../../../components/ui/input';
@@ -53,19 +52,6 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
         required
         disabled={isPending}
         options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-      />
-
-      <Select
-        id="scope"
-        name="scope"
-        label={t('scope')}
-        required
-        disabled={isPending}
-        defaultValue="Personal"
-        options={ACCOUNT_SCOPES.map((s) => ({
-          value: s,
-          label: s === 'Personal' ? t('personal') : t('business'),
-        }))}
       />
 
       <Input

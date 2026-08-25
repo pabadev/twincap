@@ -89,7 +89,6 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
-  scope: 'Personal' | 'Business' = 'Personal',
 ): Account {
   return new Account({
     id,
@@ -97,7 +96,6 @@ function makeAccount(
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
-    scope,
     createdAt: new Date(),
   });
 }
@@ -143,6 +141,7 @@ describe('createMovement', () => {
         date: new Date('2025-01-15'),
         note: 'Salary',
         categoryId: 'cat-1',
+        context: 'Personal',
       },
       movementRepo,
       categoryRepo,
@@ -188,19 +187,48 @@ describe('createMovement', () => {
     expect(movement.signedAmount).toBe(-25000);
   });
 
-  it('derives context from the account scope, ignoring any client-sent value (D3)', async () => {
+  it('accepts context from the form input', async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-biz', 'Business')]);
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const movement = await createMovement(
       'user-1',
       {
-        accountId: 'acc-biz',
+        accountId: 'acc-1',
+        type: 'income',
+        amount: 50000,
+        currency: 'COP',
+        date: new Date(),
+        categoryId: 'cat-1',
+        context: 'Business',
+      },
+      movementRepo,
+      categoryRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movement.context).toBe('Business');
+  });
+
+  it('allows undefined context for system-linked movements', async () => {
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo();
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const movement = await createMovement(
+      'user-1',
+      {
+        accountId: 'acc-1',
         type: 'income',
         amount: 50000,
         currency: 'COP',
@@ -213,7 +241,7 @@ describe('createMovement', () => {
       accountRepo,
     );
 
-    expect(movement.context).toBe('Business');
+    expect(movement.context).toBeUndefined();
   });
 
   it('throws NotFoundError when the account does not exist (D3 tenant guard)', async () => {

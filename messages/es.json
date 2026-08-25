@@ -71,9 +71,6 @@
     "currency": "Moneda",
     "actions": "Acciones",
     "fixed": "Fijo",
-    "scope": "Ámbito",
-    "personal": "Personal",
-    "business": "Negocio",
     "noAccounts": "No tienes cuentas aún. Crea tu primera cuenta abajo.",
     "addAccount": "Agregar cuenta",
     "accountName": "Nombre de la cuenta",
@@ -82,8 +79,7 @@
     "createAccount": "Crear cuenta",
     "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer.",
     "emptyTitle": "No tienes cuentas aún",
-    "emptyDescription": "Crea tu primera cuenta para empezar a registrar.",
-    "editScope": "Cambiar ámbito"
+    "emptyDescription": "Crea tu primera cuenta para empezar a registrar."
   },
   "Categories": {
     "title": "Categorías",
@@ -121,6 +117,9 @@
     "date": "Fecha",
     "note": "Nota",
     "scope": "Ámbito",
+    "context": "Contexto",
+    "personal": "Personal",
+    "business": "Negocio",
     "scopeAll": "Todos",
     "scopePersonal": "Personales",
     "scopeBusiness": "Negocio",
@@ -156,11 +155,7 @@
     "categoryTransfer": "Transferencia",
     "categorySale": "Venta",
     "categoryOpening": "Saldo inicial",
-    "categoryPayable": "Cuenta por pagar",
-    "transferTo": "Transferencia hacia {name} ({scope})",
-    "transferFrom": "Transferencia desde {name} ({scope})",
-    "scopePersonal": "Personal",
-    "scopeBusiness": "Negocio"
+    "categoryPayable": "Cuenta por pagar"
   },
   "Transfers": {
     "title": "Transferencias",

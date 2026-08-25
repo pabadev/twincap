@@ -15,7 +15,6 @@ import type {
 import type { IdGenerator } from '../ports';
 import type { CreateSaleInput } from './dto/sales';
 import { saleCategory } from './helpers';
-import type { AccountScope } from '../../domain/account';
 
 /**
  * Create a sale with line items (POS-2 through POS-4, H14).
@@ -31,14 +30,7 @@ import type { AccountScope } from '../../domain/account';
  *
  * Decrement stock for physical items (POS-3: atomic $inc guard, reject oversell).
  *
- * D3: sale payment movements inherit the sale account's scope.
- *
- * Atomicity note: sale + credit + movements are separate writes inside this
- * single use-case invocation. Full transactionality would require the
- * repository ports to accept a Mongoose ClientSession (signature change
- * across every port/implementation) plus a replica-set connection — an
- * infrastructure change deliberately out of scope (same trade-off as the
- * credits use cases).
+ * Movement context: always 'Business' — sale movements are economic activity.
  */
 export async function createSale(
   userId: string,
@@ -54,13 +46,11 @@ export async function createSale(
   const saleId = ids.generate();
   const now = new Date();
 
-  // D3: resolve the sale account — validates existence/ownership and provides
-  // the scope inherited by every payment movement of this sale.
+  // D3: resolve the sale account — validates existence/ownership.
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
-  const accountScope: AccountScope = account.scope;
 
   // Build line items and compute total before any write so input validation
   // (initialPayment ≤ total) can fail without side effects.
@@ -123,7 +113,6 @@ export async function createSale(
       userId,
       saleId,
       accountId: sale.accountId,
-      scope: accountScope,
       amount: sale.total,
       currency: input.currency,
       date: input.date,
@@ -154,7 +143,6 @@ export async function createSale(
         userId,
         saleId,
         accountId: sale.accountId,
-        scope: accountScope,
         amount: initialPayment,
         currency: input.currency,
         date: input.date,
@@ -171,7 +159,6 @@ function buildSalePaymentMovement(args: {
   userId: string;
   saleId: string;
   accountId: string;
-  scope: AccountScope;
   amount: number;
   currency: CreateSaleInput['currency'];
   date: Date;
@@ -187,7 +174,7 @@ function buildSalePaymentMovement(args: {
     amount: new Money(args.amount, args.currency),
     date: args.date,
     // No persisted note: display text derives at render from link.kind.
-    context: args.scope,
+    context: 'Business',
     link: { kind: 'salePayment', refId: args.saleId, opId: args.ids.generate() },
     createdAt: args.now,
   });

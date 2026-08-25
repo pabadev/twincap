@@ -24,8 +24,7 @@ export async function createPayable(
   ids: IdGenerator,
   accountRepo: AccountRepository,
 ): Promise<Payable> {
-  // D3: resolve the payment account — validates existence/ownership and
-  // provides the scope the initial-payment movement inherits.
+  // D3: resolve the payment account — validates existence/ownership.
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
@@ -68,7 +67,7 @@ export async function createPayable(
       amount: new Money(payable.initialPayment, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: account.scope,
+      context: 'Personal',
       link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
       createdAt: now,
     });

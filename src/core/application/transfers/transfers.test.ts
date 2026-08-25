@@ -32,7 +32,6 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
-  scope: 'Personal' | 'Business' = 'Personal',
 ): Account {
   return new Account({
     id,
@@ -40,7 +39,6 @@ function makeAccount(
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
-    scope,
     createdAt: new Date(),
   });
 }
@@ -204,16 +202,14 @@ describe('createTransfer', () => {
     expect(income.link?.kind).toBe('transfer');
   });
 
-  it('inherits each leg scope from ITS OWN account — cross-scope transfer (D3)', async () => {
+  it('sets context to undefined (neutral) for both transfer legs', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(100000),
     });
-    // Business source → Personal destination: expense leg = Business,
-    // income leg = Personal (approved per-leg rule).
     const accountRepo = fakeAccountRepo([
-      makeAccount('acc-src', 'Business'),
-      makeAccount('acc-dst', 'Personal'),
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
     ]);
     const ids = fakeIdGen();
 
@@ -232,8 +228,8 @@ describe('createTransfer', () => {
       accountRepo,
     );
 
-    expect(movementRepo.created[0].context).toBe('Business');
-    expect(movementRepo.created[1].context).toBe('Personal');
+    expect(movementRepo.created[0].context).toBeUndefined();
+    expect(movementRepo.created[1].context).toBeUndefined();
   });
 
   it('throws NotFoundError when the source account does not exist', async () => {

@@ -71,9 +71,6 @@
     "currency": "Currency",
     "actions": "Actions",
     "fixed": "Fixed",
-    "scope": "Scope",
-    "personal": "Personal",
-    "business": "Business",
     "noAccounts": "No accounts yet. Create your first account below.",
     "addAccount": "Add Account",
     "accountName": "Account Name",
@@ -82,8 +79,7 @@
     "createAccount": "Create Account",
     "confirmDelete": "Delete this account? This cannot be undone.",
     "emptyTitle": "No accounts yet",
-    "emptyDescription": "Create your first account to start tracking.",
-    "editScope": "Change scope"
+    "emptyDescription": "Create your first account to start tracking."
   },
   "Categories": {
     "title": "Categories",
@@ -121,6 +117,9 @@
     "date": "Date",
     "note": "Note",
     "scope": "Scope",
+    "context": "Context",
+    "personal": "Personal",
+    "business": "Business",
     "scopeAll": "All",
     "scopePersonal": "Personal",
     "scopeBusiness": "Business",
@@ -156,11 +155,7 @@
     "categoryTransfer": "Transfer",
     "categorySale": "Sale",
     "categoryOpening": "Opening balance",
-    "categoryPayable": "Payable",
-    "transferTo": "Transfer to {name} ({scope})",
-    "transferFrom": "Transfer from {name} ({scope})",
-    "scopePersonal": "Personal",
-    "scopeBusiness": "Business"
+    "categoryPayable": "Payable"
   },
   "Transfers": {
     "title": "Transfers",

@@ -12,7 +12,7 @@ import type { CreateCreditReceivedInput } from './dto/credits-received';
  *
  * Produces a credit record and one linked income movement on the receiving account.
  * The movement is system-linked (MOV-5) and not directly editable by the user.
- * D3: the movement inherits the receiving account's scope.
+ * Movement context: always 'Personal' — credits received are personal financing.
  */
 export async function createCreditReceived(
   userId: string,
@@ -22,8 +22,7 @@ export async function createCreditReceived(
   ids: IdGenerator,
   accountRepo: AccountRepository,
 ): Promise<CreditReceived> {
-  // D3: resolve the receiving account — validates existence/ownership and
-  // provides the scope the principal movement inherits.
+  // D3: resolve the receiving account — validates existence/ownership.
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
@@ -59,7 +58,7 @@ export async function createCreditReceived(
     amount: principalMoney,
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: account.scope,
+    context: 'Personal',
     link: { kind: 'creditReceivedPrincipal', refId: creditId, opId },
     createdAt: now,
   });

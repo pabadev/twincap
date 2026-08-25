@@ -12,8 +12,7 @@ import type { AddAbonoInput } from './dto/credits-received';
  *
  * Pending = principal − Σ abonos. Overpayment is rejected.
  * Produces a linked expense movement (payment from account).
- * D3: the movement inherits the payment account's scope (the abono may be
- * paid from a different account than the credit's own account).
+ * Movement context: always 'Personal' — credit abonos are personal financing.
  */
 export async function addAbono(
   userId: string,
@@ -30,7 +29,7 @@ export async function addAbono(
   if (!credit) throw new NotFoundError('Credit not found');
 
   // D3: resolve the PAYMENT account (may differ from the credit's account) —
-  // validates existence/ownership and provides the inherited scope.
+  // validates existence/ownership.
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
@@ -63,7 +62,7 @@ export async function addAbono(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: account.scope,
+    context: 'Personal',
     link: { kind: 'creditReceivedAbono', refId: creditId, opId: ids.generate() },
     createdAt: now,
   });

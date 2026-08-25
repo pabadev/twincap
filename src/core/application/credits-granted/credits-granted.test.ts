@@ -44,7 +44,6 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
-  scope: 'Personal' | 'Business' = 'Personal',
 ): Account {
   return new Account({
     id,
@@ -52,7 +51,6 @@ function makeAccount(
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
-    scope,
     createdAt: new Date(),
   });
 }
@@ -213,10 +211,10 @@ describe('createCreditGranted', () => {
     expect(movement.link?.refId).toBe(credit.id);
   });
 
-  it('inherits Business scope from the paying account (D3)', async () => {
+  it('sets context to Personal (hardcoded) for credit granted principal movement', async () => {
     const creditRepo = fakeCreditRepo();
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-biz', 'Business')]);
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await createCreditGranted(
@@ -225,7 +223,7 @@ describe('createCreditGranted', () => {
         counterparty: 'Pedro',
         principal: 100000,
         currency: 'COP',
-        accountId: 'acc-biz',
+        accountId: 'acc-1',
         date: new Date('2025-06-01'),
       },
       creditRepo,
@@ -234,7 +232,7 @@ describe('createCreditGranted', () => {
       accountRepo,
     );
 
-    expect(movementRepo.created[0].context).toBe('Business');
+    expect(movementRepo.created[0].context).toBe('Personal');
   });
 
   it('creates credit with optional installments and frequency', async () => {
@@ -328,23 +326,19 @@ describe('addAbono', () => {
     expect(movement.link?.kind).toBe('creditGrantedAbono');
   });
 
-  it('inherits scope from the RECEIVING account, not the credit account (D3)', async () => {
+  it('sets context to Personal (hardcoded) for credit granted abono movement', async () => {
     const credit = makeCredit(); // credit.accountId = acc-1
     const creditRepo = fakeCreditRepo({
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
-    // Debtor pays into a Business account different from the credit's own.
-    const accountRepo = fakeAccountRepo([
-      makeAccount('acc-1'),
-      makeAccount('acc-biz', 'Business'),
-    ]);
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await addAbono(
       'user-1',
       'cg-1',
-      { amount: 25000, currency: 'COP', accountId: 'acc-biz', date: new Date('2025-07-01') },
+      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
       creditRepo,
       movementRepo,
       ids,
@@ -352,8 +346,8 @@ describe('addAbono', () => {
     );
 
     const movement = movementRepo.created[0];
-    expect(movement.accountId).toBe('acc-biz');
-    expect(movement.context).toBe('Business');
+    expect(movement.accountId).toBe('acc-1');
+    expect(movement.context).toBe('Personal');
   });
 
   it('throws ConflictError on overpayment (CRED-G-2)', async () => {

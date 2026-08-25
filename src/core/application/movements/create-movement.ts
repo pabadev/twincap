@@ -1,5 +1,5 @@
 import { Movement } from '../../domain/movement';
-import type { MovementType } from '../../domain/movement';
+import type { MovementType, MovementContext } from '../../domain/movement';
 import type { Currency } from '../../domain/currency';
 import { Money } from '../../domain/money';
 import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
@@ -14,8 +14,8 @@ export interface CreateMovementInput {
   date: Date;
   note?: string;
   categoryId: string;
-  // NOTE: no `context` input — D3 makes the account's scope authoritative and
-  // it is resolved server-side below (never trusted from the client).
+  /** Manual Personal/Business context — set by the user via the form picker. */
+  context?: MovementContext;
 }
 
 export async function createMovement(
@@ -40,8 +40,7 @@ export async function createMovement(
     throw new ValidationError('Category type must match movement type');
   }
 
-  // D3: context derives from the selected account's scope — validates
-  // existence/ownership at the same time.
+  // D3: validate account exists/owned (context comes from the client form).
   const account = await accountRepo.findById(userId, input.accountId);
   if (!account) {
     throw new NotFoundError('Account not found');
@@ -57,7 +56,7 @@ export async function createMovement(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     note: input.note,
-    context: account.scope,
+    context: input.context,
     createdAt: now,
   });
 
