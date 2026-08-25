@@ -49,7 +49,9 @@
     "signInLabel": "Sign In",
     "registerLabel": "Register",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match"
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",

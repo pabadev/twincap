@@ -49,7 +49,9 @@
     "signInLabel": "Iniciar sesión",
     "registerLabel": "Registrarse",
     "showPassword": "Mostrar contraseña",
-    "hidePassword": "Ocultar contraseña"
+    "hidePassword": "Ocultar contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden"
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",

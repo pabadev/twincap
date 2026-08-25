@@ -60,6 +60,17 @@ export function AuthForm({
           autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
           disabled={isPending}
         />
+        {authMode === 'register' && (
+          <PasswordInput
+            id="confirmPassword"
+            name="confirmPassword"
+            label={t('confirmPassword')}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            disabled={isPending}
+          />
+        )}
         <Button
           type="submit"
           variant="primary"

@@ -28,6 +28,11 @@ export async function registerAction(
 ): Promise<{ error: string } | null> {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+
+  if (password !== confirmPassword) {
+    return { error: 'Passwords do not match' };
+  }
 
   try {
     await connectDb();
