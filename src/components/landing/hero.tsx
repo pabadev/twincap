@@ -17,14 +17,14 @@ export function Hero() {
             <Logo variant="logotipo" size="lg" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            TwinCap
+            {t('heroTitle')}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-indigo-100 sm:text-xl">
             {t('heroSubtitle')}
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link href="/register">
-              <Button variant="primary" size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 shadow-lg">
+              <Button variant="inverse" size="lg" className="shadow-lg">
                 {t('heroCta')}
               </Button>
             </Link>

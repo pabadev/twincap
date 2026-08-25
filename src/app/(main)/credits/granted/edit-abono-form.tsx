@@ -82,8 +82,8 @@ export function EditAbonoForm({
       <div className="flex items-center gap-2">
         <Button
           type="submit"
-          variant="ghost"
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          variant="primary"
+          size="sm"
           disabled={isPending}
           loading={isPending}
         >

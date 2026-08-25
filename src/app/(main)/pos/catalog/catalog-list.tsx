@@ -9,6 +9,7 @@ import { formatAmount } from '../../../../lib/format';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
+import { Button } from '../../../../components/ui/button';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { Package, Pencil, Search } from 'lucide-react';
 
@@ -41,12 +42,9 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
+        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
           {t('addItem')}
-        </button>
+        </Button>
       </div>
 
       <Modal

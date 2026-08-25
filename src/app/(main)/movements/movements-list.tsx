@@ -10,6 +10,7 @@ import { deriveSystemNote } from '../../../lib/system-note';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
+import { Button } from '../../../components/ui/button';
 import { ArrowLeftRight } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
 
@@ -54,7 +55,9 @@ export function MovementsList({
           {t('title')}
         </h1>
         {selectedAccountId && (
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() =>
               openQuickMovement(
                 selectedAccountId === 'all'
@@ -62,10 +65,9 @@ export function MovementsList({
                   : { accountId: selectedAccountId },
               )
             }
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             {t('addMovement')}
-          </button>
+          </Button>
         )}
       </div>
 

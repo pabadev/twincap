@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useT } from '../../../i18n/client';
 import { AccountForm } from './account-form';
 import { Modal } from '../../../components/ui/modal';
+import { Button } from '../../../components/ui/button';
 
 export function AccountsPageClient() {
   const [showForm, setShowForm] = useState(false);
@@ -11,12 +12,9 @@ export function AccountsPageClient() {
 
   return (
     <>
-      <button
-        onClick={() => setShowForm(true)}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-      >
+      <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
         {t('addAccount')}
-      </button>
+      </Button>
 
       <Modal
         open={showForm}

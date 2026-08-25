@@ -35,7 +35,11 @@
     "posSales": "Ventas POS",
     "exit": "Salir",
     "login": "Iniciar sesión",
-    "register": "Registrarse"
+    "register": "Registrarse",
+    "groupGeneral": "General",
+    "groupFinanzas": "Finanzas",
+    "groupCredito": "Crédito",
+    "groupNegocio": "Negocio"
   },
   "Auth": {
     "signIn": "Iniciar sesión",
@@ -474,6 +478,7 @@
     "description": "Gestión de finanzas personales y pequeños negocios"
   },
   "Landing": {
+    "heroTitle": "TwinCap",
     "heroSubtitle": "Administra tus finanzas personales y de tu negocio en un solo lugar. Simple, seguro y poderoso.",
     "heroCta": "Empieza gratis",
     "featuresTitle": "Todo lo que necesitas para controlar tu dinero",

@@ -9,6 +9,8 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
 import { formatAmount } from '../../../lib/format';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Icon } from '../../../components/ui/icon';
 import { Wallet } from 'lucide-react';
 
 export default async function AccountsPage() {
@@ -37,13 +39,11 @@ export default async function AccountsPage() {
       </div>
 
       {accounts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="mb-4 text-zinc-400">
-            <Wallet size={48} strokeWidth={1} />
-          </div>
-          <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">{t('emptyTitle')}</h3>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t('emptyDescription')}</p>
-        </div>
+        <EmptyState
+          icon={<Icon icon={Wallet} size="xl" />}
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
           <table className="w-full min-w-[400px] divide-y divide-zinc-200 dark:divide-zinc-700">

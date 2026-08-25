@@ -35,7 +35,11 @@
     "posSales": "POS Sales",
     "exit": "Log out",
     "login": "Sign In",
-    "register": "Register"
+    "register": "Register",
+    "groupGeneral": "General",
+    "groupFinanzas": "Finance",
+    "groupCredito": "Credit",
+    "groupNegocio": "Business"
   },
   "Auth": {
     "signIn": "Sign In",
@@ -474,6 +478,7 @@
     "description": "Personal and small business finance management"
   },
   "Landing": {
+    "heroTitle": "TwinCap",
     "heroSubtitle": "Manage your personal and business finances in one place. Simple, secure, and powerful.",
     "heroCta": "Get started free",
     "featuresTitle": "Everything you need to take control of your money",

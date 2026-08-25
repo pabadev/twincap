@@ -57,12 +57,9 @@ export function PayablesList({
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
+        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
           {t('addPayable')}
-        </button>
+        </Button>
       </div>
 
       <Modal
