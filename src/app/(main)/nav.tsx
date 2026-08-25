@@ -175,7 +175,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                     aria-label={tCommon('switchLang')}
                   >
                     <Languages className="h-4 w-4" />
-                    <span className="hidden sm:inline">{locale === 'es' ? 'EN' : 'ES'}</span>
+                    <span>{locale === 'es' ? 'EN' : 'ES'}</span>
                   </button>
                   <form action={logoutAction} className="flex-1">
                     <button
