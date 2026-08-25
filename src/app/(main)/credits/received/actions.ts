@@ -120,6 +120,8 @@ export async function editAbonoAction(
     );
     revalidatePath('/credits/received');
     revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }

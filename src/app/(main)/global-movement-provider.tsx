@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -29,6 +30,7 @@ export interface QuickMovementOptions {
 
 interface GlobalMovementContextValue {
   openQuickMovement: (options?: QuickMovementOptions) => void;
+  invalidateData: () => void;
 }
 
 const GlobalMovementContext =
@@ -109,7 +111,12 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
     };
   }, [dialOpen]);
 
-  const value = { openQuickMovement };
+  const invalidateData = useCallback(() => setData(null), []);
+
+  const value = useMemo(
+    () => ({ openQuickMovement, invalidateData }),
+    [openQuickMovement, invalidateData],
+  );
 
   return (
     <GlobalMovementContext.Provider value={value}>

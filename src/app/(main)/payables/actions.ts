@@ -122,6 +122,8 @@ export async function editAbonoAction(
     );
     revalidatePath('/payables');
     revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }

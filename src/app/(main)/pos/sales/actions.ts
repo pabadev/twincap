@@ -139,6 +139,9 @@ export async function deleteSaleAbonoAction(
     const movementRepo = new MongoMovementRepository();
     await deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
     revalidatePath('/pos/sales');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }
