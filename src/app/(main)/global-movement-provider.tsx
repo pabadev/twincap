@@ -141,7 +141,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
                 ref={firstOptionRef}
                 type="button"
                 onClick={() => openQuickMovement({ type: 'income' })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 <Icon
                   icon={TrendingUp}
@@ -155,7 +155,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: 'expense' })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 <Icon
                   icon={TrendingDown}
@@ -176,7 +176,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
           aria-expanded={dialOpen}
           aria-controls={dialOpen ? 'quick-movement-menu' : undefined}
           aria-label={tMovements('quickAdd')}
-          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-lg transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
         >
           <Icon icon={dialOpen ? X : Plus} size="lg" />
         </button>
@@ -197,7 +197,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setLoadState('idle')}
-              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               {tErrors('retry')}
             </button>

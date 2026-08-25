@@ -4,6 +4,7 @@ import { TranslationsProvider } from "../i18n/client";
 import { getLocale, getT } from "../i18n/server";
 import { SPLASH_SCREENS } from "../components/pwa/splash-links";
 import { ServiceWorkerRegistration } from "../components/service-worker-registration";
+import { ThemeProvider } from "../components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -62,8 +63,14 @@ export default async function RootLayout({
     <html
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('twincap-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
         {/* React 19 hoists these <link> elements into <head>. */}
         {SPLASH_SCREENS.map(({ media, href }) => (
           <link
@@ -74,9 +81,11 @@ export default async function RootLayout({
           />
         ))}
         <ServiceWorkerRegistration />
-        <TranslationsProvider messages={messages} locale={locale}>
-          {children}
-        </TranslationsProvider>
+        <ThemeProvider>
+          <TranslationsProvider messages={messages} locale={locale}>
+            {children}
+          </TranslationsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

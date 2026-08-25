@@ -72,7 +72,7 @@ export function SearchableSelect({
         className={`flex h-10 w-full cursor-pointer items-center rounded-md border bg-white px-3 text-left text-sm shadow-sm dark:bg-zinc-800 ${
           error
             ? 'border-danger focus:border-danger focus:ring-danger'
-            : 'border-zinc-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-zinc-600'
+            : 'border-zinc-300 focus:border-primary focus:ring-primary dark:border-zinc-600'
         }`}
       >
         {selectedLabel || <span className="text-zinc-400">{placeholder}</span>}

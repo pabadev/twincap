@@ -13,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
+    'bg-primary text-white hover:bg-primary-hover focus:ring-primary',
   secondary:
     'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700',
   success:
@@ -23,7 +23,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-zinc-700 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800',
   inverse:
-    'bg-white text-indigo-700 hover:bg-indigo-50 focus:ring-indigo-500 dark:bg-white dark:text-indigo-700',
+    'bg-white text-primary hover:bg-indigo-50 focus:ring-primary dark:bg-white dark:text-primary',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

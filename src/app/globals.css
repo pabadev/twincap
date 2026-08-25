@@ -1,6 +1,8 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  color-scheme: light dark;
   --background: #ffffff;
   --foreground: #171717;
 
@@ -19,6 +21,14 @@
   /* Brand wordmark colors (sampled from isotipo_twincap_ok.png) */
   --tc-brand-teal: #028a95;
   --tc-brand-gold: #c97b06;
+
+  /* Surface tokens */
+  --tc-surface-bg: #ffffff;
+  --tc-surface-card: #ffffff;
+  --tc-surface-border: #e4e4e7;
+  --tc-surface-muted: #71717a;
+  --tc-surface-input: #ffffff;
+  --tc-surface-overlay: rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {
@@ -39,29 +49,41 @@
   --color-brand-teal: var(--tc-brand-teal);
   --color-brand-gold: var(--tc-brand-gold);
 
+  --color-surface-bg: var(--tc-surface-bg);
+  --color-surface-card: var(--tc-surface-card);
+  --color-surface-border: var(--tc-surface-border);
+  --color-surface-muted: var(--tc-surface-muted);
+  --color-surface-input: var(--tc-surface-input);
+  --color-surface-overlay: var(--tc-surface-overlay);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-sora);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 
-    --tc-primary: oklch(0.707 0.165 254.624);
-    --tc-primary-hover: oklch(0.657 0.195 254.624);
-    --tc-success: oklch(0.696 0.17 162.48);
-    --tc-danger: oklch(0.677 0.245 27.325);
-    --tc-warning: oklch(0.829 0.188 70.08);
-    --tc-info: oklch(0.746 0.222 244.38);
-    --tc-debt: oklch(0.805 0.213 47.604);
-    --tc-income: oklch(0.696 0.17 162.48);
-    --tc-expense: oklch(0.677 0.245 27.325);
+  --tc-primary: oklch(0.707 0.165 254.624);
+  --tc-primary-hover: oklch(0.657 0.195 254.624);
+  --tc-success: oklch(0.696 0.17 162.48);
+  --tc-danger: oklch(0.677 0.245 27.325);
+  --tc-warning: oklch(0.829 0.188 70.08);
+  --tc-info: oklch(0.746 0.222 244.38);
+  --tc-debt: oklch(0.805 0.213 47.604);
+  --tc-income: oklch(0.696 0.17 162.48);
+  --tc-expense: oklch(0.677 0.245 27.325);
 
-    --tc-brand-teal: #21e6e0;
-    --tc-brand-gold: #f8c838;
-  }
+  --tc-brand-teal: #21e6e0;
+  --tc-brand-gold: #f8c838;
+
+  --tc-surface-bg: #0a0a0a;
+  --tc-surface-card: #18181b;
+  --tc-surface-border: #27272a;
+  --tc-surface-muted: #a1a1aa;
+  --tc-surface-input: #27272a;
+  --tc-surface-overlay: rgba(0, 0, 0, 0.7);
 }
 
 body {
