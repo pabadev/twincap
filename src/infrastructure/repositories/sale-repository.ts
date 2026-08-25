@@ -24,7 +24,7 @@ export class MongoSaleRepository implements SaleRepository {
   async findByUserId(userId: string): Promise<Sale[]> {
     const docs = await SaleModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];

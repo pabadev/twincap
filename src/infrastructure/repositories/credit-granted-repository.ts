@@ -30,7 +30,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   async findByUserId(userId: string): Promise<CreditGranted[]> {
     const docs = await CreditGrantedModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [

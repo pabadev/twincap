@@ -27,7 +27,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
   async findByUserId(userId: string): Promise<CatalogItem[]> {
     const docs = await CatalogItemModel.find({
       userId: new Types.ObjectId(userId),
-    }).exec();
+    }).sort({ name: 1 }).exec();
     if (docs.length === 0) return [];
 
     const currency = await this.resolveAccountCurrency(userId);

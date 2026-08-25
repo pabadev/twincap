@@ -18,7 +18,8 @@
     "close": "Cerrar",
     "dismiss": "Cerrar",
     "notifications": "Notificaciones",
-    "switchLang": "Cambiar a inglés"
+    "switchLang": "Cambiar a inglés",
+    "noResults": "No se encontraron resultados con estos filtros"
   },
   "Nav": {
     "dashboard": "Inicio",
@@ -192,7 +193,9 @@
     "creating": "Creando...",
     "confirmDelete": "¿Eliminar esta transferencia? También se eliminarán los movimientos vinculados.",
     "emptyTitle": "No hay transferencias aún",
-    "emptyDescription": "Transfiere entre cuentas para organizar tus finanzas."
+    "emptyDescription": "Transfiere entre cuentas para organizar tus finanzas.",
+    "filterDateFrom": "Desde",
+    "filterDateTo": "Hasta"
   },
   "CreditsReceived": {
     "title": "Créditos Recibidos",
@@ -227,7 +230,15 @@
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
     "confirmDeleteAbono": "¿Eliminar este abono? También se eliminará el movimiento vinculado.",
     "emptyTitle": "No hay créditos recibidos aún",
-    "emptyDescription": "Sigue los créditos que recibiste de acreedores."
+    "emptyDescription": "Sigue los créditos que recibiste de acreedores.",
+    "filterDateFrom": "Desde",
+    "filterDateTo": "Hasta",
+    "filterStatus": "Estado",
+    "filterAllStatus": "Todos",
+    "filterPending": "Pendiente",
+    "filterPaid": "Pagado",
+    "filterSearch": "Buscar contraparte...",
+    "noResults": "No se encontraron créditos con estos filtros"
   },
   "CreditsGranted": {
     "title": "Créditos Otorgados",
@@ -262,7 +273,15 @@
     "confirmDelete": "¿Eliminar este crédito? También se eliminarán todos los movimientos vinculados.",
     "confirmDeleteAbono": "¿Eliminar este abono? También se eliminará el movimiento vinculado.",
     "emptyTitle": "No hay créditos otorgados aún",
-    "emptyDescription": "Sigue los créditos que otorgaste a otros."
+    "emptyDescription": "Sigue los créditos que otorgaste a otros.",
+    "filterDateFrom": "Desde",
+    "filterDateTo": "Hasta",
+    "filterStatus": "Estado",
+    "filterAllStatus": "Todos",
+    "filterPending": "Pendiente",
+    "filterPaid": "Pagado",
+    "filterSearch": "Buscar deudor...",
+    "noResults": "No se encontraron créditos con estos filtros"
   },
   "Payables": {
     "title": "Cuentas por pagar",
@@ -295,7 +314,15 @@
     "confirmDelete": "¿Eliminar esta cuenta por pagar? También se eliminarán todos los movimientos vinculados.",
     "confirmDeleteAbono": "¿Eliminar este abono? También se eliminará el movimiento vinculado.",
     "emptyTitle": "No hay cuentas por pagar aún",
-    "emptyDescription": "Registra tus compras a crédito y sigue los pagos a proveedores."
+    "emptyDescription": "Registra tus compras a crédito y sigue los pagos a proveedores.",
+    "filterDueDateFrom": "Vence desde",
+    "filterDueDateTo": "Vence hasta",
+    "filterStatus": "Estado",
+    "filterAllStatus": "Todos",
+    "filterPending": "Pendiente",
+    "filterPaid": "Pagado",
+    "filterSearch": "Buscar proveedor...",
+    "noResults": "No se encontraron cuentas con estos filtros"
   },
   "Catalog": {
     "title": "Catálogo",
@@ -365,7 +392,15 @@
     "subtotal": "Subtotal",
     "itemDeleted": "Artículo eliminado del catálogo",
     "managedInCredits": "Esta venta tiene un crédito otorgado asociado. Gestiona sus abonos desde Créditos Otorgados.",
-    "noAbonos": "Sin abonos registrados"
+    "noAbonos": "Sin abonos registrados",
+    "filterDateFrom": "Desde",
+    "filterDateTo": "Hasta",
+    "filterStatus": "Estado",
+    "filterAllStatus": "Todos",
+    "filterPaid": "Pago total",
+    "filterCredit": "Crédito",
+    "filterSearch": "Buscar cliente...",
+    "noResults": "No se encontraron ventas con estos filtros"
   },
   "Clients": {
     "title": "Clientes",

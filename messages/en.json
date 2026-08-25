@@ -18,7 +18,8 @@
     "close": "Close",
     "dismiss": "Dismiss",
     "notifications": "Notifications",
-    "switchLang": "Switch to Spanish"
+    "switchLang": "Switch to Spanish",
+    "noResults": "No results found with these filters"
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -192,7 +193,9 @@
     "creating": "Creating...",
     "confirmDelete": "Delete this transfer? This will also remove the linked movements.",
     "emptyTitle": "No transfers yet",
-    "emptyDescription": "Transfer between accounts to keep your finances organized."
+    "emptyDescription": "Transfer between accounts to keep your finances organized.",
+    "filterDateFrom": "From",
+    "filterDateTo": "To"
   },
   "CreditsReceived": {
     "title": "Credits Received",
@@ -227,7 +230,15 @@
     "confirmDelete": "Delete this credit? This will also remove all linked movements.",
     "confirmDeleteAbono": "Delete this abono? This will also remove the linked movement.",
     "emptyTitle": "No credits received yet",
-    "emptyDescription": "Track credits you've received from lenders."
+    "emptyDescription": "Track credits you've received from lenders.",
+    "filterDateFrom": "From",
+    "filterDateTo": "To",
+    "filterStatus": "Status",
+    "filterAllStatus": "All",
+    "filterPending": "Pending",
+    "filterPaid": "Paid",
+    "filterSearch": "Search counterparty...",
+    "noResults": "No credits found with these filters"
   },
   "CreditsGranted": {
     "title": "Credits Granted",
@@ -262,7 +273,15 @@
     "confirmDelete": "Delete this credit? This will also remove all linked movements.",
     "confirmDeleteAbono": "Delete this abono? This will also remove the linked movement.",
     "emptyTitle": "No credits granted yet",
-    "emptyDescription": "Track credits you've granted to others."
+    "emptyDescription": "Track credits you've granted to others.",
+    "filterDateFrom": "From",
+    "filterDateTo": "To",
+    "filterStatus": "Status",
+    "filterAllStatus": "All",
+    "filterPending": "Pending",
+    "filterPaid": "Paid",
+    "filterSearch": "Search debtor...",
+    "noResults": "No credits found with these filters"
   },
   "Payables": {
     "title": "Payables",
@@ -295,7 +314,15 @@
     "confirmDelete": "Delete this payable? This will also remove all linked movements.",
     "confirmDeleteAbono": "Delete this abono? This will also remove the linked movement.",
     "emptyTitle": "No payables yet",
-    "emptyDescription": "Track purchases on credit and payments owed to vendors."
+    "emptyDescription": "Track purchases on credit and payments owed to vendors.",
+    "filterDueDateFrom": "Due from",
+    "filterDueDateTo": "Due to",
+    "filterStatus": "Status",
+    "filterAllStatus": "All",
+    "filterPending": "Pending",
+    "filterPaid": "Paid",
+    "filterSearch": "Search supplier...",
+    "noResults": "No payables found with these filters"
   },
   "Catalog": {
     "title": "Catalog",
@@ -365,7 +392,15 @@
     "subtotal": "Subtotal",
     "itemDeleted": "Item removed from catalog",
     "managedInCredits": "This sale has a linked granted credit. Manage its abonos from Credits Granted.",
-    "noAbonos": "No abonos recorded"
+    "noAbonos": "No abonos recorded",
+    "filterDateFrom": "From",
+    "filterDateTo": "To",
+    "filterStatus": "Status",
+    "filterAllStatus": "All",
+    "filterPaid": "Paid in full",
+    "filterCredit": "Credit",
+    "filterSearch": "Search client...",
+    "noResults": "No sales found with these filters"
   },
   "Clients": {
     "title": "Clients",

@@ -18,7 +18,7 @@ export class MongoCategoryRepository implements CategoryRepository {
   async findByUserId(userId: string): Promise<Category[]> {
     const docs = await CategoryModel.find({
       userId: new Types.ObjectId(userId),
-    }).exec();
+    }).sort({ name: 1 }).exec();
     return docs.map((doc) => toCategoryEntity(doc as CategoryDocument));
   }
 

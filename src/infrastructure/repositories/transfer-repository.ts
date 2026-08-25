@@ -18,7 +18,7 @@ export class MongoTransferRepository implements TransferRepository {
   async findByUserId(userId: string): Promise<Transfer[]> {
     const docs = await TransferModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     return docs.map((doc) => toTransferEntity(doc as TransferDocument));
   }
 

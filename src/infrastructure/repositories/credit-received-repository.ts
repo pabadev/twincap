@@ -30,7 +30,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   async findByUserId(userId: string): Promise<CreditReceived[]> {
     const docs = await CreditReceivedModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [

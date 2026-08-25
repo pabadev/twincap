@@ -16,6 +16,8 @@ import { Icon } from '../../../components/ui/icon';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Modal } from '../../../components/ui/modal';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
+import { Button } from '../../../components/ui/button';
+import { Select } from '../../../components/ui/select';
 import { ChevronDown, ReceiptText, Pencil } from 'lucide-react';
 
 export function PayablesList({
@@ -30,9 +32,24 @@ export function PayablesList({
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
   const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
   const [editingPayable, setEditingPayable] = useState<SerializedPayable | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all');
+  const [search, setSearch] = useState('');
   const t = useT('Payables');
   const tCommon = useT('Common');
   const locale = useLocale();
+
+  const filtered = payables.filter((payable) => {
+    if (payable.dueDate) {
+      if (dateFrom && new Date(payable.dueDate).getTime() < new Date(dateFrom).getTime()) return false;
+      if (dateTo && new Date(payable.dueDate).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
+    }
+    if (statusFilter === 'pending' && payable.pending <= 0) return false;
+    if (statusFilter === 'paid' && payable.pending > 0) return false;
+    if (search && !payable.counterparty.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -78,8 +95,60 @@ export function PayablesList({
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="space-y-3">
-          {payables.map((payable) => {
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDueDateFrom')}</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDueDateTo')}</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterStatus')}</label>
+              <Select
+                options={[
+                  { value: 'all', label: t('filterAllStatus') },
+                  { value: 'pending', label: t('filterPending') },
+                  { value: 'paid', label: t('filterPaid') },
+                ]}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'paid')}
+                className="w-40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterSearch')}</label>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('filterSearch')}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 && payables.length > 0 && (
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              {t('noResults')}
+            </p>
+          )}
+
+          <div className="space-y-3">
+            {filtered.map((payable) => {
             const isExpanded = expandedId === payable.id;
             const pending = payable.pending;
             const currency = payable.total.currency;
@@ -114,7 +183,7 @@ export function PayablesList({
                     </div>
                   </div>
                   <div className="ml-4 flex items-center gap-2">
-                    <span className="hidden text-xs text-zinc-400 sm:inline">
+                    <span className="text-xs text-zinc-400">
                       {payable.abonos?.length} {payable.abonos?.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
                     </span>
                     <ActionIconButton
@@ -187,16 +256,17 @@ export function PayablesList({
 
                     <div className="flex items-center gap-3">
                       {pending > 0 && (
-                        <button
+                        <Button
+                          variant="success"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowAbonoFormId(showAbonoFormId === payable.id ? null : payable.id);
                             setEditingAbonoId(null);
                           }}
-                          className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-white hover:bg-success/90"
                         >
                           {showAbonoFormId === payable.id ? tCommon('cancel') : t('addAbono')}
-                        </button>
+                        </Button>
                       )}
                       <DeletePayableButton payableId={payable.id} />
                     </div>
@@ -233,7 +303,8 @@ export function PayablesList({
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

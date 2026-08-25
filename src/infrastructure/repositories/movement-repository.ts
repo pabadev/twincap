@@ -31,7 +31,7 @@ export class MongoMovementRepository implements MovementRepository {
   async findByUserId(userId: string): Promise<Movement[]> {
     const docs = await MovementModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);
@@ -49,7 +49,7 @@ export class MongoMovementRepository implements MovementRepository {
     const docs = await MovementModel.find({
       userId: new Types.ObjectId(userId),
       accountId: new Types.ObjectId(accountId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);

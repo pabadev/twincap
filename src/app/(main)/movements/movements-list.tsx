@@ -45,10 +45,7 @@ export function MovementsList({
       ? allMovements
       : (movementsByAccount[selectedAccountId] ?? []);
 
-  // Sort by date descending
-  const sortedMovements = [...movements].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+  const sortedMovements = movements;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">

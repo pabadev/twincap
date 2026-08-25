@@ -16,6 +16,8 @@ import { Icon } from '../../../../components/ui/icon';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { Modal } from '../../../../components/ui/modal';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
+import { Button } from '../../../../components/ui/button';
+import { Select } from '../../../../components/ui/select';
 import { ChevronDown, CreditCard, Pencil } from 'lucide-react';
 
 export function CreditsGrantedList({
@@ -30,9 +32,22 @@ export function CreditsGrantedList({
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
   const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
   const [editingCredit, setEditingCredit] = useState<SerializedCreditGranted | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all');
+  const [search, setSearch] = useState('');
   const t = useT('CreditsGranted');
   const tCommon = useT('Common');
   const locale = useLocale();
+
+  const filtered = credits.filter((credit) => {
+    if (dateFrom && new Date(credit.date).getTime() < new Date(dateFrom).getTime()) return false;
+    if (dateTo && new Date(credit.date).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
+    if (statusFilter === 'pending' && credit.pending <= 0) return false;
+    if (statusFilter === 'paid' && credit.pending > 0) return false;
+    if (search && !credit.counterparty.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -78,8 +93,60 @@ export function CreditsGrantedList({
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="space-y-3">
-          {credits.map((credit) => {
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateFrom')}</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateTo')}</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterStatus')}</label>
+              <Select
+                options={[
+                  { value: 'all', label: t('filterAllStatus') },
+                  { value: 'pending', label: t('filterPending') },
+                  { value: 'paid', label: t('filterPaid') },
+                ]}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'paid')}
+                className="w-40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterSearch')}</label>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('filterSearch')}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 && credits.length > 0 && (
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              {t('noResults')}
+            </p>
+          )}
+
+          <div className="space-y-3">
+            {filtered.map((credit) => {
             const isExpanded = expandedId === credit.id;
             const pending = credit.pending;
             const currency = credit.principal.currency;
@@ -180,16 +247,17 @@ export function CreditsGrantedList({
 
                     <div className="flex items-center gap-3">
                       {pending > 0 && (
-                        <button
+                        <Button
+                          variant="success"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowAbonoFormId(showAbonoFormId === credit.id ? null : credit.id);
                             setEditingAbonoId(null);
                           }}
-                          className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-white hover:bg-success/90"
                         >
                           {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
-                        </button>
+                        </Button>
                       )}
                       <DeleteCreditButton creditId={credit.id} />
                     </div>
@@ -226,7 +294,8 @@ export function CreditsGrantedList({
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

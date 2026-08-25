@@ -25,9 +25,17 @@ export function TransfersList({
   transfers: SerializedTransfer[];
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const t = useT('Transfers');
   const tCommon = useT('Common');
   const locale = useLocale();
+
+  const filtered = transfers.filter((transfer) => {
+    if (dateFrom && new Date(transfer.date).getTime() < new Date(dateFrom).getTime()) return false;
+    if (dateTo && new Date(transfer.date).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -58,29 +66,58 @@ export function TransfersList({
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-          <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
-            <thead className="bg-zinc-50 dark:bg-zinc-800">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {tCommon('date')}
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {t('fromTo')}
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {tCommon('amount')}
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {tCommon('note')}
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {tCommon('actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
-              {transfers.map((transfer) => (
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateFrom')}</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateTo')}</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 && transfers.length > 0 && (
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              {tCommon('noResults')}
+            </p>
+          )}
+
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+            <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
+              <thead className="bg-zinc-50 dark:bg-zinc-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    {tCommon('date')}
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    {t('fromTo')}
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    {tCommon('amount')}
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    {tCommon('note')}
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    {tCommon('actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                {filtered.map((transfer) => (
                 <tr key={transfer.id}>
                   <td className="px-4 py-3 text-sm whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                     {formatDate(transfer.date, locale)}
@@ -116,7 +153,8 @@ export function TransfersList({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

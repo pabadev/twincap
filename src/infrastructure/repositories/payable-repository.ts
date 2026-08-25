@@ -27,7 +27,7 @@ export class MongoPayableRepository implements PayableRepository {
   async findByUserId(userId: string): Promise<Payable[]> {
     const docs = await PayableModel.find({
       userId: new Types.ObjectId(userId),
-    }).sort({ date: -1 }).exec();
+    }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [

@@ -24,7 +24,7 @@ export class MongoAccountRepository implements AccountRepository {
   async findByUserId(userId: string): Promise<Account[]> {
     const docs = await AccountModel.find({
       userId: new Types.ObjectId(userId),
-    }).exec();
+    }).sort({ name: 1 }).exec();
     return docs.map((doc) => toAccountEntity(doc as AccountDocument));
   }
 

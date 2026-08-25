@@ -15,6 +15,8 @@ import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
+import { Button } from '../../../../components/ui/button';
+import { Select } from '../../../../components/ui/select';
 import { Eye, ShoppingCart } from 'lucide-react';
 
 interface SaleListProps {
@@ -30,10 +32,29 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
   const [showForm, setShowForm] = useState(false);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'credit'>('all');
+  const [search, setSearch] = useState('');
   const t = useT('Sales');
   const locale = useLocale();
 
   const clientMap = new Map(clients.map((c) => [c.id, c.name]));
+  const catalogMap = new Map(catalogItems.map((ci) => [ci.id, ci.name]));
+
+  const filtered = sales.filter((sale) => {
+    if (dateFrom && new Date(sale.date).getTime() < new Date(dateFrom).getTime()) return false;
+    if (dateTo && new Date(sale.date).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
+    if (statusFilter === 'paid' && sale.paymentMode !== 'paid-in-full') return false;
+    if (statusFilter === 'credit' && sale.paymentMode !== 'on-credit') return false;
+    if (search && sale.clientId) {
+      const clientName = clientMap.get(sale.clientId) ?? '';
+      if (!clientName.toLowerCase().includes(search.toLowerCase())) return false;
+    } else if (search && !sale.clientId) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -85,14 +106,67 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="space-y-3">
-          {sales.map((sale) => {
-            const currency = sale.items[0]?.unitPrice.currency ?? 'COP';
-            // H14: a linked credit owns the real pending of the sale.
-            const hasLinkedCredit = Object.prototype.hasOwnProperty.call(creditPendingBySaleId ?? {}, sale.id);
-            const effectivePending = hasLinkedCredit
-              ? (creditPendingBySaleId as Record<string, number>)[sale.id]
-              : sale.pending;
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateFrom')}</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateTo')}</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterStatus')}</label>
+              <Select
+                options={[
+                  { value: 'all', label: t('filterAllStatus') },
+                  { value: 'paid', label: t('filterPaid') },
+                  { value: 'credit', label: t('filterCredit') },
+                ]}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'credit')}
+                className="w-40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterSearch')}</label>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('filterSearch')}
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 && sales.length > 0 && (
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              {t('noResults')}
+            </p>
+          )}
+
+          <div className="space-y-3">
+            {filtered.map((sale) => {
+              // FIXME(HR3-12-A8): silent COP fallback — currency should come from the sale's account
+              const currency = sale.items[0]?.unitPrice.currency ?? 'COP';
+              // H14: a linked credit owns the real pending of the sale.
+              const hasLinkedCredit = Object.prototype.hasOwnProperty.call(creditPendingBySaleId ?? {}, sale.id);
+              const effectivePending = hasLinkedCredit
+                ? (creditPendingBySaleId as Record<string, number>)[sale.id]
+                : sale.pending;
 
             return (
               <div
@@ -118,9 +192,14 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                           {t('pending')} {formatAmount(effectivePending, currency, locale)}
                         </span>
                       )}
-                      <span className="ml-2">
-                        {sale.items.length} {sale.items.length !== 1 ? t('itemCount_plural') : t('itemCount')}
-                      </span>
+                      {sale.items.length > 0 && (
+                        <span className="ml-2">
+                          {catalogMap.get(sale.items[0].itemId) ?? t('itemCount')}
+                          {sale.items.length > 1 && (
+                            <span className="text-zinc-400"> +{sale.items.length - 1} {sale.items.length - 1 !== 1 ? t('itemCount_plural') : t('itemCount')}</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -131,12 +210,14 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                       onClick={() => setDetailSaleId(sale.id)}
                     />
                     {sale.paymentMode === 'on-credit' && !hasLinkedCredit && effectivePending > 0 && (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setAbonoSaleId(sale.id)}
-                        className="text-xs text-success hover:text-success/80"
+                        className="text-success hover:text-success/80"
                       >
                         {t('addAbono')}
-                      </button>
+                      </Button>
                     )}
                     <DeleteSaleButton saleId={sale.id} />
                   </div>
@@ -152,7 +233,8 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
