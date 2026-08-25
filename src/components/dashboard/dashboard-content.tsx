@@ -18,8 +18,8 @@ import { computeYearlyEvolution } from '../../core/application/compute-yearly-ev
 import { syntheticCategoryLabel } from '../../lib/synthetic-category-label';
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
-import type { Category } from '../../core/domain/category';
-import type { TranslateFn } from '../../lib/system-note';
+import type { SerializedCategory } from '../../core/domain/category';
+import { SYSTEM_NOTES_NAMESPACE } from '../../lib/system-note';
 import type { SerializedMovement as MovementSnapshot } from '../../core/domain/movement';
 
 interface DashboardAccount {
@@ -33,13 +33,12 @@ interface DashboardAccount {
 interface DashboardContentProps {
   accounts: DashboardAccount[];
   movements: MovementSnapshot[];
-  categories: Category[];
+  categories: SerializedCategory[];
   primaryCurrency: string;
   locale: string;
   userLabel: string;
   noAccountsMessage: string;
   noMovementsMessage: string;
-  tSystemNotes: TranslateFn;
   yearlyData: { month: string; income: number; expenses: number }[];
   positionData: Array<{
     currency: string;
@@ -58,11 +57,11 @@ export function DashboardContent({
   userLabel,
   noAccountsMessage,
   noMovementsMessage,
-  tSystemNotes,
   yearlyData,
   positionData,
 }: DashboardContentProps) {
   const t = useT('Dashboard');
+  const tSystemNotes = useT(SYSTEM_NOTES_NAMESPACE);
 
   const [filters, setFilters] = useState<DashboardFilters>({
     scope: 'all',

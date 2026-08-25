@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
-import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
 import { listAccounts } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
@@ -22,7 +21,6 @@ export default async function DashboardPage() {
 
   const t = await getT('Dashboard');
   const locale = await getLocale();
-  const tSystemNotes = await getT(SYSTEM_NOTES_NAMESPACE);
 
   await connectDb();
   const accountRepo = new MongoAccountRepository();
@@ -74,20 +72,19 @@ export default async function DashboardPage() {
     year: currentYear,
   });
 
-  // Serialize movements for the client boundary (server→client prop rule).
   const serializedMovements = allMovements.map((m) => m.toJSON());
+  const serializedCategories = categories.map((c) => c.toJSON());
 
   return (
     <DashboardContent
       accounts={accountBalances}
       movements={serializedMovements}
-      categories={categories}
+      categories={serializedCategories}
       primaryCurrency={primaryCurrency}
       locale={locale}
       userLabel={t('welcomeBack')}
       noAccountsMessage={t('noAccounts')}
       noMovementsMessage={t('noMovements')}
-      tSystemNotes={tSystemNotes}
       yearlyData={yearlyEvolution.months}
       positionData={positionData.positions}
     />
