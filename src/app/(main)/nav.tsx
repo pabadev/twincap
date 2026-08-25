@@ -123,9 +123,17 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
         } lg:translate-x-0 lg:static lg:shadow-none`}
       >
         <div className="flex h-full flex-col">
-          {/* Brand */}
-          <div className="border-b border-zinc-200 px-6 py-5 pr-12 lg:pr-6 dark:border-zinc-700">
+          {/* Brand + mobile close */}
+          <div className="relative border-b border-zinc-200 px-6 py-5 pr-12 lg:pr-6 dark:border-zinc-700">
             <Logo variant="logotipo" size="md" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 hover:text-zinc-600 lg:hidden dark:hover:text-zinc-200"
+              aria-label={tCommon('close')}
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {isLoggedIn ? (
@@ -228,16 +236,6 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
               </div>
             </div>
           )}
-
-          {/* Mobile close button */}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="absolute right-3 top-3 z-50 rounded-md p-1 text-zinc-400 hover:text-zinc-600 lg:hidden dark:hover:text-zinc-200"
-            aria-label={tCommon('close')}
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       </aside>
     </>
