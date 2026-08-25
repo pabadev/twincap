@@ -104,7 +104,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
         aria-expanded={open}
         aria-controls="mobile-nav"
       >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <Menu className="h-5 w-5" />
       </button>
 
       {/* Overlay for mobile */}
