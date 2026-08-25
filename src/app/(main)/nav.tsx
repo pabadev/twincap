@@ -94,18 +94,19 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        ref={hamburgerRef}
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 p-2 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-        aria-label={open ? tCommon('closeMenu') : tCommon('openMenu')}
-        aria-expanded={open}
-        aria-controls="mobile-nav"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+      {/* Mobile toggle — hidden when sidebar is open */}
+      {!open && (
+        <button
+          ref={hamburgerRef}
+          type="button"
+          onClick={() => setOpen(true)}
+          className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 p-2 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          aria-label={tCommon('openMenu')}
+          aria-controls="mobile-nav"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
 
       {/* Overlay for mobile */}
       {open && (
