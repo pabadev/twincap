@@ -173,11 +173,10 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                   <button
                     type="button"
                     onClick={() => setTheme(mode === 'dark' ? 'light' : mode === 'light' ? 'dark' : 'system')}
-                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   >
                     {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    <span>{mode === 'dark' ? 'Light' : mode === 'light' ? 'Dark' : 'Auto'}</span>
                   </button>
                   <button
                     type="button"
@@ -219,24 +218,25 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                 >
                   {t('register')}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setTheme(mode === 'dark' ? 'light' : mode === 'light' ? 'dark' : 'system')}
-                  className="flex items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                  {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  <span>{mode === 'dark' ? 'Light' : mode === 'light' ? 'Dark' : 'Auto'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleLocale}
-                  className="flex items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  aria-label={tCommon('switchLang')}
-                >
-                  <Languages className="h-4 w-4" />
-                  <span>{locale === 'es' ? 'EN' : 'ES'}</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTheme(mode === 'dark' ? 'light' : mode === 'light' ? 'dark' : 'system')}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  >
+                    {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleLocale}
+                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    aria-label={tCommon('switchLang')}
+                  >
+                    <Languages className="h-4 w-4" />
+                    <span>{locale === 'es' ? 'EN' : 'ES'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -13,48 +13,53 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  if (mode !== 'system') return mode;
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyClass(resolved: ResolvedTheme) {
+  document.documentElement.classList.toggle('dark', resolved === 'dark');
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
-  const [theme, setTheme] = useState<ResolvedTheme>('light');
+  const [mode, setMode] = useState<ThemeMode>('system');
+  const [theme, setThemeState] = useState<ResolvedTheme>('light');
 
-  const getSystemTheme = useCallback((): ResolvedTheme => {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }, []);
-
-  const applyTheme = useCallback((resolved: ResolvedTheme) => {
-    const root = document.documentElement;
-    if (resolved === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    setTheme(resolved);
-  }, []);
-
+  // Initialize from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('twincap-theme') as ThemeMode | null;
     const initial = stored || 'system';
-    setModeState(initial);
-    applyTheme(initial === 'system' ? getSystemTheme() : initial);
-  }, [applyTheme, getSystemTheme]);
+    setMode(initial);
+    const resolved = resolveTheme(initial);
+    setThemeState(resolved);
+    applyClass(resolved);
+  }, []);
 
+  // Listen for OS changes when in system mode
   useEffect(() => {
     if (mode !== 'system') return;
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => applyTheme(getSystemTheme());
+    const handler = () => {
+      const resolved = resolveTheme('system');
+      setThemeState(resolved);
+      applyClass(resolved);
+    };
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
-  }, [mode, applyTheme, getSystemTheme]);
+  }, [mode]);
 
-  const setThemeFn = useCallback((newMode: ThemeMode) => {
-    setModeState(newMode);
+  const setTheme = useCallback((newMode: ThemeMode) => {
+    setMode(newMode);
     localStorage.setItem('twincap-theme', newMode);
-    applyTheme(newMode === 'system' ? getSystemTheme() : newMode);
-  }, [applyTheme, getSystemTheme]);
+    const resolved = resolveTheme(newMode);
+    setThemeState(resolved);
+    applyClass(resolved);
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ mode, theme, setTheme: setThemeFn }}>
+    <ThemeContext.Provider value={{ mode, theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
