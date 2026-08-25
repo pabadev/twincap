@@ -14,9 +14,10 @@ interface MonthlyChartProps {
   data: MonthData[];
   currency: string;
   locale: string;
+  title?: string;
 }
 
-export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
+export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProps) {
   const t = useT('Dashboard');
   const maxValue = Math.max(...data.map((d) => Math.max(d.income, d.expenses)), 1);
 
@@ -29,7 +30,7 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
   return (
     <Card className="p-4">
       <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        {t('monthlyTrend')}
+        {title ?? t('monthlyTrend')}
       </h3>
       <div className="space-y-3">
         {data.map((d) => (
@@ -38,9 +39,6 @@ export function MonthlyChart({ data, currency, locale }: MonthlyChartProps) {
               {formatMonth(d.month)}
             </span>
             <div className="min-w-0 flex-1 space-y-1">
-              {/* Proportional track (flex-1 min-w-0) holds ONLY the bar; the
-                  numeric label lives outside it so bars keep true widths
-                  instead of absorbing the label's overflow via flex-shrink. */}
               <div className="flex items-center gap-2">
                 <div className="h-4 min-w-0 flex-1">
                   <div

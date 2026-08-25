@@ -1,24 +1,18 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
 import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
-import { syntheticCategoryLabel } from '../../../lib/synthetic-category-label';
 import { listAccounts } from '../../../core/application/accounts';
-import { computeDashboardSummary } from '../../../core/application/compute-dashboard-summary';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
+import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
+import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { Card } from '../../../components/ui';
-import { SummaryCards } from '../../../components/dashboard/summary-cards';
-import { MonthlyChart } from '../../../components/dashboard/monthly-chart';
-import {
-  RecentMovements,
-  type SerializedMovement,
-} from '../../../components/dashboard/recent-movements';
-import { formatAmount } from '../../../lib/format';
-import type { Currency } from '../../../core/domain/currency';
+import { DashboardContent } from '../../../components/dashboard/dashboard-content';
+import { computeActivosPasivos } from '../../../core/application/compute-activos-pasivos';
+import { computeYearlyEvolution } from '../../../core/application/compute-yearly-evolution';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +22,6 @@ export default async function DashboardPage() {
 
   const t = await getT('Dashboard');
   const locale = await getLocale();
-  // Synthetic (system) categories are in-memory constants — resolve their
-  // localized labels at render so system movements don't fall into
-  // "uncategorized" (A4).
   const tSystemNotes = await getT(SYSTEM_NOTES_NAMESPACE);
 
   await connectDb();
@@ -38,127 +29,67 @@ export default async function DashboardPage() {
   const movementRepo = new MongoMovementRepository();
   const categoryRepo = new MongoCategoryRepository();
   const creditReceivedRepo = new MongoCreditReceivedRepository();
+  const creditGrantedRepo = new MongoCreditGrantedRepository();
+  const payableRepo = new MongoPayableRepository();
 
-  // Round 1: accounts (user identity comes from the session claims — P5).
   const accounts = await listAccounts(user.userId, accountRepo);
 
-  // Round 2: depends on accounts + remaining independent queries in parallel
-  const [balances, allMovements, categories, creditsReceived] = await Promise.all([
-    Promise.all(
-      accounts.map((account) =>
-        movementRepo.aggregateBalance(user.userId, account.id),
+  const [balances, allMovements, categories, creditsReceived, creditsGranted, payables] =
+    await Promise.all([
+      Promise.all(
+        accounts.map((account) =>
+          movementRepo.aggregateBalance(user.userId, account.id),
+        ),
       ),
-    ),
-    movementRepo.findByUserId(user.userId),
-    categoryRepo.findByUserId(user.userId),
-    creditReceivedRepo.findByUserId(user.userId),
-  ]);
+      movementRepo.findByUserId(user.userId),
+      categoryRepo.findByUserId(user.userId),
+      creditReceivedRepo.findByUserId(user.userId),
+      creditGrantedRepo.findByUserId(user.userId),
+      payableRepo.findByUserId(user.userId),
+    ]);
 
   const accountBalances = accounts.map((account, i) => ({
-    ...account,
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+    isFixed: account.isFixed,
     balance: balances[i],
   }));
 
-  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
-
-  const primaryCurrency: Currency =
+  const primaryCurrency =
     accounts.length > 0 ? accounts[0].currency : 'COP';
 
-  const totalBalance = accountBalances
-    .filter((a) => a.currency === primaryCurrency)
-    .reduce((sum, a) => sum + a.balance, 0);
+  const positionData = computeActivosPasivos({
+    accounts: accountBalances,
+    creditsGranted,
+    creditsReceived,
+    payables,
+  });
 
-  // D2: internal transfers (both legs) and opening balances are NOT economic
-  // result — excluded inside the use case.
-  const { monthlyIncome, monthlyExpenses, months: monthlyData } =
-    computeDashboardSummary({
-      movements: allMovements,
-      currency: primaryCurrency,
-    });
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const yearlyEvolution = computeYearlyEvolution({
+    movements: allMovements,
+    currency: primaryCurrency,
+    year: currentYear,
+  });
 
-  const pendingCredits = creditsReceived
-    .filter((c) => c.principal.currency === primaryCurrency)
-    .reduce((sum, c) => sum + c.pending, 0);
-
-  const recentMovements: SerializedMovement[] = allMovements
-    .slice(0, 5)
-    .map((m) => ({
-      id: m.id,
-      type: m.type,
-      amount: m.amount.amount,
-      currency: m.amount.currency,
-      date: m.date.toISOString(),
-      categoryName:
-        categoryMap.get(m.categoryId) ??
-        syntheticCategoryLabel(m.categoryId, tSystemNotes) ??
-        '',
-    }));
+  // Serialize movements for the client boundary (server→client prop rule).
+  const serializedMovements = allMovements.map((m) => m.toJSON());
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {t('welcomeBack')}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {user.email ?? user.userId}
-        </p>
-      </div>
-
-      <SummaryCards
-        totalBalance={totalBalance}
-        currency={primaryCurrency}
-        monthlyIncome={monthlyIncome}
-        monthlyExpenses={monthlyExpenses}
-        pendingCredits={pendingCredits}
-        locale={locale}
-      />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MonthlyChart
-          data={monthlyData}
-          currency={primaryCurrency}
-          locale={locale}
-        />
-        <RecentMovements
-          movements={recentMovements}
-          noMovementsMessage={t('noMovements')}
-        />
-      </div>
-
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('accounts')}
-        </h2>
-
-        {accountBalances.length === 0 ? (
-          <Card>
-            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-              {t('noAccounts')}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {accountBalances.map((account) => (
-              <Card key={account.id} title={account.name}>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                    {account.currency}
-                  </span>
-                  <span className="text-xl font-semibold text-zinc-900 dark:text-white">
-                    {formatAmount(account.balance, account.currency, locale)}
-                  </span>
-                  {account.isFixed && (
-                    <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t('fixed')}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    <DashboardContent
+      accounts={accountBalances}
+      movements={serializedMovements}
+      categories={categories}
+      primaryCurrency={primaryCurrency}
+      locale={locale}
+      userLabel={t('welcomeBack')}
+      noAccountsMessage={t('noAccounts')}
+      noMovementsMessage={t('noMovements')}
+      tSystemNotes={tSystemNotes}
+      yearlyData={yearlyEvolution.months}
+      positionData={positionData.positions}
+    />
   );
 }
