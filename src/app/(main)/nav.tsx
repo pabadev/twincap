@@ -12,17 +12,22 @@ import { Button } from '../../components/ui/button';
 
 const NAV_ITEMS = [
   { href: '/dashboard', key: 'dashboard' },
+  'separator',
   { href: '/accounts', key: 'accounts' },
   { href: '/categories', key: 'categories' },
   { href: '/movements', key: 'movements' },
   { href: '/transfers', key: 'transfers' },
+  'separator',
   { href: '/credits/received', key: 'creditsReceived' },
   { href: '/credits/granted', key: 'creditsGranted' },
   { href: '/payables', key: 'payables' },
+  'separator',
   { href: '/clients', key: 'clients' },
   { href: '/pos/catalog', key: 'posCatalog' },
   { href: '/pos/sales', key: 'posSales' },
 ] as const;
+
+type NavItem = (typeof NAV_ITEMS)[number];
 
 export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
   const [open, setOpen] = useState(false);
@@ -123,6 +128,13 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
               <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <ul className="space-y-1">
                   {NAV_ITEMS.map((item, index) => {
+                    if (item === 'separator') {
+                      return (
+                        <li key={`sep-${index}`}>
+                          <hr className="my-1 border-zinc-200 dark:border-zinc-700" />
+                        </li>
+                      );
+                    }
                     const isActive =
                       item.href === '/dashboard'
                         ? pathname === '/dashboard'
