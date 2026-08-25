@@ -10,38 +10,18 @@ import { Languages, LogOut, Menu, X } from 'lucide-react';
 import { Logo } from '../../components/ui/logo';
 import { Button } from '../../components/ui/button';
 
-const NAV_GROUPS = [
-  {
-    label: 'groupGeneral',
-    items: [
-      { href: '/dashboard', key: 'dashboard' },
-    ],
-  },
-  {
-    label: 'groupFinanzas',
-    items: [
-      { href: '/accounts', key: 'accounts' },
-      { href: '/categories', key: 'categories' },
-      { href: '/movements', key: 'movements' },
-      { href: '/transfers', key: 'transfers' },
-    ],
-  },
-  {
-    label: 'groupCredito',
-    items: [
-      { href: '/credits/received', key: 'creditsReceived' },
-      { href: '/credits/granted', key: 'creditsGranted' },
-      { href: '/payables', key: 'payables' },
-    ],
-  },
-  {
-    label: 'groupNegocio',
-    items: [
-      { href: '/clients', key: 'clients' },
-      { href: '/pos/catalog', key: 'posCatalog' },
-      { href: '/pos/sales', key: 'posSales' },
-    ],
-  },
+const NAV_ITEMS = [
+  { href: '/dashboard', key: 'dashboard' },
+  { href: '/accounts', key: 'accounts' },
+  { href: '/categories', key: 'categories' },
+  { href: '/movements', key: 'movements' },
+  { href: '/transfers', key: 'transfers' },
+  { href: '/credits/received', key: 'creditsReceived' },
+  { href: '/credits/granted', key: 'creditsGranted' },
+  { href: '/payables', key: 'payables' },
+  { href: '/clients', key: 'clients' },
+  { href: '/pos/catalog', key: 'posCatalog' },
+  { href: '/pos/sales', key: 'posSales' },
 ] as const;
 
 export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
@@ -142,38 +122,29 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
               {/* Nav links — authenticated */}
               <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <ul className="space-y-1">
-                  {NAV_GROUPS.map((group) => (
-                    <li key={group.label}>
-                      <p className="px-3 pt-3 pb-1 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        {t(group.label)}
-                      </p>
-                      <ul className="space-y-1">
-                        {group.items.map((item, index) => {
-                          const isActive =
-                            item.href === '/dashboard'
-                              ? pathname === '/dashboard'
-                              : pathname.startsWith(item.href);
-                          return (
-                            <li key={item.href}>
-                              <Link
-                                href={item.href}
-                                ref={index === 0 && group.label === 'groupGeneral' ? firstLinkRef : undefined}
-                                onClick={() => setOpen(false)}
-                                aria-current={isActive ? 'page' : undefined}
-                                className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                                  isActive
-                                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
-                                }`}
-                              >
-                                {t(item.key)}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </li>
-                  ))}
+                  {NAV_ITEMS.map((item, index) => {
+                    const isActive =
+                      item.href === '/dashboard'
+                        ? pathname === '/dashboard'
+                        : pathname.startsWith(item.href);
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          ref={index === 0 ? firstLinkRef : undefined}
+                          onClick={() => setOpen(false)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                              : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
+                          }`}
+                        >
+                          {t(item.key)}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </nav>
 

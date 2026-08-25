@@ -35,11 +35,7 @@
     "posSales": "Ventas POS",
     "exit": "Salir",
     "login": "Iniciar sesión",
-    "register": "Registrarse",
-    "groupGeneral": "General",
-    "groupFinanzas": "Finanzas",
-    "groupCredito": "Crédito",
-    "groupNegocio": "Negocio"
+    "register": "Registrarse"
   },
   "Auth": {
     "signIn": "Iniciar sesión",
