@@ -69,24 +69,24 @@ export function SearchableSelect({
           setOpen(!open);
           inputRef.current?.focus();
         }}
-        className={`flex h-10 w-full cursor-pointer items-center rounded-md border bg-white px-3 text-left text-sm shadow-sm dark:bg-zinc-800 ${
+        className={`flex h-10 w-full cursor-pointer items-center rounded-md border bg-white px-3 text-left text-sm shadow-sm dark:bg-surface-input ${
           error
             ? 'border-danger focus:border-danger focus:ring-danger'
-            : 'border-zinc-300 focus:border-primary focus:ring-primary dark:border-zinc-600'
+            : 'border-zinc-300 focus:border-primary focus:ring-primary dark:border-surface-border'
         }`}
       >
         {selectedLabel || <span className="text-zinc-400">{placeholder}</span>}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 p-2 dark:border-zinc-700">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-surface-border dark:bg-surface-card">
+          <div className="border-b border-zinc-200 p-2 dark:border-surface-border">
             <input
               ref={inputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+              className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-surface-border dark:bg-surface-input"
             />
           </div>
           <ul className="max-h-60 overflow-y-auto">
@@ -104,7 +104,7 @@ export function SearchableSelect({
                     }}
                     className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                       opt.value === value
-                        ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
+                        ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                         : ''
                     }`}
                   >

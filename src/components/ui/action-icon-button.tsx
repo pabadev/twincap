@@ -63,7 +63,7 @@ export const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonPr
         title={label}
         aria-label={label}
         aria-busy={loading || undefined}
-        className={`inline-flex cursor-pointer items-center justify-center rounded-full p-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${toneClasses[tone]} ${className}`}
+        className={`inline-flex cursor-pointer items-center justify-center rounded-full p-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${toneClasses[tone]} ${className}`}
       >
         {loading ? (
           <svg

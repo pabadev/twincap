@@ -48,11 +48,11 @@ export function EditAbonoForm({
   }, [state?.error, addToast, tToast]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded-md border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-950">
+    <form action={formAction} className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10">
       <input type="hidden" name="creditId" value={creditId} />
       <input type="hidden" name="abonoId" value={abonoId} />
 
-      <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+      <p className="text-sm font-medium text-primary dark:text-primary">
         {t('editAbonoTitle')}
       </p>
 

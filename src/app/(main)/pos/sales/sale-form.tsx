@@ -220,7 +220,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             type="button"
             onClick={addLineItem}
             disabled={isPending}
-            className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="text-xs text-primary hover:text-primary-hover dark:text-primary"
           >
             {t('addItem')}
           </button>

@@ -16,13 +16,13 @@ export function Footer() {
           <nav className="flex gap-6">
             <Link
               href="/login"
-              className="text-sm font-medium text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
+              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
             >
               {t('login')}
             </Link>
             <Link
               href="/register"
-              className="text-sm font-medium text-zinc-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
+              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
             >
               {t('register')}
             </Link>

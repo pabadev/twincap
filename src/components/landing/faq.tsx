@@ -32,7 +32,7 @@ export function Faq() {
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-base font-medium text-zinc-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400"
+                  className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-base font-medium text-zinc-900 hover:text-primary dark:text-white dark:hover:text-primary"
                   aria-expanded={isOpen}
                 >
                   <span>{t(q)}</span>

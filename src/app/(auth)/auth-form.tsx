@@ -84,7 +84,7 @@ export function AuthForm({
           {alternateText}{' '}
           <a
             href={alternateHref}
-            className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+            className="font-medium text-primary hover:text-primary-hover dark:text-primary"
           >
             {alternateLabel}
           </a>

@@ -28,9 +28,9 @@ export function Features() {
           {FEATURES.map(({ key, icon }) => (
             <div
               key={key}
-              className="group rounded-xl border border-zinc-200 bg-zinc-50 p-6 transition-all hover:border-indigo-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-600"
+              className="group rounded-xl border border-zinc-200 bg-zinc-50 p-6 transition-all hover:border-primary/50 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-primary/50"
             >
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-900/30 dark:text-indigo-400 dark:group-hover:bg-indigo-600 dark:group-hover:text-white">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white dark:bg-primary/20 dark:text-primary dark:group-hover:bg-primary dark:group-hover:text-white">
                 <Icon icon={icon} size="lg" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
