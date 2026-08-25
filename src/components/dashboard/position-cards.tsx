@@ -43,7 +43,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
         {positions.map((pos) => (
           <Card key={pos.currency} className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                 {pos.currency}
               </span>
             </div>

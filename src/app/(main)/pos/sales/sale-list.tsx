@@ -112,7 +112,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -121,7 +121,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -144,7 +144,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('filterSearch')}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
           </div>
@@ -168,7 +168,7 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
             return (
               <div
                 key={sale.id}
-                className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+                className="rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex-1">

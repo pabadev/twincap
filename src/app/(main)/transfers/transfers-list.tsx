@@ -73,7 +73,7 @@ export function TransfersList({
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -82,7 +82,7 @@ export function TransfersList({
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
           </div>
@@ -93,23 +93,23 @@ export function TransfersList({
             </p>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
             <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
-              <thead className="bg-zinc-50 dark:bg-zinc-800">
+              <thead className="bg-surface-header dark:bg-zinc-800">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     {tCommon('date')}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     {t('fromTo')}
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     {tCommon('amount')}
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     {tCommon('note')}
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     {tCommon('actions')}
                   </th>
                 </tr>

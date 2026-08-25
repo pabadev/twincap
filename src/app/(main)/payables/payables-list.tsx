@@ -101,7 +101,7 @@ export function PayablesList({
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -110,7 +110,7 @@ export function PayablesList({
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -133,7 +133,7 @@ export function PayablesList({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('filterSearch')}
-                className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
           </div>
@@ -153,10 +153,10 @@ export function PayablesList({
             return (
               <div
                 key={payable.id}
-                className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+                className="overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div
-                  className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                   onClick={() => setExpandedId(isExpanded ? null : payable.id)}
                 >
                   <div className="flex-1 min-w-0">
@@ -216,7 +216,7 @@ export function PayablesList({
                         </h4>
                         <table className="min-w-full text-sm">
                           <thead>
-                            <tr className="text-xs text-zinc-500 dark:text-zinc-400">
+                            <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                               <th className="pb-1 text-left">{tCommon('date')}</th>
                               <th className="pb-1 text-right">{tCommon('amount')}</th>
                               <th className="pb-1 text-right">{tCommon('actions')}</th>

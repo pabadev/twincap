@@ -81,19 +81,19 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
         <div className="space-y-5">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{t('saleIdLabel')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('saleIdLabel')}</dt>
               <dd className="break-all font-mono text-xs text-zinc-900 dark:text-white">{snapshot.id}</dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{tCommon('date')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{tCommon('date')}</dt>
               <dd className="text-zinc-900 dark:text-white">{formatDate(snapshot.date, locale)}</dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{t('client')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('client')}</dt>
               <dd className="text-zinc-900 dark:text-white">{snapshot.clientName ?? t('generalClient')}</dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{t('paymentMode')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('paymentMode')}</dt>
               <dd>
                 <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                   {snapshot.paymentMode === 'paid-in-full' ? t('paidInFull') : t('onCredit')}
@@ -101,7 +101,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{t('status')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('status')}</dt>
               <dd>
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -115,7 +115,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-zinc-500 dark:text-zinc-400">{tCommon('account')}</dt>
+              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{tCommon('account')}</dt>
               <dd className="text-zinc-900 dark:text-white">{snapshot.accountName ?? '—'}</dd>
             </div>
           </dl>
@@ -127,7 +127,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-zinc-500 dark:text-zinc-400">
+                            <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     <th className="pb-1 text-left">{t('item')}</th>
                     <th className="pb-1 text-right">{t('qty')}</th>
                     <th className="pb-1 text-right">{t('unitPrice')}</th>
@@ -189,7 +189,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 {t('abonos')}
               </h3>
               {snapshot.hasLinkedCredit && (
-                <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   {t('managedInCredits')}
                 </p>
               )}
@@ -197,7 +197,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
-                      <tr className="text-xs text-zinc-500 dark:text-zinc-400">
+                                <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                         <th className="pb-1 text-left">{tCommon('date')}</th>
                         <th className="pb-1 text-right">{tCommon('amount')}</th>
                         {!snapshot.hasLinkedCredit && (

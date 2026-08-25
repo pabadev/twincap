@@ -55,7 +55,7 @@ export function Modal({ open, onClose, title, children, actions, closeLabel, siz
       />
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
-        className={`relative flex max-h-full w-full ${sizeClasses[size]} flex-col rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
+        className={`relative flex max-h-full w-full ${sizeClasses[size]} flex-col rounded-lg border border-surface-border bg-surface-card p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

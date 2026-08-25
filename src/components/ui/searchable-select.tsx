@@ -69,7 +69,7 @@ export function SearchableSelect({
           setOpen(!open);
           inputRef.current?.focus();
         }}
-        className={`flex h-10 w-full cursor-pointer items-center rounded-md border bg-white px-3 text-left text-sm shadow-sm dark:bg-surface-input ${
+        className={`flex h-10 w-full cursor-pointer items-center rounded-md border border-surface-border bg-surface-input px-3 text-left text-sm shadow-sm dark:border-surface-border dark:bg-surface-input ${
           error
             ? 'border-danger focus:border-danger focus:ring-danger'
             : 'border-zinc-300 focus:border-primary focus:ring-primary dark:border-surface-border'
@@ -78,7 +78,7 @@ export function SearchableSelect({
         {selectedLabel || <span className="text-zinc-400">{placeholder}</span>}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-surface-border dark:bg-surface-card">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-surface-border bg-surface-card shadow-lg dark:border-surface-border dark:bg-surface-card">
           <div className="border-b border-zinc-200 p-2 dark:border-surface-border">
             <input
               ref={inputRef}

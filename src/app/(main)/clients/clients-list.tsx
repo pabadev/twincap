@@ -51,7 +51,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
               placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
+              className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
             />
           </div>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -64,20 +64,20 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
         <table className="w-full min-w-[500px] divide-y divide-zinc-200 dark:divide-zinc-700">
-          <thead className="bg-zinc-50 dark:bg-zinc-800">
+          <thead className="bg-surface-header dark:bg-zinc-800">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                 {t('name')}
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                 {t('phone')}
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                 {t('email')}
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                 {tCommon('actions')}
               </th>
             </tr>

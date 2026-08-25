@@ -77,7 +77,7 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
               placeholder={t('search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
+              className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
             />
           </div>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -110,7 +110,7 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+                className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div className="flex-1">
                   <div className="font-medium text-zinc-900 dark:text-white">

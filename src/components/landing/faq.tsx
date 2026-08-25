@@ -16,7 +16,7 @@ export function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-white py-20 dark:bg-zinc-950 sm:py-28">
+    <section className="bg-surface-card py-20 dark:bg-zinc-950 sm:py-28">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <h2 className="text-center text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
           {t('faqTitle')}

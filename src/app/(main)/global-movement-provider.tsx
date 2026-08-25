@@ -141,7 +141,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
                 ref={firstOptionRef}
                 type="button"
                 onClick={() => openQuickMovement({ type: 'income' })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 <Icon
                   icon={TrendingUp}
@@ -155,7 +155,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: 'expense' })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 shadow-md hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus:ring-2 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 <Icon
                   icon={TrendingDown}

@@ -231,7 +231,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             <div key={idx} className="flex items-end gap-2">
               <div className="flex-1">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('item')}</label>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('item')}</label>
                 )}
                 <Select
                   id={`item-${idx}`}
@@ -246,7 +246,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
               </div>
               <div className="w-16 sm:w-20">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('qty')}</label>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('qty')}</label>
                 )}
                 <Input
                   id={`qty-${idx}`}
@@ -259,7 +259,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
               </div>
               <div className="w-20 sm:w-28">
                 {idx === 0 && (
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('unitPrice')}</label>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('unitPrice')}</label>
                 )}
                 <Input
                   id={`price-${idx}`}

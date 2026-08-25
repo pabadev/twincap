@@ -17,7 +17,7 @@ export function Features() {
   const t = useT('Landing');
 
   return (
-    <section className="bg-white py-20 dark:bg-zinc-950 sm:py-28">
+    <section className="bg-surface-card py-20 dark:bg-zinc-950 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
@@ -28,7 +28,7 @@ export function Features() {
           {FEATURES.map(({ key, icon }) => (
             <div
               key={key}
-              className="group rounded-xl border border-zinc-200 bg-zinc-50 p-6 transition-all hover:border-primary/50 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-primary/50"
+              className="group rounded-xl border border-surface-border bg-surface-bg p-6 transition-all hover:border-primary/50 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-primary/50"
             >
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white dark:bg-primary/20 dark:text-primary dark:group-hover:bg-primary dark:group-hover:text-white">
                 <Icon icon={icon} size="lg" />

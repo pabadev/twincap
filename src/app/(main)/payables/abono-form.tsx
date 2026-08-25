@@ -49,7 +49,7 @@ export function AbonoForm({
   }, [state?.error, addToast, tToast]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+    <form action={formAction} className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-zinc-800">
       <input type="hidden" name="payableId" value={payableId} />
       <input type="hidden" name="currency" value={currency} />
 

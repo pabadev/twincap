@@ -15,7 +15,7 @@ export default async function MainLayout({
   if (!user) redirect('/login');
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-surface-bg lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
       <MainNav isLoggedIn={true} email={user.email ?? user.userId} />
       <ToastProvider>
         <GlobalMovementProvider>

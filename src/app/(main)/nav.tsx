@@ -39,7 +39,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
   const tCommon = useT('Common');
   const locale = useLocale();
   const pathname = usePathname();
-  const { mode, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   function toggleLocale() {
     const next = locale === 'es' ? 'en' : 'es';
@@ -106,14 +106,16 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
       {/* Sidebar */}
       <aside
         id="mobile-nav"
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white shadow-md transition-transform duration-200 ease-in-out dark:bg-zinc-900 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-surface-card shadow-md transition-transform duration-200 ease-in-out dark:bg-zinc-900 ${
           open ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 lg:static lg:shadow-none`}
       >
         <div className="flex h-full flex-col">
           {/* Brand + mobile close */}
-          <div className="relative border-b border-zinc-200 px-6 py-5 pr-12 lg:pr-6 dark:border-zinc-700">
-            <Logo variant="logotipo" size="md" />
+          <div className="relative border-b border-surface-border px-6 py-5 pr-12 lg:pr-6 dark:border-zinc-700">
+            <div className="inline-flex rounded-lg bg-primary/10 px-3 py-1.5">
+              <Logo variant="logotipo" size="md" />
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -127,13 +129,13 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
           {isLoggedIn ? (
             <>
               {/* Nav links — authenticated */}
-              <nav className="flex-1 overflow-y-auto px-3 py-4">
-                <ul className="space-y-1">
+              <nav className="flex-1 overflow-y-auto px-2 py-3 lg:px-2 lg:py-2">
+                <ul className="space-y-0.5 lg:space-y-0">
                   {NAV_ITEMS.map((item, index) => {
                     if (item === 'separator') {
                       return (
                         <li key={`sep-${index}`}>
-                          <hr className="my-1 border-zinc-200 dark:border-zinc-700" />
+                          <hr className="my-0.5 border-surface-border dark:border-zinc-700" />
                         </li>
                       );
                     }
@@ -148,7 +150,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                           ref={index === 0 ? firstLinkRef : undefined}
                           onClick={() => setOpen(false)}
                           aria-current={isActive ? 'page' : undefined}
-                          className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                          className={`block rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors lg:py-1.5 ${
                             isActive
                               ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                               : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
@@ -163,25 +165,25 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
               </nav>
 
               {/* User info + language toggle + logout */}
-              <div className="mt-auto border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
+              <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-zinc-700">
                 {email && (
-                  <p className="mb-3 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
                     {email}
                   </p>
                 )}
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setTheme(mode === 'dark' ? 'light' : mode === 'light' ? 'dark' : 'system')}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   >
-                    {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={tCommon('switchLang')}
                   >
                     <Languages className="h-4 w-4" />
@@ -190,7 +192,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                   <form action={logoutAction} className="flex-1">
                     <button
                       type="submit"
-                      className="flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex h-9 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>{t('exit')}</span>
@@ -201,8 +203,8 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
             </>
           ) : (
             /* Guest: language toggle + Login/Register */
-            <div className="mt-auto border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
-              <div className="flex flex-col gap-3">
+            <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-zinc-700">
+              <div className="flex flex-col gap-2">
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
@@ -214,23 +216,23 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                 <Link
                   href="/register"
                   onClick={() => setOpen(false)}
-                  className="block rounded-md border border-zinc-300 px-3 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="block rounded-md border border-zinc-300 px-3 py-1.5 text-center text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   {t('register')}
                 </Link>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setTheme(mode === 'dark' ? 'light' : mode === 'light' ? 'dark' : 'system')}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   >
-                    {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={tCommon('switchLang')}
                   >
                     <Languages className="h-4 w-4" />

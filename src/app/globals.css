@@ -22,12 +22,13 @@
   --tc-brand-teal: #028a95;
   --tc-brand-gold: #c97b06;
 
-  /* Surface tokens */
-  --tc-surface-bg: #ffffff;
-  --tc-surface-card: #ffffff;
-  --tc-surface-border: #e4e4e7;
+  /* Surface tokens — warm pastel light */
+  --tc-surface-bg: #f5f3f0;
+  --tc-surface-card: #ede9e3;
+  --tc-surface-border: #ddd7cf;
   --tc-surface-muted: #71717a;
-  --tc-surface-input: #ffffff;
+  --tc-surface-input: #ede9e3;
+  --tc-surface-header: #e5e0d8;
   --tc-surface-overlay: rgba(0, 0, 0, 0.5);
 }
 
@@ -54,6 +55,7 @@
   --color-surface-border: var(--tc-surface-border);
   --color-surface-muted: var(--tc-surface-muted);
   --color-surface-input: var(--tc-surface-input);
+  --color-surface-header: var(--tc-surface-header);
   --color-surface-overlay: var(--tc-surface-overlay);
 
   --font-sans: var(--font-geist-sans);

@@ -252,14 +252,14 @@ export function DashboardContent({
             {accountBalances.map((account) => (
               <Card key={account.id} title={account.name}>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {account.currency}
                   </span>
                   <span className="text-xl font-semibold text-zinc-900 dark:text-white">
                     {formatAmount(account.balance, account.currency, locale)}
                   </span>
                   {account.isFixed && (
-                    <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                    <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                       {t('fixed')}
                     </span>
                   )}
