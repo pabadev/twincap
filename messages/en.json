@@ -47,7 +47,9 @@
     "hasAccount": "Already have an account?",
     "loading": "Loading...",
     "signInLabel": "Sign In",
-    "registerLabel": "Register"
+    "registerLabel": "Register",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",

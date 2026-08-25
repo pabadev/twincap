@@ -17,6 +17,7 @@ export default async function LoginPage() {
         alternateText={t('noAccount')}
         alternateHref="/register"
         alternateLabel={t('registerLabel')}
+        authMode="login"
       />
     </>
   );

@@ -47,7 +47,9 @@
     "hasAccount": "¿Ya tienes cuenta?",
     "loading": "Cargando...",
     "signInLabel": "Iniciar sesión",
-    "registerLabel": "Registrarse"
+    "registerLabel": "Registrarse",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",

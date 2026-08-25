@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useT } from '../../i18n/client';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/ui/password-input';
 import { Button } from '../../components/ui/button';
 
 type ActionFn = (
@@ -17,6 +18,7 @@ export function AuthForm({
   alternateText,
   alternateHref,
   alternateLabel,
+  authMode,
 }: {
   action: ActionFn;
   title: string;
@@ -24,6 +26,7 @@ export function AuthForm({
   alternateText: string;
   alternateHref: string;
   alternateLabel: string;
+  authMode: 'login' | 'register';
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
   const t = useT('Auth');
@@ -48,14 +51,13 @@ export function AuthForm({
           autoComplete="email"
           disabled={isPending}
         />
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           label={t('password')}
           required
           minLength={8}
-          autoComplete={title === 'Sign In' ? 'current-password' : 'new-password'}
+          autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
           disabled={isPending}
         />
         <Button
