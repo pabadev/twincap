@@ -120,11 +120,11 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
         id="mobile-nav"
         className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white shadow-md transition-transform duration-200 ease-in-out dark:bg-zinc-900 ${
           open ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 lg:static lg:shadow-none relative`}
+        } lg:translate-x-0 lg:static lg:shadow-none`}
       >
         <div className="flex h-full flex-col">
           {/* Brand */}
-          <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-700">
+          <div className="border-b border-zinc-200 px-6 py-5 pr-12 lg:pr-6 dark:border-zinc-700">
             <Logo variant="logotipo" size="md" />
           </div>
 
