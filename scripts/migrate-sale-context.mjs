@@ -40,7 +40,7 @@ try {
   if (creditIds.length > 0) {
     const saleCredits = await db
       .collection("creditgranteds")
-      .find({ _id: { $in: creditIds.map(new mongoose.Types.ObjectId()) }, saleId: { $exists: true, $ne: null } })
+      .find({ _id: { $in: creditIds.map((id) => new mongoose.Types.ObjectId(id)) }, saleId: { $exists: true, $ne: null } })
       .toArray();
 
     const saleCreditSet = new Set(saleCredits.map((c) => String(c._id)));
