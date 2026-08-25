@@ -1,8 +1,9 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { NotFoundError } from '../../domain/errors';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateCreditGrantedInput } from './dto/credits-granted';
 
@@ -11,6 +12,7 @@ import type { CreateCreditGrantedInput } from './dto/credits-granted';
  *
  * Produces a credit record and one linked expense movement on the paying account.
  * The movement is system-linked (MOV-5) and not directly editable by the user.
+ * D3: the movement inherits the paying account's scope.
  */
 export async function createCreditGranted(
   userId: string,
@@ -18,7 +20,15 @@ export async function createCreditGranted(
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<CreditGranted> {
+  // D3: resolve the paying account — validates existence/ownership and
+  // provides the scope the principal movement inherits.
+  const account = await accountRepo.findById(userId, input.accountId);
+  if (!account) {
+    throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
   const creditId = ids.generate();
   const principalMoney = new Money(input.principal, input.currency);
   const now = new Date();
@@ -49,7 +59,7 @@ export async function createCreditGranted(
     amount: principalMoney,
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: 'Personal',
+    context: account.scope,
     link: { kind: 'creditGrantedPrincipal', refId: creditId, opId },
     createdAt: now,
   });

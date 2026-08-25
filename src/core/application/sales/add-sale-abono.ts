@@ -2,7 +2,7 @@ import { Sale } from '../../domain/sale';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { SaleRepository, MovementRepository } from '../../domain/repositories';
+import type { SaleRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { AddSaleAbonoInput } from './dto/sales';
 import { saleCategory } from './helpers';
@@ -12,6 +12,8 @@ import { saleCategory } from './helpers';
  *
  * Pending = total − Σ abonos. Overpayment is rejected.
  * Each abono creates an income movement on the chosen account.
+ * D3: the movement inherits the receiving account's scope (the abono may be
+ * collected into a different account than the sale's own account).
  */
 export async function addSaleAbono(
   userId: string,
@@ -20,10 +22,18 @@ export async function addSaleAbono(
   saleRepo: SaleRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<Sale> {
   const sales = await saleRepo.findByUserId(userId);
   const sale = sales.find(s => s.id === saleId);
   if (!sale) throw new NotFoundError('Sale not found');
+
+  // D3: resolve the RECEIVING account — validates existence/ownership and
+  // provides the inherited scope.
+  const account = await accountRepo.findById(userId, input.accountId);
+  if (!account) {
+    throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
 
   // POS-5: overpayment check
   if (input.amount > sale.pending) {
@@ -52,7 +62,7 @@ export async function addSaleAbono(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: 'Personal',
+    context: account.scope,
     link: { kind: 'salePayment', refId: saleId, opId: ids.generate() },
     createdAt: now,
   });

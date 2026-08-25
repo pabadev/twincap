@@ -1,8 +1,9 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { NotFoundError } from '../../domain/errors';
 import { creditCategory } from '../../domain/synthetic-categories';
-import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditReceivedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateCreditReceivedInput } from './dto/credits-received';
 
@@ -11,6 +12,7 @@ import type { CreateCreditReceivedInput } from './dto/credits-received';
  *
  * Produces a credit record and one linked income movement on the receiving account.
  * The movement is system-linked (MOV-5) and not directly editable by the user.
+ * D3: the movement inherits the receiving account's scope.
  */
 export async function createCreditReceived(
   userId: string,
@@ -18,7 +20,15 @@ export async function createCreditReceived(
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<CreditReceived> {
+  // D3: resolve the receiving account — validates existence/ownership and
+  // provides the scope the principal movement inherits.
+  const account = await accountRepo.findById(userId, input.accountId);
+  if (!account) {
+    throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
   const creditId = ids.generate();
   const principalMoney = new Money(input.principal, input.currency);
   const now = new Date();
@@ -49,7 +59,7 @@ export async function createCreditReceived(
     amount: principalMoney,
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: 'Personal',
+    context: account.scope,
     link: { kind: 'creditReceivedPrincipal', refId: creditId, opId },
     createdAt: now,
   });

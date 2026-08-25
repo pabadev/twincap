@@ -8,9 +8,10 @@ import { deleteCreditGranted } from './delete-credit-granted';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
+import { Account } from '../../domain/account';
 import { Money, MoneyError } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreditAbono } from '../../domain/credit-granted';
 
@@ -24,6 +25,36 @@ interface AbonoRecord {
   date: Date;
   accountId: string;
   movementId?: string;
+}
+
+function fakeAccountRepo(
+  accounts: Account[] = [],
+): AccountRepository {
+  return {
+    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
+      accounts.find((a) => a.id === id) ?? null,
+    ),
+    findByUserId: vi.fn().mockResolvedValue(accounts),
+    create: vi.fn().mockImplementation(async (account: Account) => account),
+    update: vi.fn().mockImplementation(async (account: Account) => account),
+    delete: vi.fn().mockResolvedValue(undefined),
+    countReferences: vi.fn().mockResolvedValue(0),
+  };
+}
+
+function makeAccount(
+  id: string,
+  scope: 'Personal' | 'Business' = 'Personal',
+): Account {
+  return new Account({
+    id,
+    userId: 'user-1',
+    name: `Account ${id}`,
+    currency: 'COP',
+    isFixed: false,
+    scope,
+    createdAt: new Date(),
+  });
 }
 
 function fakeCreditRepo(
@@ -149,6 +180,7 @@ describe('createCreditGranted', () => {
   it('creates a credit and principal expense movement (CRED-G-1)', async () => {
     const creditRepo = fakeCreditRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const credit = await createCreditGranted(
@@ -163,6 +195,7 @@ describe('createCreditGranted', () => {
       creditRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(credit.counterparty).toBe('Pedro');
@@ -180,9 +213,34 @@ describe('createCreditGranted', () => {
     expect(movement.link?.refId).toBe(credit.id);
   });
 
+  it('inherits Business scope from the paying account (D3)', async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-biz', 'Business')]);
+    const ids = fakeIdGen();
+
+    await createCreditGranted(
+      'user-1',
+      {
+        counterparty: 'Pedro',
+        principal: 100000,
+        currency: 'COP',
+        accountId: 'acc-biz',
+        date: new Date('2025-06-01'),
+      },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movementRepo.created[0].context).toBe('Business');
+  });
+
   it('creates credit with optional installments and frequency', async () => {
     const creditRepo = fakeCreditRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const credit = await createCreditGranted(
@@ -199,6 +257,7 @@ describe('createCreditGranted', () => {
       creditRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(credit.installments).toBe(12);
@@ -208,6 +267,7 @@ describe('createCreditGranted', () => {
   it('rejects zero principal — standalone credits stay strictly positive (H14 zero is sale-born only)', async () => {
     const creditRepo = fakeCreditRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     // The strict Money constructor keeps the standalone flow unchanged:
@@ -225,6 +285,7 @@ describe('createCreditGranted', () => {
         creditRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(MoneyError);
     expect(creditRepo.created).toHaveLength(0);
@@ -241,6 +302,7 @@ describe('addAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const result = await addAbono(
@@ -250,6 +312,7 @@ describe('addAbono', () => {
       creditRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(result.abonos).toHaveLength(1);
@@ -265,12 +328,41 @@ describe('addAbono', () => {
     expect(movement.link?.kind).toBe('creditGrantedAbono');
   });
 
+  it('inherits scope from the RECEIVING account, not the credit account (D3)', async () => {
+    const credit = makeCredit(); // credit.accountId = acc-1
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    // Debtor pays into a Business account different from the credit's own.
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-1'),
+      makeAccount('acc-biz', 'Business'),
+    ]);
+    const ids = fakeIdGen();
+
+    await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-biz', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const movement = movementRepo.created[0];
+    expect(movement.accountId).toBe('acc-biz');
+    expect(movement.context).toBe('Business');
+  });
+
   it('throws ConflictError on overpayment (CRED-G-2)', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -281,6 +373,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -290,6 +383,7 @@ describe('addAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -300,6 +394,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
   });

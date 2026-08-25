@@ -12,6 +12,7 @@ import type { Currency } from '../../../core/domain/currency';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
@@ -39,12 +40,14 @@ export async function createPayableAction(
     await connectDb();
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await createPayable(
       user.userId,
       { counterparty, total, initialPayment, currency, accountId, date, dueDate, note },
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/payables');
     revalidatePath('/accounts');
@@ -73,6 +76,7 @@ export async function addAbonoAction(
     await connectDb();
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await addAbono(
       user.userId,
       payableId,
@@ -80,6 +84,7 @@ export async function addAbonoAction(
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/payables');
     revalidatePath('/accounts');

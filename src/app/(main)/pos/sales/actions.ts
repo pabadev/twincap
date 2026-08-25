@@ -62,6 +62,7 @@ export async function createSaleAction(
     const movementRepo = new MongoMovementRepository();
     const clientRepo = new MongoClientRepository();
     const creditRepo = new MongoCreditGrantedRepository();
+    const accountRepo = new MongoAccountRepository();
     await createSale(
       user.userId,
       { items, accountId, clientId, date, paymentMode, currency, initialPayment },
@@ -71,6 +72,7 @@ export async function createSaleAction(
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
@@ -101,6 +103,7 @@ export async function addSaleAbonoAction(
     await connectDb();
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await addSaleAbono(
       user.userId,
       saleId,
@@ -108,6 +111,7 @@ export async function addSaleAbonoAction(
       saleRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/pos/sales');
     revalidatePath('/accounts');

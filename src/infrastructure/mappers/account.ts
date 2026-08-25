@@ -11,6 +11,9 @@ export function toAccountEntity(doc: AccountDocument): Account {
     name: doc.name,
     currency: doc.currency as Currency,
     isFixed: doc.isFixed,
+    // Normalize legacy documents missing the field (schema default also covers
+    // this on hydration — belt and braces for lean reads).
+    scope: doc.scope ?? "Personal",
     createdAt: doc.createdAt,
   });
 }
@@ -22,5 +25,6 @@ export function toAccountDocData(entity: Account): Record<string, unknown> {
     name: entity.name,
     currency: entity.currency,
     isFixed: entity.isFixed,
+    scope: entity.scope,
   };
 }

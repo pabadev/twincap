@@ -9,6 +9,7 @@ import { CreditGranted } from '../../domain/credit-granted';
 import { Client } from '../../domain/client';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
+import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { CatalogItem } from '../../domain/catalog';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
@@ -18,6 +19,7 @@ import type {
   MovementRepository,
   ClientRepository,
   CreditGrantedRepository,
+  AccountRepository,
 } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 
@@ -184,6 +186,36 @@ function fakeCreditGrantedRepo(
   };
 }
 
+function fakeAccountRepo(
+  accounts: Account[] = [],
+): AccountRepository {
+  return {
+    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
+      accounts.find((a) => a.id === id) ?? null,
+    ),
+    findByUserId: vi.fn().mockResolvedValue(accounts),
+    create: vi.fn().mockImplementation(async (account: Account) => account),
+    update: vi.fn().mockImplementation(async (account: Account) => account),
+    delete: vi.fn().mockResolvedValue(undefined),
+    countReferences: vi.fn().mockResolvedValue(0),
+  };
+}
+
+function makeAccount(
+  id: string,
+  scope: 'Personal' | 'Business' = 'Personal',
+): Account {
+  return new Account({
+    id,
+    userId: 'user-1',
+    name: `Account ${id}`,
+    currency: 'COP',
+    isFixed: false,
+    scope,
+    createdAt: new Date(),
+  });
+}
+
 function makeSale(
   overrides: Partial<ConstructorParameters<typeof Sale>[0]> = {},
   abonos: ConstructorParameters<typeof Sale>[1] = [],
@@ -266,6 +298,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
@@ -283,6 +316,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     expect(sale.total).toBe(100000);
@@ -306,6 +340,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -325,6 +360,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -340,6 +376,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
@@ -358,6 +395,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     expect(sale.paymentMode).toBe('on-credit');
@@ -379,6 +417,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -397,6 +436,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -414,6 +454,7 @@ describe('createSale', () => {
       findById: vi.fn().mockResolvedValue(null),
     });
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -433,6 +474,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
     expect(saleRepo.created).toHaveLength(0);
@@ -448,6 +490,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -468,6 +511,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
     // Validation happens before any write: no stock decrement either.
@@ -485,6 +529,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -505,6 +550,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
     expect(creditRepo.created).toHaveLength(0);
@@ -519,6 +565,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
@@ -538,6 +585,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     // Exactly one income movement = initialPayment, linked to the sale.
@@ -570,6 +618,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await createSale(
@@ -589,6 +638,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     expect(creditRepo.created).toHaveLength(1);
@@ -605,6 +655,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await createSale(
@@ -624,6 +675,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     expect(creditRepo.created).toHaveLength(1);
@@ -648,6 +700,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await createSale(
@@ -666,6 +719,7 @@ describe('createSale', () => {
       ids,
       clientRepo,
       creditRepo,
+      accountRepo,
     );
 
     expect(catalogRepo.decremented).toHaveLength(0);
@@ -681,6 +735,7 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -700,6 +755,7 @@ describe('createSale', () => {
         ids,
         clientRepo,
         creditRepo,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
     expect(saleRepo.created).toHaveLength(0);
@@ -715,6 +771,7 @@ describe('addSaleAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const result = await addSaleAbono(
@@ -724,6 +781,7 @@ describe('addSaleAbono', () => {
       saleRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(result.abonos).toHaveLength(1);
@@ -735,12 +793,41 @@ describe('addSaleAbono', () => {
     expect(movementRepo.created[0].link?.kind).toBe('salePayment');
   });
 
+  it('inherits scope from the RECEIVING account, not the sale account (D3)', async () => {
+    const sale = makeSale(); // sale.accountId = acc-1
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+    });
+    const movementRepo = fakeMovementRepo();
+    // Abono collected into a Business account different from the sale's own.
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-1'),
+      makeAccount('acc-biz', 'Business'),
+    ]);
+    const ids = fakeIdGen();
+
+    await addSaleAbono(
+      'user-1',
+      'sale-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-biz', date: new Date('2025-07-01') },
+      saleRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const movement = movementRepo.created[0];
+    expect(movement.accountId).toBe('acc-biz');
+    expect(movement.context).toBe('Business');
+  });
+
   it('rejects abono exceeding pending amount (POS-5)', async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -751,6 +838,7 @@ describe('addSaleAbono', () => {
         saleRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -760,6 +848,7 @@ describe('addSaleAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -770,6 +859,7 @@ describe('addSaleAbono', () => {
         saleRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
   });

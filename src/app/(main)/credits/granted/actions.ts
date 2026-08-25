@@ -12,6 +12,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
+import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../../lib/handle-action-error';
@@ -37,12 +38,14 @@ export async function createCreditGrantedAction(
     await connectDb();
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await createCreditGranted(
       user.userId,
       { counterparty, principal, currency, accountId, date, installments, frequency },
       creditRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/credits/granted');
     revalidatePath('/accounts');
@@ -71,6 +74,7 @@ export async function addAbonoAction(
     await connectDb();
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await addAbono(
       user.userId,
       creditId,
@@ -78,6 +82,7 @@ export async function addAbonoAction(
       creditRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/credits/granted');
     revalidatePath('/accounts');

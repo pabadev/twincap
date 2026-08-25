@@ -5,14 +5,45 @@ import { deleteTransfer } from './delete-transfer';
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
+import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
-import type { TransferRepository, MovementRepository } from '../../domain/repositories';
+import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
 let idCounter = 0;
+
+function fakeAccountRepo(
+  accounts: Account[] = [],
+): AccountRepository & { findById: ReturnType<typeof vi.fn> } {
+  return {
+    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
+      accounts.find((a) => a.id === id) ?? null,
+    ),
+    findByUserId: vi.fn().mockResolvedValue(accounts),
+    create: vi.fn().mockImplementation(async (account: Account) => account),
+    update: vi.fn().mockImplementation(async (account: Account) => account),
+    delete: vi.fn().mockResolvedValue(undefined),
+    countReferences: vi.fn().mockResolvedValue(0),
+  };
+}
+
+function makeAccount(
+  id: string,
+  scope: 'Personal' | 'Business' = 'Personal',
+): Account {
+  return new Account({
+    id,
+    userId: 'user-1',
+    name: `Account ${id}`,
+    currency: 'COP',
+    isFixed: false,
+    scope,
+    createdAt: new Date(),
+  });
+}
 
 function fakeTransferRepo(
   overrides: Partial<TransferRepository> = {},
@@ -127,6 +158,10 @@ describe('createTransfer', () => {
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(100000),
     });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
     const ids = fakeIdGen();
 
     const transfer = await createTransfer(
@@ -142,6 +177,7 @@ describe('createTransfer', () => {
       transferRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(transfer.sourceAmount.amount).toBe(50000);
@@ -168,11 +204,100 @@ describe('createTransfer', () => {
     expect(income.link?.kind).toBe('transfer');
   });
 
+  it('inherits each leg scope from ITS OWN account — cross-scope transfer (D3)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+    });
+    // Business source → Personal destination: expense leg = Business,
+    // income leg = Personal (approved per-leg rule).
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src', 'Business'),
+      makeAccount('acc-dst', 'Personal'),
+    ]);
+    const ids = fakeIdGen();
+
+    await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 50000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movementRepo.created[0].context).toBe('Business');
+    expect(movementRepo.created[1].context).toBe('Personal');
+  });
+
+  it('throws NotFoundError when the source account does not exist', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-other-user',
+          destinationAccountId: 'acc-dst',
+          sourceAmount: 50000,
+          sourceCurrency: 'COP',
+          date: new Date(),
+        },
+        transferRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError when the destination account does not exist', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+    });
+    const accountRepo = fakeAccountRepo([makeAccount('acc-src')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-src',
+          destinationAccountId: 'acc-missing',
+          sourceAmount: 50000,
+          sourceCurrency: 'COP',
+          date: new Date(),
+        },
+        transferRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
   it('creates a cross-currency transfer with rate (TRA-3)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(200000),
     });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
     const ids = fakeIdGen();
 
     const transfer = await createTransfer(
@@ -190,6 +315,7 @@ describe('createTransfer', () => {
       transferRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(transfer.sourceAmount.amount).toBe(100000);
@@ -209,6 +335,7 @@ describe('createTransfer', () => {
   it('throws ValidationError when source = destination (TRA-1)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo();
     const ids = fakeIdGen();
 
     await expect(
@@ -224,6 +351,7 @@ describe('createTransfer', () => {
         transferRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
   });
@@ -233,6 +361,10 @@ describe('createTransfer', () => {
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(10000), // balance < sourceAmount
     });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
     const ids = fakeIdGen();
 
     await expect(
@@ -248,6 +380,7 @@ describe('createTransfer', () => {
         transferRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -255,6 +388,10 @@ describe('createTransfer', () => {
   it('throws ValidationError for cross-currency without rate', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
     const ids = fakeIdGen();
 
     await expect(
@@ -273,6 +410,7 @@ describe('createTransfer', () => {
         transferRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
   });

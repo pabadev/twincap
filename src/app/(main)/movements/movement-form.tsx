@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
-import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
+import { MOVEMENT_TYPES } from '../../../core/domain/movement';
 import type { MovementType } from '../../../core/domain/movement';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createMovementAction } from './actions';
@@ -124,18 +124,6 @@ export function MovementForm({
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
-        />
-
-        <Select
-          id="context"
-          name="context"
-          label={t('context')}
-          required
-          disabled={isPending}
-          options={MOVEMENT_CONTEXTS.map((c) => ({
-            value: c,
-            label: c === 'Personal' ? t('personal') : t('business'),
-          }))}
         />
       </FieldGroup>
 

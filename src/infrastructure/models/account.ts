@@ -6,6 +6,7 @@ export interface AccountDoc {
   name: string;
   currency: string;
   isFixed: boolean;
+  scope: "Personal" | "Business";
   createdAt: Date;
   updatedAt: Date;
   // NOTE: deliberately NO balance field — balance is derived via aggregation
@@ -35,6 +36,14 @@ const AccountSchema = new Schema<AccountDoc>(
       type: Boolean,
       required: true,
       default: false,
+    },
+    // D3: single source of truth for Personal/Business. Default covers legacy
+    // documents created before the field existed (applied on hydration too).
+    scope: {
+      type: String,
+      required: true,
+      enum: ["Personal", "Business"],
+      default: "Personal",
     },
   },
   { timestamps: true },

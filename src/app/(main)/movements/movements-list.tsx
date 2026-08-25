@@ -24,16 +24,28 @@ export function MovementsList({
   refLabels?: Record<string, string>;
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
+  /** D3 scope filter — only meaningful while 'all accounts' is active. */
+  const [selectedScope, setSelectedScope] = useState<'all' | 'Personal' | 'Business'>('all');
   const t = useT('Movements');
   const tCommon = useT('Common');
   const tSystemNotes = useT('SystemNotes');
   const locale = useLocale();
   const { openQuickMovement } = useQuickMovement();
 
-  const allMovements = Object.values(movementsByAccount).flat();
-  const movements = selectedAccountId === 'all'
-    ? allMovements
-    : (movementsByAccount[selectedAccountId] ?? []);
+  // D3: resolve each movement's scope via its account (account is the source
+  // of truth; stored Movement.context is never trusted for filtering).
+  const scopeByAccountId = new Map(accounts.map((a) => [a.id, a.scope]));
+  const allMovements = Object.values(movementsByAccount)
+    .flat()
+    .filter((m) =>
+      selectedAccountId === 'all'
+        ? selectedScope === 'all' || scopeByAccountId.get(m.accountId) === selectedScope
+        : true,
+    );
+  const movements =
+    selectedAccountId === 'all'
+      ? allMovements
+      : (movementsByAccount[selectedAccountId] ?? []);
 
   // Sort by date descending
   const sortedMovements = [...movements].sort(
@@ -62,27 +74,52 @@ export function MovementsList({
         )}
       </div>
 
-      {/* Account selector */}
+      {/* Account selector + scope filter */}
       {accounts.length > 0 && (
-        <div className="mb-6">
-          <label
-            htmlFor="account-select"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            {t('account')}
-          </label>
-          <Select
-            id="account-select"
-            value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            options={[
-              { value: 'all', label: t('allAccounts') },
-              ...accounts.map((a) => ({
-                value: a.id,
-                label: `${a.name} (${a.currency})`,
-              })),
-            ]}
-          />
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="account-select"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {t('account')}
+            </label>
+            <Select
+              id="account-select"
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              options={[
+                { value: 'all', label: t('allAccounts') },
+                ...accounts.map((a) => ({
+                  value: a.id,
+                  label: `${a.name} (${a.currency})`,
+                })),
+              ]}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="scope-select"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {t('scope')}
+            </label>
+            {/* D3: with a specific account selected its scope governs — the
+                Ámbito filter only applies while 'all accounts' is active. */}
+            <Select
+              id="scope-select"
+              value={selectedScope}
+              disabled={selectedAccountId !== 'all'}
+              onChange={(e) =>
+                setSelectedScope(e.target.value as typeof selectedScope)
+              }
+              options={[
+                { value: 'all', label: t('scopeAll') },
+                { value: 'Personal', label: t('scopePersonal') },
+                { value: 'Business', label: t('scopeBusiness') },
+              ]}
+            />
+          </div>
         </div>
       )}
 
@@ -97,8 +134,14 @@ export function MovementsList({
           {sortedMovements.length === 0 ? (
             <EmptyState
               icon={<Icon icon={ArrowLeftRight} size="xl" />}
-              title={selectedAccountId === 'all' ? t('emptyTitle') : t('emptyTitle')}
-              description={selectedAccountId === 'all' ? t('noMovementsAll') : t('emptyDescription')}
+              title={t('emptyTitle')}
+              description={
+                selectedAccountId !== 'all'
+                  ? t('emptyDescription')
+                  : selectedScope !== 'all'
+                    ? t('noMovementsScope')
+                    : t('noMovementsAll')
+              }
             />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">

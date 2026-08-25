@@ -33,19 +33,21 @@ export async function createMovementAction(
   const currency = formData.get('currency') as CreateMovementInput['currency'];
   const date = new Date(formData.get('date') as string);
   const note = (formData.get('note') as string) || undefined;
-  const context = formData.get('context') as CreateMovementInput['context'];
   const categoryId = formData.get('categoryId') as string;
 
   try {
     await connectDb();
     const movementRepo = new MongoMovementRepository();
     const categoryRepo = new MongoCategoryRepository();
+    const accountRepo = new MongoAccountRepository();
+    // D3: no client-sent context — scope derives server-side from the account.
     await createMovement(
       user.userId,
-      { accountId, type, amount, currency, date, note, context, categoryId },
+      { accountId, type, amount, currency, date, note, categoryId },
       movementRepo,
       categoryRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/movements');
     revalidatePath('/accounts');

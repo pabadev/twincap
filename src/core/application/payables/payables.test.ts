@@ -8,9 +8,10 @@ import { deletePayable } from './delete-payable';
 import { Payable } from '../../domain/payable';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
+import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import type { PayableRepository, MovementRepository } from '../../domain/repositories';
+import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { PayableAbono } from '../../domain/payable';
 
@@ -24,6 +25,36 @@ interface AbonoRecord {
   date: Date;
   accountId: string;
   movementId?: string;
+}
+
+function fakeAccountRepo(
+  accounts: Account[] = [],
+): AccountRepository {
+  return {
+    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
+      accounts.find((a) => a.id === id) ?? null,
+    ),
+    findByUserId: vi.fn().mockResolvedValue(accounts),
+    create: vi.fn().mockImplementation(async (account: Account) => account),
+    update: vi.fn().mockImplementation(async (account: Account) => account),
+    delete: vi.fn().mockResolvedValue(undefined),
+    countReferences: vi.fn().mockResolvedValue(0),
+  };
+}
+
+function makeAccount(
+  id: string,
+  scope: 'Personal' | 'Business' = 'Personal',
+): Account {
+  return new Account({
+    id,
+    userId: 'user-1',
+    name: `Account ${id}`,
+    currency: 'COP',
+    isFixed: false,
+    scope,
+    createdAt: new Date(),
+  });
 }
 
 function fakePayableRepo(
@@ -150,6 +181,7 @@ describe('createPayable', () => {
   it('creates a payable with zero movements when there is no initial payment (H10)', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const payable = await createPayable(
@@ -164,6 +196,7 @@ describe('createPayable', () => {
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(payable.counterparty).toBe('Proveedor SA');
@@ -179,6 +212,7 @@ describe('createPayable', () => {
   it('creates exactly ONE expense movement when initial payment > 0 (H10)', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const payable = await createPayable(
@@ -194,6 +228,7 @@ describe('createPayable', () => {
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(payable.initialPayment).toBe(30000);
@@ -212,6 +247,7 @@ describe('createPayable', () => {
   it('creates a fully-paid payable with one movement of the full total', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const payable = await createPayable(
@@ -227,6 +263,7 @@ describe('createPayable', () => {
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(payable.pending).toBe(0);
@@ -234,9 +271,59 @@ describe('createPayable', () => {
     expect(movementRepo.created[0].amount.amount).toBe(50000);
   });
 
+  it('inherits Business scope from the payment account (D3)', async () => {
+    const payableRepo = fakePayableRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-biz', 'Business')]);
+    const ids = fakeIdGen();
+
+    await createPayable(
+      'user-1',
+      {
+        counterparty: 'Proveedor SA',
+        total: 100000,
+        currency: 'COP',
+        initialPayment: 30000,
+        accountId: 'acc-biz',
+        date: new Date('2025-06-01'),
+      },
+      payableRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movementRepo.created[0].context).toBe('Business');
+  });
+
+  it('throws NotFoundError when the payment account does not exist (D3 tenant guard)', async () => {
+    const payableRepo = fakePayableRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createPayable(
+        'user-1',
+        {
+          counterparty: 'Proveedor SA',
+          total: 100000,
+          currency: 'COP',
+          accountId: 'acc-missing',
+          date: new Date('2025-06-01'),
+        },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
   it('persists dueDate and note', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
     const dueDate = new Date('2025-07-15');
 
@@ -254,6 +341,7 @@ describe('createPayable', () => {
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(payable.dueDate).toEqual(dueDate);
@@ -263,6 +351,7 @@ describe('createPayable', () => {
   it('rejects initialPayment greater than total', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -279,6 +368,7 @@ describe('createPayable', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
     // Nothing written when validation fails
@@ -289,6 +379,7 @@ describe('createPayable', () => {
   it('rejects negative initialPayment and empty counterparty', async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -305,6 +396,7 @@ describe('createPayable', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
 
@@ -321,6 +413,7 @@ describe('createPayable', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ValidationError);
 
@@ -338,6 +431,7 @@ describe('addAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([payable]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     const result = await addAbono(
@@ -347,6 +441,7 @@ describe('addAbono', () => {
       payableRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
 
     expect(result.abonos).toHaveLength(1);
@@ -364,12 +459,41 @@ describe('addAbono', () => {
     expect(movement.link?.refId).toBe('pay-1');
   });
 
+  it('inherits scope from the PAYMENT account, not the payable account (D3)', async () => {
+    const payable = makePayable(); // payable.accountId = acc-1
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo();
+    // Abono paid from a Business account different from the payable's own.
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-1'),
+      makeAccount('acc-biz', 'Business'),
+    ]);
+    const ids = fakeIdGen();
+
+    await addAbono(
+      'user-1',
+      'pay-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-biz', date: new Date('2025-07-01') },
+      payableRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const movement = movementRepo.created[0];
+    expect(movement.accountId).toBe('acc-biz');
+    expect(movement.context).toBe('Business');
+  });
+
   it('throws ConflictError on overpayment including initial payment (PAY-R-2)', async () => {
     const payable = makePayable({ initialPayment: 50000 });
     const payableRepo = fakePayableRepo({
       findByUserId: vi.fn().mockResolvedValue([payable]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     // pending is 50000; 60000 exceeds it
@@ -381,6 +505,7 @@ describe('addAbono', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -391,6 +516,7 @@ describe('addAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([payable]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -401,6 +527,7 @@ describe('addAbono', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
       ),
     ).rejects.toThrow(ConflictError);
     expect(movementRepo.created).toHaveLength(0);
@@ -411,6 +538,7 @@ describe('addAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
     const ids = fakeIdGen();
 
     await expect(
@@ -421,6 +549,29 @@ describe('addAbono', () => {
         payableRepo,
         movementRepo,
         ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError when the payment account does not exist (D3)', async () => {
+    const payable = makePayable();
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'pay-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-missing', date: new Date() },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
   });

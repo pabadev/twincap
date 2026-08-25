@@ -5,6 +5,7 @@ import {
   deleteAccount,
 } from '../../../core/application/accounts';
 import type { CreateAccountInput } from '../../../core/application/accounts';
+import { isAccountScope } from '../../../core/domain/account';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -24,6 +25,15 @@ export async function createAccountAction(
   const name = formData.get('name') as string;
   const currency = formData.get('currency') as CreateAccountInput['currency'];
   const initialBalance = Number(formData.get('initialBalance') || '0');
+  const scopeRaw = formData.get('scope');
+  // D3: validate server-side; absent value falls through to the domain default.
+  let scope: CreateAccountInput['scope'];
+  if (typeof scopeRaw === 'string' && scopeRaw.length > 0) {
+    if (!isAccountScope(scopeRaw)) {
+      return { error: 'error.validation' };
+    }
+    scope = scopeRaw;
+  }
 
   try {
     await connectDb();
@@ -31,7 +41,7 @@ export async function createAccountAction(
     const movementRepo = new MongoMovementRepository();
     await createAccount(
       user.userId,
-      { name, currency, initialBalance },
+      { name, currency, initialBalance, scope },
       accountRepo,
       movementRepo,
       ids,

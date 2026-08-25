@@ -1,10 +1,10 @@
 import { Movement } from '../../domain/movement';
-import type { MovementType, MovementContext } from '../../domain/movement';
+import type { MovementType } from '../../domain/movement';
 import type { Currency } from '../../domain/currency';
 import { Money } from '../../domain/money';
-import type { MovementRepository, CategoryRepository } from '../../domain/repositories';
+import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
-import { ValidationError } from '../../domain/errors';
+import { NotFoundError, ValidationError } from '../../domain/errors';
 
 export interface CreateMovementInput {
   accountId: string;
@@ -13,8 +13,9 @@ export interface CreateMovementInput {
   currency: Currency;
   date: Date;
   note?: string;
-  context: MovementContext;
   categoryId: string;
+  // NOTE: no `context` input — D3 makes the account's scope authoritative and
+  // it is resolved server-side below (never trusted from the client).
 }
 
 export async function createMovement(
@@ -23,8 +24,9 @@ export async function createMovement(
   movementRepo: MovementRepository,
   categoryRepo: CategoryRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<Movement> {
-  // MOV-1: validate type, amount > 0, context, category present
+  // MOV-1: validate type, amount > 0, category present
   if (input.amount <= 0) {
     throw new ValidationError('Amount must be greater than zero');
   }
@@ -38,6 +40,13 @@ export async function createMovement(
     throw new ValidationError('Category type must match movement type');
   }
 
+  // D3: context derives from the selected account's scope — validates
+  // existence/ownership at the same time.
+  const account = await accountRepo.findById(userId, input.accountId);
+  if (!account) {
+    throw new NotFoundError('Account not found');
+  }
+
   const now = new Date();
   const movement = new Movement({
     id: ids.generate(),
@@ -48,7 +57,7 @@ export async function createMovement(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     note: input.note,
-    context: input.context,
+    context: account.scope,
     createdAt: now,
   });
 

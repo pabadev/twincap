@@ -52,6 +52,38 @@ describe("Account", () => {
   });
 });
 
+describe("Account scope (D3)", () => {
+  const base = {
+    id: "a1",
+    userId: "u1",
+    name: "Caja",
+    currency: "COP" as const,
+    isFixed: false,
+    createdAt: DATE,
+  };
+
+  it("defaults to 'Personal' when omitted", () => {
+    expect(new Account(base).scope).toBe("Personal");
+  });
+
+  it("accepts both valid scopes and keeps them", () => {
+    expect(new Account({ ...base, scope: "Personal" }).scope).toBe("Personal");
+    expect(new Account({ ...base, scope: "Business" }).scope).toBe("Business");
+  });
+
+  it("rejects unknown scope values", () => {
+    expect(() =>
+      new Account({ ...base, scope: "work" as never }),
+    ).toThrow(ValidationError);
+  });
+
+  it("always serializes scope (plain literal) in toJSON", () => {
+    const json = new Account({ ...base, scope: "Business" }).toJSON();
+    expect(json.scope).toBe("Business");
+    expect(new Account(base).toJSON().scope).toBe("Personal");
+  });
+});
+
 describe("Category", () => {
   it("is type-scoped and rejects unknown types", () => {
     const income = new Category({ id: "c1", userId: "u1", name: "Salario", type: "income", createdAt: DATE });

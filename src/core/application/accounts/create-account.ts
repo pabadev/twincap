@@ -1,4 +1,5 @@
 import { Account } from '../../domain/account';
+import type { AccountScope } from '../../domain/account';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { openingCategory } from '../../domain/synthetic-categories';
@@ -10,6 +11,8 @@ export interface CreateAccountInput {
   name: string;
   currency: Currency;
   initialBalance: number; // 0 = no opening movement
+  /** D3 Personal/Business classification — defaults to 'Personal'. */
+  scope?: AccountScope;
 }
 
 export async function createAccount(
@@ -27,11 +30,13 @@ export async function createAccount(
     name: input.name.trim(),
     currency: input.currency,
     isFixed: false,
+    scope: input.scope ?? 'Personal',
     createdAt: new Date(),
   });
   await accountRepo.create(account);
 
-  // ACC-3: opening movement if initialBalance > 0
+  // ACC-3: opening movement if initialBalance > 0 — inherits the account's
+  // own scope (D3).
   if (input.initialBalance > 0) {
     const movement = new Movement({
       id: ids.generate(),
@@ -42,7 +47,7 @@ export async function createAccount(
       amount: new Money(input.initialBalance, input.currency),
       date: new Date(),
       // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
+      context: account.scope,
       link: { kind: 'opening', refId: accountId, opId: ids.generate() },
       createdAt: new Date(),
     });

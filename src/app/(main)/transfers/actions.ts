@@ -8,6 +8,7 @@ import type { CreateTransferInput } from '../../../core/application/transfers';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
@@ -47,12 +48,14 @@ export async function createTransferAction(
     await connectDb();
     const transferRepo = new MongoTransferRepository();
     const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
     await createTransfer(
       user.userId,
       input,
       transferRepo,
       movementRepo,
       ids,
+      accountRepo,
     );
     revalidatePath('/transfers');
     revalidatePath('/accounts');

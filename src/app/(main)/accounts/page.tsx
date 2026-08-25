@@ -74,6 +74,12 @@ export default async function AccountsPage() {
                           {t('fixed')}
                         </span>
                       )}
+                      {/* D3: scope chip — only Business is flagged; Personal is the silent default. */}
+                      {account.scope === 'Business' && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                          {t('business')}
+                        </span>
+                      )}
                       <span className="ml-2 text-xs text-zinc-400">
                         {account.currency}
                       </span>

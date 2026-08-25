@@ -1,9 +1,9 @@
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { ValidationError, ConflictError } from '../../domain/errors';
+import { ValidationError, ConflictError, NotFoundError } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
-import type { TransferRepository, MovementRepository } from '../../domain/repositories';
+import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreateTransferInput } from './dto/transfers';
 
@@ -13,6 +13,9 @@ import type { CreateTransferInput } from './dto/transfers';
  * Produces two linked movements: an expense on the source account and
  * an income on the destination account. Both are system-linked (MOV-5)
  * and thus not directly editable by the user.
+ *
+ * D3: each leg inherits the scope of ITS OWN account — a cross-scope
+ * transfer legitimately produces one Business and one Personal movement.
  */
 export async function createTransfer(
   userId: string,
@@ -20,10 +23,24 @@ export async function createTransfer(
   transferRepo: TransferRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<Transfer> {
   // TRA-1: source ≠ destination
   if (input.sourceAccountId === input.destinationAccountId) {
     throw new ValidationError('Source and destination accounts must be different');
+  }
+
+  // D3: resolve both accounts up front — validates existence/ownership and
+  // provides each leg's scope.
+  const [sourceAccount, destinationAccount] = await Promise.all([
+    accountRepo.findById(userId, input.sourceAccountId),
+    accountRepo.findById(userId, input.destinationAccountId),
+  ]);
+  if (!sourceAccount) {
+    throw new NotFoundError(`Source account ${input.sourceAccountId} not found`);
+  }
+  if (!destinationAccount) {
+    throw new NotFoundError(`Destination account ${input.destinationAccountId} not found`);
   }
 
   // TRA-2/3: same-currency = equal amounts; cross-currency requires rate + destinationAmount
@@ -83,7 +100,7 @@ export async function createTransfer(
     amount: sourceAmountMoney,
     date: input.date,
     note: input.note,
-    context: 'Personal',
+    context: sourceAccount.scope,
     link: { kind: 'transfer', refId: transferId, opId: expenseOpId },
     createdAt: now,
   });
@@ -99,7 +116,7 @@ export async function createTransfer(
     amount: new Money(destAmount, destCurrency),
     date: input.date,
     note: input.note,
-    context: 'Personal',
+    context: destinationAccount.scope,
     link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
     createdAt: now,
   });

@@ -1,8 +1,9 @@
 import { Payable } from '../../domain/payable';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { NotFoundError } from '../../domain/errors';
 import { payableCategory } from '../../domain/synthetic-categories';
-import type { PayableRepository, MovementRepository } from '../../domain/repositories';
+import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreatePayableInput } from './dto/payables';
 
@@ -13,6 +14,7 @@ import type { CreatePayableInput } from './dto/payables';
  * a movement (goods arrived, no money left). Exactly ONE expense movement is
  * created when an initial payment accompanies the acquisition
  * (kind 'payableInitialPayment', refId = payable id).
+ * D3: that movement inherits the payment account's scope.
  */
 export async function createPayable(
   userId: string,
@@ -20,7 +22,15 @@ export async function createPayable(
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
 ): Promise<Payable> {
+  // D3: resolve the payment account — validates existence/ownership and
+  // provides the scope the initial-payment movement inherits.
+  const account = await accountRepo.findById(userId, input.accountId);
+  if (!account) {
+    throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
   const payableId = ids.generate();
   const totalMoney = new Money(input.total, input.currency);
   const now = new Date();
@@ -58,7 +68,7 @@ export async function createPayable(
       amount: new Money(payable.initialPayment, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
+      context: account.scope,
       link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
       createdAt: now,
     });
