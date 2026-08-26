@@ -117,7 +117,15 @@
     "reportCreditsGranted": "Credits Granted",
     "reportPayables": "Payables",
     "reportSales": "Sales",
-    "removeFilter": "Remove filter"
+    "removeFilter": "Remove filter",
+    "incomeExpenseSummary": "Income & Expenses by Category",
+    "incomeSummary": "Income Summary",
+    "expenseSummary": "Expense Summary",
+    "summaryCategory": "Category",
+    "summaryAmount": "Amount",
+    "total": "Total",
+    "noIncomeData": "No income data for this period.",
+    "noExpenseData": "No expense data for this period."
   },
   "Accounts": {
     "title": "Accounts",

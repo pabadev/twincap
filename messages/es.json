@@ -117,7 +117,15 @@
     "reportCreditsGranted": "Créditos Otorgados",
     "reportPayables": "Cuentas por Pagar",
     "reportSales": "Ventas",
-    "removeFilter": "Eliminar filtro"
+    "removeFilter": "Eliminar filtro",
+    "incomeExpenseSummary": "Ingresos y Gastos por Categoría",
+    "incomeSummary": "Resumen de Ingresos",
+    "expenseSummary": "Resumen de Gastos",
+    "summaryCategory": "Categoría",
+    "summaryAmount": "Monto",
+    "total": "Total",
+    "noIncomeData": "No hay datos de ingresos para este período.",
+    "noExpenseData": "No hay datos de gastos para este período."
   },
   "Accounts": {
     "title": "Cuentas",

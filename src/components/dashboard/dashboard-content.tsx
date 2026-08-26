@@ -13,8 +13,10 @@ import {
 } from './recent-movements';
 import { PositionCards } from './position-cards';
 import { DashboardReportsGrid } from './dashboard-reports-grid';
+import { SummaryTable, type SummaryTableRow } from './summary-table';
 import { Card } from '../ui/card';
 import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
+import { computeCategorySummary } from '../../core/application/compute-category-summary';
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
 import { syntheticCategoryLabel } from '../../lib/synthetic-category-label';
 import { formatAmount } from '../../lib/format';
@@ -147,6 +149,29 @@ export function DashboardContent({
     [filteredMovements, currency],
   );
 
+  const { incomeCategories, expenseCategories, totalIncome, totalExpenses } = useMemo(
+    () => computeCategorySummary({ movements: filteredMovements as any, currency }),
+    [filteredMovements, currency],
+  );
+
+  const incomeRows: SummaryTableRow[] = useMemo(
+    () =>
+      incomeCategories.map((c) => ({
+        label: categoryOptions.find((opt) => opt.value === c.categoryId)?.label ?? t('uncategorized'),
+        value: c.amount,
+      })),
+    [incomeCategories, categoryOptions, t],
+  );
+
+  const expenseRows: SummaryTableRow[] = useMemo(
+    () =>
+      expenseCategories.map((c) => ({
+        label: categoryOptions.find((opt) => opt.value === c.categoryId)?.label ?? t('uncategorized'),
+        value: c.amount,
+      })),
+    [expenseCategories, categoryOptions, t],
+  );
+
   const { months: computedYearly } = useMemo(
     () =>
       computeYearlyEvolution({
@@ -243,6 +268,30 @@ export function DashboardContent({
       </div>
 
       <DashboardReportsGrid />
+
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+          {t('incomeExpenseSummary')}
+        </h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SummaryTable
+            title={t('incomeSummary')}
+            rows={incomeRows}
+            total={totalIncome}
+            currency={currency}
+            locale={locale}
+            emptyMessage={t('noIncomeData')}
+          />
+          <SummaryTable
+            title={t('expenseSummary')}
+            rows={expenseRows}
+            total={totalExpenses}
+            currency={currency}
+            locale={locale}
+            emptyMessage={t('noExpenseData')}
+          />
+        </div>
+      </div>
 
       <div>
         <div className="mb-4 flex items-center gap-2">

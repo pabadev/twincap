@@ -5,3 +5,4 @@ export { DashboardFilterBar, type DashboardFilters, type ScopeFilter, type Perio
 export { PositionCards } from './position-cards';
 export { ReportCard } from './report-card';
 export { DashboardReportsGrid } from './dashboard-reports-grid';
+export { SummaryTable, type SummaryTableRow } from './summary-table';
