@@ -109,7 +109,15 @@
     "netPosition": "Net Worth",
     "noPositionData": "No financial data to display.",
     "viewMonthly": "Monthly",
-    "viewYearly": "Yearly"
+    "viewYearly": "Yearly",
+    "reports": "Reports",
+    "reportMovements": "Movements",
+    "reportTransfers": "Transfers",
+    "reportCreditsReceived": "Credits Received",
+    "reportCreditsGranted": "Credits Granted",
+    "reportPayables": "Payables",
+    "reportSales": "Sales",
+    "removeFilter": "Remove filter"
   },
   "Accounts": {
     "title": "Accounts",

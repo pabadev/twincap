@@ -111,7 +111,7 @@ export function DashboardFilterBar({
               <button
                 onClick={() => updateFilter('scope', 'all')}
                 className="ml-1 inline-flex items-center"
-                aria-label="Remove filter"
+                aria-label={t('removeFilter')}
               >
                 <X size={12} />
               </button>
@@ -123,7 +123,7 @@ export function DashboardFilterBar({
               <button
                 onClick={() => updateFilter('accountId', 'all')}
                 className="ml-1 inline-flex items-center"
-                aria-label="Remove filter"
+                aria-label={t('removeFilter')}
               >
                 <X size={12} />
               </button>
@@ -135,7 +135,7 @@ export function DashboardFilterBar({
               <button
                 onClick={() => updateFilter('categoryId', 'all')}
                 className="ml-1 inline-flex items-center"
-                aria-label="Remove filter"
+                aria-label={t('removeFilter')}
               >
                 <X size={12} />
               </button>
@@ -147,7 +147,7 @@ export function DashboardFilterBar({
               <button
                 onClick={() => updateFilter('period', 'current_month')}
                 className="ml-1 inline-flex items-center"
-                aria-label="Remove filter"
+                aria-label={t('removeFilter')}
               >
                 <X size={12} />
               </button>

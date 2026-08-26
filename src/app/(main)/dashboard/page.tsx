@@ -12,7 +12,6 @@ import { MongoUserRepository } from '../../../infrastructure/repositories/user-r
 import { connectDb } from '../../../infrastructure/db/connection';
 import { DashboardContent } from '../../../components/dashboard/dashboard-content';
 import { computeActivosPasivos } from '../../../core/application/compute-activos-pasivos';
-import { computeYearlyEvolution } from '../../../core/application/compute-yearly-evolution';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,14 +68,6 @@ export default async function DashboardPage() {
     payables,
   });
 
-  const now = new Date();
-  const currentYear = now.getUTCFullYear();
-  const yearlyEvolution = computeYearlyEvolution({
-    movements: allMovements,
-    currency: primaryCurrency,
-    year: currentYear,
-  });
-
   const serializedMovements = allMovements.map((m) => m.toJSON());
   const serializedCategories = categories.map((c) => c.toJSON());
 
@@ -91,7 +82,6 @@ export default async function DashboardPage() {
       userName={userEntity?.name}
       noAccountsMessage={t('noAccounts')}
       noMovementsMessage={t('noMovements')}
-      yearlyData={yearlyEvolution.months}
       positionData={positionData.positions}
     />
   );

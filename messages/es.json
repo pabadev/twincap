@@ -109,7 +109,15 @@
     "netPosition": "Patrimonio",
     "noPositionData": "No hay datos financieros para mostrar.",
     "viewMonthly": "Mensual",
-    "viewYearly": "Anual"
+    "viewYearly": "Anual",
+    "reports": "Reportes",
+    "reportMovements": "Movimientos",
+    "reportTransfers": "Transferencias",
+    "reportCreditsReceived": "Créditos Recibidos",
+    "reportCreditsGranted": "Créditos Otorgados",
+    "reportPayables": "Cuentas por Pagar",
+    "reportSales": "Ventas",
+    "removeFilter": "Eliminar filtro"
   },
   "Accounts": {
     "title": "Cuentas",

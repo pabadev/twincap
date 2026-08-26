@@ -12,6 +12,7 @@ import {
   type SerializedMovement,
 } from './recent-movements';
 import { PositionCards } from './position-cards';
+import { DashboardReportsGrid } from './dashboard-reports-grid';
 import { Card } from '../ui/card';
 import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
@@ -40,7 +41,6 @@ interface DashboardContentProps {
   userName?: string;
   noAccountsMessage: string;
   noMovementsMessage: string;
-  yearlyData: { month: string; income: number; expenses: number }[];
   positionData: Array<{
     currency: string;
     activos: number;
@@ -59,7 +59,6 @@ export function DashboardContent({
   userName,
   noAccountsMessage,
   noMovementsMessage,
-  yearlyData,
   positionData,
 }: DashboardContentProps) {
   const t = useT('Dashboard');
@@ -157,6 +156,11 @@ export function DashboardContent({
     [allMovements, currency],
   );
 
+  const netPosition = useMemo(
+    () => positionData.reduce((sum, p) => sum + p.net, 0),
+    [positionData],
+  );
+
   const chartTitle = chartView === 'monthly' ? undefined : t('yearlyTrend');
   const chartData = chartView === 'monthly' ? monthlyData : computedYearly;
 
@@ -200,10 +204,45 @@ export function DashboardContent({
         currency={currency}
         monthlyIncome={monthlyIncome}
         monthlyExpenses={monthlyExpenses}
+        netPosition={netPosition}
         locale={locale}
       />
 
-      <PositionCards positions={positionData} locale={locale} />
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+          {t('accounts')}
+        </h2>
+
+        {accountBalances.length === 0 ? (
+          <Card>
+            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+              {noAccountsMessage}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {accountBalances.map((account) => (
+              <Card key={account.id} title={account.name}>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                    {account.currency}
+                  </span>
+                  <span className="text-xl font-semibold text-zinc-900 dark:text-white">
+                    {formatAmount(account.balance, account.currency, locale)}
+                  </span>
+                  {account.isFixed && (
+                    <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      {t('fixed')}
+                    </span>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <DashboardReportsGrid />
 
       <div>
         <div className="mb-4 flex items-center gap-2">
@@ -242,39 +281,7 @@ export function DashboardContent({
         </div>
       </div>
 
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('accounts')}
-        </h2>
-
-        {accountBalances.length === 0 ? (
-          <Card>
-            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-              {noAccountsMessage}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {accountBalances.map((account) => (
-              <Card key={account.id} title={account.name}>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                    {account.currency}
-                  </span>
-                  <span className="text-xl font-semibold text-zinc-900 dark:text-white">
-                    {formatAmount(account.balance, account.currency, locale)}
-                  </span>
-                  {account.isFixed && (
-                    <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t('fixed')}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+      <PositionCards positions={positionData} locale={locale} />
     </div>
   );
 }

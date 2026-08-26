@@ -1,4 +1,4 @@
-# TWINCAP — PLAN DE IMPLEMENTACIÓN · RONDA 3
+# TWINCAP — PLAN DE IMPLEMENTACIÓN
 
 > **Este documento es el plan maestro y documento de continuidad del proyecto.**
 >
@@ -6,17 +6,18 @@
 >
 > **Después de una compactación o en una nueva sesión, lo PRIMERO es leer este archivo.**
 >
-> Lineamientos de la ronda actual: `TwinCap Ronda 3.md` (raíz del repositorio) — documento de requerimientos, NO archivo de estado.
+> Lineamientos de la ronda actual: `Ronda4.md` (raíz del repositorio) — documento de requerimientos, NO archivo de estado.
 
 ---
 
-## ESTADO ACTUAL (última actualización: 2026-08-24)
+## ESTADO ACTUAL (última actualización: 2026-08-26)
 
 | Ronda | Estado |
 |-------|--------|
 | Ronda 1 — fases 0–22 | ✅ Completa |
 | Ronda 2 — Auditoría y mejoras | ✅ Completa (Fases 0–10 + post-ronda branding; detalle en git history del doc y `Ronda 2.md`) |
-| **Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional** | ✅ **COMPLETADA (2026-08-25). 12 fases ejecutadas y verificadas. Auditoría final: 0 CRITICAL, 7 MINOR (no bloqueantes). Suite 412/412 tests en 42 archivos, tsc limpio. Fixes de usuario incluidos: sort por fecha, logout confirmation, placeholders "Seleccionar", transición theme suave, badge "Pagado" en créditos.** |
+| Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional | ✅ **COMPLETADA (2026-08-25).** 12 fases ejecutadas y verificadas. Auditoría final: 0 CRITICAL, 7 MINOR (no bloqueantes). Suite 412/412 tests en 42 archivos, tsc limpio. Fixes de usuario incluidos: sort por fecha, logout confirmation, placeholders "Seleccionar", transición theme suave, badge "Pagado" en créditos. |
+| **Ronda 4 — Rediseño y evolución del Dashboard financiero** | 🟡 **EN CURSO — Auditoría Fase A completada.** Fuente: `Ronda4.md`. |
 
 > ⚠️ **REGLA CRÍTICA (heredada de Ronda 2):** la ronda comienza con **AUDITORÍA**, no con implementación.
 > Prohibido escribir código hasta presentar el plan definitivo por fases y recibir aprobación explícita del usuario.
@@ -238,16 +239,272 @@ No implementar nada antes de aprobar este plan y sus compuertas D1–D8 · no cr
 
 ---
 
+# RONDA 4 — REDISEÑO Y EVOLUCIÓN DEL DASHBOARD FINANCIERO
+
+Iniciada: 2026-08-26 · Fuente autoritativa: `Ronda4.md`
+
+## R4.1 — Contexto y objetivos
+
+**Evolutionary redesign** del Dashboard existente, NO una reescritura. Aprovecha las bases de Ronda 3 (filtros composables, Activos/Pasivos por moneda, evolución anual, use cases extraídos) para elevar la experiencia de usuario.
+
+Objetivos principales (del documento fuente):
+
+1. **Jerarquía visual clara**: filtros → indicadores principales → cuentas → resumen ingresos/gastos → reportes.
+2. **Resumen de ingresos y gastos por categoría**: tablas con totalizadores, scroll interno, responsive.
+3. **Menú de reportes**: grid de cards clicables que agrupen reportes existentes.
+4. **Filtros como pieza central**: composables (ámbito/cuenta/categoría/período), todas las métricas dependientes recalculan.
+5. **Movimientos**: orden de columnas corregido (Fecha → Monto → Categoría → Nota → Tipo → Acciones), categoría visible.
+6. **Responsive mejorado**: mobile-first, 2 columnas para métricas/cuentas, sin truncar datos.
+7. **Bug visual**: esquinas de cards de cuentas.
+
+Restricciones heredadas intactas: cada usuario administra exclusivamente sus datos; NO crear módulo Compras; no reescribir TwinCap; arquitectura hexagonal; sin nuevas dependencias UI/gráficos/tablas.
+
+## R4.2 — Estado actual del código (post-Ronda 3)
+
+La Ronda 3 dejó el Dashboard con:
+
+| Capa | Implementación actual |
+|------|----------------------|
+| Filtros | `dashboard-filters.tsx` — scope/cuenta/categoría/periodo, badges removibles, estado React (no URL) |
+| Métricas | 4 cards (Balance, Ingresos, Gastos, Posición financiera) via `compute-dashboard-summary.ts` |
+| Cuentas | Cards de cuentas existentes |
+| Activos/Pasivos | `compute-activos-pasivos.ts` + `position-cards.tsx` — por moneda, sin FX |
+| Evolución | `compute-yearly-evolution.ts` — serie mensual 12 meses |
+| Orquestación | `dashboard-content.tsx` — server+client composition |
+| Gráfico | `monthly-chart.tsx` — barras con track flex corregido en F1 |
+| Movimientos | Tabla existente en `/movements` — orden de columnas actual no coincide con R4 |
+| UI Kit | Card, Table, Button, Icon, EmptyState, Modal, Select, etc. en `src/components/ui/` |
+
+**Pendientes de Ronda 3 relevantes para R4:**
+- A1: Dashboard carga TODOS los movimientos (sin límite/proyección) — latencia degradará con el tiempo. **Pendiente confirmada: verificar si persiste.**
+- A2: Cross-currency excluye silenciosamente monedas ≠ primera cuenta. **Ya mitigado parcialmente por D4 (agrupación por moneda en Activos/Pasivos), pero puede persistir en métricas principales.**
+
+## R4.3 — Reglas inquebrantables (heredadas + nuevas de R4)
+
+### De Ronda 3 / AGENTS.md (todas vigentes)
+- Arquitectura hexagonal intacta
+- `connectDb()` antes de repositories
+- Multi-tenancy verificado en backend
+- i18n es/en paridad, español neutro
+- Principios financieros (transferencia ≠ ingreso/gasto, saldo ≠ resultado, etc.)
+- Máximo UNA dependencia nueva por fase (justificada)
+- Sin hook GGA
+- Fechas: sin offsets ±1 día sin causa raíz
+- pnpm exclusivo
+- Sin window.location.reload()
+
+### Nuevas de R4 (del documento fuente)
+- **No volver a introducir `Account.scope`** — Movement.context es la fuente de Personal/Negocio (decisión D3-bis de R3)
+- **No cambiar la semántica de Activos/Pasivos** — independientes de filtros de actividad (estado R3)
+- **No inventar columnas** en las tablas de resumen: 4 columnas máximo, justificadas por utilidad
+- **No mostrar todos los reportes simultáneamente** — menú de acceso, no listado completo
+- **No convertir monedas** — agrupar por moneda de forma honesta
+- **No contar transferencias como ingreso/gasto** — conservar exclusión de F1
+- **Conservar saludo, filtros, Activos/Pasivos, evolución anual, cards, balances, dark mode, i18n, responsive, loading/empty/error states, accesibilidad, navegación, seguridad**
+
+## R4.4 — Plan por fases (propuesta — REQUIERE APROBACIÓN)
+
+| Fase | Contenido | Dependencias | Criterios de aceptación clave |
+|------|-----------|--------------|-------------------------------|
+| **A** | **Auditoría y preparación** — Solo inspección. Inspeccionar implementación actual del Dashboard (componentes, server/client, datos, filtros, agregaciones, métricas, Activos/Pasivos, gráfico, rutas de reportes, tabla Movimientos, Card de cuentas, formatters, i18n, pendientes R3 relevantes, problema de carga completa, cross-currency, categorías sintéticas, regresiones). No modificar código. | — | Mapa completo del estado actual del Dashboard; identificación de componentes reutilizables vs. nuevos necesarios; verificación de A1 y A2 |
+| **B** | **Rediseño estructural del Dashboard** — Jerarquía visual (filtros → 4 indicadores → cards cuentas → grid reportes). Rediseño de 4 métricas principales: 1 fila desktop, 2 columnas mobile. Fix esquinas redondeadas en cards de cuentas. Grid de reportes clicables (iconos Lucide + texto + navegación). i18n para nuevos textos. | A | 4 métricas en fila desktop / 2 cols mobile; esquinas de cuentas correctas; grid de reportes con hover/focus/accessibilidad; dark/light; cero textos hardcodeados |
+| **C** | **Resumen de ingresos y gastos** — Dos tablas (Ingresos / Gastos) con 4 columnas justificadas. Agregación por categoría respetando filtros composables y reglas financieras. Totalizadores fijos (header + footer siempre visibles, cuerpo scrolleable). Responsive: desktop lado a lado, móvil apilado. Multi-moneda agrupada. | A, B | Tablas muestran categorías y valores correctos; totalizadores = suma de filas; scroll interno funciona; responsive 375/768/1280; filtros recalculan todo; transferencias excluidas; monedas no mezcladas |
+| **D** | **Integración y comportamiento de filtros** — Asegurar que todas las tablas y métricas filtrables respondan correctamente a filtros combinados. Verificar multi-moneda en métricas principales. Verificar rendimiento (A1). Revisar estado de A2 (cross-currency). | B, C | Filtros combinados (ámbito+cuenta+categoría+período) recalculan métricas Y tablas; totales = sum(filtrado); sin explosión de estados; rendimiento aceptable; multi-moneda honesta |
+| **E** | **Movimientos responsive** — Orden de columnas: Fecha → Monto → Categoría → Nota → Tipo → Acciones. Categoría visible correctamente (reales + sintéticas + i18n). Mobile: Fecha/Monto primero, scroll horizontal como fallback sin ser solución exclusiva. Responsive 375/768/1280. | A | Orden correcto de columnas; categoría visible sin IDs/claves crudos; mobile legible; sin truncar montos; acciones accesibles |
+| **F** | **QA final** — i18n paridad es/en; dark/light completo; responsive 375/768/1280; accesibilidad (keyboard, focus, aria, contraste); tests de agregaciones nuevas; typecheck; lint; build. | B–E | `pnpm test` + `pnpm lint` + `pnpm exec tsc --noEmit` + `pnpm build` verdes; 0 textos hardcodeados; parity i18n verificada; ambos temas funcionales; responsive verificado |
+
+**Nota:** La división definitiva puede cambiar después de la auditoría Fase A.
+
+### Dependencias entre fases
+
+```
+A ──┬──► B ──┬──► D
+    │        │
+    └──► C ──┘
+              │
+              └──► E (depende solo de A para entender Movimientos)
+                        │
+                        └──► F (todas las anteriores deben estar completas)
+```
+
+## R4.5 — Criterios de aceptación funcionales (del documento fuente)
+
+La Ronda 4 se considera completa cuando:
+
+### Dashboard principal
+- [ ] La información principal aparece inmediatamente al entrar
+- [ ] 4 métricas en 1 fila (desktop) / 2 columnas (mobile)
+- [ ] Cards de cuentas con distribución legible
+- [ ] Esquinas de cards de cuentas correctamente redondeadas
+- [ ] Resumen de ingresos existe y muestra categorías + valores
+- [ ] Resumen de gastos existe y muestra categorías + valores
+- [ ] Totalizadores siempre visibles (header + footer)
+- [ ] Cuerpo de tablas scrolleable, header/footer fijos
+
+### Filtros
+- [ ] Filtros combinables: Ámbito + Cuenta + Categoría + Período
+- [ ] Análisis Personal vs Negocio posible
+- [ ] Filtrado por cuenta, categoría, período
+- [ ] Totales cambian al aplicar filtros (nunca total global con filas filtradas)
+- [ ] No se cuentan transferencias como ingresos/gastos
+- [ ] No se mezclan monedas incorrectamente
+- [ ] Activos/Pasivos independientes de filtros de actividad (conservar semántica R3)
+
+### Reportes
+- [ ] Reportes secundarios agrupados en grid de cards clicables
+- [ ] Cada card: icono Lucide + texto + navegación + hover/focus + dark/light
+- [ ] Reportes existentes siguen funcionando
+
+### Movimientos
+- [ ] Orden: Fecha → Monto → Categoría → Nota → Tipo → Acciones
+- [ ] Categoría visible (reales + sintéticas + i18n)
+- [ ] En móvil: Fecha/Monto primero
+- [ ] Sin montos truncados, sin textos críticos truncados
+
+### Transversal
+- [ ] Sin `COP COP` ni formatos monetarios duplicados
+- [ ] Sin textos nuevos hardcodeados
+- [ ] ES y EN con paridad
+- [ ] Dark/light funcionan correctamente
+- [ ] Tenant isolation intacto
+- [ ] Tests pasan
+- [ ] TypeScript pasa
+- [ ] ESLint pasa
+- [ ] Build pasa
+
+## R4.6 — Restricciones explícitas
+
+NO:
+- reescribir TwinCap
+- cambiar Next.js / React / Tailwind / Mongoose
+- cambiar arquitectura
+- instalar librerías de UI / gráficos / tablas
+- crear módulo Compras
+- crear equipos/colaboradores/roles
+- inventar FX
+- volver a mover Personal/Negocio a `Account.scope`
+- eliminar filtros existentes
+- eliminar Activos/Pasivos
+- eliminar evolución anual
+- contar transferencias como ingresos/gastos
+- hardcodear textos
+- usar `window.location.reload()` como solución
+- crear soluciones duplicadas para problemas que ya tienen componentes reutilizables
+- sacrificar accesibilidad por estética
+- sacrificar legibilidad por conseguir un número determinado de columnas
+- ocultar información importante en móvil
+- modificar las reglas financieras establecidas
+
+## R4.7 — Testing requerido
+
+Toda lógica nueva de agregación debe tener tests:
+
+- **Ingresos por categoría**: múltiples movimientos, categorías diferentes, filtro período, filtro Personal, filtro Negocio, filtro cuenta, combinación de filtros, ausencia de resultados.
+- **Gastos por categoría**: mismos escenarios.
+- **Totales**: `sum(filas) === totalFooter`.
+- **Transferencias**: verificar que NO aparecen como ingresos/gastos.
+- **Multi-moneda**: verificar que no se mezclan monedas.
+- **Filtros combinados**: Negocio + cuenta X + categoría Y + rango de fechas.
+- **Responsive**: verificación manual/automatizada en 375px, 768px, 1280px.
+
+## R4.8 — Regla sobre Ronda 3
+
+La Ronda 3 está cerrada. No tratar sus documentos como fases pendientes de re-ejecutar. Usar `AUDIT-AND-PLAN.md` como contexto histórico y fuente de decisiones ya tomadas.
+
+Si se encuentra un comportamiento que contradice lo documentado como completado en R3, primero determinar si:
+1. el código actual cambió después de la documentación
+2. existe una regresión
+3. el comportamiento documentado ya no corresponde al producto
+4. o se está interpretando incorrectamente la implementación
+
+No rehacer fases de R3 automáticamente. Los pendientes históricos solo se incorporan cuando sigan siendo relevantes para el alcance de R4.
+
+## R4.9 — Auditoría Fase A: hallazgos de inspección (2026-08-26)
+
+### Inventario de archivos del Dashboard
+
+| Archivo | Descripción |
+|---------|-------------|
+| `src/app/(main)/dashboard/page.tsx` | Server component: auth, DB, fetching de TODOS los datos, serialización |
+| `src/app/(main)/dashboard/loading.tsx` | Skeleton placeholder (4 cards, chart, 3 account cards) |
+| `src/components/dashboard/dashboard-content.tsx` | Client orchestrator: estado de filtros, derivación vía useMemo |
+| `src/components/dashboard/dashboard-filters.tsx` | 4 filtros: scope, account, category, period (con badges) |
+| `src/components/dashboard/summary-cards.tsx` | 3 métricas: Balance Total, Ingresos Mes, Gastos Mes |
+| `src/components/dashboard/position-cards.tsx` | Activos/Pasivos/Net por moneda (server-computed) |
+| `src/components/dashboard/monthly-chart.tsx` | CSS bar chart: 6 meses ingreso vs gasto |
+| `src/components/dashboard/recent-movements.tsx` | Últimos 5 movimientos filtrados |
+| `src/components/dashboard/index.ts` | Barrel re-exports |
+
+**Nota:** NO existe `account-cards.tsx` separado — las cards de cuentas se renderizan inline en `dashboard-content.tsx:257-276`.
+
+### Flujo de datos
+
+```
+page.tsx (SERVER)                           dashboard-content.tsx (CLIENT)
+─────────────────                           ─────────────────────────────
+1. getCurrentUser()                         State: filters, chartView
+2. connectDb()
+3. Promise.all([                            Props recibidos:
+   userRepo.findById(),                       accounts, movements (TODOS), categories,
+   listAccounts()])                           primaryCurrency, locale, labels,
+4. Promise.all([                              yearlyData, positionData
+   balances,                                → useMemo: filter logic
+   movementRepo.findByUserId() SIN LÍMITE,  → useMemo: accountBalances by filter
+   categoryRepo.findByUserId(),             → useMemo: computeDashboardSummary
+   creditReceivedRepo.findByUserId(),       → useMemo: computeYearlyEvolution
+   creditGrantedRepo.findByUserId(),
+   payableRepo.findByUserId()])
+5. computeActivosPasivos() → positionData
+6. computeYearlyEvolution() → yearlyData (MUERTO: cliente ignora y recalcula)
+7. Serializar → DashboardContent
+```
+
+### Hallazgos clave
+
+| ID | Hallazgo | Severidad | evidencia |
+|----|----------|:---------:|-----------|
+| R4-A1 | Dashboard carga TODOS los movimientos sin límite/proyección — `findByUserId` sin restricción. Serializa todos como props React. Filtrado client-side en useMemo. | 🔴 | `page.tsx:47`, `movement-repository.ts:31-46`, `dashboard-content.tsx:80,97-120` |
+| R4-A2 | Summary cards usan UNA moneda (`accounts[0].currency`). Total balance mezcla monedas. Solo Position Cards agrupa correctamente. Ingresos/gastos en otras monedas = $0 silencioso. | 🔴 | `summary-cards.tsx:10`, `page.tsx:62-63`, `computeDashboardSummary:67`, `totalBalance:137-140` |
+| R4-A3 | NO existe `src/components/ui/table.tsx`. Tabla Movimientos es HTML hand-rolled. Tablas de resumen requieren header fijo + footer fijo + body scrolleable. | 🟡 | `src/components/ui/` — sin table.tsx |
+| R4-A4 | Bug visual Card: outer `rounded-lg` + inner header `bg-surface-header` sin `rounded-t-lg` → esquinas cuadradas visibles. | 🟡 | `card.tsx:10-27` |
+| R4-A5 | `yearlyData` calculado en servidor, serializado, pero cliente lo ignora y recalcula en useMemo. Trabajo duplicado. | 🟡 | `page.tsx` vs `dashboard-content.tsx:151-158` |
+| R4-A6 | `computeYearlyEvolution` en cliente usa SIEMPRE `allMovements`, ignora filtros. | 🟡 | `dashboard-content.tsx:154` |
+| R4-A7 | NO existen rutas de reportes dedicados. Grid de reportes será nueva navegación. | 📋 | `nav.tsx` — sin `/reports` |
+| R4-A8 | Columna Categoría NO visible en tabla Movimientos. Orden actual: Fecha → Tipo → Nota → Monto → Acciones. | 📋 | `movements-list.tsx:148-162` |
+| R4-A9 | `aria-label="Remove filter"` hardcodeado en inglés (no i18n). | 📋 | `dashboard-filters.tsx:115` |
+| R4-A10 | Key `pendingCredits` en i18n pero nunca usada en dashboard. | 📋 | `messages/es.json`, `messages/en.json` |
+
+### Componentes UI disponibles
+
+`Card`, `Button`, `Badge`, `Modal`, `Select`, `SearchableSelect`, `Input`, `PasswordInput`, `EmptyState`, `Skeleton`, `Icon`, `ActionIconButton`, `ConfirmDialog`, `EntityDeleteButton`, `Toast`, `Logo`. **Faltan: Table, Tabs, Tooltip.**
+
+### Rutas existentes (candidatas a grid de reportes)
+
+`/accounts`, `/categories`, `/movements`, `/transfers`, `/credits/received`, `/credits/granted`, `/payables`, `/clients`, `/pos/catalog`, `/pos/sales`, `/profile`.
+
+### Plan ajustado Fases B–F (post-auditoría)
+
+| Fase | Ajuste post-auditoría | Riesgo |
+|------|----------------------|--------|
+| **B** | Crear `Table` UI component (header fijo + footer fijo + body scrolleable). Fix Card border-radius. Reordenar jerarquía. Grid de reportes con rutas existentes. 4 métricas → 1 fila desktop/2 cols mobile. | Medio: Table component es nuevo; Card fix afecta todo el app |
+| **C** | Dos tablas resumen (Ingresos/Gastos) usando el nuevo Table. Nuevas agregaciones en use cases. Totalizadores reactivos a filtros. | Medio: nueva lógica de agregación + tests |
+| **D** | Corregir filtros para que afecten TODAS las métricas (incluido yearly evolution). Fix cross-currency (agrupar por moneda en summary cards o indicador claro). Resolver A1 parcialmente (agregaciones server-side para summary). | Alto: cambio en pipeline de datos server→client |
+| **E** | Reordenar columnas Movements. Agregar columna Categoría. Fix mobile UX. | Bajo: cambios en un componente aislado |
+| **F** | QA transversal. i18n (aria-label fix, nuevas keys). Tests de agregaciones. Typecheck/lint/build. | Bajo |
+
+---
+
 ## PROTOCOLO POST-COMPACTACIÓN
 
 Si el contexto se compacta o inicia nueva sesión:
 
 1. **Leer este archivo completo** (`docs/AUDIT-AND-PLAN.md`)
 2. **Leer `AGENTS.md`**
-3. **Buscar en Engram:** `mem_search(query: "TwinCap ronda 3", project: "globalmoney")`
-4. **Identificar la fase actual** comparando el último commit con la tabla R3.12 y la BITÁCORA
-5. **Continuar desde la fase pendiente**, respetando el protocolo R3.13 (detenerse y esperar aprobación al terminar cada fase)
-6. Recordar: si el estado es "plan sin aprobar", NO implementar nada; las decisiones D1–D8 aprobadas quedarán anotadas en la BITÁCORA
+3. **Leer `Ronda4.md`** (requerimientos de la ronda actual)
+4. **Buscar en Engram:** `mem_search(query: "TwinCap ronda 4", project: "globalmoney")`
+5. **Identificar la fase actual** comparando el último commit con la tabla R4.4 y la BITÁCORA
+6. **Continuar desde la fase pendiente**, respetando el protocolo de implementación por fase (detenerse y esperar aprobación al terminar cada fase)
+7. Recordar: si el estado es "plan sin aprobar", NO implementar nada
 
 ---
 
@@ -262,6 +519,8 @@ Si el contexto se compacta o inicia nueva sesión:
 - 2026-08-25 — **FASE 12 COMPLETADA** — Cierre de Ronda 3. Auditoría transversal §6: 0 CRITICAL, 7 MINOR (no bloqueantes). (1) Arquitectura: hexagonal verified, 2 minor imports core→infra in auth; (2) Seguridad: tenant isolation, JWE, bcrypt, env validation — all green; (3) i18n: 21 namespaces, paridad es/en, sin voseo; (4) Responsive: 375/768/1280 verified; (5) Accesibilidad: aria-labels, focus, Escape, contrast — all green; (6) Testing: 412/412 tests, 42 archivos; (7) tsc limpio. Fixes de usuario incluidos en la ronda: sort por fecha de movimiento, logout confirmation, select placeholders "Seleccionar", transición theme suave 0.3s, badge "Pagado" en créditos pagados, payables mobile column fix. **RONDA 3 CERRADA.**
 - 2026-08-25 — **FIXES DE USUARIO** (`a7ce152`, 16 archivos). Mejoras solicitadas directamente: (1) Sort por fecha de movimiento en vez de createdAt; (2) ConfirmDialog en logout del sidebar; (3) Payables mobile: min-w-[140px] en columna acreedor; (4) 9 forms con placeholder "Seleccionar" para prevenir submits accidentales; (5) Transición CSS suave 0.3s al cambiar tema (clase añadida post-render para evitar FOUC); (6) Créditos pagados: opacity-60 + badge verde "Pagado"/"Paid".
 - 2026-08-25 — **FASE 11 COMPLETADA** (`f962775`, 10 archivos). PWA final (HR3-22/23, A16, D7): (1) 6 iconos regenerados desde `isotipo_twincap_ok.png` transparente con fondo oscuro `#0f172a` (slate-900) — icon-192/512 normales (65% content), icon-maskable-192/512 (74% safe area), apple-touch-icon 180×180, favicon-32; (2) `manifest.json`: `background_color` y `theme_color` → `#0f172a` (antes `#ffffff`/`#6366f1`); (3) `layout.tsx`: meta `theme-color` → `#0f172a`; (4) SW cache bump `v5→v6` para invalidar iconos cached; (5) `splash_screens/icon.png` regenerado con mismo fondo. Sin flash blanco en launchers oscuros. Splash screens de dispositivo (44 variantes iOS) regeneradas por el usuario externamente.
+- 2026-08-26 — **INICIO RONDA 4** — Rediseño y evolución del Dashboard financiero (fuente: `Ronda4.md`). Plan maestro actualizado. Documento: este archivo. **FASE A completada:** auditoría de solo inspección del Dashboard actual. Hallazgos: A1 persiste (carga completa sin límite), A2 persiste (exclusiones silenciosas cross-currency en summary cards), sin componente Table UI (hand-rolled HTML), bug Card border-radius (inner header sin radius), dead prop yearlyData, yearly chart ignora filtros, sin rutas de reportes, columna categoría ausente en Movements, 1 aria-label hardcodeado inglés. Plan ajustado: 6 fases (A–F) con dependencias documentadas.
+- 2026-08-26 — **FASE B COMPLETADA** — Rediseño estructural del Dashboard (10 archivos, 2 nuevos). (1) Card fix: `overflow-hidden` en wrapper soluciona bug de border-radius del header; (2) SummaryCards: 4 métricas (Balance, Ingresos, Gastos, Patrimonio) en `grid-cols-2 lg:grid-cols-4`; (3) DashboardContent: jerarquía reordenada (filtros → indicators → accounts → reports grid → chart → position), prop `yearlyData` eliminada (dead), `netPosition` derivado de `positionData`; (4) ReportCard + DashboardReportsGrid: grid de 6 reportes clicables (Movimientos, Transferencias, Créditos Recibidos/Otorgados, Payables, Ventas) con icons Lucide, hover/focus/a11y; (5) i18n: 8 keys nuevas en es/en (reports + report* + removeFilter); (6) dashboard-filters: 4× aria-label i18n; (7) page.tsx: limpieza de imports muertos. Suite 412/412, tsc limpio. **Esperando aviso para FASE C.**
 - 2026-08-25 — **FASE 10 COMPLETADA** (`9e5eab8`, 14 archivos). Perfil de usuario mínimo (D5, HR3-21): (1) Entidad User: campos `name?`/`locale?` agregados (backward-compatible, `toJSON()` incluido); (2) Mongoose model + mapper actualizados; (3) Página `/profile` con 2 Cards: info personal (nombre, email disabled, Select idioma) y cambio contraseña (actual + nueva + confirmar, bcrypt verify); (4) Server actions: `updateProfileAction` (name+locale), `changePasswordAction` (bcrypt compare → hash → update); (5) Dashboard saludo personalizado "Bienvenido, {name}" cuando tiene nombre; (6) Nav sidebar: link "Mi perfil" con icono User en sección inferior; (7) i18n namespace Profile en es/en. 412/412 tests (5 nuevos), tsc limpio.
 - 2026-08-25 — **FASE 9 COMPLETADA** (commits `14c76d5` + `fddf567`, 34 archivos, +194/−76). Tema claro/oscuro completo (D6, HR3-20, A15): (1) CSS foundation — `@media (prefers-color-scheme: dark)` → class-based `.dark` via `@custom-variant dark (&:where(.dark, .dark *))`; `color-scheme: light dark` en `:root` para formularios nativos; (2) Anti-flash script inline en `<head>` lee `localStorage('twincap-theme')` antes del paint; `suppressHydrationWarning` en `<html>`; (3) `ThemeProvider` (React context) con 3 modos `light|dark|system`, persistencia localStorage, listener OS media query; (4) Theme toggle Sun/Moon en nav sidebar (auth + guest) — 3-state cycle; (5) Surface tokens: `--tc-surface-{bg,card,border,muted,input,overlay}` con valores light/dark; (6) Token unificación: Button primary `bg-indigo-600→bg-primary`, Toast info `bg-indigo-600→bg-info`, focus rings `ring-indigo-500→ring-primary` en input/select/password-input/searchable-select/action-icon-button; FAB `bg-indigo-600→bg-primary`; nav active `bg-indigo-50 text-indigo-700→bg-primary/10 text-primary`; (7) UI kit dark: pairs → surface tokens (card, input, select, modal, badge, skeleton, empty-state); (8) Toast warning contrast `text-white→text-zinc-900` (WCAG); (9) Migración completa de 18 componentes de página (listas, edit forms, auth, landing) — solo hero.tsx gradient intencional y `hover:bg-indigo-50` en button inverse retenidos. Suite 407/407, tsc limpio. **Fase 9 = HR3-20 completada.**
 - 2026-08-25 — **FASE 8 COMPLETADA** (`3693d55`, 20 archivos, +144/−111). Branding, landing y navegación (HR3-17/18/19, A5/A6/A10): (1) Hero — `<h1>TwinCap</h1>` hardcodeado reemplazado por `{t('heroTitle')}` (i18n); variante `inverse` agregada a Button (elimina className overrides `bg-white text-indigo-700` en hero); (2) 14 CTAs hand-rolled `bg-indigo-600 px-4 py-2...` reemplazados por `<Button variant="primary" size="sm">` en 14 archivos (accounts, categories, clients, movements, transfers, credits×2, payables, catalog, sales, nav guest login, edit-abono×3); (3) EmptyState adoption en accounts y categories pages (antes hand-rollaban markup idéntico al componente); (4) Sidebar agrupada: NAV_ITEMS plano → NAV_GROUPS con 4 secciones (General/Finanzas/Crédito/Negocio) + section headers `text-xs font-semibold uppercase`; (5) Close button explícito en drawer móvil (`<X>` icon, z-50, `lg:hidden`); (6) i18n: heroTitle + 4 nav group keys en en/es. Suite 407/407, tsc limpio. **Esperando aviso explícito para FASE 9.**
