@@ -19,6 +19,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
     null,
   );
   const t = useT('Payables');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
@@ -79,6 +80,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
         label={t('accountId')}
         required
         disabled={isPending}
+        placeholder={tCommon('select')}
         options={accounts.map((a) => ({
           value: a.id,
           label: `${a.name} (${a.currency})`,

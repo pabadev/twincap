@@ -19,7 +19,9 @@
     "dismiss": "Dismiss",
     "notifications": "Notifications",
     "switchLang": "Switch to Spanish",
-    "noResults": "No results found with these filters"
+    "noResults": "No results found with these filters",
+    "select": "Select",
+    "paid": "Paid"
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -36,7 +38,10 @@
     "exit": "Log out",
     "login": "Sign In",
     "register": "Register",
-    "profile": "My profile"
+    "profile": "My profile",
+    "confirmTitle": "Log out?",
+    "confirmDescription": "Are you sure you want to log out?",
+    "confirmYes": "Log out"
   },
   "Profile": {
     "title": "My profile",

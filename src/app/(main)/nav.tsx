@@ -10,6 +10,7 @@ import { Languages, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
 import { Button } from '../../components/ui/button';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 
 const NAV_ITEMS = [
   { href: '/dashboard', key: 'dashboard' },
@@ -32,6 +33,7 @@ type NavItem = (typeof NAV_ITEMS)[number];
 
 export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
   const [open, setOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const router = useRouter();
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
@@ -197,15 +199,14 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                     <Languages className="h-4 w-4" />
                     <span>{locale === 'es' ? 'EN' : 'ES'}</span>
                   </button>
-                  <form action={logoutAction} className="flex-1">
-                    <button
-                      type="submit"
-                      className="flex h-9 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span>{t('exit')}</span>
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>{t('exit')}</span>
+                  </button>
                 </div>
               </div>
             </>
@@ -252,6 +253,19 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
           )}
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logoutAction();
+        }}
+        title={t('confirmTitle')}
+        description={t('confirmDescription')}
+        confirmLabel={t('confirmYes')}
+        cancelLabel={tCommon('cancel')}
+      />
     </>
   );
 }

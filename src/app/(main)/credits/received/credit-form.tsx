@@ -19,6 +19,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
     null,
   );
   const t = useT('CreditsReceived');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
@@ -79,6 +80,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
         label={t('accountId')}
         required
         disabled={isPending}
+        placeholder={tCommon('select')}
         options={accounts.map((a) => ({
           value: a.id,
           label: `${a.name} (${a.currency})`,

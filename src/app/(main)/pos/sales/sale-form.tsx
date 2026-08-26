@@ -148,6 +148,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           label={t('account')}
           required
           disabled={isPending}
+          placeholder={tCommon('select')}
           options={accounts.map((a) => ({
             value: a.id,
             label: a.name,
@@ -238,6 +239,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                   value={li.itemId}
                   onChange={(e) => handleItemSelect(idx, e.target.value)}
                   disabled={isPending}
+                  placeholder={tCommon('select')}
                   options={catalogItems.map((item) => ({
                     value: item.id,
                     label: `${item.name} (${tCatalog(`type_${item.type}`)})`,

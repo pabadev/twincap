@@ -19,7 +19,9 @@
     "dismiss": "Cerrar",
     "notifications": "Notificaciones",
     "switchLang": "Cambiar a inglés",
-    "noResults": "No se encontraron resultados con estos filtros"
+    "noResults": "No se encontraron resultados con estos filtros",
+    "select": "Seleccionar",
+    "paid": "Pagado"
   },
   "Nav": {
     "dashboard": "Inicio",
@@ -36,7 +38,10 @@
     "exit": "Salir",
     "login": "Iniciar sesión",
     "register": "Registrarse",
-    "profile": "Mi perfil"
+    "profile": "Mi perfil",
+    "confirmTitle": "¿Cerrar sesión?",
+    "confirmDescription": "¿Estás seguro de que quieres cerrar sesión?",
+    "confirmYes": "Cerrar sesión"
   },
   "Profile": {
     "title": "Mi perfil",

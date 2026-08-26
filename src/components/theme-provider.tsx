@@ -35,6 +35,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const resolved = resolveTheme(initial);
     setThemeState(resolved);
     applyClass(resolved);
+    // Enable smooth transitions after initial paint (avoids anti-flash interference)
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add('theme-transition');
+    });
   }, []);
 
   // Listen for OS changes when in system mode

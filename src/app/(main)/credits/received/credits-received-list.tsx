@@ -17,6 +17,7 @@ import { EmptyState } from '../../../../components/ui/empty-state';
 import { Modal } from '../../../../components/ui/modal';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { Button } from '../../../../components/ui/button';
+import { Badge } from '../../../../components/ui/badge';
 import { Select } from '../../../../components/ui/select';
 import { ChevronDown, CreditCard, Pencil } from 'lucide-react';
 
@@ -147,19 +148,21 @@ export function CreditsReceivedList({
             const isExpanded = expandedId === credit.id;
             const pending = credit.pending;
             const currency = credit.principal.currency;
+            const isPaid = pending <= 0;
 
             return (
               <div
                 key={credit.id}
-                className="overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
+                className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? 'opacity-60' : ''}`}
               >
                 <div
                   className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                   onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-zinc-900 dark:text-white">
+                    <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
                       {credit.counterparty}
+                      {isPaid && <Badge variant="success">{tCommon('paid')}</Badge>}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       {formatDate(credit.date, locale)}

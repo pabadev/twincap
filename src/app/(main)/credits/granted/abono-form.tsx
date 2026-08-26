@@ -28,6 +28,7 @@ export function AbonoForm({
     null,
   );
   const t = useT('CreditsGranted');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const locale = useLocale();
   const { addToast } = useToast();
@@ -75,6 +76,7 @@ export function AbonoForm({
           label={t('account')}
           required
           disabled={isPending}
+          placeholder={tCommon('select')}
           options={accounts.map((a) => ({
             value: a.id,
             label: a.name,

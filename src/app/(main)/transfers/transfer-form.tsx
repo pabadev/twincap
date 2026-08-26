@@ -17,6 +17,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
     null,
   );
   const t = useT('Transfers');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
@@ -47,6 +48,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
         label={t('fromAccount')}
         required
         disabled={isPending}
+        placeholder={tCommon('select')}
         onChange={(e) => {
           const acc = accounts.find((a) => a.id === e.target.value);
           if (acc) setSourceCurrency(acc.currency);
@@ -63,6 +65,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
         label={t('toAccount')}
         required
         disabled={isPending}
+        placeholder={tCommon('select')}
         onChange={(e) => {
           const acc = accounts.find((a) => a.id === e.target.value);
           if (acc) setDestCurrency(acc.currency);

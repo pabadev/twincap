@@ -144,7 +144,7 @@ export function PayablesList({
             </p>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-x-auto">
             {filtered.map((payable) => {
             const isExpanded = expandedId === payable.id;
             const pending = payable.pending;
@@ -159,7 +159,7 @@ export function PayablesList({
                   className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                   onClick={() => setExpandedId(isExpanded ? null : payable.id)}
                 >
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-[140px]">
                     <div className="truncate font-medium text-zinc-900 dark:text-white">
                       {payable.counterparty}
                     </div>
