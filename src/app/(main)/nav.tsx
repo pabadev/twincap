@@ -6,27 +6,28 @@ import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
-import { Languages, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, User, X, LayoutDashboard, Tag, List, ArrowLeftRight, CreditCard, Landmark, Receipt, Users, Package, ShoppingCart } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
+import { Icon } from '../../components/ui/icon';
 import { Button } from '../../components/ui/button';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', key: 'dashboard' },
+  { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard, color: 'text-primary' },
   'separator',
-  { href: '/accounts', key: 'accounts' },
-  { href: '/categories', key: 'categories' },
-  { href: '/movements', key: 'movements' },
-  { href: '/transfers', key: 'transfers' },
+  { href: '/accounts', key: 'accounts', icon: Landmark, color: 'text-info' },
+  { href: '/categories', key: 'categories', icon: Tag, color: 'text-brand-gold' },
+  { href: '/movements', key: 'movements', icon: List, color: 'text-zinc-600 dark:text-zinc-400' },
+  { href: '/transfers', key: 'transfers', icon: ArrowLeftRight, color: 'text-primary' },
   'separator',
-  { href: '/credits/received', key: 'creditsReceived' },
-  { href: '/credits/granted', key: 'creditsGranted' },
-  { href: '/payables', key: 'payables' },
+  { href: '/credits/received', key: 'creditsReceived', icon: CreditCard, color: 'text-income' },
+  { href: '/credits/granted', key: 'creditsGranted', icon: Landmark, color: 'text-expense' },
+  { href: '/payables', key: 'payables', icon: Receipt, color: 'text-warning' },
   'separator',
-  { href: '/clients', key: 'clients' },
-  { href: '/pos/catalog', key: 'posCatalog' },
-  { href: '/pos/sales', key: 'posSales' },
+  { href: '/clients', key: 'clients', icon: Users, color: 'text-info' },
+  { href: '/pos/catalog', key: 'posCatalog', icon: Package, color: 'text-brand-gold' },
+  { href: '/pos/sales', key: 'posSales', icon: ShoppingCart, color: 'text-income' },
 ] as const;
 
 type NavItem = (typeof NAV_ITEMS)[number];
@@ -152,12 +153,13 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                           ref={index === 0 ? firstLinkRef : undefined}
                           onClick={() => setOpen(false)}
                           aria-current={isActive ? 'page' : undefined}
-                          className={`block rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors lg:py-1.5 ${
+                          className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors lg:py-1.5 ${
                             isActive
                               ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                               : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
                           }`}
                         >
+                          <Icon icon={item.icon} size="sm" className={isActive ? '' : item.color} />
                           {t(item.key)}
                         </Link>
                       </li>

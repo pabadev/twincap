@@ -8,12 +8,12 @@ export function DashboardReportsGrid() {
   const t = useT('Dashboard');
 
   const reports = [
-    { href: '/movements', icon: List, label: t('reportMovements') },
-    { href: '/transfers', icon: ArrowLeftRight, label: t('reportTransfers') },
-    { href: '/credits/received', icon: CreditCard, label: t('reportCreditsReceived') },
-    { href: '/credits/granted', icon: Landmark, label: t('reportCreditsGranted') },
-    { href: '/payables', icon: Receipt, label: t('reportPayables') },
-    { href: '/pos/sales', icon: ShoppingCart, label: t('reportSales') },
+    { href: '/movements', icon: List, label: t('reportMovements'), color: 'text-zinc-600 dark:text-zinc-400' },
+    { href: '/transfers', icon: ArrowLeftRight, label: t('reportTransfers'), color: 'text-primary' },
+    { href: '/credits/received', icon: CreditCard, label: t('reportCreditsReceived'), color: 'text-income' },
+    { href: '/credits/granted', icon: Landmark, label: t('reportCreditsGranted'), color: 'text-expense' },
+    { href: '/payables', icon: Receipt, label: t('reportPayables'), color: 'text-warning' },
+    { href: '/pos/sales', icon: ShoppingCart, label: t('reportSales'), color: 'text-income' },
   ];
 
   return (

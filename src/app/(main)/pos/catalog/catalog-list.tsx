@@ -10,6 +10,7 @@ import { EmptyState } from '../../../../components/ui/empty-state';
 import { Icon } from '../../../../components/ui/icon';
 import { Modal } from '../../../../components/ui/modal';
 import { Button } from '../../../../components/ui/button';
+import { BackButton } from '../../../../components/ui/back-button';
 import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { Package, Pencil, Search } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <BackButton />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}

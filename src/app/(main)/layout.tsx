@@ -19,7 +19,7 @@ export default async function MainLayout({
       <MainNav isLoggedIn={true} email={user.email ?? user.userId} />
       <ToastProvider>
         <GlobalMovementProvider>
-          <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">{children}</main>
+          <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8 max-w-screen-2xl mx-auto">{children}</main>
         </GlobalMovementProvider>
       </ToastProvider>
     </div>

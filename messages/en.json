@@ -21,10 +21,11 @@
     "switchLang": "Switch to Spanish",
     "noResults": "No results found with these filters",
     "select": "Select",
-    "paid": "Paid"
+    "paid": "Paid",
+    "back": "Back"
   },
   "Nav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Reports",
     "accounts": "Accounts",
     "categories": "Categories",
     "movements": "Movements",

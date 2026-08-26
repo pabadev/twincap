@@ -5,6 +5,7 @@ import { listClients } from '../../../core/application/clients';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { BackButton } from '../../../components/ui/back-button';
 import { ClientsPageClient } from './clients-page-client';
 import { ClientsList, type SerializedClient } from './clients-list';
 
@@ -29,6 +30,7 @@ export default async function ClientsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <BackButton />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}

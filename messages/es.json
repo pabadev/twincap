@@ -21,10 +21,11 @@
     "switchLang": "Cambiar a inglés",
     "noResults": "No se encontraron resultados con estos filtros",
     "select": "Seleccionar",
-    "paid": "Pagado"
+    "paid": "Pagado",
+    "back": "Atrás"
   },
   "Nav": {
-    "dashboard": "Inicio",
+    "dashboard": "Informes",
     "accounts": "Cuentas",
     "categories": "Categorías",
     "movements": "Movimientos",

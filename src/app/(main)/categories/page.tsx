@@ -8,6 +8,7 @@ import { CategoriesPageClient } from './categories-page-client';
 import { DeleteCategoryButton } from './delete-category-button';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
+import { BackButton } from '../../../components/ui/back-button';
 import { Tags } from 'lucide-react';
 
 export default async function CategoriesPage() {
@@ -27,6 +28,7 @@ export default async function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <BackButton />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}

@@ -13,6 +13,7 @@ import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
+import { BackButton } from '../../../components/ui/back-button';
 import { ArrowLeftRight } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
 
@@ -62,6 +63,7 @@ export function MovementsList({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <BackButton />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
@@ -196,8 +198,7 @@ export function MovementsList({
                             movement.amount.amount,
                             movement.amount.currency,
                             locale,
-                          )}{' '}
-                          {movement.amount.currency}
+                          )}
                         </span>
                       </td>
                       <td className="hidden sm:table-cell px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
