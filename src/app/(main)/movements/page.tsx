@@ -9,6 +9,7 @@ import { MongoCreditGrantedRepository } from '../../../infrastructure/repositori
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
+import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
 import { serializeEntities } from '@/lib/serialize';
@@ -49,6 +50,7 @@ export default async function MovementsPage() {
   const payableRepo = new MongoPayableRepository();
   const saleRepo = new MongoSaleRepository();
   const clientRepo = new MongoClientRepository();
+  const categoryRepo = new MongoCategoryRepository();
 
   const accounts = await listAccounts(user.userId, accountRepo);
 
@@ -59,6 +61,7 @@ export default async function MovementsPage() {
     payables,
     sales,
     clients,
+    categories,
     ...movementsPerAccount
   ] = await Promise.all([
     creditReceivedRepo.findByUserId(user.userId),
@@ -66,6 +69,7 @@ export default async function MovementsPage() {
     payableRepo.findByUserId(user.userId),
     saleRepo.findByUserId(user.userId),
     clientRepo.findByUserId(user.userId),
+    categoryRepo.findByUserId(user.userId),
     ...accounts.map((account) =>
       listMovements(user.userId, account.id, movementRepo),
     ),
@@ -90,11 +94,14 @@ export default async function MovementsPage() {
     movementsRecord[key] = serializeEntities(val);
   }
 
+  const serializedCategories = categories.map((c) => c.toJSON());
+
   return (
     <MovementsList
       accounts={serializeEntities(accounts)}
       movementsByAccount={movementsRecord}
       refLabels={refLabels}
+      categories={serializedCategories}
     />
   );
 }

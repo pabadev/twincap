@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
 import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
+import type { SerializedCategory } from '../../../core/domain/category';
 import { DeleteMovementButton } from './delete-movement-button';
 import { formatAmount, formatDate } from '../../../lib/format';
 import { deriveSystemNote } from '../../../lib/system-note';
+import { syntheticCategoryLabel } from '../../../lib/synthetic-category-label';
 import { Select } from '../../../components/ui/select';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
@@ -18,11 +20,13 @@ export function MovementsList({
   accounts,
   movementsByAccount,
   refLabels = {},
+  categories,
 }: {
   accounts: SerializedAccount[];
   movementsByAccount: Record<string, SerializedMovement[]>;
   /** Parent counterparty labels (credit/sale/payable id → name) for note derivation. */
   refLabels?: Record<string, string>;
+  categories: SerializedCategory[];
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   /** D3 scope filter — only meaningful while 'all accounts' is active. */
@@ -32,6 +36,14 @@ export function MovementsList({
   const tSystemNotes = useT('SystemNotes');
   const locale = useLocale();
   const { openQuickMovement } = useQuickMovement();
+
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cat of categories) {
+      map.set(cat.id, cat.name);
+    }
+    return map;
+  }, [categories]);
 
   // D3: scope filter uses Movement.context (the source of truth).
   const allMovements = Object.values(movementsByAccount)
@@ -142,22 +154,25 @@ export function MovementsList({
             />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-              <table className="w-full min-w-[600px] divide-y divide-zinc-200 dark:divide-zinc-700">
+              <table className="w-full min-w-[500px] divide-y divide-zinc-200 dark:divide-zinc-700">
                 <thead className="bg-surface-header dark:bg-zinc-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('date')}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                      {t('type')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                      {tCommon('note')}
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('amount')}
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                      {t('category')}
+                    </th>
+                    <th scope="col" className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                      {tCommon('note')}
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                      {t('type')}
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('actions')}
                     </th>
                   </tr>
@@ -167,22 +182,6 @@ export function MovementsList({
                     <tr key={movement.id}>
                       <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                         {formatDate(movement.date, locale)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            movement.type === 'income'
-                              ? 'bg-income/10 text-income'
-                              : 'bg-expense/10 text-expense'
-                          }`}
-                        >
-                          {t(movement.type)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        {movement.link
-                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
-                          : (movement.note || '—')}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span
@@ -199,6 +198,25 @@ export function MovementsList({
                             locale,
                           )}{' '}
                           {movement.amount.currency}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                        {categoryMap.get(movement.categoryId) ?? syntheticCategoryLabel(movement.categoryId, tSystemNotes) ?? '—'}
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                        {movement.link
+                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
+                          : (movement.note || '—')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            movement.type === 'income'
+                              ? 'bg-income/10 text-income'
+                              : 'bg-expense/10 text-expense'
+                          }`}
+                        >
+                          {t(movement.type)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
