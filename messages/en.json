@@ -126,7 +126,10 @@
     "summaryAmount": "Amount",
     "total": "Total",
     "noIncomeData": "No income data for this period.",
-    "noExpenseData": "No expense data for this period."
+    "noExpenseData": "No expense data for this period.",
+    "topCategories": "Top Categories",
+    "topIncome": "Top 3 Income",
+    "topExpense": "Top 3 Expenses"
   },
   "Accounts": {
     "title": "Accounts",

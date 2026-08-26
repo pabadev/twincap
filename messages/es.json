@@ -126,7 +126,10 @@
     "summaryAmount": "Monto",
     "total": "Total",
     "noIncomeData": "No hay datos de ingresos para este período.",
-    "noExpenseData": "No hay datos de gastos para este período."
+    "noExpenseData": "No hay datos de gastos para este período.",
+    "topCategories": "Principales Categorías",
+    "topIncome": "Top 3 Ingresos",
+    "topExpense": "Top 3 Gastos"
   },
   "Accounts": {
     "title": "Cuentas",

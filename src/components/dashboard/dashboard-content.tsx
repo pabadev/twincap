@@ -5,7 +5,7 @@ import {
   type DashboardFilters,
   DashboardFilterBar,
 } from './dashboard-filters';
-import { SummaryCards } from './summary-cards';
+import { SummaryCards, type CurrencyBreakdown } from './summary-cards';
 import { MonthlyChart } from './monthly-chart';
 import {
   RecentMovements,
@@ -18,11 +18,12 @@ import { Card } from '../ui/card';
 import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
 import { computeCategorySummary } from '../../core/application/compute-category-summary';
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
-import { syntheticCategoryLabel } from '../../lib/synthetic-category-label';
+import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
 import type { SerializedCategory } from '../../core/domain/category';
 import { SYSTEM_NOTES_NAMESPACE } from '../../lib/system-note';
+import { syntheticCategoryLabel } from '../../lib/synthetic-category-label';
 import type { SerializedMovement as MovementSnapshot } from '../../core/domain/movement';
 
 interface DashboardAccount {
@@ -80,20 +81,20 @@ export function DashboardContent({
   );
 
   const categoryOptions = useMemo(() => {
-    const realCats = categories.map((c) => ({ value: c.id, label: c.name }));
-    const synthCats = [
-      'synthetic:credit',
-      'synthetic:credit-granted',
-      'synthetic:transfer',
-      'synthetic:sale',
-      'synthetic:opening',
-      'synthetic:payable',
-    ].map((id) => ({
-      value: id,
-      label: syntheticCategoryLabel(id, tSystemNotes) ?? id,
-    }));
-    return [...synthCats, ...realCats];
-  }, [categories, tSystemNotes]);
+    return categories
+      .filter((c) => !isSyntheticCategoryId(c.id))
+      .map((c) => ({ value: c.id, label: c.name }));
+  }, [categories]);
+
+  /** Resolve category label — real categories first, then synthetic fallback. */
+  const resolveCategoryLabel = useMemo(() => {
+    const realMap = new Map(categoryOptions.map((c) => [c.value, c.label]));
+    return (categoryId: string): string => {
+      return realMap.get(categoryId)
+        ?? syntheticCategoryLabel(categoryId, tSystemNotes)
+        ?? t('uncategorized');
+    };
+  }, [categoryOptions, tSystemNotes, t]);
 
   const filteredMovements = useMemo(() => {
     let result = allMovements;
@@ -127,6 +128,29 @@ export function DashboardContent({
     return accounts;
   }, [accounts, filters.accountId]);
 
+  /** Multi-currency breakdown for SummaryCards. */
+  const currencyBreakdown = useMemo((): CurrencyBreakdown[] => {
+    const byCurrency = new Map<string, { balance: number; income: number; expenses: number }>();
+
+    for (const a of accountBalances) {
+      const entry = byCurrency.get(a.currency) ?? { balance: 0, income: 0, expenses: 0 };
+      entry.balance += a.balance;
+      byCurrency.set(a.currency, entry);
+    }
+
+    for (const m of filteredMovements) {
+      const cur = m.amount.currency;
+      const entry = byCurrency.get(cur) ?? { balance: 0, income: 0, expenses: 0 };
+      if (m.type === 'income') entry.income += m.amount.amount;
+      else entry.expenses += m.amount.amount;
+      byCurrency.set(cur, entry);
+    }
+
+    return Array.from(byCurrency.entries())
+      .map(([currency, data]) => ({ currency, ...data }))
+      .sort((a, b) => (a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency)));
+  }, [accountBalances, filteredMovements]);
+
   const currency = useMemo(() => {
     if (filters.accountId !== 'all') {
       const acc = accounts.find((a) => a.id === filters.accountId);
@@ -157,19 +181,29 @@ export function DashboardContent({
   const incomeRows: SummaryTableRow[] = useMemo(
     () =>
       incomeCategories.map((c) => ({
-        label: categoryOptions.find((opt) => opt.value === c.categoryId)?.label ?? t('uncategorized'),
+        label: resolveCategoryLabel(c.categoryId),
         value: c.amount,
       })),
-    [incomeCategories, categoryOptions, t],
+    [incomeCategories, resolveCategoryLabel],
   );
 
   const expenseRows: SummaryTableRow[] = useMemo(
     () =>
       expenseCategories.map((c) => ({
-        label: categoryOptions.find((opt) => opt.value === c.categoryId)?.label ?? t('uncategorized'),
+        label: resolveCategoryLabel(c.categoryId),
         value: c.amount,
       })),
-    [expenseCategories, categoryOptions, t],
+    [expenseCategories, resolveCategoryLabel],
+  );
+
+  const topIncomeRows: SummaryTableRow[] = useMemo(
+    () => incomeRows.slice(0, 3),
+    [incomeRows],
+  );
+
+  const topExpenseRows: SummaryTableRow[] = useMemo(
+    () => expenseRows.slice(0, 3),
+    [expenseRows],
   );
 
   const { months: computedYearly } = useMemo(
@@ -199,10 +233,9 @@ export function DashboardContent({
           amount: m.amount.amount,
           currency: m.amount.currency,
           date: typeof m.date === 'string' ? m.date : new Date(m.date).toISOString(),
-          categoryName:
-            categoryOptions.find((c) => c.value === m.categoryId)?.label ?? '',
+          categoryName: resolveCategoryLabel(m.categoryId),
         })),
-    [filteredMovements, categoryOptions],
+    [filteredMovements, resolveCategoryLabel],
   );
 
   const greeting = userName
@@ -231,6 +264,7 @@ export function DashboardContent({
         monthlyExpenses={monthlyExpenses}
         netPosition={netPosition}
         locale={locale}
+        currencyBreakdown={currencyBreakdown}
       />
 
       <div>
@@ -292,6 +326,36 @@ export function DashboardContent({
           />
         </div>
       </div>
+
+      {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+            {t('topCategories')}
+          </h2>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {topIncomeRows.length > 0 && (
+              <SummaryTable
+                title={t('topIncome')}
+                rows={topIncomeRows}
+                total={topIncomeRows.reduce((s, r) => s + r.value, 0)}
+                currency={currency}
+                locale={locale}
+                emptyMessage={t('noIncomeData')}
+              />
+            )}
+            {topExpenseRows.length > 0 && (
+              <SummaryTable
+                title={t('topExpense')}
+                rows={topExpenseRows}
+                total={topExpenseRows.reduce((s, r) => s + r.value, 0)}
+                currency={currency}
+                locale={locale}
+                emptyMessage={t('noExpenseData')}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="mb-4 flex items-center gap-2">
