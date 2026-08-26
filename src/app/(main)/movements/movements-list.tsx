@@ -156,7 +156,7 @@ export function MovementsList({
             />
           ) : (
             <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-              <table className="w-full min-w-[500px] divide-y divide-zinc-200 dark:divide-zinc-700">
+              <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
                 <thead className="bg-surface-header dark:bg-zinc-800">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -165,10 +165,10 @@ export function MovementsList({
                     <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('amount')}
                     </th>
-                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {t('category')}
                     </th>
-                    <th scope="col" className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('note')}
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -201,10 +201,10 @@ export function MovementsList({
                           )}
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                         {categoryMap.get(movement.categoryId) ?? syntheticCategoryLabel(movement.categoryId, tSystemNotes) ?? '—'}
                       </td>
-                      <td className="hidden md:table-cell px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
                         {movement.link
                           ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
                           : (movement.note || '—')}
