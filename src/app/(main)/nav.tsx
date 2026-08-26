@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
-import { Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
 import { Button } from '../../components/ui/button';
@@ -171,6 +171,14 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
                     {email}
                   </p>
                 )}
+                <Link
+                  href="/profile"
+                  onClick={() => setOpen(false)}
+                  className="mb-2 flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                >
+                  <User className="h-4 w-4" />
+                  <span>{t('profile')}</span>
+                </Link>
                 <div className="flex gap-1.5">
                   <button
                     type="button"

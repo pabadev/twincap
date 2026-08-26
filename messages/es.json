@@ -35,7 +35,24 @@
     "posSales": "Ventas POS",
     "exit": "Salir",
     "login": "Iniciar sesión",
-    "register": "Registrarse"
+    "register": "Registrarse",
+    "profile": "Mi perfil"
+  },
+  "Profile": {
+    "title": "Mi perfil",
+    "name": "Nombre",
+    "namePlaceholder": "Tu nombre",
+    "email": "Correo electrónico",
+    "language": "Idioma",
+    "saveProfile": "Guardar perfil",
+    "profileSaved": "Perfil actualizado",
+    "changePassword": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "passwordChanged": "Contraseña actualizada",
+    "wrongPassword": "La contraseña actual es incorrecta",
+    "passwordMismatch": "Las contraseñas no coinciden"
   },
   "Auth": {
     "signIn": "Iniciar sesión",
@@ -55,6 +72,7 @@
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",
+    "welcomeUser": "Bienvenido, {name}",
     "accounts": "Cuentas",
     "fixed": "Fijo",
     "noAccounts": "No tienes cuentas aún. Crea tu primera cuenta para empezar.",

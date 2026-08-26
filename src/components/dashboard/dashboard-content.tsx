@@ -37,6 +37,7 @@ interface DashboardContentProps {
   primaryCurrency: string;
   locale: string;
   userLabel: string;
+  userName?: string;
   noAccountsMessage: string;
   noMovementsMessage: string;
   yearlyData: { month: string; income: number; expenses: number }[];
@@ -55,6 +56,7 @@ export function DashboardContent({
   primaryCurrency,
   locale,
   userLabel,
+  userName,
   noAccountsMessage,
   noMovementsMessage,
   yearlyData,
@@ -174,11 +176,15 @@ export function DashboardContent({
     [filteredMovements, categoryOptions],
   );
 
+  const greeting = userName
+    ? t('welcomeUser', { name: userName })
+    : userLabel;
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {userLabel}
+          {greeting}
         </h1>
       </div>
 

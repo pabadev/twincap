@@ -35,7 +35,24 @@
     "posSales": "POS Sales",
     "exit": "Log out",
     "login": "Sign In",
-    "register": "Register"
+    "register": "Register",
+    "profile": "My profile"
+  },
+  "Profile": {
+    "title": "My profile",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "language": "Language",
+    "saveProfile": "Save profile",
+    "profileSaved": "Profile updated",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "passwordChanged": "Password updated",
+    "wrongPassword": "Current password is incorrect",
+    "passwordMismatch": "Passwords do not match"
   },
   "Auth": {
     "signIn": "Sign In",
@@ -55,6 +72,7 @@
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",
+    "welcomeUser": "Welcome, {name}",
     "accounts": "Accounts",
     "fixed": "Fixed",
     "noAccounts": "No accounts yet. Create your first account to get started.",

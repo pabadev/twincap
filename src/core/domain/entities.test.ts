@@ -21,6 +21,42 @@ describe("User", () => {
     expect(() => new User({ ...userInput, id: "" })).toThrow(ValidationError);
     expect(() => new User({ ...userInput, passwordHash: "" })).toThrow(ValidationError);
   });
+
+  it("stores optional name (trimmed) and locale", () => {
+    const user = new User({ ...userInput, name: "  Juan  ", locale: "es" });
+    expect(user.name).toBe("Juan");
+    expect(user.locale).toBe("es");
+  });
+
+  it("treats empty name as undefined (backward compat)", () => {
+    const user = new User({ ...userInput, name: "" });
+    expect(user.name).toBeUndefined();
+  });
+
+  it("works without name and locale (backward compat for existing users)", () => {
+    const user = new User(userInput);
+    expect(user.name).toBeUndefined();
+    expect(user.locale).toBeUndefined();
+  });
+
+  it("toJSON includes all fields", () => {
+    const user = new User({ ...userInput, name: "Ana", locale: "en" });
+    const json = user.toJSON();
+    expect(json).toEqual({
+      id: "u1",
+      email: "user@example.com",
+      name: "Ana",
+      locale: "en",
+      createdAt: DATE,
+    });
+  });
+
+  it("toJSON has undefined name/locale when not provided", () => {
+    const user = new User(userInput);
+    const json = user.toJSON();
+    expect(json.name).toBeUndefined();
+    expect(json.locale).toBeUndefined();
+  });
 });
 
 describe("Account", () => {

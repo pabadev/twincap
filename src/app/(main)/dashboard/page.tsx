@@ -8,6 +8,7 @@ import { MongoCategoryRepository } from '../../../infrastructure/repositories/ca
 import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
 import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
+import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { DashboardContent } from '../../../components/dashboard/dashboard-content';
 import { computeActivosPasivos } from '../../../core/application/compute-activos-pasivos';
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
   const locale = await getLocale();
 
   await connectDb();
+  const userRepo = new MongoUserRepository();
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
   const categoryRepo = new MongoCategoryRepository();
@@ -30,7 +32,10 @@ export default async function DashboardPage() {
   const creditGrantedRepo = new MongoCreditGrantedRepository();
   const payableRepo = new MongoPayableRepository();
 
-  const accounts = await listAccounts(user.userId, accountRepo);
+  const [userEntity, accounts] = await Promise.all([
+    userRepo.findById(user.userId),
+    listAccounts(user.userId, accountRepo),
+  ]);
 
   const [balances, allMovements, categories, creditsReceived, creditsGranted, payables] =
     await Promise.all([
@@ -83,6 +88,7 @@ export default async function DashboardPage() {
       primaryCurrency={primaryCurrency}
       locale={locale}
       userLabel={t('welcomeBack')}
+      userName={userEntity?.name}
       noAccountsMessage={t('noAccounts')}
       noMovementsMessage={t('noMovements')}
       yearlyData={yearlyEvolution.months}

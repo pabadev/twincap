@@ -4,6 +4,8 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 export interface UserDoc {
   email: string;
   passwordHash: string;
+  name?: string;
+  locale?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +24,16 @@ const UserSchema = new Schema<UserDoc>(
     passwordHash: {
       type: String,
       required: true,
+    },
+    name: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    locale: {
+      type: String,
+      required: false,
+      enum: ['es', 'en'],
     },
   },
   { timestamps: true },

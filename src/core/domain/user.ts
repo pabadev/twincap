@@ -12,6 +12,8 @@ export interface UserInput {
   email: string;
   passwordHash: string;
   createdAt: Date;
+  name?: string;
+  locale?: string;
 }
 
 export class User {
@@ -20,6 +22,8 @@ export class User {
   /** Salted hash only — plain passwords never live in the domain. */
   readonly passwordHash: string;
   readonly createdAt: Date;
+  readonly name?: string;
+  readonly locale?: string;
 
   constructor(input: UserInput) {
     if (input.id.length === 0) {
@@ -36,5 +40,17 @@ export class User {
     this.email = email;
     this.passwordHash = input.passwordHash;
     this.createdAt = input.createdAt;
+    this.name = input.name?.trim() || undefined;
+    this.locale = input.locale || undefined;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      email: this.email,
+      name: this.name,
+      locale: this.locale,
+      createdAt: this.createdAt,
+    };
   }
 }
