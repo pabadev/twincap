@@ -17,7 +17,7 @@
 | Ronda 1 — fases 0–22 | ✅ Completa |
 | Ronda 2 — Auditoría y mejoras | ✅ Completa (Fases 0–10 + post-ronda branding; detalle en git history del doc y `Ronda 2.md`) |
 | Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional | ✅ **COMPLETADA (2026-08-25).** 12 fases ejecutadas y verificadas. Auditoría final: 0 CRITICAL, 7 MINOR (no bloqueantes). Suite 412/412 tests en 42 archivos, tsc limpio. Fixes de usuario incluidos: sort por fecha, logout confirmation, placeholders "Seleccionar", transición theme suave, badge "Pagado" en créditos. |
-| **Ronda 4 — Rediseño y evolución del Dashboard financiero** | 🟡 **EN CURSO — Auditoría Fase A completada.** Fuente: `Ronda4.md`. |
+| **Ronda 4 — Rediseño y evolución del Dashboard financiero** | ✅ **COMPLETADA (2026-08-26).** 6 fases (A→F). Dashboard rediseñado: jerarquía visual, tablas resumen ingresos/gastos por categoría, filtros composables, gráfico anual filtrado, movimientos responsive con columna Category. Suite 428/428, tsc, build limpios. Commits: `cd1bdd2`, `80dd92c`, `5dea992`, `10d6e0b`. |
 
 > ⚠️ **REGLA CRÍTICA (heredada de Ronda 2):** la ronda comienza con **AUDITORÍA**, no con implementación.
 > Prohibido escribir código hasta presentar el plan definitivo por fases y recibir aprobación explícita del usuario.
@@ -93,70 +93,24 @@ Salud general verificada:
 
 ## R3.5 — Matriz de hallazgos verificados
 
-Prioridades: P0 crítico · P1 alto · P2 medio · P3 bajo.
+> **Todos los hallazgos HR3-01 a HR3-23 fueron resueltos en las Fases 1–12 de Ronda 3.**
+> Solo permanecen como roadmap los items HR3-24 (Compras), HR3-25 (features comerciales) y HR3-26 (blog).
 
-| ID | Requisito (doc §) | Estado real verificado | Causa raíz | Prioridad | Fase |
-|----|-------------------|------------------------|------------|:---:|:---:|
-| HR3-01 | 5.1 Bug fechas | CONFIRMADO sistémico en TODAS las entidades con fecha | `new Date("YYYY-MM-DD")` parsea a medianoche UTC (13 call sites en actions); almacenado así en Mongo; cliente formatea con `formatDate` SIN `timeZone` (`src/lib/format.ts:25-31`) → browser America/Bogota resuelve 00:00Z como día anterior 19:00 → desplazamiento −1 día uniforme en movements/transfers/créditos+abonos/ventas+abonos/payables(+dueDate)/dashboard recent. Cofecto: prefill de forms usa `new Date().toISOString().split('T')[0]` = fecha UTC → "mañana" después de las 19:00 local (10 forms). Latente: bucketing mensual del dashboard en UTC (bordes de mes ±5h). Tests sin TZ fijada y `format.test.ts` evita asertar el día → CI era ciego al bug | P0 | F1 |
-| HR3-02 | 5.3 Transferencias inflan resultados | CONFIRMADO leak financiero | Cards mensuales + chart filtran SOLO por `type`+moneda+fecha (`dashboard/page.tsx:111-127`, `computeMonthlyData:40-53`): ambas piernas de cada transferencia entran (income+500k / expense+500k). Ejemplo doc: salario 2M + transferencia 500k ⇒ muestra $2.5M ingreso / $500k gasto (real: $2M / $0). Balances de cuenta CORRECTOS (signedAmount, aggregateBalance). `link.kind` jamás filtrado en read-path. También: opening balance cuenta como income; principal de crédito recibido cuenta como income (política a decidir, D2) | P0 | F1 |
-| HR3-03 | 5.14 Gráfico barras iguales | CONFIRMADO mecanismo exacto | Barras dimensionadas % del ancho de fila junto a label numérico inflexible dentro de flex row (`monthly-chart.tsx:41-58`): overflow absorbido por la barra (label tiene min-width auto) → toda barra significativa colapsa a ≈ container−label−gap. En fila ~260px con label ~120px: 100% y 67% convergen a ~132px ambos. No es CSS puntual ni datos: es estructura del track | P0 | F1 |
-| HR3-04 | 5.8 Doble "COP COP" | CONFIRMADO estructural | `formatAmount(style:'currency')` ya emite código ("12.345,67 COP" con locale es genérico); ~15 JSX concatenan `{currency}` otra vez (transfers ×2 piernas, créditos ×3 c/u, sale-detail-modal ×6, payables ×3, sale-list, catalog, movements, abono-forms ×3). Además 4 implementaciones de formateo divergentes: canonical `lib/format.ts` + duplicado privado en dashboard (`page.tsx:28-38`) + accounts `toLocaleString` sin style y exponent `??0` (`accounts/page.tsx:14-22`) + raw en sale-form:285 | P0 | F1 |
-| HR3-05 | 5.7 Notas automáticas en inglés | CONFIRMADO persistidas | 10 generadores construyen texto inglés EN CREACIÓN dentro de use cases y lo persisten en `Movement.note` (create-sale:173, add-sale-abono:54, create/edit principal+abonos de créditos ×4, payables ×2, transfer default :85/101, account opening:44). Los editores copian el texto viejo verbatim. Render muestra nota cruda (movements-list:138, transfers-list:113). CLAVE A FAVOR: `link.kind` (enum de 9 valores) + counterparty en padres YA están persistidos → texto derivable en render sin migración. Synthetic categories son constantes in-memory (no persistidas) pero dashboard cae en "uncategorized" porque su categoryMap solo trae categorías reales (hallazgo A5) | P1 | F2 |
-| HR3-06 | 5.10 Label "type" categorías | CONFIRMADO | Clave `Categories.type` ausente en AMBOS messages JSON; fallback imprime key cruda. El parity test valida ES↔EN pero NO cobertura de uso (claves referenciadas inexistentes pasan inadvertidas) | P1 | F2 |
-| HR3-07 | 5.19 Español neutral | CONFIRMADO ~24 claves voseo cordobés | Landing casi entera (heroSubtitle, heroCta "Empezá gratis", featuresTitle "necesitás", feature/benefit/faq/cta…), Auth ("¿Ya tenés cuenta?"), Dashboard/Accounts/Categories/Movements/Catalog empty states, error.unauthorized, Errors.description, Toast.operationFailed | P1 | F2 |
-| HR3-08 | 5.12 Personal/Negocio | PARCIALMENTE CONSTRUIDO, sin usar | `Movement.context` EXISTE ('Personal'\|'Business', persistido, elegible en form manual) pero TODOS los movimientos sistema hardcodean 'Personal' (transfers:86/103, credits×4, sales:174, payables:61, opening:45). Account y Category SIN campo scope. Cero queries/agregaciones por context. "Todo mi negocio" hoy NO es respondible. Decisión D3 (fuente de verdad) | P1 | F3 |
-| HR3-09 | 5.13 Dashboard filtros | NO EXISTEN filtros combinables | Solo: cuenta (movements), búsqueda (catalog/clients). Agregaciones in-JS tras cargar TODOS los movimientos (findByUserId sin límite); `primaryCurrency = accounts[0].currency` excluye silenciosamente otras monedas en cards/chart/pendingCredits | P1 | F4 |
-| HR3-10 | 5.15 Activos/Pasivos | DATOS DISPONIBLES, sin agregar | Getters `pending` existen en CreditGranted/CreditReceived/Payable. Receivables NUNCA consultados en dashboard; tarjeta "pendingCredits" es EN REALIDAD deuda (CreditReceived.pending = pasivo) mal etiquetada; Payable.pending jamás agregado; inventario sin valoración (stock×precio ambiguo sin cost basis). Multi-moneda requiere agrupar por moneda (no hay FX y no debe inventarse). Definiciones a aprobar (D4) | P1 | F4 |
-| HR3-11 | 5.4 Tabla resumida ventas | CONFIRMADO | Fila colapsada muestra fecha−total, badge modo, cliente, pendiente y CONTEO de ítems; nombre del primer artículo ausente hasta abrir modal (detalle modal-only, no fila expandible). Fallback ítem eliminado existe (`Sales.itemDeleted`) | P2 | F5 |
-| HR3-12 | 5.23 Filtros en tablas | INVENTARIO COMPLETO → matriz R3.8 | Movements: cuenta. Transfers/Credits×2/Payables/Sales: nada. Catalog/Clients: búsqueda debounce (bloque duplicado entre ambos). Accounts/Categories: nada. Cero filtros fecha/tipo/categoría/ámbito en todo el app | P2 | F5 |
-| HR3-13 | 5.9 Botón "Agregar abono" | CONFIRMADO inconsistente | Credits received/granted + payables: pill success idéntica BYTE-A-BYTE copy-paste ×3; sales: text-link `text-xs text-success` distinto; submit de abono de venta usa Button md vs sm en el resto. `<Button variant="success" size="sm">` ya modela el tratamiento | P2 | F5 |
-| HR3-14 | 5.16 Invalidación categorías/cuentas | CAUSA RAÍZ DISTINTA A LA SUPUESTA | Actions SÍ llaman revalidatePath y forms SÍ hacen router.refresh() (listas propias se actualizan). Culpable real: caché ONE-SHOT de `GlobalMovementProvider` (`global-movement-provider.tsx:79-96`, guard `data !== null`) sobrevive router.refresh() y navegación; MovementForm vive SOLO ahí → pickers de cuenta/categoría del FAB sirven snapshot stale hasta hard reload; borrar categoría y usarla lanza ValidationError visible. Gaps adicionales revalidatePath: deleteSaleAbonoAction solo `/pos/sales` (borra movimiento → saldos /accounts+/dashboard stale), editPayable sin `/accounts`, editAbono ×3 sin `/dashboard` — HOY enmascarados por comportamiento temporal de Next 16.3.1 (refresh blanket on navigate), frágil si upstream lo quita | P0 | F6 |
-| HR3-15 | 5.5 Ojo contraseña | NO EXISTE toggle en todo el codebase | Un solo input password (auth-form compartido login/register); Eye/EyeOff solo usados como acción "ver detalle" en ventas | P1 | F7 |
-| HR3-16 | 5.6 Autocompletado | BUG REAL confirmado | `autoComplete={title === 'Sign In' ? 'current-password' : 'new-password'}` compara contra título i18n → login en ESPAÑOL recibe 'new-password' (induce generación/guardado de credencial nueva en login). Register correcto ('new-password'). Email OK. Sin confirm-password en registro (decisión menor) | P0 | F7 |
-| HR3-17 | 5.2 Logo y branding | CONFIRMADA colisión móvil | Drawer <lg: botón cerrar z-50 (`nav.tsx:81`) pinta DIRECTAMENTE sobre el isotipo del drawer z-40 (`nav.tsx:100`, brand block sin reserva de espacio `:106-108`): glyph X (24..44px) cae dentro del área del isotipo (24..56px). Wordmark sobrevive por ~12px (crowding). Desktop: Logo size md=32px; slogan/tagline inexistente en ningún lado ni claves i18n. Smell adicional: hero renderiza Logo lg + `<h1>TwinCap</h1>` hardcoded fuera de i18n (marca duplicada, A10) | P2 | F8 |
-| HR3-18 | 5.18 Landing "Registrarse" | CONFIRMADO riesgo estructural | Hero CTA: `<Button variant="primary" className="bg-white text-indigo-700 hover:bg-indigo-50">` SIN !important → conflicto de propiedades resuelto por ORDEN DEL CSS GENERADO (suerte de cascada): combinaciones perdedoras = blanco-sobre-blanco o indigo-sobre-indigo. Ghost login igual (`text-white hover:bg-white/10` vs dark:text-zinc-300 del ghost). Patrón repetido ×3 en edit-abono forms (ghost+bg-indigo-600) | P2 | F8 |
-| HR3-19 | 5.22 Sidebar largo | CONFIRMADO plano | NAV_ITEMS flat 11 entradas sin metadatos de grupo; un solo `<ul space-y-1>`; sin primitivas collapsible/acordeón en nav.tsx. Altura/scroll correctos post-R2 | P2 | F8 |
-| HR3-20 | 5.21 Tema claro/oscuro | ARQUITECTURA PARCIAL | Tokens semánticos tienen paridad light/dark 1:1 PERO no existen tokens de superficie (--tc-bg/card/border/muted) → 355 pares `dark:` manuales en 50 archivos + bg-white×33 apareados a mano. Sin switcher (solo prefers-color-scheme); sin `color-scheme`; Button primary hardcodea indigo-600 mientras token --tc-primary (blue-600) está SIN USO → 3 azules conviven; toast info indigo-600 hardcode; warning claro con contraste dudoso sobre texto blanco; themeColor estático indigo-500 (ignora tema OS); manifest bg blanco. Light mode probablemente funcional (pares manuales) pero frágil y de mantenimiento caro. Decisión D6 (switcher manual sí/no) | P1 | F9 |
-| HR3-21 | 5.17 Perfil | ROADMAP CONFIRMADO | User = id/email/passwordHash/createdAt únicamente; sin name/foto/preferencias; sin rutas ni actions de perfil; sesión porta sub+email; bootstrap seeding existe. Análisis alcance en R3.10, decisión D5 | P2 | F10 |
-| HR3-22 | 5.24 Iconos PWA | PENDIENTE HEREDADO confirmado | Todos los launcher icons derivan de MASTER blanco (`pwa_pack/splash_screens/icon.png`, generate-icons.mjs:25); maskable compone sobre canvas BLANCO ×0.74; isotipo transparente SOLO vive en logo in-app. Consecuencia: flash blanco en launchers oscuros. sw v5 network-first, HTML nunca precacheado, splash excluidas del precache | P2 | F11 |
-| HR3-23 | 5.20 PWA ruta inicial | VERIFICADO, decisión de producto | start_url=/dashboard; proxy NO hace auth; sin sesión: bounce servidor → /login (efectivo hoy); con sesión: directo dashboard; cookie gm_session 30 días; offline no arranca ninguna entrada (HTML network-first sin fallback page). Decisión D7 (recomendar mantener) | P3 | F11 |
-| HR3-24 | 5.11 Módulo Compras | ANÁLISIS en R3.9 | Payable (R2-F8) ya cubre obligaciones por compra con pagos/abonos/vencimiento. Falta para Compras completo: proveedores, líneas de compra, inventario, costos. Decisión D8 | — | roadmap |
-| HR3-25 | 5.25 Features comerciales | ANÁLISIS en R3.11 | — | — | roadmap |
-| HR3-26 | 5.26 Blog interno | REGISTRADO roadmap | Ver R3.15 | — | roadmap |
+| ID | Requisito | Estado | Fase |
+|----|-----------|--------|:---:|
+| HR3-24 | 5.11 Módulo Compras | Payable ya cubre obligaciones. Compras completa requiere proveedores/inventario/costos. Decisión D8: Evolucionar Payable → Compras posteriormente | roadmap |
+| HR3-25 | 5.25 Features comerciales | Export CSV, comparación mes vs mes, presupuestos, flujo de caja. Ver R3.11 | roadmap |
+| HR3-26 | 5.26 Blog interno | Registrado. Ver R3.15 | roadmap |
 
-## R3.6 — Hallazgos adicionales (no estaban en la especificación)
+## R3.6 — Hallazgos adicionales (resueltos en R3 + R4)
 
-| ID | Hallazgo | Impacto | Fase |
-|----|----------|---------|:---:|
-| A1 | Dashboard carga TODOS los movimientos (sin límite/proyección) para cards+chart+recent (`slice(0,5)` sobre array completo) — latencia degradará con el tiempo | Performance | F4 |
-| A2 | Cross-currency: totals excluyen silenciosamente monedas ≠ primera cuenta — números incompletos presentados como completos | Financiero | F4 |
-| A3 | Tarjeta "pendingCredits" presenta un PASIVO como métrica genérica — semánticamente engañosa | Financiero/UI | F4 |
-| A4 | Movimientos sistema caen en "uncategorized" del dashboard (categoryMap sin categorías sintéticas) | UI/i18n | F2 |
-| A5 | 10 CTAs "Agregar X" hand-rolled `rounded-md bg-indigo-600 px-4 py-2 …` en vez de `<Button variant="primary">`; +3 conflictos ghost+indigo en edit-abono forms | Mantenibilidad | F8 |
-| A6 | Accounts y Categories hand-roll markup de EmptyState pixel-equivalente al componente `ui/empty-state.tsx`, con lucide raw en vez de wrapper Icon | Consistencia | F8 |
-| A7 | `title={selectedAccountId === 'all' ? t('emptyTitle') : t('emptyTitle')}` dead conditional (movements-list:95) | Limpieza | F5 |
-| A8 | Sale rows derivan moneda de items[0] con fallback silencioso 'COP' (`sale-list.tsx:90`) | Datos | F5 |
-| A9 | Chip de abonos hidden sm:inline en Payables pero siempre visible en credits lists — drift responsive | Consistencia | F5 |
-| A10 | Hero landing: Logo lg encima de `<h1>TwinCap</h1>` hardcodeado fuera de i18n — marca duplicada | Branding/i18n | F8 |
-| A11 | Tests: vitest sin TZ fijada; fixtures UTC-midnight; format test evita asertar día → clase entera de bugs de fecha invisible para CI | Testing | F1 |
-| A12 | Cero tests de agregaciones dashboard (monthlyIncome/Expenses/computeMonthlyData inline en page.tsx); cero tests de wiring revalidatePath; repos Mongo sin integración; cross-currency sin cubrir | Testing | F1/F4 |
-| A13 | AGENTS.md describía proxy.ts con auth protection — FALSO (auditado: solo locale+warmup). Corregido en AGENTS.md esta misma sesión | Docs | ✅ |
-| A14 | Abonos edit-dialogs muestran fecha CORRECTA (`toISOString().slice(0,10)` roundtrip) mientras la lista de arriba muestra ayer — inconsistencia visible que confirma HR3-01 | Evidencia | F1 |
-| A15 | Toast warning: token claro pálido + texto blanco = contraste dudoso; toast info hardcode indigo-600 | UI/a11y | F9 |
-| A16 | Offline: cold start PWA falla en cualquiera de las dos rutas (HTML nunca cacheado, sin offline fallback page) | PWA | F11 (nota) |
+> **Todos los hallazgos A1–A16 fueron resueltos en Rondas 3 y 4.**
+> Los items A1 y A2 del Dashboard (performance y multi-moneda) persisten como deuda técnica — ver sección R4.
 
-## R3.7 — Decisiones de dominio que requieren aprobación del usuario
+## R3.7 — Decisiones de dominio (todas aprobadas y ejecutadas en R3)
 
-| # | Decisión | Opciones | Recomendación |
-|---|----------|----------|---------------|
-| D1 | Convención de fechas financieras (HR3-01) | (a) **Fecha civil codificada como medianoche UTC + formateo SIEMPRE con `timeZone:'UTC'`** en el formateador único + prefill calculado con fecha LOCAL del dispositivo + tests con TZ fijada (America/Bogota y UTC). (b) Value Object DateOnly/string end-to-end (migración de tipos en 13 sites + entidades). (c) Zona fija America/Bogota acoplada al producto | **(a)**: cero migración de datos, corrige display/prefill/bucketing con UNA convención explícita documentada; la fecha almacenada ES el día civil ingresado |
-| D2 | Política de flujos en ingresos/gastos del dashboard (HR3-02) | (a) **Excluir `link.kind='transfer'` (ambas piernas) y `opening`** de income/expense/cards/chart; créditos/ventas/payables conservan tratamiento actual (modelo caja coherente, anti-doble-contabilidad ya validado). (b) Devengo estricto: reclasificar principales de créditos como financiamiento y abonos de créditos otorgados como cobros-no-ingreso | **(a)**: corrige lo inequívoco (transferencias/apertura NO son resultado económico) sin cambiar todos los números del usuario; el refinamiento devengo queda como posible evolución del dashboard |
-| D3 | Fuente de verdad Personal/Negocio (HR3-08) | (a) **Account.scope** (enum required, default 'Personal', backfill inicial guiado): movimientos sistema heredan automáticamente el scope de su cuenta — elimina los hardcode 'Personal'; categoría permanece transversal; queries filtran vía cuenta. (b) Movement.context como fuente (obliga pedir scope en cada flujo sistema). (c) Híbrido cuenta-default + override por movimiento | **(a)**: modelo mental natural ("mis cuentas del negocio"), cero fricción en flujos sistema, una sola verdad |
-| D4 | Definiciones Activos/Pasivos (HR3-10) | Activos = Σ saldos de cuentas + Σ CreditGranted.pending (por cobrar). Pasivos = Σ CreditReceived.pending + Σ Payable.pending. Presentación agrupada POR MONEDA sin conversión FX. Renombrar/reclasificar tarjeta pendingCredits | **Aprobación de definición nominal-pendiente por moneda** (disponibilidad/nominal/FX quedan fuera hasta existir tasa real) |
-| D5 | Alcance Perfil (HR3-21) | (a) **Mínimo viable**: nombre + cambio de contraseña + preferencia de idioma persistida + bienvenida dashboard con nombre. (b) Ídem + foto vía Cloudinary (dependencia externa). (c) Ídem + foto self-hosted (GridFS/storage propio — complejidad serverless) | **(a)** ahora; foto como decisión separada post-aprobación (Cloudinary solo si el usuario acepta la dependencia) |
-| D6 | Arquitectura de temas (HR3-20) | (a) **Modo dual completo con switcher manual**: tokens de superficie (--tc-bg/card/border/muted), estrategia dark por clase (@custom-variant) + script anti-flash + persistencia, migración progresiva empezando por ui kit, color-scheme, themeColor dinámico. (b) Mantener solo-OSS: sanear tokens/brand blues/contrastes sin toggle | **(a)**: expectativa estándar en PWA; el costo mayor es la migración de pares manuales, que (b) también paga parcialmente |
-| D7 | Ruta inicial PWA (HR3-23) | Mantener start_url=/dashboard (guest → bounce a login; user → directo) vs cambiar a / (landing primero, +2 taps) | **Mantener**: producto autenticado-first; usuarios recurrentes ganan; conversión de nuevos pasa por landing web, no por la app instalada |
-| D8 | Módulo Compras (HR3-24) | A) No implementar en R3. B) Versión mínima compras. C) Evolucionar Payable hacia Compras posteriormente. D) Otra | **A + camino C documentado en roadmap**: payable ya resuelve la necesidad actual; Compras exige proveedores/inventario/costos — gate comercial antes de construirla |
+> **D1–D8 fueron aprobadas por el usuario y ejecutadas en las Fases 1–12 de Ronda 3.**
+> D3 fue revertida a D3-bis (Movement.context como fuente de verdad, no Account.scope) tras reporte del usuario sobre cuentas compartidas.
 
 ## R3.8 — Matriz de filtros propuesta (post-D3)
 
@@ -199,25 +153,23 @@ Criterio valor/esfuerzo/dependencia — NO convertir en lista infinita:
 
 Ninguna entra en Ronda 3 salvo lo ya planificado (F4 dashboard); resto alimenta roadmap (R3.15).
 
-## R3.12 — Plan DEFINITIVO por fases (propuesta post-auditoría — REQUIERE APROBACIÓN)
+## R3.12 — Plan por fases (TODAS COMPLETADAS en R3)
 
-Ordenado por: dependencias → riesgo financiero → impacto UX → complejidad → valor. Compuertas: D1+D2 aprueban F1 · D3 aprueba F3 · D4 aprueba F4 · D5 aprueba F10 · D6 aprueba F9 · decisiones menores se consultan al iniciar su fase.
-
-| Fase | Contenido | Hallazgos | Criterios de aceptación clave |
-|------|-----------|-----------|-------------------------------|
-| ~~F0~~ | ~~Auditoría completa + este plan~~ | ~~R3.4–R3.11~~ | ✅ Completada 2026-08-24 |
-| **F1** | **Corrección financiera fundamental**: convención de fechas D1 (parse/prefill/format/bucketing coherentes + tests TZ-fijados America/Bogota y UTC); exclusión transfer+opening de resultados económicos D2 (extraer agregaciones a use case testeable); fix estructural del track del gráfico (barras proporcionales reales); unificación del formato monetario (un solo formatter, eliminar 3 duplicados y ~15 concatenaciones, guard test) | HR3-01/02/03/04, A2, A11, A14 | Fechas estables en las 7 entidades con fecha en TZ Bogota; ejemplo salario 2M+transfer 500k ⇒ 2M/0; barras 9M vs 6M claramente distintas en 375px; cero "COP COP"; suite verde con TZ forzada |
-| **F2** | **Textos automáticos e i18n estructural**: notas sistema derivadas en render de `link.kind` + counterparty (fallback nota persistida si padre eliminado); categorías sintéticas resueltas vía i18n en dashboard (mata "uncategorized"); clave Categories.type + test de cobertura de uso i18n (detecta claves referenciadas faltantes); barrido español neutral (~24 claves) | HR3-05/06/07, A4 | Cero notas inglesas visibles en ES; cambiar idioma cambia notas históricas; "type" localizado; parity+usage tests verdes; cero voseo |
-| **F3** | **Clasificación Personal/Negocio (D3)**: Account.scope + migración/backfill + herencia automática en movimientos sistema (elimina hardcodes 'Personal'); filtro ámbito en Movements; base de queries para dashboard | HR3-08 | Consultar "todo mi negocio" posible sin duplicar datos; movimientos sistema clasificados por cuenta; migración reversible y testeada |
-| **F4** | **Dashboard financiero avanzado (D4)**: sistema central de filtros composables (ámbito/cuenta/categoría/período); sección Activos y Pasivos con definiciones aprobadas y presentación por moneda; reclasificación tarjeta pendingCredits; gráfico evolución mensual anual (línea vs barras: decidir con evidencia en fase); extraer agregaciones a use cases con tests; queries acotadas (recent limitado, proyecciones) | HR3-09/10, A1, A2, A3 | Filtros combinables sin explosión de estados; activos/pasivos cuadran con listas; multi-moneda honesta (agrupada, no silenciosa); agregaciones testeadas |
-| **F5** | **Consistencia de tablas y ventas**: aplicar matriz R3.8 por módulo (filtros secundarios); **orden cronológico descendente uniforme** (fecha de negocio DESC + desempate createdAt DESC, verificado repo por repo — HR3-27); fila resumida de ventas con primer artículo + indicador "+N más"; variante compartida para CTAs de abono (Button success sm) incluida paridad de tamaño; limpieza residuales (dead conditional, silent COP fallback, chip responsive) | HR3-11/12/13/**27**, A7, A8, A9 | Filtros según matriz aprobada; TODAS las tablas muestran más recientes primero con desempate horario correcto (test: dos registros del mismo día 5:41:19 pm vs 5:41:18 pm); nombre de artículo visible pre-detalle con fallback i18n; un solo patrón de botón abono |
-| **F6** | **Invalidación y datos frescos**: corregir caché one-shot del GlobalMovementProvider (refetch-on-open/TTL o invalidación tras mutations); completar matriz revalidatePath (deleteSaleAbono→/accounts+/dashboard; editPayable→/accounts; editAbono×3→/dashboard); patrón documentado para futuras entidades | HR3-14 | Crear/borrar categoría o cuenta refleja en formularios del FAB sin reload duro; saldos consistentes tras borrar abono de venta; sin window.location.reload |
-| **F7** | **UX de autenticación**: ui/password-input.tsx con toggle ojo accesible (aria-label i18n, aria-pressed, tooltip); fix autoComplete por modo (prop, NO título i18n) en login/register; decisión menor confirm-password; revisión de otros formularios de contraseña | HR3-15/16 | Login ES y EN autocompleta como existing-password; toggle operable por teclado y lector; registro induce generación correcta |
-| **F8** | **Branding, landing y navegación**: header drawer móvil con reserva de espacio/z-index (logo nunca bajo botón cerrar) — evaluar logo-en-header vs logo-en-drawer según arquitectura real; logo desktop ampliado + slogan i18n (D9 candidatos en fase); hero sin marca duplicada (h1→i18n); CTA landing con variante segura del Button (sin overrides en cascada); adopción Button primary en 10 CTAs hand-rolled + fix ghost×3; EmptyState component adoption ×2; sidebar agrupada (Finanzas/Crédito/Negocio) collapsible desktop + acordeón drawer con a11y completa | HR3-17/18/19, A5, A6, A10 | 375px sin solapamiento; slogan ES/EN neutral; cascada determinista en todos los botones; sidebar agrupada usable con teclado/Escape en ambos modos |
-| **F9** | **Tema claro/oscuro completo (D6)**: tokens superficie + color-scheme + unificación brand blues (Button→token --tc-primary) + toast info/warning contrastes + themeColor dinámico + switcher persistente (clase .dark + script anti-flash) + migración progresiva de pares manuales empezando por ui kit + verificación por superficie (lista §5.21: login/registro/landing/dashboard/tablas/forms/modales/toast/gráficos/badges/nav/PWA) | HR3-20, A15 | Ambos modos completos y legibles en la lista de superficies; switcher respeta OSS inicial; un solo azul primario |
-| **F10** | **Perfil de usuario mínimo (D5)**: campos name/locale en User (entidad+modelo+backfill trivial), página perfil, actions con scoping, cambio de contraseña (bcrypt verify), bienvenida dashboard con nombre; foto SOLO si usuario aprueba servicio (Cloudinary u otro) como decisión separada | HR3-21 | CRUD propio sin exponer datos cruzados; contraseña cambiada invalida sesión correctamente según política definida; i18n paridad |
-| **F11** | **PWA final**: regenerar icon-192/512/maskable/apple-touch/favicon desde isotipo transparente con fondo sólido bajo maskable (safe area 40%); splash coherentes con marca; verificar manifest/sw tras regeneración (cache bump obligatorio); ruta inicial D7 (mantener, documentado); nota offline A16 registrada | HR3-22/23, A16 | Sin flash blanco en launchers oscuros; instalación Android+iOS+navegador coherente; sw bump sin romper clientes instalados |
-| **F12** | **Cierre de ronda**: checklist transversal §6 del doc fuente (arquitectura/seguridad/i18n/responsive 375-768-1280/a11y/testing); resolver deuda detectada en fases; roadmap comercial final (R3.11 + blog); `pnpm test` + lint + build + tsc verdes; actualización de este documento | Transversal | Checklist sin CRITICAL; comandos verdes; docs al día |
+| Fase | Contenido | Estado |
+|------|-----------|--------|
+| F0 | Auditoría completa | ✅ |
+| F1 | Corrección financiera fundamental (fechas, transferencias, gráfico, formateo) | ✅ |
+| F2 | Textos automáticos e i18n estructural | ✅ |
+| F3 | Clasificación Personal/Negocio | ✅ |
+| F4 | Dashboard financiero avanzado (filtros, Activos/Pasivos, evolución anual) | ✅ |
+| F5 | Consistencia de tablas y ventas | ✅ |
+| F6 | Invalidación y datos frescos | ✅ |
+| F7 | UX de autenticación | ✅ |
+| F8 | Branding, landing y navegación | ✅ |
+| F9 | Tema claro/oscuro completo | ✅ |
+| F10 | Perfil de usuario mínimo | ✅ |
+| F11 | PWA final | ✅ |
+| F12 | Cierre de ronda | ✅ |
 
 ## R3.13 — Protocolo de implementación por fase
 
@@ -461,18 +413,12 @@ page.tsx (SERVER)                           dashboard-content.tsx (CLIENT)
 
 ### Hallazgos clave
 
-| ID | Hallazgo | Severidad | evidencia |
-|----|----------|:---------:|-----------|
-| R4-A1 | Dashboard carga TODOS los movimientos sin límite/proyección — `findByUserId` sin restricción. Serializa todos como props React. Filtrado client-side en useMemo. | 🔴 | `page.tsx:47`, `movement-repository.ts:31-46`, `dashboard-content.tsx:80,97-120` |
-| R4-A2 | Summary cards usan UNA moneda (`accounts[0].currency`). Total balance mezcla monedas. Solo Position Cards agrupa correctamente. Ingresos/gastos en otras monedas = $0 silencioso. | 🔴 | `summary-cards.tsx:10`, `page.tsx:62-63`, `computeDashboardSummary:67`, `totalBalance:137-140` |
-| R4-A3 | NO existe `src/components/ui/table.tsx`. Tabla Movimientos es HTML hand-rolled. Tablas de resumen requieren header fijo + footer fijo + body scrolleable. | 🟡 | `src/components/ui/` — sin table.tsx |
-| R4-A4 | Bug visual Card: outer `rounded-lg` + inner header `bg-surface-header` sin `rounded-t-lg` → esquinas cuadradas visibles. | 🟡 | `card.tsx:10-27` |
-| R4-A5 | `yearlyData` calculado en servidor, serializado, pero cliente lo ignora y recalcula en useMemo. Trabajo duplicado. | 🟡 | `page.tsx` vs `dashboard-content.tsx:151-158` |
-| R4-A6 | `computeYearlyEvolution` en cliente usa SIEMPRE `allMovements`, ignora filtros. | 🟡 | `dashboard-content.tsx:154` |
-| R4-A7 | NO existen rutas de reportes dedicados. Grid de reportes será nueva navegación. | 📋 | `nav.tsx` — sin `/reports` |
-| R4-A8 | Columna Categoría NO visible en tabla Movimientos. Orden actual: Fecha → Tipo → Nota → Monto → Acciones. | 📋 | `movements-list.tsx:148-162` |
-| R4-A9 | `aria-label="Remove filter"` hardcodeado en inglés (no i18n). | 📋 | `dashboard-filters.tsx:115` |
-| R4-A10 | Key `pendingCredits` en i18n pero nunca usada en dashboard. | 📋 | `messages/es.json`, `messages/en.json` |
+> R4-A3 a R4-A10 fueron resueltos en Ronda 4 (Fases B→F). Solo persisten A1 y A2.
+
+| ID | Hallazgo | Severidad | Estado |
+|----|----------|:---------:|--------|
+| R4-A1 | Dashboard carga TODOS los movimientos sin límite/proyección — `findByUserId` sin restricción. Serializa todos como props React. Filtrado client-side en useMemo. | 🔴 | **PENDIENTE** |
+| R4-A2 | Summary cards usan UNA moneda (`accounts[0].currency`). Total balance mezcla monedas. Solo Position Cards agrupa correctamente. Ingresos/gastos en otras monedas = $0 silencioso. | 🔴 | **PENDIENTE** |
 
 ### Componentes UI disponibles
 
@@ -482,15 +428,15 @@ page.tsx (SERVER)                           dashboard-content.tsx (CLIENT)
 
 `/accounts`, `/categories`, `/movements`, `/transfers`, `/credits/received`, `/credits/granted`, `/payables`, `/clients`, `/pos/catalog`, `/pos/sales`, `/profile`.
 
-### Plan ajustado Fases B–F (post-auditoría)
+### Plan Fases B–F (TODAS COMPLETADAS en R4)
 
-| Fase | Ajuste post-auditoría | Riesgo |
-|------|----------------------|--------|
-| **B** | Crear `Table` UI component (header fijo + footer fijo + body scrolleable). Fix Card border-radius. Reordenar jerarquía. Grid de reportes con rutas existentes. 4 métricas → 1 fila desktop/2 cols mobile. | Medio: Table component es nuevo; Card fix afecta todo el app |
-| **C** | Dos tablas resumen (Ingresos/Gastos) usando el nuevo Table. Nuevas agregaciones en use cases. Totalizadores reactivos a filtros. | Medio: nueva lógica de agregación + tests |
-| **D** | Corregir filtros para que afecten TODAS las métricas (incluido yearly evolution). Fix cross-currency (agrupar por moneda en summary cards o indicador claro). Resolver A1 parcialmente (agregaciones server-side para summary). | Alto: cambio en pipeline de datos server→client |
-| **E** | Reordenar columnas Movements. Agregar columna Categoría. Fix mobile UX. | Bajo: cambios en un componente aislado |
-| **F** | QA transversal. i18n (aria-label fix, nuevas keys). Tests de agregaciones. Typecheck/lint/build. | Bajo |
+| Fase | Contenido | Estado |
+|------|-----------|--------|
+| B | Card fix, SummaryCards 4 métricas, jerarquía reordenada, grid reportes, i18n | ✅ `cd1bdd2` |
+| C | computeCategorySummary + SummaryTable + dos tablas resumen | ✅ `80dd92c` |
+| D | Gráfico anual respeta filtros + tests combinados | ✅ `5dea992` |
+| E | Movimientos: columna Category + reorder + responsive | ✅ `10d6e0b` |
+| F | QA final: 428/428 tests, tsc, build, i18n paridad | ✅ `ac358ed` |
 
 ---
 
@@ -500,11 +446,9 @@ Si el contexto se compacta o inicia nueva sesión:
 
 1. **Leer este archivo completo** (`docs/AUDIT-AND-PLAN.md`)
 2. **Leer `AGENTS.md`**
-3. **Leer `Ronda4.md`** (requerimientos de la ronda actual)
-4. **Buscar en Engram:** `mem_search(query: "TwinCap ronda 4", project: "globalmoney")`
-5. **Identificar la fase actual** comparando el último commit con la tabla R4.4 y la BITÁCORA
-6. **Continuar desde la fase pendiente**, respetando el protocolo de implementación por fase (detenerse y esperar aprobación al terminar cada fase)
-7. Recordar: si el estado es "plan sin aprobar", NO implementar nada
+3. **Buscar en Engram:** `mem_search(query: "TwinCap", project: "twincap")`
+4. **Identificar el estado actual** — Rondas 1–4 completadas. Deuda técnica: R4-A1 (performance) y R4-A2 (multi-moneda).
+5. **Esperar nuevos requerimientos del usuario** antes de implementar cualquier cosa
 
 ---
 
