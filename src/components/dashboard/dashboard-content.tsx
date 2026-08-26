@@ -175,10 +175,10 @@ export function DashboardContent({
   const { months: computedYearly } = useMemo(
     () =>
       computeYearlyEvolution({
-        movements: allMovements as any,
+        movements: filteredMovements as any,
         currency,
       }),
-    [allMovements, currency],
+    [filteredMovements, currency],
   );
 
   const netPosition = useMemo(
