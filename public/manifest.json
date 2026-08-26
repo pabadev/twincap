@@ -4,8 +4,8 @@
   "description": "Personal finance management",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#6366f1",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "orientation": "any",
   "icons": [
     {

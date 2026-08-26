@@ -1,4 +1,4 @@
-const CACHE_NAME = 'twincap-v5';
+const CACHE_NAME = 'twincap-v6';
 // Never precache authenticated routes: cache.addAll would persist the
 // server-rendered HTML of user-specific pages in Cache Storage, leaking one
 // user's data to whoever is served from the offline cache. Only static,
