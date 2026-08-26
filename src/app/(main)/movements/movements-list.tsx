@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
 import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
@@ -14,24 +14,47 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
+import { EditMovementModal } from './edit-movement-modal';
+import { listAccountsAction, listCategoriesAction, listMovementsPagedAction } from './actions';
+import type { SerializedCursor } from './actions';
+
+type SortField = 'date' | 'amount' | 'category';
+type SortDirection = 'asc' | 'desc';
+
+const PAGE_SIZE = 50;
 
 export function MovementsList({
-  accounts,
-  movementsByAccount,
+  initialMovements,
+  nextCursor: initialCursor,
   refLabels = {},
-  categories,
 }: {
-  accounts: SerializedAccount[];
-  movementsByAccount: Record<string, SerializedMovement[]>;
+  initialMovements: SerializedMovement[];
+  nextCursor: SerializedCursor | null;
   /** Parent counterparty labels (credit/sale/payable id → name) for note derivation. */
   refLabels?: Record<string, string>;
-  categories: SerializedCategory[];
 }) {
+  const [movements, setMovements] = useState<SerializedMovement[]>(initialMovements);
+  const [nextCursor, setNextCursor] = useState<SerializedCursor | null>(initialCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Reference data loaded lazily for the form / filters
+  const [accounts, setAccounts] = useState<SerializedAccount[]>([]);
+  const [categories, setCategories] = useState<SerializedCategory[]>([]);
+
+  useEffect(() => {
+    listAccountsAction().then(setAccounts);
+    listCategoriesAction().then(setCategories);
+  }, []);
+
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   /** D3 scope filter — only meaningful while 'all accounts' is active. */
   const [selectedScope, setSelectedScope] = useState<'all' | 'Personal' | 'Business'>('all');
+  const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
+  const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
   const t = useT('Movements');
   const tCommon = useT('Common');
   const tSystemNotes = useT('SystemNotes');
@@ -46,20 +69,73 @@ export function MovementsList({
     return map;
   }, [categories]);
 
-  // D3: scope filter uses Movement.context (the source of truth).
-  const allMovements = Object.values(movementsByAccount)
-    .flat()
-    .filter((m) =>
-      selectedAccountId === 'all'
-        ? selectedScope === 'all' || m.context === selectedScope
-        : true,
-    );
-  const movements =
-    selectedAccountId === 'all'
-      ? allMovements
-      : (movementsByAccount[selectedAccountId] ?? []);
+  const toggleSort = useCallback((field: SortField) => {
+    setSortField((prev) => {
+      if (prev === field) {
+        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
+      setSortDir(field === 'date' ? 'desc' : 'desc');
+      return field;
+    });
+  }, []);
 
-  const sortedMovements = movements;
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === 'asc'
+      ? <Icon icon={ChevronUp} size="sm" className="ml-0.5 inline" />
+      : <Icon icon={ChevronDown} size="sm" className="ml-0.5 inline" />;
+  };
+
+  const handleLoadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await listMovementsPagedAction(PAGE_SIZE, nextCursor);
+      setMovements((prev) => [...prev, ...result.items]);
+      setNextCursor(result.nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextCursor, loadingMore]);
+
+  // D3: scope filter uses Movement.context (the source of truth).
+  const allMovements = useMemo(() => {
+    if (selectedAccountId === 'all') {
+      return selectedScope === 'all'
+        ? movements
+        : movements.filter((m) => m.context === selectedScope);
+    }
+    return movements.filter((m) => m.accountId === selectedAccountId);
+  }, [movements, selectedAccountId, selectedScope]);
+
+  const filteredMovements = useMemo(() => {
+    if (selectedType === 'all') return allMovements;
+    return allMovements.filter((m) => m.type === selectedType);
+  }, [allMovements, selectedType]);
+
+  const sortedMovements = useMemo(() => {
+    const arr = [...filteredMovements];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'date':
+          cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'amount':
+          cmp = a.amount.amount - b.amount.amount;
+          break;
+        case 'category': {
+          const labelA = categoryMap.get(a.categoryId) ?? syntheticCategoryLabel(a.categoryId, tSystemNotes) ?? '';
+          const labelB = categoryMap.get(b.categoryId) ?? syntheticCategoryLabel(b.categoryId, tSystemNotes) ?? '';
+          cmp = labelA.localeCompare(labelB, locale);
+          break;
+        }
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filteredMovements, sortField, sortDir, categoryMap, tSystemNotes, locale]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -85,9 +161,9 @@ export function MovementsList({
         )}
       </div>
 
-      {/* Account selector + scope filter */}
+      {/* Account selector + scope filter + type filter */}
       {accounts.length > 0 && (
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label
               htmlFor="account-select"
@@ -131,10 +207,28 @@ export function MovementsList({
               ]}
             />
           </div>
+          <div>
+            <label
+              htmlFor="type-select"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {t('type')}
+            </label>
+            <Select
+              id="type-select"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
+              options={[
+                { value: 'all', label: t('scopeAll') },
+                { value: 'income', label: t('income') },
+                { value: 'expense', label: t('expense') },
+              ]}
+            />
+          </div>
         </div>
       )}
 
-      {accounts.length === 0 ? (
+      {accounts.length === 0 && movements.length === 0 ? (
         <EmptyState
           icon={<Icon icon={ArrowLeftRight} size="xl" />}
           title={t('emptyNoAccountsTitle')}
@@ -160,13 +254,19 @@ export function MovementsList({
                 <thead className="bg-surface-header dark:bg-zinc-800">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                      {tCommon('date')}
+                      <button type="button" onClick={() => toggleSort('date')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
+                        {tCommon('date')} <SortIcon field="date" />
+                      </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                      {tCommon('amount')}
+                      <button type="button" onClick={() => toggleSort('amount')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
+                        {tCommon('amount')} <SortIcon field="amount" />
+                      </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                      {t('category')}
+                      <button type="button" onClick={() => toggleSort('category')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
+                        {t('category')} <SortIcon field="category" />
+                      </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       {tCommon('note')}
@@ -221,17 +321,59 @@ export function MovementsList({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {!movement.link && (
-                          <DeleteMovementButton movementId={movement.id} />
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          {!movement.link && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setEditingMovement(movement)}
+                                className="rounded p-1 text-zinc-400 hover:text-primary transition-colors"
+                                aria-label={tCommon('edit')}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                              <DeleteMovementButton movementId={movement.id} />
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {/* Load more */}
+              {nextCursor && (
+                <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 text-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Icon icon={Loader2} size="sm" className="animate-spin" />
+                        {tCommon('loading')}
+                      </span>
+                    ) : (
+                      tCommon('loadMore')
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </>
+      )}
+
+      {editingMovement && (
+        <EditMovementModal
+          movement={editingMovement}
+          accounts={accounts}
+          categories={categories}
+          onClose={() => setEditingMovement(null)}
+        />
       )}
     </div>
   );

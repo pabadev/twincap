@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { listAccounts } from '../../../core/application/accounts';
-import { listMovements } from '../../../core/application/movements';
+import { listMovementsPaged } from '../../../core/application/movements';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -14,6 +14,8 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
 import { serializeEntities } from '@/lib/serialize';
 import type { SerializedMovement } from '../../../core/domain/movement';
+
+const PAGE_SIZE = 50;
 
 /**
  * Counterparty label per parent operation id (credit/sale/payable), used by
@@ -43,42 +45,23 @@ export default async function MovementsPage() {
   if (!user) redirect('/login');
 
   await connectDb();
-  const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
   const creditReceivedRepo = new MongoCreditReceivedRepository();
   const creditGrantedRepo = new MongoCreditGrantedRepository();
   const payableRepo = new MongoPayableRepository();
   const saleRepo = new MongoSaleRepository();
   const clientRepo = new MongoClientRepository();
-  const categoryRepo = new MongoCategoryRepository();
 
-  const accounts = await listAccounts(user.userId, accountRepo);
-
-  // Fetch movements for all accounts + parent operations for note derivation
-  const [
-    creditsReceived,
-    creditsGranted,
-    payables,
-    sales,
-    clients,
-    categories,
-    ...movementsPerAccount
-  ] = await Promise.all([
-    creditReceivedRepo.findByUserId(user.userId),
-    creditGrantedRepo.findByUserId(user.userId),
-    payableRepo.findByUserId(user.userId),
-    saleRepo.findByUserId(user.userId),
-    clientRepo.findByUserId(user.userId),
-    categoryRepo.findByUserId(user.userId),
-    ...accounts.map((account) =>
-      listMovements(user.userId, account.id, movementRepo),
-    ),
-  ]);
-
-  const movementsByAccount = new Map<string, Awaited<ReturnType<typeof listMovements>>>();
-  accounts.forEach((account, i) => {
-    movementsByAccount.set(account.id, movementsPerAccount[i]);
-  });
+  // Fetch parent operations for note derivation (needed for refLabels)
+  const [creditsReceived, creditsGranted, payables, sales, clients, firstPage] =
+    await Promise.all([
+      creditReceivedRepo.findByUserId(user.userId),
+      creditGrantedRepo.findByUserId(user.userId),
+      payableRepo.findByUserId(user.userId),
+      saleRepo.findByUserId(user.userId),
+      clientRepo.findByUserId(user.userId),
+      listMovementsPaged(user.userId, PAGE_SIZE, movementRepo),
+    ]);
 
   const refLabels = buildRefLabels(
     creditsReceived,
@@ -88,20 +71,16 @@ export default async function MovementsPage() {
     new Map(clients.map((c) => [c.id, c.name])),
   );
 
-  // Serialize: convert Map to plain object and domain classes to plain objects
-  const movementsRecord: Record<string, SerializedMovement[]> = {};
-  for (const [key, val] of movementsByAccount) {
-    movementsRecord[key] = serializeEntities(val);
-  }
-
-  const serializedCategories = categories.map((c) => c.toJSON());
+  const serializedMovements = serializeEntities(firstPage.items);
+  const nextCursor = firstPage.nextCursor
+    ? { date: firstPage.nextCursor.date.toISOString(), createdAt: firstPage.nextCursor.createdAt.toISOString() }
+    : null;
 
   return (
     <MovementsList
-      accounts={serializeEntities(accounts)}
-      movementsByAccount={movementsRecord}
+      initialMovements={serializedMovements}
+      nextCursor={nextCursor}
       refLabels={refLabels}
-      categories={serializedCategories}
     />
   );
 }

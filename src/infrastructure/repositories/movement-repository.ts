@@ -45,6 +45,54 @@ export class MongoMovementRepository implements MovementRepository {
     });
   }
 
+  async findPaged(
+    userId: string,
+    limit: number,
+    cursor?: { date: Date; createdAt: Date },
+  ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }> {
+    const query: Record<string, unknown> = {
+      userId: new Types.ObjectId(userId),
+    };
+
+    if (cursor) {
+      // Compound cursor: { date: -1, createdAt: -1 } sort
+      // Fetch items where (date, createdAt) < (cursor.date, cursor.createdAt)
+      query.$or = [
+        { date: { $lt: cursor.date } },
+        { date: cursor.date, createdAt: { $lt: cursor.createdAt } },
+      ];
+    }
+
+    const docs = await MovementModel.find(query)
+      .sort({ date: -1, createdAt: -1 })
+      .limit(limit + 1) // fetch one extra to detect next page
+      .exec();
+
+    const hasMore = docs.length > limit;
+    const pageDocs = hasMore ? docs.slice(0, limit) : docs;
+
+    if (pageDocs.length === 0) {
+      return { items: [], nextCursor: null };
+    }
+
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, pageDocs);
+
+    const items = pageDocs.map((doc) => {
+      const movementDoc = doc as MovementDocument;
+      const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
+      const category = categoryMap.get(key)!;
+      const account = accountMap.get(movementDoc.accountId.toString())!;
+      return toMovementEntity(movementDoc, category, account.currency as Currency);
+    });
+
+    const lastDoc = pageDocs[pageDocs.length - 1] as MovementDocument;
+    const nextCursor = hasMore
+      ? { date: lastDoc.date, createdAt: lastDoc.createdAt }
+      : null;
+
+    return { items, nextCursor };
+  }
+
   async findByAccountId(userId: string, accountId: string): Promise<Movement[]> {
     const docs = await MovementModel.find({
       userId: new Types.ObjectId(userId),

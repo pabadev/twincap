@@ -61,6 +61,16 @@ export interface MovementRepository {
   findById(userId: string, id: string): Promise<Movement | null>;
   findByUserId(userId: string): Promise<Movement[]>;
   findByAccountId(userId: string, accountId: string): Promise<Movement[]>;
+  /**
+   * Cursor-based paginated query across all user movements.
+   * @param cursor Optional `{ date, createdAt }` of the last item from the previous page.
+   * @returns `{ items, nextCursor }` — `nextCursor` is `null` when no more pages.
+   */
+  findPaged(
+    userId: string,
+    limit: number,
+    cursor?: { date: Date; createdAt: Date },
+  ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }>;
   create(movement: Movement): Promise<Movement>;
   update(movement: Movement): Promise<Movement>;
   delete(userId: string, id: string): Promise<void>;

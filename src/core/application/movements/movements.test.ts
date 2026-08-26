@@ -39,6 +39,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     }),
     aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    findPaged: async () => ({ items: [], nextCursor: null }),
     ...overrides,
   };
 }

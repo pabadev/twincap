@@ -3,9 +3,11 @@
 import {
   createMovement,
   deleteMovement,
+  updateMovement,
+  listMovementsPaged,
 } from '../../../core/application/movements';
 import type { CreateMovementInput } from '../../../core/application/movements';
-import type { MovementContext } from '../../../core/domain/movement';
+import type { MovementContext, SerializedMovement } from '../../../core/domain/movement';
 import { isMovementContext } from '../../../core/domain/movement';
 import { listAccounts } from '../../../core/application/accounts';
 import { listCategories } from '../../../core/application/categories';
@@ -106,4 +108,80 @@ export async function deleteMovementAction(
   }
 
   return { success: 'movementDeleted' };
+}
+
+export async function updateMovementAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const movementId = formData.get('movementId') as string;
+  const accountId = formData.get('accountId') as string;
+  const amount = Number(formData.get('amount') || '0');
+  const date = new Date(formData.get('date') as string);
+  const note = (formData.get('note') as string) || undefined;
+  const categoryId = formData.get('categoryId') as string;
+  const contextRaw = formData.get('context') as string | null;
+  let context: MovementContext | undefined;
+  if (contextRaw && isMovementContext(contextRaw)) {
+    context = contextRaw;
+  }
+
+  try {
+    await connectDb();
+    const movementRepo = new MongoMovementRepository();
+    const categoryRepo = new MongoCategoryRepository();
+    await updateMovement(
+      user.userId,
+      { movementId, amount, accountId, categoryId, date, note, context },
+      movementRepo,
+      categoryRepo,
+    );
+    revalidatePath('/movements');
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'movementUpdated' };
+}
+
+/** Serializable cursor for the server action boundary. */
+export interface SerializedCursor {
+  date: string;
+  createdAt: string;
+}
+
+export interface PagedMovementsResult {
+  items: SerializedMovement[];
+  nextCursor: SerializedCursor | null;
+}
+
+export async function listMovementsPagedAction(
+  limit: number,
+  cursor?: SerializedCursor,
+): Promise<PagedMovementsResult> {
+  const user = await getCurrentUser();
+  if (!user) return { items: [], nextCursor: null };
+
+  await connectDb();
+  const movementRepo = new MongoMovementRepository();
+  const result = await listMovementsPaged(
+    user.userId,
+    limit,
+    movementRepo,
+    cursor
+      ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt) }
+      : undefined,
+  );
+
+  return {
+    items: serializeEntities(result.items),
+    nextCursor: result.nextCursor
+      ? { date: result.nextCursor.date.toISOString(), createdAt: result.nextCursor.createdAt.toISOString() }
+      : null,
+  };
 }
