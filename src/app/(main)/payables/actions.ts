@@ -14,8 +14,8 @@ import { MongoPayableRepository } from '../../../infrastructure/repositories/pay
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
+import { revalidateMovementData } from '../../../lib/revalidate';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -49,9 +49,7 @@ export async function createPayableAction(
       ids,
       accountRepo,
     );
-    revalidatePath('/payables');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }
@@ -86,9 +84,7 @@ export async function addAbonoAction(
       ids,
       accountRepo,
     );
-    revalidatePath('/payables');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }
@@ -120,10 +116,7 @@ export async function editAbonoAction(
       payableRepo,
       movementRepo,
     );
-    revalidatePath('/payables');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }
@@ -151,8 +144,7 @@ export async function editPayableAction(
       { total, currency },
       payableRepo,
     );
-    revalidatePath('/payables');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }
@@ -175,9 +167,7 @@ export async function deleteAbonoAction(
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteAbono(user.userId, payableId, abonoId, payableRepo, movementRepo);
-    revalidatePath('/payables');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }
@@ -199,9 +189,7 @@ export async function deletePayableAction(
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
     await deletePayable(user.userId, payableId, payableRepo, movementRepo);
-    revalidatePath('/payables');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
   }

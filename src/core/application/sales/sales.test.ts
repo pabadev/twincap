@@ -896,6 +896,60 @@ describe('deleteSaleAbono', () => {
     expect(movementRepo.deleted).toContain('mov-1');
   });
 
+  it('deletes the linked movement BEFORE pulling the abono (R5-B atomicity)', async () => {
+    const sale = makeSale({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
+    const deleteMovementMock = vi.fn().mockImplementation(async () => {});
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+      deleteAbono: deleteAbonoMock,
+    });
+    const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
+
+    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo);
+
+    expect(deleteMovementMock.mock.invocationCallOrder[0])
+      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+  });
+
+  it('tolerates an already-missing movement when deleting an abono (R5-B)', async () => {
+    const sale = makeSale({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo);
+
+    expect(result.abonos).toHaveLength(0);
+    expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.deleted).toHaveLength(0);
+  });
+
+  it('propagates non-NotFound movement errors WITHOUT pulling the abono (R5-B)', async () => {
+    const sale = makeSale({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+
+    await expect(
+      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo),
+    ).rejects.toThrow('db down');
+
+    expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
+  });
+
   it('rejects when sale not found', async () => {
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([]),

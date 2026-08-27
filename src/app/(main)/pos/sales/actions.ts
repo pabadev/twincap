@@ -79,6 +79,7 @@ export async function createSaleAction(
     revalidatePath('/credits/granted');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }
@@ -116,6 +117,7 @@ export async function addSaleAbonoAction(
     revalidatePath('/pos/sales');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }

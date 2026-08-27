@@ -21,19 +21,28 @@ export async function deleteAbono(
   const abono = credit.abonos.find(a => a.id === abonoId);
   if (!abono) throw new NotFoundError('Abono not found');
 
-  // Atomicity note: abono removal + movement deletion are two separate writes
-  // inside this single use-case invocation. Full transactionality would
-  // require the repository ports to accept a Mongoose ClientSession (signature
-  // change across every port/implementation) plus a replica-set connection —
-  // an infrastructure change deliberately out of scope here.
+  // R5-B atomicity: reverse the linked movement FIRST, then pull the abono.
+  // With the old order (pull abono → delete movement) a failure between the two
+  // leaves a phantom movement that still counts in balances with no matching
+  // abono. Deleting the movement first means a mid-way failure leaves the abono
+  // intact (debt still pending, no balance inflation). Full transactionality
+  // would require a Mongoose ClientSession across every port — out of scope.
   //
+  // Reverse linked movement (tolerant: an already-missing movement is fine)
+  if (abono.movementId) {
+    try {
+      await movementRepo.delete(userId, abono.movementId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        // movement already gone — continue to pull the abono
+      } else {
+        throw err;
+      }
+    }
+  }
+
   // Remove abono from embedded array (atomic $pull)
   await creditRepo.deleteAbono(userId, creditId, abonoId);
-
-  // Reverse linked movement
-  if (abono.movementId) {
-    await movementRepo.delete(userId, abono.movementId);
-  }
 
   return new CreditReceived(
     {

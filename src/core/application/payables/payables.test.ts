@@ -734,6 +734,60 @@ describe('deleteAbono', () => {
     expect(movementRepo.delete).not.toHaveBeenCalled();
   });
 
+  it('deletes the linked movement BEFORE pulling the abono (R5-B atomicity)', async () => {
+    const payable = makePayable({ initialPayment: 20000 }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
+    const deleteMovementMock = vi.fn().mockImplementation(async () => {});
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+      deleteAbono: deleteAbonoMock,
+    });
+    const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
+
+    await deleteAbono('user-1', 'pay-1', 'ab-1', payableRepo, movementRepo);
+
+    expect(deleteMovementMock.mock.invocationCallOrder[0])
+      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+  });
+
+  it('tolerates an already-missing movement when deleting an abono (R5-B)', async () => {
+    const payable = makePayable({ initialPayment: 20000 }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    const result = await deleteAbono('user-1', 'pay-1', 'ab-1', payableRepo, movementRepo);
+
+    expect(result.abonos).toHaveLength(0);
+    expect(payableRepo.deleteAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.deleted).toHaveLength(0);
+  });
+
+  it('propagates non-NotFound movement errors WITHOUT pulling the abono (R5-B)', async () => {
+    const payable = makePayable({ initialPayment: 20000 }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+
+    await expect(
+      deleteAbono('user-1', 'pay-1', 'ab-1', payableRepo, movementRepo),
+    ).rejects.toThrow('db down');
+
+    expect(payableRepo.deleteAbono).not.toHaveBeenCalled();
+  });
+
   it('throws NotFoundError when payable does not exist', async () => {
     const payableRepo = fakePayableRepo({
       findByUserId: vi.fn().mockResolvedValue([]),

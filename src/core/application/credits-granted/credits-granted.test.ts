@@ -554,6 +554,64 @@ describe('deleteAbono', () => {
     expect(movementRepo.delete).not.toHaveBeenCalled();
   });
 
+  it('deletes the linked movement BEFORE pulling the abono (R5-B atomicity)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
+    const deleteMovementMock = vi.fn().mockImplementation(async () => {});
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+      deleteAbono: deleteAbonoMock,
+    });
+    const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
+
+    await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    // Movement first, then $pull: a mid-way failure leaves the abono intact
+    // (debt still pending, no phantom movement inflating balances).
+    expect(deleteMovementMock.mock.invocationCallOrder[0])
+      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+  });
+
+  it('tolerates an already-missing movement when deleting an abono (R5-B)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    const result = await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    // The abono pull still happens: a movement that is already gone must not
+    // block removing its abono.
+    expect(result.abonos).toHaveLength(0);
+    expect(creditRepo.deleteAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.deleted).toHaveLength(0);
+  });
+
+  it('propagates non-NotFound movement errors WITHOUT pulling the abono (R5-B)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+
+    await expect(
+      deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo),
+    ).rejects.toThrow('db down');
+
+    expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
+  });
+
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
       findByUserId: vi.fn().mockResolvedValue([]),

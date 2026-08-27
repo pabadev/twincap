@@ -14,8 +14,8 @@ import { MongoCreditReceivedRepository } from '../../../../infrastructure/reposi
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
-import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../../lib/handle-action-error';
+import { revalidateMovementData } from '../../../../lib/revalidate';
 
 const ids = { generate: () => crypto.randomUUID() };
 
@@ -47,9 +47,7 @@ export async function createCreditReceivedAction(
       ids,
       accountRepo,
     );
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }
@@ -84,9 +82,7 @@ export async function addAbonoAction(
       ids,
       accountRepo,
     );
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }
@@ -118,10 +114,7 @@ export async function editAbonoAction(
       creditRepo,
       movementRepo,
     );
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }
@@ -151,9 +144,7 @@ export async function editCreditReceivedAction(
       creditRepo,
       movementRepo,
     );
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }
@@ -176,9 +167,7 @@ export async function deleteAbonoAction(
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteAbono(user.userId, creditId, abonoId, creditRepo, movementRepo);
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }
@@ -200,9 +189,7 @@ export async function deleteCreditAction(
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();
     await deleteCreditReceived(user.userId, creditId, creditRepo, movementRepo);
-    revalidatePath('/credits/received');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
   }

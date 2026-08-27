@@ -44,5 +44,18 @@ export function toTransferDocData(entity: Transfer): Record<string, unknown> {
     rate: entity.rate,
     date: entity.date,
     note: entity.note,
+    // R5-B: persist movementIds so deleteTransfer can actually reverse both
+    // legs. Previously omitted — the saved doc never stored them, so deleting
+    // a transfer left its two movements orphaned (they kept counting in
+    // balances/dashboard and were unreachable from the UI). Stored as plain
+    // strings: movements carry custom string ids (UUIDs), NOT ObjectIds, so
+    // wrapping them would throw.
+    movementIds: entity.movementIds
+      ? {
+          expenseId: entity.movementIds.expenseId,
+          incomeId: entity.movementIds.incomeId,
+        }
+      : undefined,
+    createdAt: entity.createdAt,
   };
 }

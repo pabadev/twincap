@@ -39,6 +39,15 @@ export function MovementsList({
   const [nextCursor, setNextCursor] = useState<SerializedCursor | null>(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // R5-B: re-sync the table whenever the server pushes fresh first-page props
+  // (after router.refresh() following a create/update/delete). The list used
+  // to hold a useState snapshot that never updated, so rows created/edited/
+  // removed elsewhere stayed visible until a full reload.
+  useEffect(() => {
+    setMovements(initialMovements);
+    setNextCursor(initialCursor);
+  }, [initialMovements, initialCursor]);
+
   // Reference data loaded lazily for the form / filters
   const [accounts, setAccounts] = useState<SerializedAccount[]>([]);
   const [categories, setCategories] = useState<SerializedCategory[]>([]);

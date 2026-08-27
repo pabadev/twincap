@@ -21,13 +21,25 @@ export async function deleteSaleAbono(
   const abono = sale.abonos.find(a => a.id === abonoId);
   if (!abono) throw new NotFoundError('Abono not found');
 
+  // R5-B atomicity: reverse the linked movement FIRST, then pull the abono.
+  // With the old order (pull abono → delete movement) a failure between the two
+  // leaves a phantom movement still counting in balances with no matching
+  // abono. Deleting the movement first means a mid-way failure leaves the abono
+  // intact (no balance inflation). Tolerant: an already-missing movement is fine.
+  if (abono.movementId) {
+    try {
+      await movementRepo.delete(userId, abono.movementId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        // movement already gone — continue to pull the abono
+      } else {
+        throw err;
+      }
+    }
+  }
+
   // POS-6: remove abono (atomic $pull)
   await saleRepo.deleteAbono(userId, saleId, abonoId);
-
-  // POS-6: reverse linked movement
-  if (abono.movementId) {
-    await movementRepo.delete(userId, abono.movementId);
-  }
 
   return new Sale(
     {
