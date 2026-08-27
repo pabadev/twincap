@@ -31,13 +31,16 @@ export default async function SalesPage() {
     creditRepo.findByUserId(user.userId),
   ]);
 
-  // H14: linked credits own the pending of their sale. The list uses these
-  // values so both modules always show the same balance, and direct abonos
-  // are routed to Credits Granted (single ledger → no double accounting).
+  // H14/R5-D0b: linked credits own the pending of their sale AND their first
+  // abono IS the sale's initial payment. The list uses these values so both
+  // modules always show the same balance, and direct abonos are routed to
+  // Credits Granted (single ledger → no double accounting).
   const creditPendingBySaleId: Record<string, number> = {};
+  const creditInitialPaymentBySaleId: Record<string, number> = {};
   for (const credit of creditsGranted) {
     if (credit.saleId) {
       creditPendingBySaleId[credit.saleId] = credit.pending;
+      creditInitialPaymentBySaleId[credit.saleId] = credit.abonos[0]?.amount.amount ?? 0;
     }
   }
 
@@ -48,6 +51,7 @@ export default async function SalesPage() {
       accounts={serializeEntities(accounts)}
       clients={serializeEntities(clients)}
       creditPendingBySaleId={creditPendingBySaleId}
+      creditInitialPaymentBySaleId={creditInitialPaymentBySaleId}
     />
   );
 }

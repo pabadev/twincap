@@ -15,6 +15,7 @@ import type {
 import type { IdGenerator } from '../ports';
 import type { CreateSaleInput } from './dto/sales';
 import { saleCategory } from './helpers';
+import { creditGrantedCategory } from '../../domain/synthetic-categories';
 
 /**
  * Create a sale with line items (POS-2 through POS-4, H14).
@@ -22,15 +23,18 @@ import { saleCategory } from './helpers';
  * Movement map (no double accounting):
  * - paid-in-full: one income movement for the total (kind salePayment).
  * - on-credit: requires an existing client; auto-creates a linked
- *   CreditGranted whose principal is the NET debt (total − initialPayment)
- *   and NO principal movement. If initialPayment > 0, exactly one income
- *   movement for that amount (kind salePayment). Later abonos live in the
- *   credits-granted flow (income movements, kind creditGrantedAbono).
- *   Invariant: credit.pending === total − initialPayment − Σ credit abonos.
+ *   CreditGranted whose principal is the FULL total (R5-D0). The CreditGranted
+ *   owns the whole debt — the sale does NOT accumulate its own abonos.
+ *   The initial payment (when > 0) is recorded as the credit's FIRST abono
+ *   with one income movement (kind creditGrantedAbono, refId = creditId)
+ *   (R5-D0b). Later abonos live in the credits-granted flow.
+ *   Invariant: credit.pending === total − Σ credit abonos.
  *
  * Decrement stock for physical items (POS-3: atomic $inc guard, reject oversell).
  *
- * Movement context: always 'Business' — sale movements are economic activity.
+ * Movement context: 'Business' for the initial-payment abono — POS sales are
+ * economic activity (D3-bis), same as any other sale movement. Standalone
+ * credit abonos keep context 'Personal' (credits-granted/add-abono.ts).
  */
 export async function createSale(
   userId: string,
@@ -121,27 +125,47 @@ export async function createSale(
     }));
   }
 
-  // H14: On-credit → linked CreditGranted with NET principal (no principal
-  // movement: no money left the account at sale time beyond the initial payment).
+  // R5-D0/R5-D0b: On-credit → linked CreditGranted owns the FULL debt
+  // (principal === total; no SALES-side abonos). The initial payment, when
+  // present, is the credit's FIRST abono — never a standalone movement linked
+  // to the sale — so the sale and the credit share ONE ledger.
   if (input.paymentMode === 'on-credit' && client) {
-    // H14: initialPayment = total → zero-principal credit, born paid-in-full.
-    const principal = Money.nonNegative(total - initialPayment, input.currency);
-    const credit = new CreditGranted({
-      id: ids.generate(),
-      userId,
-      counterparty: client.name,
-      principal,
-      accountId: sale.accountId,
-      date: sale.date,
-      saleId,
-      createdAt: now,
-    });
+    const creditId = ids.generate();
+    const principal = new Money(total, input.currency);
+
+    // The initial-payment abono embeds its movementId up front; the movement
+    // is created right after the credit (same write order as add-abono).
+    const firstAbono =
+      initialPayment > 0
+        ? [{
+            id: ids.generate(),
+            amount: new Money(initialPayment, input.currency),
+            date: sale.date,
+            accountId: sale.accountId,
+            movementId: ids.generate(),
+          }]
+        : [];
+
+    const credit = new CreditGranted(
+      {
+        id: creditId,
+        userId,
+        counterparty: client.name,
+        principal,
+        accountId: sale.accountId,
+        date: sale.date,
+        saleId,
+        createdAt: now,
+      },
+      firstAbono,
+    );
     await creditRepo.create(credit);
 
     if (initialPayment > 0) {
-      await movementRepo.create(buildSalePaymentMovement({
+      await movementRepo.create(buildInitialPaymentMovement({
         userId,
-        saleId,
+        movementId: firstAbono[0].movementId,
+        creditId,
         accountId: sale.accountId,
         amount: initialPayment,
         currency: input.currency,
@@ -176,6 +200,41 @@ function buildSalePaymentMovement(args: {
     // No persisted note: display text derives at render from link.kind.
     context: 'Business',
     link: { kind: 'salePayment', refId: args.saleId, opId: args.ids.generate() },
+    createdAt: args.now,
+  });
+}
+
+/**
+ * Income movement for the initial payment of an on-credit sale (R5-D0b).
+ *
+ * Same shape as a creditGrantedAbono — it IS the credit's first abono — but
+ * with context 'Business': it is the commercial sale's upfront payment (D3-bis
+ * classifies POS sale flows as Business), unlike standalone credit abonos
+ * which stay 'Personal'. Documented for review.
+ */
+function buildInitialPaymentMovement(args: {
+  userId: string;
+  movementId: string;
+  creditId: string;
+  accountId: string;
+  amount: number;
+  currency: CreateSaleInput['currency'];
+  date: Date;
+  now: Date;
+  ids: IdGenerator;
+}): Movement {
+  return new Movement({
+    id: args.movementId,
+    userId: args.userId,
+    accountId: args.accountId,
+    category: creditGrantedCategory('income'),
+    type: 'income',
+    amount: new Money(args.amount, args.currency),
+    date: args.date,
+    // No persisted note: display text derives at render from link.kind.
+    context: 'Business',
+    // refId = creditId (NOT saleId) so the credit cascade cleanup finds it.
+    link: { kind: 'creditGrantedAbono', refId: args.creditId, opId: args.ids.generate() },
     createdAt: args.now,
   });
 }

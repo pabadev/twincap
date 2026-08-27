@@ -692,6 +692,61 @@ describe('deleteCreditGranted', () => {
     expect(creditRepo.deleted).toContain('cg-1');
   });
 
+  it('blocks deletion of a sale-born credit and deletes nothing (R5-D0c)', async () => {
+    const credit = makeCredit({ saleId: 'sale-1' }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
+    ]);
+    const principalMov = makeMovement({
+      id: 'mov-principal',
+      type: 'expense',
+      link: { kind: 'creditGrantedPrincipal', refId: 'cg-1', opId: 'op-1' },
+    });
+    const abonoMov = makeMovement({
+      id: 'mov-abono',
+      type: 'income',
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([principalMov, abonoMov]),
+    });
+
+    await expect(
+      deleteCreditGranted('user-1', 'cg-1', creditRepo, movementRepo),
+    ).rejects.toThrow(ConflictError);
+
+    // Nothing was deleted — the sale cascade is the only deletion path.
+    expect(movementRepo.delete).not.toHaveBeenCalled();
+    expect(creditRepo.deleted).toHaveLength(0);
+  });
+
+  it('tolerates an already-deleted movement when cascading a standalone credit (R5-D0c)', async () => {
+    const credit = makeCredit({});
+    const abonoMov = makeMovement({
+      id: 'mov-abono',
+      type: 'income',
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([abonoMov]),
+      // Concurrent deletion already removed the movement before we delete it.
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement already deleted')),
+    });
+
+    await expect(
+      deleteCreditGranted('user-1', 'cg-1', creditRepo, movementRepo),
+    ).resolves.toBeUndefined();
+
+    expect(creditRepo.deleted).toContain('cg-1');
+  });
+
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
       findByUserId: vi.fn().mockResolvedValue([]),

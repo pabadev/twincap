@@ -168,10 +168,12 @@ function fakeClientRepo(
 
 function fakeCreditGrantedRepo(
   overrides: Partial<CreditGrantedRepository> = {},
-): CreditGrantedRepository & { created: CreditGranted[] } {
+): CreditGrantedRepository & { created: CreditGranted[]; deleted: string[] } {
   const created: CreditGranted[] = [];
+  const deleted: string[] = [];
   return {
     created,
+    deleted,
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
@@ -179,7 +181,9 @@ function fakeCreditGrantedRepo(
       return credit;
     }),
     update: vi.fn().mockImplementation(async (credit: CreditGranted) => credit),
-    delete: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+      deleted.push(id);
+    }),
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
     deleteAbono: vi.fn().mockResolvedValue(undefined),
@@ -400,10 +404,11 @@ describe('createSale', () => {
     expect(sale.paymentMode).toBe('on-credit');
     expect(movementRepo.created).toHaveLength(0);
     expect(saleRepo.created).toHaveLength(1);
-    // Net principal: total − initialPayment(0) → full total as debt.
+    // R5-D0: principal = total (the credit owns the whole debt; no abonos yet).
     expect(creditRepo.created).toHaveLength(1);
     expect(creditRepo.created[0].principal.amount).toBe(50000);
     expect(creditRepo.created[0].pending).toBe(50000);
+    expect(creditRepo.created[0].abonos).toHaveLength(0);
     expect(creditRepo.created[0].saleId).toBe(sale.id);
   });
 
@@ -555,7 +560,7 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
   });
 
-  it('on-credit with initialPayment > 0 creates the linked credit at NET principal plus exactly one income movement (H14)', async () => {
+  it('on-credit with initialPayment > 0 records it as the credit FIRST abono and one credit abono movement (R5-D0/R5-D0b)', async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -570,7 +575,7 @@ describe('createSale', () => {
     const sale = await createSale(
       'user-1',
       {
-        items: [{ itemId: 'item-1', quantity: 2, unitPrice: 50000 }],
+        items: [{ itemId: 'item-1', quantity: 3, unitPrice: 50000 }],
         accountId: 'acc-1',
         clientId: 'client-1',
         date: new Date('2025-06-01'),
@@ -587,25 +592,29 @@ describe('createSale', () => {
       accountRepo,
     );
 
-    // Exactly one income movement = initialPayment, linked to the sale.
+    // Exactly one income movement = initialPayment, linked to the CREDIT.
     expect(movementRepo.created).toHaveLength(1);
     expect(movementRepo.created[0].type).toBe('income');
     expect(movementRepo.created[0].amount.amount).toBe(20000);
     expect(movementRepo.created[0].accountId).toBe('acc-1');
-    expect(movementRepo.created[0].link?.kind).toBe('salePayment');
-    expect(movementRepo.created[0].link?.refId).toBe(sale.id);
+    expect(movementRepo.created[0].context).toBe('Business');
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].link?.refId).toBe(creditRepo.created[0].id);
+    expect(movementRepo.created[0].id).toBe(creditRepo.created[0].abonos[0].movementId);
 
-    // Linked credit holds the NET debt only.
+    // The credit owns the FULL debt; the initial payment is its first abono.
     expect(creditRepo.created).toHaveLength(1);
     const credit = creditRepo.created[0];
-    expect(credit.principal.amount).toBe(80000);
-    expect(credit.pending).toBe(80000);
+    expect(credit.principal.amount).toBe(150000);
+    expect(credit.abonos).toHaveLength(1);
+    expect(credit.abonos[0].amount.amount).toBe(20000);
+    expect(credit.pending).toBe(130000);
     expect(credit.saleId).toBe(sale.id);
     expect(credit.counterparty).toBe('Juan Pérez');
     expect(credit.accountId).toBe('acc-1');
 
-    // Invariant: pending == total − initialPayment − Σ abonos (no abonos yet).
-    expect(credit.pending).toBe(100000 - 20000 - 0);
+    // Invariant: pending == total − Σ abonos (R5-D0).
+    expect(credit.pending).toBe(150000 - 20000);
   });
 
   it('on-credit with initialPayment = 0 creates no movement (H14)', async () => {
@@ -642,10 +651,12 @@ describe('createSale', () => {
 
     expect(creditRepo.created).toHaveLength(1);
     expect(creditRepo.created[0].principal.amount).toBe(50000);
+    expect(creditRepo.created[0].pending).toBe(50000);
+    expect(creditRepo.created[0].abonos).toHaveLength(0);
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('allows initialPayment = total: credit born paid-in-full with zero principal and one income movement (H14)', async () => {
+  it('allows initialPayment = total: credit born paid-in-full with first abono = total and one income movement (R5-D0b)', async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -678,16 +689,18 @@ describe('createSale', () => {
     );
 
     expect(creditRepo.created).toHaveLength(1);
-    expect(creditRepo.created[0].principal.amount).toBe(0);
+    expect(creditRepo.created[0].principal.amount).toBe(50000);
     expect(creditRepo.created[0].pending).toBe(0);
-    // initialPayment > 0 → exactly one income movement for the full amount
-    // (approved movement map; the credit itself adds no principal movement).
+    expect(creditRepo.created[0].abonos).toHaveLength(1);
+    expect(creditRepo.created[0].abonos[0].amount.amount).toBe(50000);
+    // initialPayment = total → the full amount becomes the credit's first
+    // abono; exactly one credit-abono income movement (no separate salePayment).
     expect(movementRepo.created).toHaveLength(1);
     const movement = movementRepo.created[0];
     expect(movement.type).toBe('income');
     expect(movement.amount.amount).toBe(50000);
-    expect(movement.link?.kind).toBe('salePayment');
-    expect(movement.link?.refId).toBe(creditRepo.created[0].saleId);
+    expect(movement.link?.kind).toBe('creditGrantedAbono');
+    expect(movement.link?.refId).toBe(creditRepo.created[0].id);
   });
 
   it('allows services without stock decrement (POS-3)', async () => {
@@ -935,8 +948,9 @@ describe('deleteSale', () => {
     const movementRepo = fakeMovementRepo({
       findByUserId: vi.fn().mockResolvedValue([abonoMovement, paymentMovement]),
     });
+    const creditRepo = fakeCreditGrantedRepo();
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo);
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
 
     expect(catalogRepo.incremented).toHaveLength(1);
     expect(catalogRepo.incremented[0].quantity).toBe(2); // restore 2 units
@@ -946,15 +960,127 @@ describe('deleteSale', () => {
     expect(saleRepo.deleted).toContain('sale-1');
   });
 
+  it('cascade-deletes the linked credit and ALL its movements when deleting an on-credit sale (R5-D0c)', async () => {
+    const product = makeProduct();
+    // NEW model: the sale owns no abonos; its credit owns the debt.
+    const sale = makeSale({});
+    const credit = new CreditGranted(
+      {
+        id: 'cg-1',
+        userId: 'user-1',
+        counterparty: 'Juan Pérez',
+        principal: new Money(150000, 'COP'),
+        accountId: 'acc-1',
+        date: new Date('2025-06-01'),
+        saleId: 'sale-1',
+        createdAt: new Date(),
+      },
+      [
+        { id: 'ab-init', amount: new Money(20000, 'COP'), date: new Date('2025-06-01'), accountId: 'acc-1', movementId: 'mov-initial' },
+        { id: 'ab-2', amount: new Money(30000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-abono' },
+      ],
+    );
+    const initialPaymentMovement = makeMovement({
+      id: 'mov-initial',
+      type: 'income',
+      amount: new Money(20000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
+    });
+    const creditAbonoMovement = makeMovement({
+      id: 'mov-abono',
+      type: 'income',
+      amount: new Money(30000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+    // LEGACY leftover: an old-model salePayment that still references the sale.
+    const legacySalePayment = makeMovement({
+      id: 'mov-legacy',
+      type: 'income',
+      link: { kind: 'salePayment', refId: 'sale-1', opId: 'op-3' },
+    });
+
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+    });
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([initialPaymentMovement, creditAbonoMovement, legacySalePayment]),
+    });
+    const creditRepo = fakeCreditGrantedRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
+
+    // Initial payment + credit abono (refId = creditId) AND legacy sale movement.
+    expect(movementRepo.deleted).toContain('mov-initial');
+    expect(movementRepo.deleted).toContain('mov-abono');
+    expect(movementRepo.deleted).toContain('mov-legacy');
+    expect(creditRepo.deleted).toContain('cg-1');
+    expect(saleRepo.deleted).toContain('sale-1');
+  });
+
+  it('tolerates a movement that is already gone — no orphan, no false error (R5-D0c)', async () => {
+    const product = makeProduct();
+    const sale = makeSale({});
+    const credit = new CreditGranted(
+      {
+        id: 'cg-1',
+        userId: 'user-1',
+        counterparty: 'Juan Pérez',
+        principal: new Money(50000, 'COP'),
+        accountId: 'acc-1',
+        date: new Date('2025-06-01'),
+        saleId: 'sale-1',
+        createdAt: new Date(),
+      },
+      [
+        { id: 'ab-init', amount: new Money(20000, 'COP'), date: new Date('2025-06-01'), accountId: 'acc-1', movementId: 'mov-initial' },
+      ],
+    );
+    const initialPaymentMovement = makeMovement({
+      id: 'mov-initial',
+      type: 'income',
+      amount: new Money(20000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
+    });
+
+    const saleRepo = fakeSaleRepo({
+      findByUserId: vi.fn().mockResolvedValue([sale]),
+    });
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([initialPaymentMovement]),
+      // Concurrent deletion already removed the movement before we delete it.
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement already deleted')),
+    });
+    const creditRepo = fakeCreditGrantedRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+
+    await expect(
+      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo),
+    ).resolves.toBeUndefined();
+
+    expect(creditRepo.deleted).toContain('cg-1');
+    expect(saleRepo.deleted).toContain('sale-1');
+    expect(catalogRepo.incremented).toHaveLength(1);
+  });
+
   it('rejects when sale not found', async () => {
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([]),
     });
     const catalogRepo = fakeCatalogRepo();
     const movementRepo = fakeMovementRepo();
+    const creditRepo = fakeCreditGrantedRepo();
 
     await expect(
-      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo),
+      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo),
     ).rejects.toThrow(NotFoundError);
   });
 });

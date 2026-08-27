@@ -432,6 +432,7 @@
     "emptyTitle": "No sales yet",
     "emptyDescription": "Create your first sale to start selling.",
     "initialPayment": "Initial payment",
+    "initialPaymentLabel": "Initial payment:",
     "clientRequiredForCredit": "Select a real client to sell on credit",
     "initialPaymentExceedsTotal": "Initial payment cannot exceed the total",
     "saleDetail": "Sale Detail",

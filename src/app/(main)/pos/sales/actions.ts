@@ -163,11 +163,14 @@ export async function deleteSaleAction(
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
-    await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo);
+    const creditRepo = new MongoCreditGrantedRepository();
+    await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
+    revalidatePath('/credits/granted');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
+    revalidatePath('/movements');
   } catch (error) {
     return handleActionError(error);
   }

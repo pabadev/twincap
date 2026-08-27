@@ -27,9 +27,11 @@ interface SaleListProps {
   clients: SerializedClient[];
   /** H14: pending per sale owned by its linked CreditGranted, when one exists. */
   creditPendingBySaleId?: Record<string, number>;
+  /** R5-D0b: initial payment per sale = the linked credit's first abono. */
+  creditInitialPaymentBySaleId?: Record<string, number>;
 }
 
-export function SaleList({ sales, catalogItems, accounts, clients, creditPendingBySaleId }: SaleListProps) {
+export function SaleList({ sales, catalogItems, accounts, clients, creditPendingBySaleId, creditInitialPaymentBySaleId }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
@@ -166,6 +168,10 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
               const effectivePending = hasLinkedCredit
                 ? (creditPendingBySaleId as Record<string, number>)[sale.id]
                 : sale.pending;
+              // R5-D0b: the sale's initial payment is the credit's first abono.
+              const initialPayment = hasLinkedCredit
+                ? (creditInitialPaymentBySaleId as Record<string, number>)[sale.id] ?? 0
+                : 0;
 
             return (
               <div
@@ -184,6 +190,11 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
                       {sale.clientId && (
                         <span className="ml-2 inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
                           {clientMap.get(sale.clientId) ?? t('generalClient')}
+                        </span>
+                      )}
+                      {sale.paymentMode === 'on-credit' && initialPayment > 0 && (
+                        <span className="ml-2">
+                          {t('initialPaymentLabel')} {formatAmount(initialPayment, currency, locale)}
                         </span>
                       )}
                       {sale.paymentMode === 'on-credit' && (

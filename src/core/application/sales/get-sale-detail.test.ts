@@ -211,8 +211,8 @@ describe('getSaleDetail', () => {
     expect(snapshot.items[0].subtotal).toBe(100000);
   });
 
-  it('derives initialPayment/pending/abonos from the linked credit (H14 invariant)', async () => {
-    // total=100000, principal(net)=80000 → initialPayment=20000.
+  it('derives initialPayment/pending/abonos for the LEGACY model (net principal ≠ total) (H14 invariant)', async () => {
+    // total=100000, principal(net)=80000 → initialPayment=total−principal=20000.
     const sale = makeSale();
     const credit = makeLinkedCredit({}, [
       { id: 'ab-1', amount: new Money(30000, 'COP'), date: DATE, accountId: 'acc-1', movementId: 'mov-1' },
@@ -235,6 +235,49 @@ describe('getSaleDetail', () => {
     // Invariant: pending == total − initialPayment − Σ abonos.
     expect(snapshot.pending).toBe(100000 - 20000 - 30000);
     expect(snapshot.status).toBe('pending');
+  });
+
+  it('derives initialPayment from the credit FIRST abono for the NEW model (principal === total) (R5-D0b)', async () => {
+    // total=100000, principal = total → initialPayment = abonos[0] = 20000.
+    const sale = makeSale();
+    const credit = makeLinkedCredit({ principal: new Money(100000, 'COP') }, [
+      { id: 'ab-init', amount: new Money(20000, 'COP'), date: DATE, accountId: 'acc-1', movementId: 'mov-init' },
+      { id: 'ab-2', amount: new Money(30000, 'COP'), date: DATE, accountId: 'acc-1', movementId: 'mov-2' },
+    ]);
+    const snapshot = await getSaleDetail(
+      'user-1',
+      'sale-1',
+      fakeSaleRepo(sale),
+      fakeClientRepo(makeClient()),
+      fakeCatalogRepo([makeCatalogItem()]),
+      fakeAccountRepo(makeAccount()),
+      fakeCreditGrantedRepo([credit]),
+    );
+
+    expect(snapshot.hasLinkedCredit).toBe(true);
+    expect(snapshot.initialPayment).toBe(20000);
+    expect(snapshot.pending).toBe(50000);
+    expect(snapshot.abonos).toHaveLength(2);
+    expect(snapshot.status).toBe('pending');
+  });
+
+  it('derives initialPayment = 0 for a new-model credit with no abonos yet (R5-D0b)', async () => {
+    // total=100000, principal = total, no abonos → no initial payment.
+    const sale = makeSale();
+    const credit = makeLinkedCredit({ principal: new Money(100000, 'COP') }, []);
+    const snapshot = await getSaleDetail(
+      'user-1',
+      'sale-1',
+      fakeSaleRepo(sale),
+      fakeClientRepo(makeClient()),
+      fakeCatalogRepo([makeCatalogItem()]),
+      fakeAccountRepo(makeAccount()),
+      fakeCreditGrantedRepo([credit]),
+    );
+
+    expect(snapshot.initialPayment).toBe(0);
+    expect(snapshot.pending).toBe(100000);
+    expect(snapshot.hasLinkedCredit).toBe(true);
   });
 
   it('marks a linked credit fully settled as paid', async () => {

@@ -432,6 +432,7 @@
     "emptyTitle": "No hay ventas aún",
     "emptyDescription": "Crea tu primera venta para empezar a vender.",
     "initialPayment": "Pago inicial",
+    "initialPaymentLabel": "Pago inicial:",
     "clientRequiredForCredit": "Selecciona un cliente real para vender a crédito",
     "initialPaymentExceedsTotal": "El pago inicial no puede superar el total",
     "saleDetail": "Detalle de venta",

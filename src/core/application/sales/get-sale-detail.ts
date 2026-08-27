@@ -17,8 +17,11 @@ import type { SaleDetailSnapshot } from './dto/sales';
  * - account name via AccountRepository
  * - linked credit via CreditGrantedRepository (saleId reference, H14)
  *
- * Money derivation when a linked credit exists:
- * - initialPayment = sale.total − credit.principal (net debt at birth)
+ * Money derivation when a linked credit exists (R5-A dual-model support until
+ * the legacy data migration):
+ * - NEW model (credit.principal === sale.total): initialPayment = the credit's
+ *   FIRST abono (the initial payment is recorded as abono #1, R5-D0b).
+ * - LEGACY model (net credit.principal): initialPayment = sale.total − principal.
  * - pending = credit.pending; abonos come from the credit
  * Without a linked credit:
  * - paid-in-full → initialPayment = total, pending = 0, no abonos
@@ -58,7 +61,14 @@ export async function getSaleDetail(
   let abonos: SaleDetailSnapshot['abonos'];
 
   if (linkedCredit) {
-    initialPayment = sale.total - linkedCredit.principal.amount;
+    // R5-A: dual-model derivation. NEW model (principal === total) → the
+    // initial payment is the credit's first abono; LEGACY model (net principal)
+    // → initialPayment = total − principal. Both converge on `pending`.
+    if (linkedCredit.principal.amount === sale.total) {
+      initialPayment = linkedCredit.abonos[0]?.amount.amount ?? 0;
+    } else {
+      initialPayment = sale.total - linkedCredit.principal.amount;
+    }
     pending = linkedCredit.pending;
     abonos = linkedCredit.abonos.map((abono) => ({
       id: abono.id,
