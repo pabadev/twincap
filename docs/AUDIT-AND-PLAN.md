@@ -18,6 +18,7 @@
 | Ronda 2 — Auditoría y mejoras | ✅ Completa (Fases 0–10 + post-ronda branding; detalle en git history del doc y `Ronda 2.md`) |
 | Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional | ✅ **COMPLETADA (2026-08-25).** 12 fases ejecutadas y verificadas. Auditoría final: 0 CRITICAL, 7 MINOR (no bloqueantes). Suite 412/412 tests en 42 archivos, tsc limpio. Fixes de usuario incluidos: sort por fecha, logout confirmation, placeholders "Seleccionar", transición theme suave, badge "Pagado" en créditos. |
 | **Ronda 4 — Rediseño y evolución del Dashboard financiero** | ✅ **COMPLETADA (2026-08-26).** 6 fases (A→F). Dashboard rediseñado: jerarquía visual, tablas resumen ingresos/gastos por categoría, filtros composables, gráfico anual filtrado, movimientos responsive con columna Category. Suite 428/428, tsc, build limpios. Commits: `cd1bdd2`, `80dd92c`, `5dea992`, `10d6e0b`. |
+| **Ronda 5 — Integridad financiera, créditos con cuotas, fix dashboard, onboarding** | 🔄 **EN PROGRESO (2026-08-27).** Replanteo aprobado por el usuario tras hallazgos críticos de integridad (venta↔crédito con dos fuentes de verdad). Fases A–F + QA. Suite base 426/428 (2 timeout de bcrypt por entorno, ajeno). Commits previos de una ronda 5 anterior (no reemplazada): `c996ff1`, `3b073ea`, `b6dba3f`, `e523520`. |
 
 > ⚠️ **REGLA CRÍTICA (heredada de Ronda 2):** la ronda comienza con **AUDITORÍA**, no con implementación.
 > Prohibido escribir código hasta presentar el plan definitivo por fases y recibir aprobación explícita del usuario.
@@ -440,6 +441,131 @@ page.tsx (SERVER)                           dashboard-content.tsx (CLIENT)
 
 ---
 
+# RONDA 5 — INTEGRIDAD FINANCIERA, CRÉDITOS CON CUOTAS, FIX DASHBOARD, ONBOARDING
+
+Iniciada: 2026-08-26 · **Replanteada 2026-08-27** tras hallazgos críticos de integridad reportados por el usuario.
+
+## R5.1 — Contexto y objetivos
+
+Cinco sugerencias del usuario, agrupadas en fases:
+
+1. **Créditos con cuotas**: registrar número y valor de cuotas al crear un crédito. Cada abono descuenta del total a pagar (no del dinero recibido). Botón "Marcar como pagado" para cancelación manual.
+2. **Fix filtro de mes**: las tablas de ingresos/gastos del dashboard no responden al filtro de período (bug confirmado: `current_month` es un no-op).
+3. **Onboarding**: nuevos usuarios solo reciben cuenta fija "Efectivo" (Nequi eliminada del seed). Orientación para crear cuentas propias.
+4. **Usuarios antiguos**: permitir eliminar cuentas fijas obsoletas (Nequi).
+5. **Centrar body**: verificar y aplicar centrado del contenido.
+
+## R5.2 — Hallazgos de auditoría
+
+### Créditos con cuotas
+
+- Campos `installments` y `frequency` existen pero son **puramente informativos** (CRED-R-1). No hay `installmentValue`.
+- `pending = principal - sum(abonos)` — no distingue entre dinero recibido y total a pagar con intereses.
+- Créditos POS (con `saleId`) se crean con principal cero y no deben requerir cuotas.
+- Créditos standalone (sin `saleId`) son los que necesitan cuotas obligatorias.
+
+### Filtro de mes (BUG CONFIRMADO)
+
+- En `dashboard-content.tsx`, el filtro `current_month` **no tiene rama de filtrado**. Solo `this_year` filtra.
+- `filteredMovements` contiene TODOS los movimientos cuando `period === 'current_month'`.
+- Componentes afectados: tablas de resumen, top categorías, movimientos recientes.
+
+### Seed data
+
+- `seedUser()` crea 2 cuentas fijas: **Efectivo** (COP) y **Nequi** (COP), ambas `isFixed: true`.
+- Nequi no existe en todos los países → eliminar del seed.
+- No hay guía de onboarding para nuevos usuarios.
+
+### Body centering
+
+- `<main>` ya tiene `max-w-screen-2xl mx-auto` (centra hasta 1536px).
+- El `<body>` y el contenedor flex del layout no tienen restricción de ancho adicional.
+
+## R5.3 — Reglas inquebrantables (heredadas)
+
+Todas las reglas de R3 y R4 vigentes. Adicionales:
+
+- **UNA sola fuente de verdad para la deuda de una venta a crédito:** el `CreditGranted` es dueño único de la deuda; la `Sale` on-credit **no acumula `sale.abonos` propios** y deriva su saldo del crédito vinculado.
+- **El pago inicial de una venta on-credit se registra como el PRIMER abono del `CreditGranted`** (no como movimiento suelto), de modo que `credit.pending = total − Σabonos` y la venta muestra el pago inicial y el saldo correctos.
+- **Cascada de borrado simétrica:** eliminar una venta a crédito borra el crédito vinculado + todos sus movimientos (pago inicial/abonos); el manejo inverso aplica al eliminar un crédito de venta.
+- **`installmentValue` es obligatorio cuando `installments > 0`** en créditos standalone.
+- **Créditos POS (con `saleId`)** no requieren cuotas (su deuda es el `principal` neto).
+- **"Marcar como pagado"** crea un abono por el `pending` restante (no un flag separado).
+- **Toda acción que modifique movimientos DEBE revalidar `/movements`** (regla de R3 F6, reforzada y centralizada).
+- **Nequi** se elimina del seed para nuevos usuarios; usuarios existentes conservan su cuenta Nequi (ya no es fixed).
+- **Efectivo** permanece como cuenta fija ineliminable para todos los usuarios.
+
+## R5.4 — Hallazgos críticos de integridad (reportados por el usuario + auditoría 2026-08-27)
+
+El usuario reportó 6 síntomas. La auditoría profunda (3 exploraciones: dominio/aplicación, UI/invalidación, infraestructura) confirmó que comparten UNA causa raíz de diseño.
+
+### Causa raíz: dos fuentes de verdad para la misma deuda
+
+Al crear una venta a crédito se crean **dos entidades separadas**, cada una con su **propia lista de abonos embebida** (`sale.abonos` y `credit.abonos`), que **ningún write sincroniza**. El vínculo `CreditGranted.saleId` es solo informativo (String sin índice ni FK).
+
+| Síntoma | Causa raíz (archivos) |
+|---------|------------------------|
+| Venta 150.000 / pago inicial 20.000 → saldo 150.000 en ventas y 130.000 en créditos | El pago inicial NO se persiste como abono; solo crea un `Movement` suelto (`salePayment`). `Sale.pending=total` (150.000), `Credit.pending=principal neto` (130.000). `create-sale.ts:126-153` |
+| Abonos de créditos no se reflejan en ventas y viceversa | `addSaleAbono` escribe solo `sale.abonos`; `addCreditGrantedAbono` escribe solo `credit.abonos`. `sales/add-sale-abono.ts:46-52`, `credits-granted/add-abono.ts:47-53` |
+| Borrar venta no borra el crédito otorgado | `deleteSale` no consulta el repo de créditos; deja el `CreditGranted` (con sus abonos `refId=creditId`) huérfano alimentando el dashboard. `sales/delete-sale.ts`, `credits-granted/delete-credit-granted.ts` |
+| Borrar abono: toast error + desaparece + sigue en Movimientos | Borrado NO atómico: `$pull` del abono (se comete) + `movementRepo.delete` (2º write). Si el 2º falla → toast error, abono borrado de DB, movimiento huérfano. `credits-granted/delete-abono.ts:31-36` |
+| Movimientos no se actualizan sin refresh | Faltan `revalidatePath('/movements')` en 7 de 9 actions (regla de F6 violada); las listas cliente usan `useState(initial...)` que no se re-sincroniza con props tras `router.refresh()`. |
+| Datos eliminados siguen en el dashboard | Consecuencia de los orphan movements que no se borran realmente (doble escritura) + revalidación incompleta. |
+
+### Bugs de infraestructura adicionales (latentes, corregir en F)
+
+1. **`toTransferDocData` omite `movementIds`** — las transferencias nunca persisten su vínculo a sus 2 movements → `reconcile` las marca incompletas.
+2. **Soft-delete de Sale es vestigial** — el dominio/modelo/reconciler lo contemplan (`deletedAt`/`stockRestored`), pero `toSaleDocData` nunca los persiste y `sale-repository` hace hard-delete (`findOneAndDelete`).
+3. **`GlobalMovementProvider.invalidateData()` es código muerto** — nadie lo consume; y no cachea la tabla de movimientos (solo cuentas/categorías del modal rápido).
+4. **`reconcile.ts` fase apply es no-op** y no cruza `CreditGranted.saleId` contra ventas inexistentes.
+
+## R5.4b — Plan por fases (REPLANTEADO 2026-08-27, aprobado)
+
+| Fase | Contenido | Dependencias | Criterios de aceptación clave |
+|------|-----------|:---:|-------------------------------|
+| **A** | **Modelo de integridad venta↔crédito — Dominio + use cases** — `CreditGranted` dueño único de la deuda on-credit; `Sale` delega saldo al crédito vinculado; pago inicial = 1er abono del crédito; `pending` unificado; cascada de borrado venta↔crédito↔movimientos. Tests domain + use cases. | — | Una sola fuente de verdad; pending correcto en venta y crédito; cascada de borrado completa; suite verde |
+| **B** | **Eliminación y movimientos** — Centralizar invalidación (helper único `revalidatePath('/movements')` en todas las actions); borrado de abono atómico (orden de writes seguro) para eliminar toast de error + movimiento huérfano; sincronizar la tabla de movimientos (re-fetch tras operaciones). | A | Toda action que toca movimientos revalida `/movements`; borrado de abono no deja orphans; tabla actualiza sin refresh |
+| **C** | **Créditos con cuotas — Dominio + Infra + UI** — `installmentValue: Money`, `totalToPay`; pago inicial dentro del flujo unificado; "Marcar como pagado". Forms + progreso "3/12". | A | `installmentValue` obligatorio si `installments>0`; progresso visible; botón funciona; i18n es/en |
+| **D** | **Fix filtro de mes** — Rama `current_month` en `filteredMovements` (dashboard). | — | Filtro recalcula tablas/top/recientes; tests |
+| **E** | **Seed + Onboarding + Body centering** — Seed solo "Efectivo" fija; Nequi → no fixed; onboarding con ejemplos; centrado 375/768/1280. | — | Seed 1 cuenta; migración; onboarding visible; centrado |
+| **F** | **Reparación datos legacy + QA final** — Migración/`reconcile` para: ventas legacy on-credit sin crédito vinculado, créditos huérfanos de ventas borradas, transferencias sin `movementIds`; corregir soft-delete vestigial; QA integral (i18n, dark/light, responsive, tests, tsc, build). | A–E | Suite verde, tsc limpio, build, datos legacy reparados |
+
+### Dependencias entre fases
+
+```
+A ──► B ──► (C,D,E en paralelo) ──► F (QA)
+A ──► C
+```
+
+## R5.5 — Decisiones de dominio
+
+| ID | Decisión | Justificación |
+|----|----------|---------------|
+| R5-D0 | El `CreditGranted` es la ÚNICA fuente de verdad de la deuda on-credit; `Sale` no acumula abonos propios y deriva su saldo del crédito | Elimina la duplicación de raíz; coherente con el principio "una fuente de verdad" (como Movement.context en D3-bis) |
+| R5-D0b | El pago inicial de una venta on-credit se registra como primer abono del crédito | Hace que la venta y el crédito muestren el pago inicial y el saldo correctos, con una sola lista de abonos |
+| R5-D0c | Cascada de borrado simétrica venta↔crédito↔movimientos | Evita entidades huérfanas y movimientos que alimentan el dashboard con datos borrados |
+| R5-D1 | `installmentValue` obligatorio cuando `installments > 0` | Evita inconsistencia: sin valor de cuota no se puede calcular total a pagar |
+| R5-D2 | Créditos POS (con `saleId`) no requieren cuotas | Su deuda es el principal neto |
+| R5-D3 | "Marcar como pagado" crea abono por pending restante | Mantiene registros financieros honestos (total abonos = total a pagar) |
+| R5-D4 | Nequi eliminada del seed, no de la DB existente | Backward-compatible: usuarios existentes conservan su cuenta |
+| R5-D5 | Efectivo permanece como cuenta fija ineliminable | Cuenta base para todos los usuarios, todos los países |
+
+## R5.6 — Restricciones explícitas
+
+NO:
+- Mantener dos listas de abonos no sincronizadas para la misma deuda on-credit
+- Permitir que el pago inicial quede solo como movimiento suelto sin representación en el saldo
+- Borrar venta/crédito dejando entidades huérfanas ni movimientos que alimenten el dashboard
+- Fingir éxito en un borrado de abono cuando el movimiento persiste (evitar toast-error + dato huérfano)
+- Requerir cuotas en créditos POS (con `saleId`)
+- Crear un flag `status: 'paid'` separado (usar abono)
+- Eliminar cuentas Nequi de usuarios existentes
+- Agregar dependencias nuevas
+- Modificar reglas financieras establecidas
+- Hardcodear textos
+
+---
+
 ## PROTOCOLO POST-COMPACTACIÓN
 
 Si el contexto se compacta o inicia nueva sesión:
@@ -447,8 +573,8 @@ Si el contexto se compacta o inicia nueva sesión:
 1. **Leer este archivo completo** (`docs/AUDIT-AND-PLAN.md`)
 2. **Leer `AGENTS.md`**
 3. **Buscar en Engram:** `mem_search(query: "TwinCap", project: "twincap")`
-4. **Identificar el estado actual** — Rondas 1–4 completadas. Deuda técnica: R4-A1 (performance) y R4-A2 (multi-moneda).
-5. **Esperar nuevos requerimientos del usuario** antes de implementar cualquier cosa
+4. **Identificar el estado actual** — Rondas 1–4 completadas. Ronda 5 en progreso (plan aprobado, auditoría completada). Deuda técnica: R4-A1 (performance), R4-A2 (multi-moneda).
+5. **Esperar aviso del usuario para implementar la siguiente fase**
 
 ---
 
@@ -482,3 +608,5 @@ Si el contexto se compacta o inicia nueva sesión:
 - 2026-08-24 (mismo día) — **REMEDIACIÓN F3** (`c892065`, 12 archivos, +260/−10). Reporte del usuario: ventas POS clasificadas Personal y transferencias ambiguas bajo filtro de ámbito. Causa raíz 1 confirmada: cuentas pre-F3 quedaron 'Personal' por backfill/default y NO existía UI de edición de scope (desvío documentado de F3). Fix: use case `updateAccountScope` + acción server con tenant guard + `AccountScopeButton` (icon action → Modal sm → Select) en cada cuenta; cambio de clasificación puro, los filtros lo recogen en vivo (resolución por account map, sin migración). Causa raíz 2: nota derivada "Transferencia entre cuentas propias" no nombraba contraparte. Decisión de UX aprobada por el usuario: mantener piernas visibles bajo filtro con etiqueta directional — "Transferencia hacia Nequi (Negocio)" / "Transfer from Efectivo (Personal)" vía nuevas claves SystemNotes (scope con claves dedicadas porque las del filtro son adjetivos plurales); fallback plain si faltan refs; leg que no matchea ningún endpoint cae a plain, nunca dirección falsa. Suite 411/411 en 42 archivos (+12), tsc limpio. Acción operativa del usuario tras deploy: reclasificar sus cuentas de venta como Negocio.
 - 2026-08-24 (mismo día) — **FASE 3 COMPLETADA** (`154e990`, 41 archivos, +1071/−88). Clasificación Personal/Negocio D3(a): `Account.scope` enum requerido default 'Personal' como ÚNICA fuente de verdad; backfill idempotente no destructivo (`src/infrastructure/migrations/backfill-account-scope.ts` + `scripts/backfill-account-scope.mjs` para ejecutar contra Atlas — (ejecutado contra Atlas 2026-08-24: matched=10, modified=10)); herencia automática de contexto en los 11 flujos sistema (cero hardcodes 'Personal'; transferencias cross-scope → cada pierna hereda SU cuenta, decisión menor aprobada); picker Personal/Negocio eliminado del formulario manual (contexto deriva server-side de la cuenta, nunca del cliente); select de scope en alta de cuentas + chip sutil Business (scope inmutable post-creación, misma convención que currency); filtro Ámbito en Movements resolviendo account-ids-por-scope (jamás vía context persistido histórico), deshabilitado con cuenta específica seleccionada; helper `listAccountIdsByScope` exportado como base de F4. Suite 399/399 en 41 archivos (+26 netos), tsc limpio, verificación independiente. Desvíos: NO existe UI de edición de cuentas → scope solo en creación; use cases de créditos/payables ahora resuelven la cuenta ANTES de validar negocio (cambia orden de errores en inputs dobles inválidos, tests ajustados); movimientos históricos conservan context:'Personal' crudo aunque su cuenta sea Business — correcto por diseño (filtros vía account ids). Nota: el primer intento de delegación murió por fallo del proveedor dejando WIP a medio camino; el reintento lo detectó y completó. **Esperando aviso explícito para FASE 4.**
 - 2026-08-24 (mismo día) — **FASE 2 COMPLETADA** (`66b3301`, 21 archivos, +743/−58). Textos automáticos e i18n estructural: (1) HR3-05 — los 11 generadores de notas sistema dejaron de persistir texto inglés; nueva capa de presentación `src/lib/system-note.ts` deriva el texto en render desde `link.kind` + contraparte vía namespace `SystemNotes` (22 claves es/en, variante `Plain` sin nombre cuando el padre no está); nota persistida queda solo como fallback para huérfanos/históricos; la nota escrita por el usuario en transferencias sigue ganando verbatim (el literal legacy "Transfer" se trata como auto-generado); transfers-list no cambió porque renderiza la nota propia de la entidad Transfer (dato del usuario). (2) A4 — dashboard resuelve las 6 categorías sintéticas vía i18n (`src/lib/synthetic-category-label.ts`), mata el "uncategorized". (3) HR3-06 — clave `Categories.type` agregada + NUEVO test de cobertura de uso `src/i18n/messages-usage.test.ts` que escanea todo src y verifica cada clave referenciada estáticamente en AMBOS catálogos; el scanner destapó 5 huecos latentes de producción (`CreditsReceived.amount/account`, `CreditsGranted.amount/account`, `Sales.amount`) corregidos; `'SystemNotes'`/`'Payables'` incorporados a la unión `Namespace` de types.ts. (4) HR3-07 — barrido voseo→tuteo (~35 claves) en Landing/Auth/empty states/Errors/Toast. Suite 373/373 en 39 archivos (+15 tests), tsc limpio, verificación independiente del orquestador. Observación registrada para F4/A1: movements/page.tsx ahora carga repos extra para resolver labels (rendimiento a revisar en F4). **Esperando aviso explícito para FASE 3.**
+- 2026-08-26 — **INICIO RONDA 5** — Créditos con cuotas, fix dashboard, onboarding. Auditoría completada (4 exploraciones paralelas: créditos, cuentas/onboarding, layout/centering, dashboard month filter). Hallazgos: (1) `installments`/`frequency` informativos sin `installmentValue`; (2) BUG confirmado: filtro `current_month` es no-op en `dashboard-content.tsx`; (3) seed crea 2 cuentas fijas (Efectivo + Nequi) — Nequi debe eliminarse; (4) body ya centrado vía `max-w-screen-2xl mx-auto` en `<main>`. Plan 6 fases (A–F) aprobado por usuario. Decisiones dominio: R5-D1 a R5-D5. Commits previos de Ronda 5 anterior: `c996ff1`, `3b073ea`, `b6dba3f`, `e523520` (fases A–C parciales). **Mañana: Fase A — créditos con cuotas (dominio + infra).**
+- 2026-08-27 — **REPLANTEO RONDA 5 APROBADO** — El usuario reportó 6 hallazgos críticos de integridad (ventas y transferencias eliminadas no se reflejan en Movimientos sin refresh; pago inicial no se refleja en la venta; venta a crédito 150.000 / 20.000 inicial muestra saldo 150.000 en ventas y 130.000 en créditos; abonos desde créditos no se reflejan en ventas y viceversa; borrar abono da toast de error, desaparece de la vista pero sigue en Movimientos; borrar venta a crédito no borra el crédito otorgado; datos eliminados siguen en el dashboard). Auditoría profunda (3 exploraciones paralelas: dominio/aplicación, UI/invalidación, infraestructura) confirmó **UNA causa raíz: dos fuentes de verdad para la misma deuda on-credit** (`sale.abonos` y `credit.abonos` independientes, vinculadas solo por un `saleId` informativo). Diseño propuesto (Opción A): **el `CreditGranted` es dueño único de la deuda; la `Sale` on-credit no acumula abonos propios; el pago inicial se registra como primer abono del crédito; cascada de borrado simétrica venta↔crédito↔movimientos**. Añadido bug de infra latente: `toTransferDocData` omite `movementIds` y soft-delete de Sale es vestigial. Plan replanteado en 6 fases (A integridad modelo, B eliminación/movimientos/invalidación, C cuotas, D filtro mes, E seed/onboarding/centering, F reparación legacy+QA). Suite base 426/428 (2 timeout bcrypt por entorno). **Documento actualizado. Comienza implementación Fase A.**
