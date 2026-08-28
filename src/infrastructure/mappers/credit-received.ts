@@ -34,6 +34,10 @@ export function toCreditReceivedEntity(
       accountId: doc.accountId.toString(),
       date: doc.date,
       installments: doc.installments,
+      installmentValue:
+        doc.installmentValue !== undefined
+          ? new Money(doc.installmentValue, currency)
+          : undefined,
       frequency: doc.frequency,
       createdAt: doc.createdAt,
     },
@@ -52,6 +56,7 @@ export function toCreditReceivedDocData(
     accountId: new Types.ObjectId(entity.accountId),
     date: entity.date,
     installments: entity.installments,
+    installmentValue: entity.installmentValue?.amount,
     frequency: entity.frequency,
     abonos: entity.abonos.map((a) => ({
       id: a.id,

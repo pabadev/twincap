@@ -10,6 +10,7 @@ import { EditAbonoForm } from './edit-abono-form';
 import { EditCreditForm } from './edit-credit-form';
 import { DeleteCreditButton } from './delete-credit-button';
 import { DeleteAbonoButton } from './delete-abono-button';
+import { MarkAsPaidButton } from './mark-as-paid-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { businessDateToInputValue } from '../../../../lib/date';
 import { Icon } from '../../../../components/ui/icon';
@@ -151,6 +152,16 @@ export function CreditsGrantedList({
             const pending = credit.pending;
             const currency = credit.principal.currency;
             const isPaid = pending <= 0;
+            const paidInstallments =
+              credit.installments && credit.installmentValue
+                ? Math.min(
+                    Math.floor(
+                      (credit.abonos?.reduce((sum, a) => sum + a.amount.amount, 0) ?? 0) /
+                        credit.installmentValue.amount,
+                    ),
+                    credit.installments,
+                  )
+                : undefined;
 
             return (
               <div
@@ -170,6 +181,18 @@ export function CreditsGrantedList({
                       {formatDate(credit.date, locale)}
                       {credit.installments && ` · ${credit.installments} ${t('installmentCount')}`}
                       {credit.frequency && ` · ${t(credit.frequency)}`}
+                      {credit.installments && credit.installmentValue && (
+                        <>
+                          {' · '}
+                          {t('totalToPayLabel')}: {formatAmount(credit.totalToPay, currency, locale)}
+                          {paidInstallments !== undefined && paidInstallments < credit.installments && (
+                            <>
+                              {' · '}
+                              {t('installmentProgress', { count: String(paidInstallments), total: String(credit.installments) })}
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -261,6 +284,7 @@ export function CreditsGrantedList({
                           {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
                         </Button>
                       )}
+                      {pending > 0 && <MarkAsPaidButton creditId={credit.id} />}
                       <DeleteCreditButton creditId={credit.id} />
                     </div>
 

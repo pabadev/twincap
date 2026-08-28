@@ -5,12 +5,13 @@ import { editAbono } from './edit-abono';
 import { deleteAbono } from './delete-abono';
 import { editPrincipal } from './edit-principal';
 import { deleteCreditGranted } from './delete-credit-granted';
+import { markAsPaid } from './mark-as-paid';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money, MoneyError } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreditAbono } from '../../domain/credit-granted';
@@ -251,6 +252,7 @@ describe('createCreditGranted', () => {
         accountId: 'acc-1',
         date: new Date('2025-06-01'),
         installments: 12,
+        installmentValue: 10000,
         frequency: 'monthly',
       },
       creditRepo,
@@ -260,6 +262,8 @@ describe('createCreditGranted', () => {
     );
 
     expect(credit.installments).toBe(12);
+    expect(credit.installmentValue?.amount).toBe(10000);
+    expect(credit.totalToPay).toBe(120000);
     expect(credit.frequency).toBe('monthly');
   });
 

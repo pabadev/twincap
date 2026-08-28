@@ -39,6 +39,7 @@ export async function editPrincipal(
       accountId: credit.accountId,
       date: credit.date,
       installments: credit.installments,
+      installmentValue: credit.installmentValue,
       frequency: credit.frequency,
       createdAt: credit.createdAt,
     },

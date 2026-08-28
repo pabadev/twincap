@@ -53,6 +53,7 @@ export async function deleteAbono(
       accountId: credit.accountId,
       date: credit.date,
       installments: credit.installments,
+      installmentValue: credit.installmentValue,
       frequency: credit.frequency,
       saleId: credit.saleId,
       createdAt: credit.createdAt,

@@ -10,7 +10,7 @@ import type { AddAbonoInput } from './dto/credits-received';
 /**
  * Add an abono to a credit received (CRED-R-2, CRED-R-3).
  *
- * Pending = principal − Σ abonos. Overpayment is rejected.
+ * Pending = totalToPay − Σ abonos. Overpayment is rejected.
  * Produces a linked expense movement (payment from account).
  * Movement context: always 'Personal' — credit abonos are personal financing.
  */
@@ -35,7 +35,7 @@ export async function addAbono(
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
 
-  // CRED-R-2: pending = principal − Σ abonos; overpayment rejected
+  // CRED-R-2: pending = totalToPay − Σ abonos; overpayment rejected
   if (input.amount > credit.pending) {
     throw new ConflictError('Abono exceeds pending amount');
   }
@@ -85,6 +85,7 @@ export async function addAbono(
       accountId: credit.accountId,
       date: credit.date,
       installments: credit.installments,
+      installmentValue: credit.installmentValue,
       frequency: credit.frequency,
       createdAt: credit.createdAt,
     },

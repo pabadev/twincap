@@ -18,6 +18,8 @@ export interface CreditGrantedDoc {
   accountId: mongoose.Types.ObjectId;
   date: Date;
   installments?: number;
+  /** Value per installment (R5-C); present when installments > 0. */
+  installmentValue?: number;
   frequency?: string;
   /** Origin POS sale id, when the credit was born from a sale (H14). */
   saleId?: string;
@@ -64,6 +66,9 @@ const CreditGrantedSchema = new Schema<CreditGrantedDoc>(
       required: true,
     },
     installments: {
+      type: Number,
+    },
+    installmentValue: {
       type: Number,
     },
     frequency: {

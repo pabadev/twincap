@@ -17,6 +17,8 @@ export interface CreditReceivedDoc {
   accountId: mongoose.Types.ObjectId;
   date: Date;
   installments?: number;
+  /** Value per installment (R5-C); present when installments > 0. */
+  installmentValue?: number;
   frequency?: string;
   abonos: CreditReceivedAbonoDoc[];
   createdAt: Date;
@@ -61,6 +63,9 @@ const CreditReceivedSchema = new Schema<CreditReceivedDoc>(
       required: true,
     },
     installments: {
+      type: Number,
+    },
+    installmentValue: {
       type: Number,
     },
     frequency: {

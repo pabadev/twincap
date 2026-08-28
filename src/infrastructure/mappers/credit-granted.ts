@@ -34,6 +34,10 @@ export function toCreditGrantedEntity(
       accountId: doc.accountId.toString(),
       date: doc.date,
       installments: doc.installments,
+      installmentValue:
+        doc.installmentValue !== undefined
+          ? new Money(doc.installmentValue, currency)
+          : undefined,
       frequency: doc.frequency,
       saleId: doc.saleId,
       createdAt: doc.createdAt,
@@ -53,6 +57,7 @@ export function toCreditGrantedDocData(
     accountId: new Types.ObjectId(entity.accountId),
     date: entity.date,
     installments: entity.installments,
+    installmentValue: entity.installmentValue?.amount,
     frequency: entity.frequency,
     saleId: entity.saleId,
     abonos: entity.abonos.map((a) => ({

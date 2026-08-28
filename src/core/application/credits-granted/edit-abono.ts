@@ -30,7 +30,7 @@ export async function editAbono(
   if (input.amount !== undefined) {
     const otherAbonos = credit.abonos.filter(a => a.id !== abonoId);
     const totalOther = otherAbonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    const pending = credit.principal.amount - totalOther;
+    const pending = credit.totalToPay - totalOther;
     if (input.amount > pending) {
       throw new ConflictError('Abono exceeds pending amount');
     }
@@ -80,6 +80,7 @@ export async function editAbono(
       accountId: credit.accountId,
       date: credit.date,
       installments: credit.installments,
+      installmentValue: credit.installmentValue,
       frequency: credit.frequency,
       saleId: credit.saleId,
       createdAt: credit.createdAt,

@@ -18,6 +18,15 @@ export interface CreditGrantedInput {
   /** Informational only — no auto-formulas (CRED-G-1). */
   frequency?: string;
   /**
+   * Value of each installment (R5-C). Present when installments > 0 so the
+   * total to pay can be derived: installmentValue × installments. Optional at
+   * read time because legacy documents carry installments without a value
+   * (they fall back to principal) and sale-born POS credits have no
+   * installments at all (R5-D2). R5-D1 enforcement lives in the creation use
+   * cases, not here — see create-credit-granted.ts.
+   */
+  installmentValue?: Money;
+  /**
    * Optional link to the POS sale that originated this credit (H14).
    * Set automatically by createSale; never set by the standalone flow.
    */
@@ -43,16 +52,31 @@ export class CreditGranted {
   readonly date: Date;
   readonly installments?: number;
   readonly frequency?: string;
+  /** Value of each installment; only present when installments > 0 (R5-C). */
+  readonly installmentValue?: Money;
   /** Origin POS sale, when the credit was born from a sale (H14). */
   readonly saleId?: string;
   readonly createdAt: Date;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
 
-  /** Derived pending = principal − Σ abonos (CRED-G-2). Never stored. */
+  /**
+   * Derived total to pay (R5-C). When a credit has installments AND an
+   * installment value, the payable total is value × count. Otherwise it falls
+   * back to the principal — covering legacy data (installments stored without
+   * a value) and sale-born POS credits, whose debt IS the net principal
+   * (R5-D2). Never stored.
+   */
+  get totalToPay(): number {
+    return this.installments && this.installments > 0 && this.installmentValue
+      ? this.installmentValue.amount * this.installments
+      : this.principal.amount;
+  }
+
+  /** Derived pending = totalToPay − Σ abonos (CRED-G-2). Never stored. */
   get pending(): number {
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    return this.principal.amount - abonoSum;
+    return this.totalToPay - abonoSum;
   }
 
   get abonos(): ReadonlyArray<CreditAbono> {
@@ -92,9 +116,16 @@ export class CreditGranted {
       }
       abonoSum += a.amount.amount;
     }
-    // CRED-G-2: overpayment rejected
-    if (abonoSum > input.principal.amount) {
-      throw new ValidationError("CreditGranted abonos exceed principal (overpayment rejected)");
+    // CRED-G-2: overpayment rejected — against the derived total to pay
+    // (installments × installmentValue when present, else principal). This
+    // mirrors the totalToPay getter so reconstruction of legacy/current docs
+    // never throws here.
+    const totalToPay =
+      input.installments && input.installments > 0 && input.installmentValue
+        ? input.installmentValue.amount * input.installments
+        : input.principal.amount;
+    if (abonoSum > totalToPay) {
+      throw new ValidationError("CreditGranted abonos exceed total to pay (overpayment rejected)");
     }
 
     this.id = input.id;
@@ -105,6 +136,7 @@ export class CreditGranted {
     this.date = input.date;
     this.installments = input.installments;
     this.frequency = input.frequency;
+    this.installmentValue = input.installmentValue;
     this.saleId = input.saleId;
     this.createdAt = input.createdAt;
     this._abonos = abonos;
@@ -121,6 +153,8 @@ export class CreditGranted {
       date: this.date,
       installments: this.installments,
       frequency: this.frequency,
+      installmentValue: this.installmentValue?.toJSON(),
+      totalToPay: this.totalToPay,
       saleId: this.saleId,
       createdAt: this.createdAt,
       pending: this.pending,

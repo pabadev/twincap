@@ -7,6 +7,7 @@ import {
   deleteAbono,
   editPrincipal,
   deleteCreditReceived,
+  markAsPaid,
 } from '../../../../core/application/credits-received';
 import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
@@ -32,6 +33,8 @@ export async function createCreditReceivedAction(
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
   const installments = Number(formData.get('installments') || '0') || undefined;
+  const installmentValueValue = formData.get('installmentValue');
+  const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
   const frequency = (formData.get('frequency') as string) || undefined;
 
   try {
@@ -41,7 +44,7 @@ export async function createCreditReceivedAction(
     const accountRepo = new MongoAccountRepository();
     await createCreditReceived(
       user.userId,
-      { counterparty, principal, currency, accountId, date, installments, frequency },
+      { counterparty, principal, currency, accountId, date, installments, installmentValue, frequency },
       creditRepo,
       movementRepo,
       ids,
@@ -195,4 +198,27 @@ export async function deleteCreditAction(
   }
 
   return { success: 'creditDeleted' };
+}
+
+export async function markAsPaidAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const creditId = formData.get('creditId') as string;
+
+  try {
+    await connectDb();
+    const creditRepo = new MongoCreditReceivedRepository();
+    const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
+    await markAsPaid(user.userId, creditId, creditRepo, movementRepo, ids, accountRepo);
+    revalidateMovementData('/credits/received');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'creditMarkedAsPaid' };
 }

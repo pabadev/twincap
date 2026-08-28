@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT } from '../../../../i18n/client';
+import { useT, useLocale } from '../../../../i18n/client';
 import { createCreditReceivedAction } from './actions';
 import type { SerializedAccount } from '../../../../core/domain/account';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../../core/domain/currency';
@@ -12,6 +12,7 @@ import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
 import { toDateInputValue } from '../../../../lib/date';
+import { formatAmount } from '../../../../lib/format';
 
 export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
@@ -21,10 +22,13 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
   const t = useT('CreditsReceived');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
 
   const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
+  const [installments, setInstallments] = useState<number>(0);
+  const [installmentValue, setInstallmentValue] = useState<number>(0);
 
   useEffect(() => {
     if (state?.success) {
@@ -39,6 +43,8 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
       addToast(tToast(state.error), 'error');
     }
   }, [state?.error, addToast, tToast]);
+
+  const totalToPay = installments > 0 && installmentValue > 0 ? installmentValue * installments : undefined;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -105,6 +111,8 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
           label={t('installments')}
           min="1"
           disabled={isPending}
+          value={installments || ''}
+          onChange={(e) => setInstallments(Number(e.target.value) || 0)}
         />
 
         <Select
@@ -120,6 +128,27 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
           ]}
         />
       </div>
+
+      {installments > 0 && (
+        <div className="space-y-1">
+          <Input
+            id="installmentValue"
+            name="installmentValue"
+            type="number"
+            label={t('installmentValueLabel')}
+            min="1"
+            required
+            disabled={isPending}
+            value={installmentValue || ''}
+            onChange={(e) => setInstallmentValue(Number(e.target.value) || 0)}
+          />
+          {totalToPay !== undefined && (
+            <p className="text-xs text-muted-foreground">
+              {t('totalToPayLabel')}: {formatAmount(totalToPay, currency, locale)}
+            </p>
+          )}
+        </div>
+      )}
 
       <Button
         type="submit"

@@ -275,6 +275,7 @@ describe('createCreditReceived', () => {
         accountId: 'acc-1',
         date: new Date('2025-06-01'),
         installments: 12,
+        installmentValue: 10000,
         frequency: 'monthly',
       },
       creditRepo,
@@ -284,6 +285,8 @@ describe('createCreditReceived', () => {
     );
 
     expect(credit.installments).toBe(12);
+    expect(credit.installmentValue?.amount).toBe(10000);
+    expect(credit.totalToPay).toBe(120000);
     expect(credit.frequency).toBe('monthly');
   });
 });

@@ -23,6 +23,14 @@ export interface CreditReceivedInput {
   installments?: number;
   /** Informational only — no auto-formulas (CRED-R-1). */
   frequency?: string;
+  /**
+   * Value of each installment (R5-C). Present when installments > 0 so the
+   * total to pay can be derived: installmentValue × installments. Optional at
+   * read time because legacy documents carry installments without a value
+   * (they fall back to principal). R5-D1 enforcement lives in the creation
+   * use cases, not here — see create-credit-received.ts.
+   */
+  installmentValue?: Money;
   createdAt: Date;
 }
 
@@ -35,14 +43,28 @@ export class CreditReceived {
   readonly date: Date;
   readonly installments?: number;
   readonly frequency?: string;
+  /** Value of each installment; only present when installments > 0 (R5-C). */
+  readonly installmentValue?: Money;
   readonly createdAt: Date;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
 
-  /** Derived pending = principal − Σ abonos (CRED-R-2). Never stored. */
+  /**
+   * Derived total to pay (R5-C). When a credit has installments AND an
+   * installment value, the payable total is value × count. Otherwise it falls
+   * back to the principal — covering legacy data (installments stored without
+   * a value). Never stored.
+   */
+  get totalToPay(): number {
+    return this.installments && this.installments > 0 && this.installmentValue
+      ? this.installmentValue.amount * this.installments
+      : this.principal.amount;
+  }
+
+  /** Derived pending = totalToPay − Σ abonos (CRED-R-2). Never stored. */
   get pending(): number {
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    return this.principal.amount - abonoSum;
+    return this.totalToPay - abonoSum;
   }
 
   get abonos(): ReadonlyArray<CreditAbono> {
@@ -78,9 +100,16 @@ export class CreditReceived {
       }
       abonoSum += a.amount.amount;
     }
-    // CRED-R-2: overpayment rejected
-    if (abonoSum > input.principal.amount) {
-      throw new ValidationError("CreditReceived abonos exceed principal (overpayment rejected)");
+    // CRED-R-2: overpayment rejected — against the derived total to pay
+    // (installments × installmentValue when present, else principal). This
+    // mirrors the totalToPay getter so reconstruction of legacy/current docs
+    // never throws here.
+    const totalToPay =
+      input.installments && input.installments > 0 && input.installmentValue
+        ? input.installmentValue.amount * input.installments
+        : input.principal.amount;
+    if (abonoSum > totalToPay) {
+      throw new ValidationError("CreditReceived abonos exceed total to pay (overpayment rejected)");
     }
 
     this.id = input.id;
@@ -91,6 +120,7 @@ export class CreditReceived {
     this.date = input.date;
     this.installments = input.installments;
     this.frequency = input.frequency;
+    this.installmentValue = input.installmentValue;
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
@@ -106,6 +136,8 @@ export class CreditReceived {
       date: this.date,
       installments: this.installments,
       frequency: this.frequency,
+      installmentValue: this.installmentValue?.toJSON(),
+      totalToPay: this.totalToPay,
       createdAt: this.createdAt,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),

@@ -4,6 +4,7 @@ export { editAbono } from './edit-abono';
 export { deleteAbono } from './delete-abono';
 export { editPrincipal } from './edit-principal';
 export { deleteCreditGranted } from './delete-credit-granted';
+export { markAsPaid } from './mark-as-paid';
 export type {
   CreateCreditGrantedInput,
   AddAbonoInput,
