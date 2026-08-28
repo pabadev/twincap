@@ -20,6 +20,7 @@ import { computeCategorySummary } from '../../core/application/compute-category-
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
 import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
+import { filterMovementsByPeriod } from '../../lib/movement-period-filter';
 import { useT } from '../../i18n/client';
 import type { SerializedCategory } from '../../core/domain/category';
 import { SYSTEM_NOTES_NAMESPACE } from '../../lib/system-note';
@@ -111,11 +112,8 @@ export function DashboardContent({
       result = result.filter((m) => m.categoryId === filters.categoryId);
     }
 
-    if (filters.period === 'this_year') {
-      const year = new Date().getUTCFullYear();
-      result = result.filter(
-        (m) => new Date(m.date).getUTCFullYear() === year,
-      );
+    if (filters.period === 'current_month' || filters.period === 'this_year') {
+      result = filterMovementsByPeriod(result, filters.period);
     }
 
     return result;
