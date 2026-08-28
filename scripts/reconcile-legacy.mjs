@@ -35,10 +35,16 @@ if (!uri) {
 }
 
 const APPLY = process.argv.includes("--apply");
-const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Same civil day (UTC calendar date), never a ±24h window. */
 function sameBusinessDate(a, b) {
-  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= DAY_MS;
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getUTCFullYear() === db.getUTCFullYear() &&
+    da.getUTCMonth() === db.getUTCMonth() &&
+    da.getUTCDate() === db.getUTCDate()
+  );
 }
 
 try {
