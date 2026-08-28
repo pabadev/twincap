@@ -80,6 +80,9 @@
   "Dashboard": {
     "welcomeBack": "Welcome back",
     "welcomeUser": "Welcome, {name}",
+    "onboardingTitle": "Create your accounts",
+    "onboardingBody": "Beyond Cash, create your own accounts: Nequi, banks, business cash. Every balance stays separate and under control.",
+    "onboardingCta": "Create account",
     "accounts": "Accounts",
     "fixed": "Fixed",
     "noAccounts": "No accounts yet. Create your first account to get started.",

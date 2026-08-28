@@ -44,19 +44,19 @@ function fakeCategoryRepo(): CategoryRepository & { created: Category[] } {
 const USER_ID = "user-test-123";
 
 describe("seedUser", () => {
-  it("creates 2 fixed accounts and 8 default categories", async () => {
+  it("creates 1 fixed account and 8 default categories", async () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();
 
     await seedUser(USER_ID, accountRepo, categoryRepo);
 
-    expect(accountRepo.created).toHaveLength(2);
+    expect(accountRepo.created).toHaveLength(1);
     expect(categoryRepo.created).toHaveLength(8);
 
-    // Verify account names
+    // Verify account names — only the fixed Cash account is seeded (R5-D5)
     const accountNames = accountRepo.created.map((a) => a.name);
-    expect(accountNames).toContain("Efectivo");
-    expect(accountNames).toContain("Nequi");
+    expect(accountNames).toEqual(["Efectivo"]);
+    expect(accountRepo.created[0].isFixed).toBe(true);
 
     // Verify category names
     const categoryNames = categoryRepo.created.map((c) => c.name);
@@ -95,7 +95,7 @@ describe("seedUser", () => {
     await seedUser(USER_ID, accountRepo, categoryRepo);
 
     // Fake repos allow duplicates; the important thing is no error
-    expect(accountRepo.created.length).toBe(4);
+    expect(accountRepo.created.length).toBe(2);
     expect(categoryRepo.created.length).toBe(16);
   });
 });

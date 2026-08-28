@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   type DashboardFilters,
   DashboardFilterBar,
@@ -15,6 +16,9 @@ import { PositionCards } from './position-cards';
 import { DashboardReportsGrid } from './dashboard-reports-grid';
 import { SummaryTable, type SummaryTableRow } from './summary-table';
 import { Card } from '../ui/card';
+import { Button } from '../ui/button';
+import { Icon } from '../ui/icon';
+import { Wallet } from 'lucide-react';
 import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
 import { computeCategorySummary } from '../../core/application/compute-category-summary';
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
@@ -240,6 +244,11 @@ export function DashboardContent({
     ? t('welcomeUser', { name: userName })
     : userLabel;
 
+  // R5-E onboarding: shown only while the user still has just the seeded
+  // fixed Cash account — i.e. they haven't created their own accounts yet.
+  const showOnboarding =
+    accountBalances.length === 1 && accountBalances[0].isFixed;
+
   return (
     <div className="space-y-8">
       <div>
@@ -247,6 +256,29 @@ export function DashboardContent({
           {greeting}
         </h1>
       </div>
+
+      {showOnboarding && (
+        <Card className="border-primary/30 bg-primary/5 dark:bg-primary/5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <Icon icon={Wallet} size="md" className="text-primary" />
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  {t('onboardingTitle')}
+                </h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                  {t('onboardingBody')}
+                </p>
+              </div>
+            </div>
+            <Link href="/accounts" className="shrink-0">
+              <Button variant="primary" size="sm">
+                {t('onboardingCta')}
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <DashboardFilterBar
         filters={filters}

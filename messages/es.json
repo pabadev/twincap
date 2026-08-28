@@ -80,6 +80,9 @@
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",
     "welcomeUser": "Bienvenido, {name}",
+    "onboardingTitle": "Crea tus cuentas",
+    "onboardingBody": "Además de Efectivo, crea tus propias cuentas: Nequi, bancos, caja del negocio. Cada saldo queda separado y bajo control.",
+    "onboardingCta": "Crear cuenta",
     "accounts": "Cuentas",
     "fixed": "Fijo",
     "noAccounts": "No tienes cuentas aún. Crea tu primera cuenta para empezar.",

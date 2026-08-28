@@ -3,9 +3,11 @@ import type { CategoryRepository } from "../../core/domain/repositories";
 import { Account } from "../../core/domain/account";
 import { Category } from "../../core/domain/category";
 
+// R5-D4/R5-D5: only the fixed Cash account is seeded. Legacy Nequi accounts
+// (removed from the seed) stay in place for existing users but stop being
+// fixed; run scripts/unfix-legacy-nequi.mjs to release them.
 const FIXED_ACCOUNTS: Array<{ name: string; currency: "COP"; isFixed: true }> = [
   { name: "Efectivo", currency: "COP", isFixed: true },
-  { name: "Nequi", currency: "COP", isFixed: true },
 ];
 
 const DEFAULT_CATEGORIES: Array<{ name: string; type: "income" | "expense" }> = [
@@ -23,8 +25,8 @@ const DEFAULT_CATEGORIES: Array<{ name: string; type: "income" | "expense" }> = 
 
 /**
  * Idempotent seeding on registration (design §7).
- * Creates the two fixed accounts and eight default categories for a new user.
- * Unique indexes make re-runs safe.
+ * Creates the single fixed Cash account (R5-D5) and eight default categories
+ * for a new user. Unique indexes make re-runs safe.
  */
 export async function seedUser(
   userId: string,
