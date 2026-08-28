@@ -18,10 +18,11 @@ import { MongoClientRepository } from '../../../../infrastructure/repositories/c
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createSaleAction(
   _prev: { error?: string; success?: string } | null,

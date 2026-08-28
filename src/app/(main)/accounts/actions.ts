@@ -9,10 +9,11 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createAccountAction(
   _prev: { error?: string; success?: string } | null,

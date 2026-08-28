@@ -644,9 +644,114 @@ Priorizadas por valor/riesgo/esfuerzo/alcance:
 
 **Script:** `scripts/clean-orphan-movements.mjs` — clasifica cada movimiento con refId no-resuelto en RELINK (padre vivo por valor) u ORPHAN (sin padre), idempotente, dry-run por defecto y `--apply`.
 
+## R6.7 — Decisión de producto pendiente: P6 (soft-delete vestigial)
+
+**Estado:** documentado tras cerrar R6 (2026-08-28). Anotado para una próxima ronda, **no implementado**.
+
+**Problema:** el modelo de venta conserva campos de soft-delete a medio terminar (`deletedAt`, `stockRestored`) en entidad, modelo Mongoose y mapper, con lógica que los lee (reconcile.ts detecta ventas con `deletedAt` pero sin `stockRestored`; legacy-repair.ts tiene acción `PurgeSoftDeletedSaleAction`), **pero** el flujo real de borrado (`deleteSale`) es hard delete físico. Hay dos mecanismos de borrado en paralelo: un vestigio inconsistente e inconcluso.
+
+**Decisión tomada con el usuario (2026-08-28): Opción A — abandonar el soft-delete.** Borrar siempre es físico (como ya es con P1-P5). Implica, en una ronda futura: eliminar `deletedAt`/`stockRestored` de `src/core/domain/sale.ts`, `src/infrastructure/models/sale.ts`, `src/infrastructure/mappers/sale.ts`, y quitar la lógica relacionada en `src/infrastructure/consistency/reconcile.ts` y `src/lib/legacy-repair.ts` (acción `PurgeSoftDeletedSaleAction`), más tests. No urgente, sin impacto funcional; es limpieza de deuda técnica.
+
+**Alternativa descartada:** Opción B (estandarizar soft-delete conservando historial) — requeriría tocar todas las lecturas de ventas y es un cambio de producto.
+
 ## R6.5 — Reglas respetadas
 
 Auditoría de solo lectura: NO se escribió código ni se mutó la DB. Arquitectura hexagonal intacta. Multi-tenancy no comprometido (el huérfano y las propuestas respetan el aislamiento por `userId`). i18n / principios financieros / stack intactos. **En implementación:** se respetó el aislamiento por `userId` (filtros y `deleteByRefId` scoped por `userId`); operaciones de datos en Atlas acotadas al relink/borrado del movimiento objetivo, sin tocar montos ni otros datos.
+
+---
+
+# RONDA 7 — INFLADO RESIDUAL DE CARDS (BALANCE/ACTIVOS/PATRIMONIO) + RAÍZ UUID↔OBJECTID
+
+## R7.1 — Síntoma reportado (2026-08-28, post-R6)
+
+Para `pruebas2@mail.com`, **eliminar ventas sigue inflando las cards** del dashboard: **Balance total**, **Patrimonio** y **Activos** (Posición financiera) muestran valores por encima de lo real, **aunque la tabla de Movimientos ya las oculta** (tras P1 de R6). El incumplimiento reportado era: "eliminé venta, el Balance total / Patrimonio / Activos sigue inflado".
+
+## R7.2 — Auditoría (2026-08-28, solo lectura: código + Atlas read-only)
+
+### Hallazgo A — `aggregateBalance` NO excluye movimientos huérfanos (defecto de código)
+
+- `MongoMovementRepository.aggregateBalance` (aprox. líneas 179–196 de `src/infrastructure/repositories/movement-repository.ts`) hace `$sum: "$signedAmount"` sobre **TODOS** los movimientos de una cuenta, **sin** filtrar por liveness del padre (`link.refId`). No aplica el filtro defensivo de P1 (que solo cubre `findByUserId`/`findPaged`/`allMovements` del dashboard/tabla).
+- Las cards **Balance total** y la **Posición financiera** (Activos/Pasivos/Patrimonio) derivan de estos balances de cuenta:
+  - `Activos = Σ balance de cuentas + Σ CreditGranted.pending`
+  - `Pasivos = Σ CreditReceived.pending + Σ Payable.pending`
+  - `Patrimonio = Activos − Pasivos`
+  Ver `src/core/application/compute-activos-pasivos.ts`. Como `aggregateBalance` suma los huérfanos, las tres cards quedan infladas aunque la tabla los oculte. **Esto explica exactamente el reporte.**
+
+### Hallazgo B — 2 movimientos huérfanos vigentes en `pruebas2` (150.000 COP)
+
+Auditoría read-only contra Atlas confirmó **2 movimientos `salePayment` huérfanos** que inflan el balance del Efectivo de `pruebas2@mail.com`:
+
+| `_id` | refId (UUID legacy) | monto | fecha | causa |
+|---|---|---|---|---|
+| `6a91aff0c9453e006659c122` | `a915a2f4-8307-4b2b-bef6-68c935bcf1df` | 100.000 COP | 2026-08-08 | venta original eliminada (mismatch UUID↔ObjectId) |
+| `6a91b04938326c01557efc91` | `afd4a2ca-83d4-4196-89f1-66bd9a61f998` | 50.000 COP | 2026-08-10 | venta original eliminada (mismatch UUID↔ObjectId) |
+
+No se borraron durante R6 porque fueron creados **después** de que el script de limpieza P5 corrió (los movimientos quedan con `link.refId` UUID que nunca matchea el `_id` ObjectId de su venta, ver Hallazgo C). Conteos actuales en pruebas2: 14 ventas, 9 creditgranted, 3 creditreceived, 3 payables, 7 transfers, 103 movimientos, 16 cuentas.
+
+### Hallazgo C — RAÍZ: ids de dominio (UUID) vs `_id` real (ObjectId) — proceso duplicado confirmado
+
+**Esta es la causa estructural de los huérfanos y del Reporte R6.** Flujo real confirmado en código:
+
+1. El dominio genera el id con `crypto.randomUUID()` vía el puerto `IdGenerator` (`src/core/application/ports.ts`), inyectado en cada action como `const ids = { generate: () => crypto.randomUUID() }` (12 archivos de actions).
+2. Al persistir, el **mapper descarta ese id**: `toMovementDocData` (`src/infrastructure/mappers/movement.ts`) y `toSaleDocData` (`src/infrastructure/mappers/sale.ts`) escriben `userId/accountId/categoryId` como `new Types.ObjectId(...)` pero **NO escriben `_id`**. Cada modelo Mongoose sin `_id` explícito → Mongo asigna un `_id: ObjectId` nuevo (p.ej. `6a91aff0c9453e006659c122`).
+3. Al leer, el mapper pone `doc._id.toString()` (el **ObjectId**, no el UUID) como `id` de la entidad.
+
+→ **El UUID generado en el dominio NUNCA es la identidad real** (se pierde en el primer write). Todo id de dominio es trabajo muerto.
+
+**Consecuencia crítica (mismatch):** en `create-sale` (`src/core/application/sales/create-sale.ts`), el movimiento `salePayment` se construye con `link: { refId: args.saleId }` donde `saleId` es el **UUID del dominio** generado antes de persistir la venta. Pero la venta recibe un **ObjectId** distinto al guardarse. Entonces:
+
+- `movement.link.refId` (UUID) **nunca coincide** con `sale._id` (ObjectId) real de su venta.
+- `deleteSale` recibe `sale.id = ObjectId` (toma de la lectura) y `deleteByRefId(userId, ObjectId)` no encuentra el movimiento (refId=UUID) → **el movimiento sobrevive al borrado → infla el balance**.
+- El filtro P1 de lectura oculta el huérfano de la tabla, pero `aggregateBalance` lo sigue sumando (Hallazgo A).
+
+**El bug es estructural y VIGENTE** (aplica a TODA venta/crédito creada hoy, no solo datos legacy): mientras `create-sale` siga generando `refId` con un UUID descartable, cada venta crea un movimiento que el borrado físico no alcanza.
+
+### Resumen de causas y prioridad
+
+| # | defecto | tipo | impacto |
+|---|---|---|---|
+| A | `aggregateBalance` sin filtro de liveness | código (defensa) | cards Balance/Activos/Patrimonio infladas |
+| B | 2 huérfanos en pruebas2 (150.000 COP) | datos | lo que el usuario ve hoy |
+| C | ids UUID de dominio descartados → refId mismatch | **arquitectura (raíz)** | ventas/créditos nuevos siguen generando huérfanos |
+
+## R7.3 — Plan propuesto (NO implementado; requiere aprobación)
+
+Se plantea en 3 unidades, de menor a mayor alcance. **Todas preservan aislamiento por `userId` y arquitectura hexagonal** (core sin importar infra).
+
+- **R7-A (defensa de lectura — fija las cards en todos los usuarios):** que el dashboard derive los balances de cuenta desde los **movimientos ya filtrados por P1** (`filterMovementsWithLiveParents`) en lugar de `aggregateBalance` crudo. Reemplaza la fuente de verdad de `accountBalances` (que alimenta Balance total y `computeActivosPasivos`) por una suma por cuenta de los movimientos vivos. Bajo riesgo, no toca infra ni `aggregateBalance` para otras páginas (accounts page). Requiere tests + ajuste de page.tsx.
+- **R7-B (raíz — ids generados directamente en Mongoose/ObjectId):** corregir la generación de ids para que el `_id` real sea la identidad desde el principio, eliminando el UUID descartado. Dos sub-opciones (a documentar/especificar antes de ejecutar):
+  - **B1 (cirugía acotada):** en los use cases que crean padres con movimientos vinculados (`create-sale`, `create-credit-granted`, `create-credit-received`, `create-transfer`), **capturar el ObjectId real** que devuelve el repo tras `create(...)` y usarlo para el `link.refId` del movimiento (reordenar creación: padre → capturar id real → movimiento). Elimina el mismatch para datos futuros sin migrar dato alguno. Riesgo medio, alcance acotado.
+  - **B2 (refactor de arquitectura, grande):** eliminar `randomUUID()` del dominio y generar/inyectar ObjectId como id de entidad en todas las entidades. Cambio masivo (todas las entidades, use cases, tests, refs), requiere migrar todos los refs UUID existentes. Alto riesgo; solo bajo aprobación explícita.
+  - Recomendación: **B1** (raíz suficiente para detener nuevos huérfanos, mínimo riesgo); B2 queda como deuda técnica a evaluar por separado.
+- **R7-C (datos):** limpiar los 2 huérfanos de `pruebas2` con `scripts/clean-orphan-movements.mjs` (borrado, no relink — son ventas efectivamente eliminadas). Requiere confirmación (operación sobre Atlas).
+
+**Criterios de éxito:** tras R7-A+C, las cards Balance total / Activos / Patrimonio de `pruebas2` coinciden con la suma de movimientos visibles; sin huérfanos en la DB. Tras R7-B, una venta nueva eliminada **no** deja movimiento (cascada por ObjectId la borra), verificable con un test de integración del use case.
+
+## R7.4 — Reglas respetadas en la auditoría
+
+Auditoría 100% de solo lectura (sin writes de código ni mutación de DB). Multi-tenancy intacto (`userId` en todas las queries/acciones). Archivos revisados: `movement-repository.ts`, `compute-activos-pasivos.ts`, `ports.ts`, `mappers/movement.ts`, `mappers/sale.ts`, `sale-repository.ts`, `create-sale.ts`, actions (12), modelos `movement.ts`/`sale.ts`. No se ejecutó ninguna operación de escritura contra Atlas.
+
+## R7.4 — Implementación completada (2026-08-28): R7-A + R7-B
+
+**R7-B (raíz — ids nuevos como ObjectId persistidos como `_id`, mata los UUID):**
+- Nuevo `src/infrastructure/config/id-generator.ts` → `objectIdGenerator: IdGenerator` que devuelve `new Types.ObjectId().toString()`.
+- 11 server actions reemplazaron `const ids = { generate: () => crypto.randomUUID() }` por `const ids = objectIdGenerator`.
+- 6 repos del Grupo B persisten `_id: entity.id` SOLO en su método `create` (NO en el mapper `toXxxDocData`, porque `update` lo reusa con `$set` y Mongo no permite mutar `_id`): `MovementModel.create({ ...docData, _id: movement.id })` en movement/sale/credit-granted/credit-received/payable/transfer. Así `link.refId`/`saleId`/`movementId` SIEMPRE coinciden con el `_id` real del padre → `deleteSale` (por ObjectId) ya no deja huérfanos. El Grupo A (Account/Category/CatalogItem/Client/User) NO se tocó (sus ids se referencian como ObjectId y ya son consistentes).
+- Decisión de formato (con usuario): **ObjectId nuevo** (no UUID persistido). Datos legacy no se migran (conviven; todo el código los trata como string).
+
+**R7-A (defensa — dashboard deja de inflarse con huérfanos):**
+- Nuevo use case puro `accountBalancesFromMovements` (`src/core/application/movements/balance-from-movements.ts`, exportado desde el index) que suma `signedAmount` por `accountId` sobre una lista YA filtrada por liveness.
+- `dashboard/page.tsx` ahora deriva `accountBalances` desde `liveMovements` (movimientos que pasaron el filtro P1) en vez de `movementRepo.aggregateBalance` crudo. Con esto Balance total / Activos / Patrimonio (Posición financiera) excluyen huérfanos.
+- 4 tests nuevos en `balance-from-movements.test.ts` (suma por cuenta, cuenta sin movimientos → Map contract, exclusión de huérfano salePayment, reconciliación por valor de salePayment legacy).
+- Suite **517/517** (48 archivos), `tsc --noEmit` limpio, `pnpm build` OK.
+
+**R7-C (datos, APLICADO 2026-08-28 con confirmación del usuario):** dry-run de `scripts/clean-orphan-movements.mjs` sobre la DB completa detectó **0 relinks** y **2 huérfanos** (ambos de `pruebas2@mail.com`: `6a91aff0c9453e006659c122` salePayment 100.000 COP y `6a91b04938326c01557efc91` salePayment 50.000 COP, ventas ya eliminadas). Con `--apply` se borraron esos 2. **Idempotencia verificada: 0/0** (sin huérfanos ni relinks pendientes en toda la DB). No hubo ningún otro huérfano en ninguna cuenta.
+
+**Estado: Ronda 7 (R7-A + R7-B + R7-C) COMPLETA.**
+
+## R7.5 — Reglas respetadas en la implementación
+
+Arquitectura hexagonal intacta: el helper `accountBalancesFromMovements` está en `core/application` (puro, sin dependencias de infra); el generador ObjectId está en `infrastructure` (implementación concreta del puerto `IdGenerator`); los repos viven en infra. Multi-tenancy preservado (todo scoped por `userId`). NO se ejecutó ninguna escritura contra Atlas (R7-C pendiente). i18n / principios financieros / stack intactos.
 
 ---
 
@@ -657,7 +762,7 @@ Si el contexto se compacta o inicia nueva sesión:
 1. **Leer este archivo completo** (`docs/AUDIT-AND-PLAN.md`)
 2. **Leer `AGENTS.md`**
 3. **Buscar en Engram:** `mem_search(query: "TwinCap", project: "twincap")`
-4. **Identificar el estado actual** — Rondas 1–5 completadas. **Ronda 6 COMPLETADA (P1–P5 implementados y verificados, 2026-08-28).** Deuda técnica restante: R4-A1 (performance), R4-A2 (multi-moneda), y R6-P6 (soft-delete vestigial — pendiente de decisión de producto).
+4. **Identificar el estado actual** — Rondas 1–5 completadas. **Ronda 6 COMPLETADA (P1–P5, 2026-08-28).** **Ronda 7 COMPLETADA (2026-08-28):** R7-A (dashboard deriva balances de movimientos filtrados P1) + R7-B (ids ObjectId persistidos como `_id`, mata los UUID/duplicación) + R7-C (2 huérfanos de pruebas2 limpiados en Atlas, idempotencia 0/0) — TODO implementado y verificado (517/517, tsc, build). Deuda técnica acumulada: R4-A1 (performance), R4-A2 (multi-moneda), R6-P6 (soft-delete vestigial).
 5. **Esperar aviso del usuario para implementar la siguiente fase**
 
 ---
@@ -702,5 +807,7 @@ Si el contexto se compacta o inicia nueva sesión:
 - 2026-08-28 (mismo día) — **FASE E COMPLETADA** — Seed, onboarding y body centering (R5-D4/R5-D5). (1) **Seed**: `FIXED_ACCOUNTS` ahora solo `Efectivo` (Nequi eliminada — R5-D4); test del seed actualizado a "creates 1 fixed account and 8 default categories" (idempotencia 2 llamadas → 2 cuentas). El seed solo corre en `register.ts`, así que los usuarios existentes no se ven afectados. (2) **Migración**: nuevo `scripts/unfix-legacy-nequi.mjs` idempotente y no destructivo (`name === "Nequi" && isFixed: true` → `isFixed: false`) — libera las Nequi legadas para renombrarlas/eliminarlas (sugerencia #4); replicando el patrón de `migrate-sale-context.mjs` (mongoose, `MONGODB_URI`). **EJEcutada contra Atlas 2026-08-28: matched=7 modified=7** (7 cuentas Nequi de usuarios existentes pasaron a `isFixed: false`; ahora renombrables/eliminables). (3) **Onboarding visible**: card en `dashboard-content.tsx` (cliente) cuando el usuario aún solo tiene la cuenta fija del seed (`accountBalances.length === 1 && accountBalances[0].isFixed`): título "Crea tus cuentas", cuerpo con ejemplos (Nequi, bancos, caja del negocio), CTA "Crear cuenta" → `/accounts` (patrón `<Link><Button>` de hero.tsx); 3 claves i18n es/en (`onboardingTitle`, `onboardingBody`, `onboardingCta`); español neutro. (4) **Body centering**: verificado — `<main>` ya centra vía `max-w-screen-2xl mx-auto` en `(main)/layout.tsx` (hallazgo de auditoría R5.2); sin cambios requeridos. Suite **455/455**, tsc limpio, build OK. **Aviso explícito recibido: ejecuta Fase F.**
 - 2026-08-28 (mismo día) — **INICIO RONDA 6 (auditoría de defecto)** — El usuario reporta ventas eliminadas aún visibles en movimientos y dashboard. Auditoría de solo lectura (exploración de código + inspección read-only contra Atlas) identificó **una causa raíz estructural**: las lecturas de movimientos (`findByUserId`/`findPaged`/dashboard/tabla) NO verifican que el padre de `link.refId` (venta/crédito) siga existiendo, y `deleteSale` no cubre movimientos con `refId` UUID legacy (mismatch contra ObjectId actual). **Confirmado contra Atlas:** 1 movimiento `salePayment` huérfano (`6a9134098b0de779c4a4f1ab`, ingreso 50.000 COP, usuario pruebas2, refId UUID legacy `d86e48ee-6521-420d-8346-b6e5833232c6`) que infla informes. Propuestas P1–P6 documentadas (sección R6): P1 limpieza defensiva en lectura, P2 robustecer deleteSale, P3 deleteMany, P4 tests, P5 limpiar huérfano real, P6 soft-delete vestigial. **APROBADO por el usuario (2026-08-28): ejecutar P1–P5.**
 
+- 2026-08-28 (mismo día) — **RONDA 7 IMPLEMENTADA R7-A + R7-B (código)** — Cortar de raíz los UUID + arreglar cards infladas. **R7-B1 (ids ObjectId):** nuevo `src/infrastructure/config/id-generator.ts` (`objectIdGenerator` = `new Types.ObjectId().toString()`); 11 server actions cambian de `{ generate: () => crypto.randomUUID() }` a `objectIdGenerator`. **R7-B2 (persistir `_id`):** los 6 repos del Grupo B (movement, sale, credit-granted, credit-received, payable, transfer) ahora persisten `_id: entity.id` SOLO en su método `create` (`Model.create({ ...docData, _id: x.id })`), NO en el mapper `toXxxDocData` (lo reusan los `update` con `$set` y Mongo no permite mutar `_id`) → `link.refId`/`saleId`/`movementId` SIEMPRE coinciden con el `_id` real del padre → `deleteSale` ya no deja huérfanos. Grupo A (Account/Category/Catalog/Client/User) intacto. **R7-A (defensa dashboard):** nuevo use case puro `accountBalancesFromMovements` + `dashboard/page.tsx` deriva `accountBalances` desde `liveMovements` (filtro P1) en vez de `aggregateBalance` crudo → Balance total / Activos / Patrimonio excluyen huérfanos. **4 tests nuevos** (suma por cuenta, Map contract, exclusión huérfano, reconciliación por valor). Suite **517/517** (48 archivos), `tsc --noEmit` limpio, `pnpm build` OK. Decisión de formato con usuario: **ObjectId nuevo** (mata UUID), datos legacy no se migran. **Pendiente R7-C (datos): limpiar huérfanos en Atlas — requiere confirmación del usuario.**
+- 2026-08-28 (mismo día) — **INICIO RONDA 7 (auditoría de defecto post-R6)** — El usuario reporta que eliminar ventas sigue inflando las cards Balance total / Patrimonio / Activos (Posición financiera) de `pruebas2` aun con la tabla de Movimientos ya filtrando (P1). Auditoría 100% de solo lectura (código + Atlas read-only). **Hallazgo A (código):** `aggregateBalance` suma `$sum` sobre TODOS los movimientos de una cuenta sin excluir huérfanos — alimenta Balance total + `computeActivosPasivos` (Activos/Pasivos/Patrimonio) → cards infladas aunque P1 oculte los huérfanos en la tabla. **Hallazgo B (datos):** 2 movimientos `salePayment` huérfanos vigentes en `pruebas2` (100.000 + 50.000 COP), creados tras la limpieza P5 → 150.000 COP inflando el Efectivo. **Hallazgo C (RAÍZ — UUID↔ObjectId, proceso duplicado confirmado):** el dominio genera `crypto.randomUUID()` (puerto `IdGenerator`), pero el **mapper descarta ese id** (`toMovementDocData`/`toSaleDocData` no escriben `_id`) → Mongo asigna `_id: ObjectId` real, y al releer la entidad usa el ObjectId. En `create-sale` el movimiento `salePayment` guarda `link.refId` = UUID del dominio (generado antes de persistir) que **jamás coincide** con el ObjectId real de la venta → `deleteSale` (por ObjectId) no lo borra y el huérfano sobrevive inflando el balance. Bug **estructural y vigente** (aplica a ventas/créditos nuevos). **Plan documentado R7-A/B/C** (defensa de lecturas en dashboard, raíz ids por captura del ObjectId real = B1 recomendado vs refactor masivo B2, y limpieza de los 2 huérfanos). **A la espera de aprobación para ejecutar.**
 - 2026-08-28 (mismo día) — **RONDA 6 IMPLEMENTADA — P1–P5 COMPLETADOS** (ventas eliminadas ya no inflan movimientos/dashboard). (1) **P3**: `MovementRepository.deleteByRefId(userId, refId)` vía `deleteMany({ userId, 'link.refId': refId })`. (2) **P2**: `deleteSale` reescrito — cascada `deleteByRefId(saleId)` + `deleteByRefId(creditId)` (formato-agnóstico), sin listar previamente. (3) **P1**: nuevo use case puro `filterMovementsWithLiveParents` aplicado a `dashboard/page.tsx` (antes de serializar) y `movements/page.tsx` (antes de `firstPage.items`). **Durante la validación de P5 contra Atlas se descubrió que 2 movimientos portaban refId UUID legacy (de ~66 con link) y que uno NO era huérfano**: el `creditGrantedPrincipal` del crédito VIVO `6a9194b3b917614ec8d8c03e` (20.000 COP, usuario fjpaba) tenía refId UUID que no coincidía con el `_id` ObjectId → **P1 v2** (reconciliación por valor: accountId + fecha de negocio + monto espejo, para créditos/ventas con refId legacy que referencian padres vivos; abonos/payables no se reconcilian). (4) **P4**: 20+ tests del filtro (incl. reconciliación por valor) + tests `deleteSale` a `deletedByRefId`; fakes de `MovementRepository` actualizados (10 archivos). (5) **P5**: `scripts/clean-orphan-movements.mjs` idempotente — **1 relink** (`...c041` → `refId = ...c03e`, gasto legítimo conservado) + **1 borrado** (huérfano `...f1ab`); idempotencia verificada (0/0). Suite **513/513** en 47 archivos, `tsc --noEmit` limpio, verificación independiente del orquestador. **P6 queda como decisión de producto pendiente.**
 - 2026-08-28 (mismo día) — **FASE F COMPLETADA** — Reparación legacy contra Atlas (R5-F). Investigación previa (scripts _inspect) corrigió el diagnóstico: (1) los 2 "créditos huérfanos" (`6a8a4bb9...fde`, `6a8a4c4b...c6`) NO son huérfanos — créditos vivos con `saleId` UUID legacy que matchean sus ventas por account/fecha/principal==total → **relink del saleId**, no borrado; (2) los "orphan transfers" previos eran bug del matcher (transfers usan `sourceAccountId`/`destinationAccountId`, no `accountId`) — las 7 transfers SÍ tienen sus patas; solo 4 pares de movimientos transfer son huérfanos reales (transfers borradas pre-R5-B sin cascada); (3) la venta `6a8a4516...896` YA tiene crédito (`6a8a4516...899`, principal 10000 = pending real) → vincular, no duplicar; (4) patrón confirmado: movimientos legacy conservan `link.refId` UUID mientras padres actuales son ObjectId. Nuevos: `src/lib/legacy-repair.ts` (plan puro, contrato `CreateSaleCreditAction`/`LinkSaleCreditAction`/`DeleteOrphanCreditAction`/`LinkTransferMovementsAction`/`RelinkMovementRefIdAction`/`DeleteOrphanMovementAction`/`PurgeSoftDeletedSaleAction`; resolvers con match exacto preferido y parcial on-credit como fallback) + `scripts/reconcile-legacy.mjs` (dry-run/--apply idempotente; importa el módulo TS vía type-stripping de Node v24; localiza legs por valor; `MONGODB_URI` env). **Aplicado contra Atlas 2026-08-28: 45 acciones** — 2 create_sale_credit (ventas `6a84e267...`→30000, `6a890299...`→100000), 3 link_sale_credit (`6a8a4516`, `6a8a4bb9`, `6a8a4c4b`), 7 link_transfer_movements, 16 relink_movement_ref_id (10 salePayment + 3 creditGrantedPrincipal + 3 creditReceivedPrincipal), 18 delete_orphan_movement (8 transfer + 10 salePayment), 0 purge/delete_orphan_credit. **Idempotencia verificada: 0 issues restantes.** Nota: el candidato `6a8a4c33...` del análisis previo NO existe en Atlas (no reparado). Suite **485/485** (30 tests del módulo repair), tsc limpio, build OK. **Corrección post-QA (`1396928`)**: auditoría del tenant real (Francisco, `fjpaba1989@gmail.com`) con el criterio EXACTO de la app (`findOrphanMovements`) destapó 1 residuo — `6a8a4c33...e8` (salePayment 20000 → venta paid-in-full `6a8a4c33...e5`) con refId UUID sin relinkear; causa raíz: `sameBusinessDate` usaba ventana `|diff| ≤ 24h` (20-08 y 21-08 a medianoche contaban como mismo día → 2 candidatas exactas → ambiguous → skip silencioso, ni relink ni borrado; además viola la regla de fechas civiles). Fix: comparación de día calendario UTC (`getUTCFullYear/getUTCMonth/getUTCDate`), re-aplicado con `--apply` (1 relink). **Auditoría global post-fix con criterio de la app: 0 huérfanos, 0 ventas on-credit sin crédito, 0 transfers sin legs válidos** (14 salePayment + 14 transfer + 6+3+3 credit*/payableAbono, todo vinculado). Suite 485/485, tsc limpio, build OK. **RONDA 5 COMPLETADA.**

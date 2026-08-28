@@ -51,7 +51,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   async create(credit: CreditReceived): Promise<CreditReceived> {
     try {
       const docData = toCreditReceivedDocData(credit);
-      const created = await CreditReceivedModel.create(docData);
+      const created = await CreditReceivedModel.create({ ...docData, _id: credit.id });
       const currency = await this.resolveAccountCurrency(
         credit.userId,
         credit.accountId,

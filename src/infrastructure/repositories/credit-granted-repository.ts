@@ -51,7 +51,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   async create(credit: CreditGranted): Promise<CreditGranted> {
     try {
       const docData = toCreditGrantedDocData(credit);
-      const created = await CreditGrantedModel.create(docData);
+      const created = await CreditGrantedModel.create({ ...docData, _id: credit.id });
       const currency = await this.resolveAccountCurrency(
         credit.userId,
         credit.accountId,

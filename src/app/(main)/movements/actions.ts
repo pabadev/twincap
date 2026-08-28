@@ -18,11 +18,12 @@ import { MongoAccountRepository } from '../../../infrastructure/repositories/acc
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createMovementAction(
   _prev: { error?: string; success?: string } | null,

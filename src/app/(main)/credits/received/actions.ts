@@ -15,10 +15,11 @@ import { MongoCreditReceivedRepository } from '../../../../infrastructure/reposi
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../../lib/revalidate';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createCreditReceivedAction(
   _prev: { error?: string; success?: string } | null,

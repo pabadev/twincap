@@ -25,7 +25,7 @@ export class MongoTransferRepository implements TransferRepository {
   async create(transfer: Transfer): Promise<Transfer> {
     try {
       const docData = toTransferDocData(transfer);
-      const created = await TransferModel.create(docData);
+      const created = await TransferModel.create({ ...docData, _id: transfer.id });
       return toTransferEntity(created as TransferDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {

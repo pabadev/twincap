@@ -114,7 +114,7 @@ export class MongoMovementRepository implements MovementRepository {
   async create(movement: Movement): Promise<Movement> {
     try {
       const docData = toMovementDocData(movement);
-      const created = await MovementModel.create(docData);
+      const created = await MovementModel.create({ ...docData, _id: movement.id });
       const movementDoc = created as MovementDocument;
       const { category, currency } = await this.resolveDependencies(
         movement.userId,

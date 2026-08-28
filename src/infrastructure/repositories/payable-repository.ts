@@ -48,7 +48,7 @@ export class MongoPayableRepository implements PayableRepository {
   async create(payable: Payable): Promise<Payable> {
     try {
       const docData = toPayableDocData(payable);
-      const created = await PayableModel.create(docData);
+      const created = await PayableModel.create({ ...docData, _id: payable.id });
       const currency = await this.resolveAccountCurrency(
         payable.userId,
         payable.accountId,

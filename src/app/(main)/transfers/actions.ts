@@ -10,10 +10,11 @@ import { MongoTransferRepository } from '../../../infrastructure/repositories/tr
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createTransferAction(
   _prev: { error?: string; success?: string } | null,

@@ -11,8 +11,9 @@ import { MongoUserRepository } from '../../infrastructure/repositories/user-repo
 import { MongoAccountRepository } from '../../infrastructure/repositories/account-repository';
 import { MongoCategoryRepository } from '../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../infrastructure/config/id-generator';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 function getRepos() {
   return {

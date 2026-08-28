@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
-import { filterMovementsWithLiveParents } from '../../../core/application/movements';
+import { filterMovementsWithLiveParents, accountBalancesFromMovements } from '../../../core/application/movements';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -41,13 +41,8 @@ export default async function DashboardPage() {
     listAccounts(user.userId, accountRepo),
   ]);
 
-  const [balances, allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
+  const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
     await Promise.all([
-      Promise.all(
-        accounts.map((account) =>
-          movementRepo.aggregateBalance(user.userId, account.id),
-        ),
-      ),
       movementRepo.findByUserId(user.userId),
       categoryRepo.findByUserId(user.userId),
       creditReceivedRepo.findByUserId(user.userId),
@@ -89,12 +84,20 @@ export default async function DashboardPage() {
   const serializedMovements = liveMovements.map((m) => m.toJSON());
   const serializedCategories = categories.map((c) => c.toJSON());
 
-  const accountBalances = accounts.map((account, i) => ({
+  // R7-A: derive each account's balance from the LIVE (parent-filtered)
+  // movements instead of aggregateBalance (which sums every movement including
+  // orphans). accountBalancesFromMovements sums signedAmount over liveMovements,
+  // excluding orphan movements (deleted parents that failed to cascade), so the
+  // Balance total and the Activos/Patrimonio cards no longer get inflated by
+  // leftovers the movements table already hides via P1.
+  const balanceByAccount = accountBalancesFromMovements(accounts, liveMovements);
+
+  const accountBalances = accounts.map((account) => ({
     id: account.id,
     name: account.name,
     currency: account.currency,
     isFixed: account.isFixed,
-    balance: balances[i],
+    balance: balanceByAccount.get(account.id) ?? 0,
   }));
 
   const primaryCurrency =

@@ -11,10 +11,11 @@ import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
 import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../../lib/handle-action-error';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 export async function createCatalogItemAction(
   _prev: { error?: string; success?: string } | null,

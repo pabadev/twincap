@@ -9,10 +9,11 @@ import {
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 
-const ids = { generate: () => crypto.randomUUID() };
+const ids = objectIdGenerator;
 
 const clientSchema = z.object({
   name: z.string().min(1),

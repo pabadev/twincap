@@ -43,7 +43,7 @@ export class MongoSaleRepository implements SaleRepository {
   async create(sale: Sale): Promise<Sale> {
     try {
       const docData = toSaleDocData(sale);
-      const created = await SaleModel.create(docData);
+      const created = await SaleModel.create({ ...docData, _id: sale.id });
       const currency = await this.resolveAccountCurrency(
         sale.userId,
         sale.accountId,
