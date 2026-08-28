@@ -74,6 +74,9 @@ export interface MovementRepository {
   create(movement: Movement): Promise<Movement>;
   update(movement: Movement): Promise<Movement>;
   delete(userId: string, id: string): Promise<void>;
+  /** Delete ALL movements that reference a parent id via link.refId (robust
+   *  cascade, format-agnostic — covers ObjectId and legacy UUID refIds). */
+  deleteByRefId(userId: string, refId: string): Promise<number>;
   /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance). */
   aggregateBalance(userId: string, accountId: string): Promise<number>;
   /** CAT-3: count movements referencing a category (deletion guard). */

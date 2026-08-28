@@ -109,14 +109,16 @@ function fakeCatalogRepo(
 
 function fakeMovementRepo(
   overrides: Partial<MovementRepository> = {},
-): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[] } {
+): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[]; deletedByRefId: string[] } {
   const created: Movement[] = [];
   const updated: Movement[] = [];
   const deleted: string[] = [];
+  const deletedByRefId: string[] = [];
   return {
     created,
     updated,
     deleted,
+    deletedByRefId,
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
@@ -130,6 +132,10 @@ function fakeMovementRepo(
     }),
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
+    }),
+    deleteByRefId: vi.fn().mockImplementation(async (_userId: string, refId: string) => {
+      deletedByRefId.push(refId);
+      return deletedByRefId.length;
     }),
     aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
@@ -262,24 +268,6 @@ function makeService(
     name: 'Service B',
     unitPrice: new Money(30000, 'COP'),
     type: 'service',
-    createdAt: new Date(),
-    ...overrides,
-  });
-}
-
-function makeMovement(
-  overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
-): Movement {
-  const type = overrides.type ?? 'income';
-  return new Movement({
-    id: 'mov-1',
-    userId: 'user-1',
-    accountId: 'acc-1',
-    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Sale', type, createdAt: new Date() }),
-    type,
-    amount: new Money(50000, 'COP'),
-    date: new Date('2025-06-01'),
-    context: 'Personal',
     createdAt: new Date(),
     ...overrides,
   });
@@ -982,16 +970,6 @@ describe('deleteSale', () => {
     const sale = makeSale({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
     ]);
-    const abonoMovement = makeMovement({
-      id: 'mov-abono',
-      type: 'income',
-      link: { kind: 'salePayment', refId: 'sale-1', opId: 'op-1' },
-    });
-    const paymentMovement = makeMovement({
-      id: 'mov-payment',
-      type: 'income',
-      link: { kind: 'salePayment', refId: 'sale-1', opId: 'op-2' },
-    });
 
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([sale]),
@@ -999,18 +977,17 @@ describe('deleteSale', () => {
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
     });
-    const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([abonoMovement, paymentMovement]),
-    });
+    const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo();
 
     await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
 
     expect(catalogRepo.incremented).toHaveLength(1);
     expect(catalogRepo.incremented[0].quantity).toBe(2); // restore 2 units
-    expect(movementRepo.deleted).toContain('mov-abono');
-    expect(movementRepo.deleted).toContain('mov-payment');
-    expect(movementRepo.delete).toHaveBeenCalledTimes(2);
+    // Robust cascade: delete by refId (format-agnostic), not by individual ids.
+    expect(movementRepo.deletedByRefId).toContain('sale-1');
+    expect(movementRepo.deleteByRefId).toHaveBeenCalled();
+    expect(movementRepo.deleted).toHaveLength(0);
     expect(saleRepo.deleted).toContain('sale-1');
   });
 
@@ -1034,24 +1011,6 @@ describe('deleteSale', () => {
         { id: 'ab-2', amount: new Money(30000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-abono' },
       ],
     );
-    const initialPaymentMovement = makeMovement({
-      id: 'mov-initial',
-      type: 'income',
-      amount: new Money(20000, 'COP'),
-      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
-    });
-    const creditAbonoMovement = makeMovement({
-      id: 'mov-abono',
-      type: 'income',
-      amount: new Money(30000, 'COP'),
-      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
-    });
-    // LEGACY leftover: an old-model salePayment that still references the sale.
-    const legacySalePayment = makeMovement({
-      id: 'mov-legacy',
-      type: 'income',
-      link: { kind: 'salePayment', refId: 'sale-1', opId: 'op-3' },
-    });
 
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([sale]),
@@ -1059,19 +1018,18 @@ describe('deleteSale', () => {
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
     });
-    const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([initialPaymentMovement, creditAbonoMovement, legacySalePayment]),
-    });
+    const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo({
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
 
     await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
 
-    // Initial payment + credit abono (refId = creditId) AND legacy sale movement.
-    expect(movementRepo.deleted).toContain('mov-initial');
-    expect(movementRepo.deleted).toContain('mov-abono');
-    expect(movementRepo.deleted).toContain('mov-legacy');
+    // deleteByRefId covers the sale (legacy salePayment) AND the credit
+    // (initial payment + credit abonos) — both refIds.
+    expect(movementRepo.deletedByRefId).toContain('sale-1');
+    expect(movementRepo.deletedByRefId).toContain('cg-1');
+    expect(movementRepo.deleted).toHaveLength(0);
     expect(creditRepo.deleted).toContain('cg-1');
     expect(saleRepo.deleted).toContain('sale-1');
   });
@@ -1094,12 +1052,6 @@ describe('deleteSale', () => {
         { id: 'ab-init', amount: new Money(20000, 'COP'), date: new Date('2025-06-01'), accountId: 'acc-1', movementId: 'mov-initial' },
       ],
     );
-    const initialPaymentMovement = makeMovement({
-      id: 'mov-initial',
-      type: 'income',
-      amount: new Money(20000, 'COP'),
-      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
-    });
 
     const saleRepo = fakeSaleRepo({
       findByUserId: vi.fn().mockResolvedValue([sale]),
@@ -1107,11 +1059,8 @@ describe('deleteSale', () => {
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
     });
-    const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([initialPaymentMovement]),
-      // Concurrent deletion already removed the movement before we delete it.
-      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement already deleted')),
-    });
+    // deleteByRefId tolerates already-gone movements (returns count, never throws).
+    const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo({
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
@@ -1120,6 +1069,8 @@ describe('deleteSale', () => {
       deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo),
     ).resolves.toBeUndefined();
 
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'sale-1');
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'cg-1');
     expect(creditRepo.deleted).toContain('cg-1');
     expect(saleRepo.deleted).toContain('sale-1');
     expect(catalogRepo.incremented).toHaveLength(1);

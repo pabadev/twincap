@@ -40,6 +40,7 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     create: async (m) => m,
     update: async (m) => m,
     delete: async () => {},
+    deleteByRefId: async () => 0,
     aggregateBalance: async () => 0,
     countByCategoryId: async () => 0,
     findPaged: async () => ({ items: [], nextCursor: null }),

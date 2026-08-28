@@ -168,6 +168,14 @@ export class MongoMovementRepository implements MovementRepository {
     }
   }
 
+  async deleteByRefId(userId: string, refId: string): Promise<number> {
+    const result = await MovementModel.deleteMany({
+      userId: new Types.ObjectId(userId),
+      'link.refId': refId,
+    }).exec();
+    return result.deletedCount ?? 0;
+  }
+
   async aggregateBalance(userId: string, accountId: string): Promise<number> {
     const result = await MovementModel.aggregate([
       {

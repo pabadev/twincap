@@ -37,6 +37,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
     }),
+    deleteByRefId: vi.fn().mockResolvedValue(0),
     aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),

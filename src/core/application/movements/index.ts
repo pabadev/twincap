@@ -6,3 +6,5 @@ export { deleteMovement } from './delete-movement';
 export { listMovements } from './list-movements';
 export { listMovementsPaged } from './list-movements-paged';
 export type { PagedMovementsResult } from './list-movements-paged';
+export { filterMovementsWithLiveParents } from './filter-live-linked-movements';
+export type { LiveParentIds } from './filter-live-linked-movements';

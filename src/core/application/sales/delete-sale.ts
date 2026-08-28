@@ -9,16 +9,19 @@ import type {
 /**
  * Delete a sale and cascade (POS-8, R5-D0c).
  *
- * Restore stock for physical items. Reverse ALL movements owned by the linked
- * credit (initial payment + abonos, refId = creditId) plus any legacy
- * salePayment movements still referencing the sale itself (pre-R5-A model).
- * If a linked CreditGranted exists (sale-born credit), it is deleted too, so
- * no orphan credit keeps feeding the dashboard.
+ * Restore stock for physical items. Then delete ALL movements that reference
+ * this sale by refId via `deleteByRefId` (covers both current ObjectId
+ * refIds and legacy UUID refIds format-agnostically) plus, when a linked
+ * CreditGranted exists (sale-born credit), all movements that reference that
+ * credit by refId — initial payment + abonos (creditGrantedAbono/Principal).
+ * The linked credit is deleted too, so no orphan credit keeps feeding the
+ * dashboard.
  *
- * Movement deletion is tolerant: movements listed by findByUserId may already
- * be gone by the time delete runs (no multi-doc transactions on Atlas shared
- * tier) — a NotFoundError there just means nothing to clean, NOT a failure
- * that should surface a false error toast.
+ * Movement deletion is tolerant by construction: `deleteByRefId` is a
+ * `deleteMany`, which never throws for "not found" (it reports 0 deleted).
+ * Any non-NotFound repo error still propagates naturally. Because we delete
+ * by refId instead of by pre-listed movement ids, we no longer need
+ * `findByUserId` on movements nor a per-id delete loop.
  */
 export async function deleteSale(
   userId: string,
@@ -40,35 +43,16 @@ export async function deleteSale(
     }
   }
 
-  const [movements, credits] = await Promise.all([
-    movementRepo.findByUserId(userId),
-    creditRepo.findByUserId(userId),
-  ]);
+  const credits = await creditRepo.findByUserId(userId);
   const linkedCredit = credits.find(c => c.saleId === saleId);
 
-  // Collect movement ids before deleting: the credit's movements (NEW model,
-  // initial payment + abonos) plus legacy movements that referenced the sale
-  // directly (OLD model salePayments).
-  const movementIdsToDelete = new Set<string>();
-  for (const m of movements) {
-    if (linkedCredit && m.link?.refId === linkedCredit.id) {
-      movementIdsToDelete.add(m.id);
-    }
-    if (m.link?.refId === saleId) {
-      movementIdsToDelete.add(m.id);
-    }
-  }
-
-  // Tolerant delete: an already-missing movement (concurrent removal) is fine
-  // — it cannot be orphaned. Anything else must surface.
-  for (const m of movements) {
-    if (!movementIdsToDelete.has(m.id)) continue;
-    try {
-      await movementRepo.delete(userId, m.id);
-    } catch (err) {
-      if (err instanceof NotFoundError) continue;
-      throw err;
-    }
+  // Robust format-agnostic cascade: delete every movement that references the
+  // sale (legacy salePayment — ObjectId or UUID) and, if a linked credit
+  // exists, every movement that references the credit (initial payment +
+  // abonos). deleteMany is tolerant of already-missing movements (returns 0).
+  await movementRepo.deleteByRefId(userId, saleId);
+  if (linkedCredit) {
+    await movementRepo.deleteByRefId(userId, linkedCredit.id);
   }
 
   if (linkedCredit) {
