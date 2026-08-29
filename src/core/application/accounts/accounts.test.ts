@@ -136,6 +136,29 @@ describe('createAccount', () => {
 
     expect(movementRepo.created).toHaveLength(0);
   });
+
+  it('compensates: deletes the just-created account when the opening movement fails (R8)', async () => {
+    const accountRepo = fakeAccountRepo();
+    const movementRepo = fakeMovementRepo({
+      create: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+    const ids = fakeIdGen();
+
+    await expect(
+      createAccount(
+        'user-1',
+        { name: 'Ahorros', currency: 'COP', initialBalance: 50000 },
+        accountRepo,
+        movementRepo,
+        ids,
+      ),
+    ).rejects.toThrow('db down');
+
+    // Account was created, then rolled back (deleted) — no orphan leftovers.
+    expect(accountRepo.created).toHaveLength(1);
+    const createdAccount = accountRepo.created[0]!;
+    expect(accountRepo.deleted).toEqual([createdAccount.id]);
+  });
 });
 
 // ─── Update ────────────────────────────────────────────────────────

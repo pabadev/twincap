@@ -46,7 +46,17 @@ export async function createAccount(
       link: { kind: 'opening', refId: accountId, opId: ids.generate() },
       createdAt: new Date(),
     });
-    await movementRepo.create(movement);
+    try {
+      await movementRepo.create(movement);
+    } catch (err) {
+      // R8 (root-cause): the Atlas tier has no multi-document transactions
+      // (see application/ports.ts — UnitOfWork explicitly removed). If the
+      // opening movement fails to persist, compensate by deleting the just-created
+      // account so we never leave an account without its opening — or, had the
+      // account already been the anomaly, an opening without its account.
+      await accountRepo.delete(userId, accountId);
+      throw err;
+    }
   }
 
   return account;

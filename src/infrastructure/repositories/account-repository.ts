@@ -31,7 +31,12 @@ export class MongoAccountRepository implements AccountRepository {
   async create(account: Account): Promise<Account> {
     try {
       const docData = toAccountDocData(account);
-      const created = await AccountModel.create(docData);
+      // R8 (root-cause): persist the entity-generated id as the real `_id`, same as
+      // the Group-B repos did in R7-B. Without it, Mongo assigns its own ObjectId
+      // and `account.id` (used by movements' accountId/link.refId) no longer matches
+      // the stored `_id` → orphan movements that crash reads. Account was the one
+      // Group-A repo R7-B left intact; closing that gap.
+      const created = await AccountModel.create({ ...docData, _id: account.id });
       return toAccountEntity(created as AccountDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
