@@ -36,12 +36,16 @@ export class MongoMovementRepository implements MovementRepository {
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);
 
-    return docs.map((doc) => {
+    // Orphan guard: a movement whose account (or category) does not resolve to a
+    // live parent must not crash the read — skip it instead of dereferencing
+    // `account.currency` on an undefined account (R8: dashboard crash fix).
+    return docs.flatMap((doc) => {
       const movementDoc = doc as MovementDocument;
       const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
-      const category = categoryMap.get(key)!;
-      const account = accountMap.get(movementDoc.accountId.toString())!;
-      return toMovementEntity(movementDoc, category, account.currency as Currency);
+      const category = categoryMap.get(key);
+      const account = accountMap.get(movementDoc.accountId.toString());
+      if (!category || !account) return [];
+      return [toMovementEntity(movementDoc, category, account.currency as Currency)];
     });
   }
 
@@ -77,12 +81,15 @@ export class MongoMovementRepository implements MovementRepository {
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, pageDocs);
 
-    const items = pageDocs.map((doc) => {
+    // Orphan guard: skip movements whose account/category does not resolve
+    // instead of crashing on `account.currency` (R8).
+    const items = pageDocs.flatMap((doc) => {
       const movementDoc = doc as MovementDocument;
       const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
-      const category = categoryMap.get(key)!;
-      const account = accountMap.get(movementDoc.accountId.toString())!;
-      return toMovementEntity(movementDoc, category, account.currency as Currency);
+      const category = categoryMap.get(key);
+      const account = accountMap.get(movementDoc.accountId.toString());
+      if (!category || !account) return [];
+      return [toMovementEntity(movementDoc, category, account.currency as Currency)];
     });
 
     const lastDoc = pageDocs[pageDocs.length - 1] as MovementDocument;
@@ -102,12 +109,15 @@ export class MongoMovementRepository implements MovementRepository {
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);
 
-    return docs.map((doc) => {
+    // Orphan guard: skip movements whose account/category does not resolve
+    // instead of crashing on `account.currency` (R8).
+    return docs.flatMap((doc) => {
       const movementDoc = doc as MovementDocument;
       const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
-      const category = categoryMap.get(key)!;
-      const account = accountMap.get(movementDoc.accountId.toString())!;
-      return toMovementEntity(movementDoc, category, account.currency as Currency);
+      const category = categoryMap.get(key);
+      const account = accountMap.get(movementDoc.accountId.toString());
+      if (!category || !account) return [];
+      return [toMovementEntity(movementDoc, category, account.currency as Currency)];
     });
   }
 
