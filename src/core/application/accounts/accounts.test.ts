@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAccount } from './create-account';
 import { updateAccount } from './update-account';
 import { deleteAccount } from './delete-account';
+import { setInitialAccountBalance } from './set-initial-balance';
 import { listAccounts } from './list-accounts';
 import { Account } from '../../domain/account';
 import { Category } from '../../domain/category';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
+import { openingCategory } from '../../domain/synthetic-categories';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { AccountRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -335,6 +337,135 @@ describe('deleteAccount', () => {
 
     expect(movementRepo.delete).toHaveBeenCalledTimes(1);
     expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening');
+  });
+});
+
+// ─── Set Initial Balance ────────────────────────────────────────────
+
+describe('setInitialAccountBalance', () => {
+  it('creates the opening with the correct pattern on a clean account', async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    const movement = await setInitialAccountBalance(
+      'user-1',
+      { accountId: 'acc-1', amount: 50000 },
+      accountRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.create).toHaveBeenCalledTimes(1);
+
+    const created = movementRepo.created[0]! as Movement;
+    expect(created.type).toBe('income');
+    expect(created.context).toBe('Personal');
+    expect(created.link?.kind).toBe('opening');
+    expect(created.link?.refId).toBe('acc-1');
+    expect(created.link?.opId).toBeTruthy();
+    expect(created.amount.amount).toBe(50000);
+    expect(created.amount.currency).toBe('COP');
+    expect(created.categoryId).toBe(openingCategory().id);
+    expect(created.accountId).toBe('acc-1');
+  });
+
+  it('returns the created movement', async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const movement = await setInitialAccountBalance(
+      'user-1',
+      { accountId: 'acc-1', amount: 30000 },
+      accountRepo,
+      movementRepo,
+      fakeIdGen(),
+    );
+
+    expect(movement).toBe(movementRepo.created[0]);
+  });
+
+  it('rejects an amount <= 0 without creating anything', async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      setInitialAccountBalance(
+        'user-1',
+        { accountId: 'acc-1', amount: 0 },
+        accountRepo,
+        movementRepo,
+        fakeIdGen(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(movementRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an account with existing activity with ConflictError', async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+      countReferences: vi.fn().mockResolvedValue(3),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      setInitialAccountBalance(
+        'user-1',
+        { accountId: 'acc-1', amount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeIdGen(),
+      ),
+    ).rejects.toThrow(ConflictError);
+    expect(movementRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown account with NotFoundError', async () => {
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(null),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      setInitialAccountBalance(
+        'user-1',
+        { accountId: 'missing', amount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeIdGen(),
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('uses the currency of the account', async () => {
+    const account = makeAccount({ currency: 'USD' });
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await setInitialAccountBalance(
+      'user-1',
+      { accountId: 'acc-1', amount: 100 },
+      accountRepo,
+      movementRepo,
+      fakeIdGen(),
+    );
+
+    const created = movementRepo.created[0]! as Movement;
+    expect(created.amount.currency).toBe('USD');
   });
 });
 

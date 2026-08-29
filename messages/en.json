@@ -149,6 +149,10 @@
     "initialBalance": "Initial Balance",
     "creating": "Creating...",
     "createAccount": "Create Account",
+    "setInitialBalance": "Set Initial Balance",
+    "setInitialBalanceDescription": "Set the balance this account starts with.",
+    "balanceToSet": "Balance to set",
+    "saving": "Saving...",
     "confirmDelete": "Delete this account? This cannot be undone.",
     "emptyTitle": "No accounts yet",
     "emptyDescription": "Create your first account to start tracking."
@@ -494,6 +498,7 @@
     "accountCreated": "Account created successfully",
     "accountUpdated": "Account updated successfully",
     "accountDeleted": "Account deleted successfully",
+    "initialBalanceSet": "Initial balance set successfully",
     "categoryCreated": "Category created successfully",
     "categoryUpdated": "Category updated successfully",
     "categoryDeleted": "Category deleted successfully",

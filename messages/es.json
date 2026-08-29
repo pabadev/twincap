@@ -149,6 +149,10 @@
     "initialBalance": "Saldo inicial",
     "creating": "Creando...",
     "createAccount": "Crear cuenta",
+    "setInitialBalance": "Establecer saldo inicial",
+    "setInitialBalanceDescription": "Asigna el saldo con el que inicia esta cuenta.",
+    "balanceToSet": "Saldo a establecer",
+    "saving": "Guardando...",
     "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer.",
     "emptyTitle": "No tienes cuentas aún",
     "emptyDescription": "Crea tu primera cuenta para empezar a registrar."
@@ -494,6 +498,7 @@
     "accountCreated": "Cuenta creada exitosamente",
     "accountUpdated": "Cuenta actualizada exitosamente",
     "accountDeleted": "Cuenta eliminada exitosamente",
+    "initialBalanceSet": "Saldo inicial establecido exitosamente",
     "categoryCreated": "Categoría creada exitosamente",
     "categoryUpdated": "Categoría actualizada exitosamente",
     "categoryDeleted": "Categoría eliminada exitosamente",

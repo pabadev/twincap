@@ -23,11 +23,12 @@ vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
 
-const { deleteAccountAction } = await import('./actions');
+const { deleteAccountAction, setInitialBalanceAction } = await import('./actions');
 
-function formData(accountId = 'acc-1'): FormData {
+function formData(accountId = 'acc-1', amount?: number): FormData {
   const fd = new FormData();
   fd.append('accountId', accountId);
+  if (amount !== undefined) fd.append('amount', String(amount));
   return fd;
 }
 
@@ -56,5 +57,56 @@ describe('deleteAccountAction', () => {
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('setInitialBalanceAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue({
+        id: 'acc-1',
+        userId: 'user-1',
+        name: 'Efectivo',
+        currency: 'COP',
+        isFixed: true,
+        createdAt: new Date(),
+      }),
+      countReferences: vi.fn().mockResolvedValue(0),
+    }));
+  });
+
+  it('sets the initial balance and returns the success toast key', async () => {
+    const created: unknown[] = [];
+    MongoMovementRepository.mockImplementation(() => ({
+      create: vi.fn().mockImplementation(async (movement: unknown) => {
+        created.push(movement);
+        return movement;
+      }),
+    }));
+
+    const result = await setInitialBalanceAction(null, formData('acc-1', 50000));
+
+    expect(result).toEqual({ success: 'initialBalanceSet' });
+    expect(created).toHaveLength(1);
+    const movement = created[0] as {
+      type: string;
+      link: { kind: string; refId: string };
+    };
+    expect(movement.type).toBe('income');
+    expect(movement.link.kind).toBe('opening');
+    expect(movement.link.refId).toBe('acc-1');
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    const result = await setInitialBalanceAction(null, formData('acc-1', 50000));
+
+    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoAccountRepository).not.toHaveBeenCalled();
   });
 });

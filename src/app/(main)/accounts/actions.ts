@@ -3,6 +3,7 @@
 import {
   createAccount,
   deleteAccount,
+  setInitialAccountBalance,
 } from '../../../core/application/accounts';
 import type { CreateAccountInput } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
@@ -70,4 +71,35 @@ export async function deleteAccountAction(
   }
 
   return { success: 'accountDeleted' };
+}
+
+export async function setInitialBalanceAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const accountId = formData.get('accountId') as string;
+  const amount = Number(formData.get('amount') || '0');
+
+  try {
+    await connectDb();
+    const accountRepo = new MongoAccountRepository();
+    const movementRepo = new MongoMovementRepository();
+    await setInitialAccountBalance(
+      user.userId,
+      { accountId, amount },
+      accountRepo,
+      movementRepo,
+      ids,
+    );
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'initialBalanceSet' };
 }
