@@ -105,7 +105,11 @@ export default async function DashboardPage() {
 
   const positionData = computeActivosPasivos({
     accounts: accountBalances,
-    creditsGranted,
+    creditsGranted: creditsGranted.map((c) => ({
+      principal: { currency: c.principal.currency },
+      pending: c.pending,
+      writtenOff: Boolean(c.writtenOff),
+    })),
     creditsReceived,
     payables,
   });

@@ -16,7 +16,9 @@ export interface ActivosPasivosResult {
  * Compute per-currency financial position (decision D4):
  *
  * Activos = Σ account balances (aggregateBalance) + Σ CreditGranted.pending
- *   — represents everything of value the user owns or is owed.
+ *   de créditos no castigados — writtenOff excluye el crédito del activo
+ *   (representa todo lo de valor que el usuario posee o se le debe;
+ *   un crédito dado de baja ya no es cobrable).
  *
  * Pasivos = Σ CreditReceived.pending + Σ Payable.pending
  *   — represents everything the user owes.
@@ -25,7 +27,11 @@ export interface ActivosPasivosResult {
  */
 export function computeActivosPasivos(input: {
   accounts: Array<{ currency: string; balance: number }>;
-  creditsGranted: Array<{ principal: { currency: string }; pending: number }>;
+  creditsGranted: Array<{
+    principal: { currency: string };
+    pending: number;
+    writtenOff?: boolean;
+  }>;
   creditsReceived: Array<{ principal: { currency: string }; pending: number }>;
   payables: Array<{ total: { currency: string }; pending: number }>;
 }): ActivosPasivosResult {
@@ -50,6 +56,7 @@ export function computeActivosPasivos(input: {
   for (const credit of creditsGranted) {
     const ccy = credit.principal.currency;
     if (credit.pending <= 0) continue;
+    if (credit.writtenOff) continue;
     ensureCurrency(ccy);
     currencyMap.get(ccy)!.activos += credit.pending;
   }

@@ -24,6 +24,52 @@ describe('computeActivosPasivos', () => {
     });
   });
 
+  it('written-off credit granted (pending>0) does not add to activos', () => {
+    const result = computeActivosPasivos({
+      accounts: [{ currency: 'COP', balance: 5_000_000 }],
+      creditsGranted: [
+        { principal: { currency: 'COP' }, pending: 500_000, writtenOff: true },
+      ],
+      creditsReceived: [],
+      payables: [],
+    });
+
+    expect(result.positions).toHaveLength(1);
+    expect(result.positions[0]).toEqual({
+      currency: 'COP',
+      activos: 5_000_000,
+      pasivos: 0,
+      net: 5_000_000,
+    });
+  });
+
+  it('credit granted pending>0 without writtenOff still adds to activos', () => {
+    const result = computeActivosPasivos({
+      accounts: [{ currency: 'COP', balance: 5_000_000 }],
+      creditsGranted: [
+        { principal: { currency: 'COP' }, pending: 500_000 },
+      ],
+      creditsReceived: [],
+      payables: [],
+    });
+
+    expect(result.positions[0].activos).toBe(5_500_000);
+  });
+
+  it('written-off credit excluded while a live credit still adds', () => {
+    const result = computeActivosPasivos({
+      accounts: [{ currency: 'COP', balance: 5_000_000 }],
+      creditsGranted: [
+        { principal: { currency: 'COP' }, pending: 300_000, writtenOff: true },
+        { principal: { currency: 'COP' }, pending: 200_000 },
+      ],
+      creditsReceived: [],
+      payables: [],
+    });
+
+    expect(result.positions[0].activos).toBe(5_200_000);
+  });
+
   it('single currency: pasivos = credit received pending + payable pending', () => {
     const result = computeActivosPasivos({
       accounts: [{ currency: 'COP', balance: 2_000_000 }],
