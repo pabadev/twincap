@@ -360,7 +360,7 @@ describe("computeCategorySummary", () => {
       type: "income",
       amount: 150_000,
       categoryId: "loan-fee",
-      linkKind: "creditGrantedAbono",
+      linkKind: "creditGrantedAbonoInterest",
     });
 
     const result = computeCategorySummary({

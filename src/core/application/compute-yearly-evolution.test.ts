@@ -164,7 +164,7 @@ describe('computeYearlyEvolution', () => {
       movement({ type: 'income', amount: 800_000, date: new Date('2026-06-10'), linkKind: 'creditReceivedPrincipal' }),
       movement({ type: 'expense', amount: 300_000, date: new Date('2026-06-15'), linkKind: 'creditGrantedPrincipal' }),
       movement({ type: 'expense', amount: 120_000, date: new Date('2026-06-20'), linkKind: 'creditReceivedAbono' }),
-      movement({ type: 'income', amount: 150_000, date: new Date('2026-06-25'), linkKind: 'creditGrantedAbono' }),
+      movement({ type: 'income', amount: 150_000, date: new Date('2026-06-25'), linkKind: 'creditGrantedAbonoInterest' }),
     ];
 
     const result = computeYearlyEvolution({

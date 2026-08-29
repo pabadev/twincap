@@ -8,6 +8,18 @@ export interface CreditAbono {
   date: Date;
   accountId: string;
   movementId?: string;
+  /**
+   * Capital portion of this abono (R9/D9.3) — informative, derived from the
+   * chronological amortization split. Optional; credits received do not set it
+   * and only tolerate the field.
+   */
+  capitalAmount?: Money;
+  /**
+   * Interest portion of this abono (R9/D9.3) — informative, derived from the
+   * chronological amortization split. Optional; credits received do not set it
+   * and only tolerate the field.
+   */
+  interestAmount?: Money;
 }
 
 export interface CreditReceivedInput {

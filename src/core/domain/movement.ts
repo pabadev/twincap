@@ -23,6 +23,8 @@ export const MOVEMENT_LINK_KINDS = [
   "creditReceivedAbono",
   "creditGrantedPrincipal",
   "creditGrantedAbono",
+  "creditGrantedAbonoInterest",
+  "creditGrantedWriteOff",
   "salePayment",
   "payableInitialPayment",
   "payableAbono",

@@ -241,13 +241,13 @@ describe("computeDashboardSummary", () => {
     expect(summary.months[5].expenses).toBe(120_000);
   });
 
-  it("creditGrantedAbono (quota collected) still counts as income, whatever its context", () => {
-    const personalAbono = movement({
+  it("creditGrantedAbono: standalone (Personal) recovery is NOT income; POS initial payment (Business) still is", () => {
+    const standaloneAbono = movement({
       type: "income",
       amount: 150_000,
       linkKind: "creditGrantedAbono",
     });
-    const businessAbono = movement({
+    const posInitialPayment = movement({
       type: "income",
       amount: 200_000,
       linkKind: "creditGrantedAbono",
@@ -255,13 +255,14 @@ describe("computeDashboardSummary", () => {
     });
 
     const summary = computeDashboardSummary({
-      movements: [personalAbono, businessAbono],
+      movements: [standaloneAbono, posInitialPayment],
       currency: "COP",
       now: NOW,
     });
 
-    expect(summary.monthlyIncome).toBe(350_000);
-    expect(summary.months[5].income).toBe(350_000);
+    // Standalone recovery excludes capital; POS initial payment is commercial income.
+    expect(summary.monthlyIncome).toBe(200_000);
+    expect(summary.months[5].income).toBe(200_000);
     expect(summary.financingInflow).toBe(0);
   });
 

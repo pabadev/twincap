@@ -19,26 +19,49 @@ export const FINANCING_CAPITAL_LINK_KINDS: ReadonlySet<MovementLinkKind> =
  * - `transfer`: moving money between own accounts changes WHERE money is,
  *   not the financial outcome (both legs excluded).
  * - `opening`: seeding an account with its starting balance is not income.
+ *
+ * Round 9 adds the standalone granted abono (`creditGrantedAbono`): for a
+ * credit granted standalone (no POS sale), each abono first recovers the
+ * principal lent — recovering capital is NOT income, so the base abono is
+ * excluded here. Its interest over-and-above the principal is captured by the
+ * separate kind `creditGrantedAbonoInterest` (income), and an unrecovered
+ * capital write-off by `creditGrantedWriteOff` (expense) — both REMAIN
+ * economic (NOT in this set). Sale-born credits (POS) use `salePayment`,
+ * which is untouched and still counts.
  */
 export const NON_ECONOMIC_LINK_KINDS: ReadonlySet<MovementLinkKind> = new Set([
   "transfer",
   "opening",
+  "creditGrantedAbono",
   ...FINANCING_CAPITAL_LINK_KINDS,
 ]);
 
 /**
  * True when a movement counts toward the economic result (income/expenses).
  *
- * Excluded: financing capital (credit principals) and internal flows
- * (transfers, opening balances). Everything else keeps its current treatment:
- * credit abonos (received/granted, in any context), sale payments, and
- * payable payments still count.
+ * Excluded: financing capital (credit principals), the standalone granted
+ * abono (capital recovery), and internal flows (transfers, opening balances).
+ * Everything else keeps its current treatment: received credit abonos, granted
+ * interest (`creditGrantedAbonoInterest`), write-offs (`creditGrantedWriteOff`),
+ * sale payments, and payable payments still count.
+ *
+ * Special case — `creditGrantedAbono` by context (R9): the standalone granted
+ * abono (context 'Personal') only recovers the principal lent, so it is NOT
+ * income and falls in NON_ECONOMIC_LINK_KINDS. But the SAME kind is reused by
+ * the POS sale initial payment (context 'Business', D3-bis), which IS
+ * commercial income, so the Business variant always remains economic.
  *
  * Accepts any object exposing `link` so both domain `Movement` instances and
  * serialized movement snapshots can be passed.
  */
 export function countsTowardEconomicResult(
-  movement: Pick<Movement, "link">,
+  movement: Pick<Movement, "link" | "context">,
 ): boolean {
-  return !(movement.link && NON_ECONOMIC_LINK_KINDS.has(movement.link.kind));
+  if (!movement.link) return true;
+  // POS initial payment is the only Business-variant `creditGrantedAbono`;
+  // standalone recovery is always Personal, so keep Business economic here.
+  if (movement.link.kind === "creditGrantedAbono" && movement.context === "Business") {
+    return true;
+  }
+  return !NON_ECONOMIC_LINK_KINDS.has(movement.link.kind);
 }

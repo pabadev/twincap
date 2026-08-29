@@ -1,5 +1,6 @@
 import { ValidationError } from "./errors";
 import { Money } from "./money";
+import type { CreditAbono } from "./credit-received";
 
 /** Re-export CreditAbono for credits-granted (same shape as received). */
 export type { CreditAbono } from "./credit-received";
@@ -31,16 +32,14 @@ export interface CreditGrantedInput {
    * Set automatically by createSale; never set by the standalone flow.
    */
   saleId?: string;
+  /**
+   * Write-off marker (R9/D9.4). Set when the credit is written off as
+   * uncollectible, referencing the expense movement registered for the
+   * unrecovered capital. No validation here — enforcement lives in the
+   * write-off use case.
+   */
+  writtenOff?: { date: Date; movementId: string };
   createdAt: Date;
-}
-
-/** Re-use the CreditAbono type from credit-received (same shape). */
-interface CreditAbono {
-  id: string;
-  amount: Money;
-  date: Date;
-  accountId: string;
-  movementId?: string;
 }
 
 export class CreditGranted {
@@ -56,6 +55,8 @@ export class CreditGranted {
   readonly installmentValue?: Money;
   /** Origin POS sale, when the credit was born from a sale (H14). */
   readonly saleId?: string;
+  /** Write-off marker when the credit was written off as uncollectible (R9/D9.4). */
+  readonly writtenOff?: { date: Date; movementId: string };
   readonly createdAt: Date;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
@@ -138,6 +139,7 @@ export class CreditGranted {
     this.frequency = input.frequency;
     this.installmentValue = input.installmentValue;
     this.saleId = input.saleId;
+    this.writtenOff = input.writtenOff;
     this.createdAt = input.createdAt;
     this._abonos = abonos;
   }
@@ -156,9 +158,15 @@ export class CreditGranted {
       installmentValue: this.installmentValue?.toJSON(),
       totalToPay: this.totalToPay,
       saleId: this.saleId,
+      writtenOff: this.writtenOff,
       createdAt: this.createdAt,
       pending: this.pending,
-      abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
+      abonos: this._abonos.map((a) => ({
+        ...a,
+        amount: a.amount.toJSON(),
+        capitalAmount: a.capitalAmount?.toJSON(),
+        interestAmount: a.interestAmount?.toJSON(),
+      })),
     };
   }
 }
