@@ -89,6 +89,7 @@
     "totalBalance": "Total Balance",
     "incomeThisMonth": "Income this month",
     "expensesThisMonth": "Expenses this month",
+    "financingThisMonth": "Financing flows",
     "pendingCredits": "Outstanding debts",
     "monthlyTrend": "Monthly Trend (6 months)",
     "yearlyTrend": "Yearly Evolution",

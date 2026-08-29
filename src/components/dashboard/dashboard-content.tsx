@@ -22,6 +22,7 @@ import { Wallet } from 'lucide-react';
 import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
 import { computeCategorySummary } from '../../core/application/compute-category-summary';
 import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
+import { countsTowardEconomicResult } from '../../core/application/economic-result';
 import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
 import { filterMovementsByPeriod } from '../../lib/movement-period-filter';
@@ -141,6 +142,7 @@ export function DashboardContent({
     }
 
     for (const m of filteredMovements) {
+      if (!countsTowardEconomicResult(m)) continue;
       const cur = m.amount.currency;
       const entry = byCurrency.get(cur) ?? { balance: 0, income: 0, expenses: 0 };
       if (m.type === 'income') entry.income += m.amount.amount;
@@ -166,7 +168,13 @@ export function DashboardContent({
     [accountBalances],
   );
 
-  const { monthlyIncome, monthlyExpenses, months: monthlyData } = useMemo(
+  const {
+    monthlyIncome,
+    monthlyExpenses,
+    financingInflow,
+    financingOutflow,
+    months: monthlyData,
+  } = useMemo(
     () =>
       computeDashboardSummary({
         movements: filteredMovements as any,
@@ -215,11 +223,6 @@ export function DashboardContent({
         currency,
       }),
     [filteredMovements, currency],
-  );
-
-  const netPosition = useMemo(
-    () => positionData.reduce((sum, p) => sum + p.net, 0),
-    [positionData],
   );
 
   const chartTitle = chartView === 'monthly' ? undefined : t('yearlyTrend');
@@ -292,7 +295,8 @@ export function DashboardContent({
         currency={currency}
         monthlyIncome={monthlyIncome}
         monthlyExpenses={monthlyExpenses}
-        netPosition={netPosition}
+        financingInflow={financingInflow}
+        financingOutflow={financingOutflow}
         locale={locale}
         currencyBreakdown={currencyBreakdown}
       />

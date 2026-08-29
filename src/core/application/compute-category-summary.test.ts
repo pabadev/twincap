@@ -336,4 +336,41 @@ describe("computeCategorySummary", () => {
     expect(result.incomeCategories[0].categoryId).toBe("salary-abc");
     expect(result.expenseCategories[0].categoryId).toBe("food-xyz");
   });
+
+  it("financing principals excluded; credit abonos still count", () => {
+    const receivedPrincipal = movementWithCategory({
+      type: "income",
+      amount: 800_000,
+      categoryId: "credit-in",
+      linkKind: "creditReceivedPrincipal",
+    });
+    const grantedPrincipal = movementWithCategory({
+      type: "expense",
+      amount: 300_000,
+      categoryId: "credit-out",
+      linkKind: "creditGrantedPrincipal",
+    });
+    const receivedAbono = movementWithCategory({
+      type: "expense",
+      amount: 120_000,
+      categoryId: "credit-fee",
+      linkKind: "creditReceivedAbono",
+    });
+    const grantedAbono = movementWithCategory({
+      type: "income",
+      amount: 150_000,
+      categoryId: "loan-fee",
+      linkKind: "creditGrantedAbono",
+    });
+
+    const result = computeCategorySummary({
+      movements: [receivedPrincipal, grantedPrincipal, receivedAbono, grantedAbono],
+      currency: "COP",
+    });
+
+    expect(result.incomeCategories).toEqual([{ categoryId: "loan-fee", amount: 150_000 }]);
+    expect(result.expenseCategories).toEqual([{ categoryId: "credit-fee", amount: 120_000 }]);
+    expect(result.totalIncome).toBe(150_000);
+    expect(result.totalExpenses).toBe(120_000);
+  });
 });

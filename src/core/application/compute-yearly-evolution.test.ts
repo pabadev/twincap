@@ -158,4 +158,21 @@ describe('computeYearlyEvolution', () => {
     expect(result.months[6].month).toBe('2026-07');
     expect(result.months[6].income).toBe(999);
   });
+
+  it('excludes financing principals but keeps credit abonos', () => {
+    const movements = [
+      movement({ type: 'income', amount: 800_000, date: new Date('2026-06-10'), linkKind: 'creditReceivedPrincipal' }),
+      movement({ type: 'expense', amount: 300_000, date: new Date('2026-06-15'), linkKind: 'creditGrantedPrincipal' }),
+      movement({ type: 'expense', amount: 120_000, date: new Date('2026-06-20'), linkKind: 'creditReceivedAbono' }),
+      movement({ type: 'income', amount: 150_000, date: new Date('2026-06-25'), linkKind: 'creditGrantedAbono' }),
+    ];
+
+    const result = computeYearlyEvolution({
+      movements,
+      currency: 'COP',
+      year: 2026,
+    });
+
+    expect(result.months[5]).toEqual({ month: '2026-06', income: 150_000, expenses: 120_000 });
+  });
 });

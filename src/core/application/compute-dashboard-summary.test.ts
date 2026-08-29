@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeDashboardSummary } from "./compute-dashboard-summary";
 import { Movement } from "../domain/movement";
-import type { MovementLinkKind, MovementType } from "../domain/movement";
+import type { MovementContext, MovementLinkKind, MovementType } from "../domain/movement";
 import { Category } from "../domain/category";
 import { Money } from "../domain/money";
 import type { Currency } from "../domain/currency";
@@ -28,6 +28,7 @@ function movement(input: {
   currency?: Currency;
   date?: Date;
   linkKind?: MovementLinkKind;
+  context?: MovementContext;
 }): Movement {
   return new Movement({
     id: `m-${++seq}`,
@@ -37,7 +38,7 @@ function movement(input: {
     type: input.type,
     amount: new Money(input.amount, input.currency ?? "COP"),
     date: input.date ?? new Date("2026-08-10"),
-    context: "Personal",
+    context: input.context ?? "Personal",
     createdAt: SEED_DATE,
     link: input.linkKind
       ? { kind: input.linkKind, refId: `ref-${seq}`, opId: `op-${seq}` }
@@ -108,12 +109,17 @@ describe("computeDashboardSummary", () => {
     expect(summary.months[5].income).toBe(2_000_000);
   });
 
-  it("keeps current cash-basis treatment for credit principals and sale payments", () => {
+  it("excludes financing capital from the economic result but keeps abonos, sales and payables", () => {
     const salary = movement({ type: "income", amount: 2_000_000 });
-    const creditPrincipal = movement({
+    const creditReceivedPrincipal = movement({
       type: "income",
       amount: 800_000,
       linkKind: "creditReceivedPrincipal",
+    });
+    const creditGrantedPrincipal = movement({
+      type: "expense",
+      amount: 300_000,
+      linkKind: "creditGrantedPrincipal",
     });
     const salePayment = movement({
       type: "income",
@@ -127,13 +133,136 @@ describe("computeDashboardSummary", () => {
     });
 
     const summary = computeDashboardSummary({
-      movements: [salary, creditPrincipal, salePayment, payableAbono],
+      movements: [
+        salary,
+        creditReceivedPrincipal,
+        creditGrantedPrincipal,
+        salePayment,
+        payableAbono,
+      ],
       currency: "COP",
       now: NOW,
     });
 
-    expect(summary.monthlyIncome).toBe(2_850_000);
+    expect(summary.monthlyIncome).toBe(2_050_000);
     expect(summary.monthlyExpenses).toBe(120_000);
+    expect(summary.financingInflow).toBe(800_000);
+    expect(summary.financingOutflow).toBe(300_000);
+  });
+
+  it("creditReceivedPrincipal: not income, but financing inflow of the current month", () => {
+    const creditReceivedPrincipal = movement({
+      type: "income",
+      amount: 800_000,
+      linkKind: "creditReceivedPrincipal",
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [creditReceivedPrincipal],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.monthlyIncome).toBe(0);
+    expect(summary.financingInflow).toBe(800_000);
+    expect(summary.financingOutflow).toBe(0);
+    expect(summary.months[5].income).toBe(0);
+  });
+
+  it("creditGrantedPrincipal: not expense, but financing outflow of the current month", () => {
+    const creditGrantedPrincipal = movement({
+      type: "expense",
+      amount: 300_000,
+      linkKind: "creditGrantedPrincipal",
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [creditGrantedPrincipal],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.monthlyExpenses).toBe(0);
+    expect(summary.financingInflow).toBe(0);
+    expect(summary.financingOutflow).toBe(300_000);
+    expect(summary.months[5].expenses).toBe(0);
+  });
+
+  it("financing flows default to zero when no financing capital exists", () => {
+    const salary = movement({ type: "income", amount: 2_000_000 });
+    const summary = computeDashboardSummary({
+      movements: [salary],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.financingInflow).toBe(0);
+    expect(summary.financingOutflow).toBe(0);
+  });
+
+  it("financing flows only count the current month, other currencies are ignored", () => {
+    const pastCredit = movement({
+      type: "income",
+      amount: 100_000,
+      date: new Date("2026-07-10"),
+      linkKind: "creditReceivedPrincipal",
+    });
+    const usdCredit = movement({
+      type: "income",
+      amount: 800,
+      currency: "USD",
+      linkKind: "creditReceivedPrincipal",
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [pastCredit, usdCredit],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.financingInflow).toBe(0);
+    expect(summary.financingOutflow).toBe(0);
+  });
+
+  it("creditReceivedAbono (quota paid) still counts as expense", () => {
+    const abono = movement({
+      type: "expense",
+      amount: 120_000,
+      linkKind: "creditReceivedAbono",
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [abono],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.monthlyExpenses).toBe(120_000);
+    expect(summary.months[5].expenses).toBe(120_000);
+  });
+
+  it("creditGrantedAbono (quota collected) still counts as income, whatever its context", () => {
+    const personalAbono = movement({
+      type: "income",
+      amount: 150_000,
+      linkKind: "creditGrantedAbono",
+    });
+    const businessAbono = movement({
+      type: "income",
+      amount: 200_000,
+      linkKind: "creditGrantedAbono",
+      context: "Business",
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [personalAbono, businessAbono],
+      currency: "COP",
+      now: NOW,
+    });
+
+    expect(summary.monthlyIncome).toBe(350_000);
+    expect(summary.months[5].income).toBe(350_000);
+    expect(summary.financingInflow).toBe(0);
   });
 
   it("multi-currency: only the requested currency scope is aggregated", () => {

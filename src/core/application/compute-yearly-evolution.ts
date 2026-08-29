@@ -1,17 +1,5 @@
-import type { Movement, MovementLinkKind } from '../domain/movement';
-
-/**
- * Link kinds that do NOT represent economic result (decision D2).
- * Same set as in compute-dashboard-summary — kept in sync.
- */
-const NON_ECONOMIC_LINK_KINDS: ReadonlySet<MovementLinkKind> = new Set([
-  'transfer',
-  'opening',
-] as const);
-
-function countsTowardEconomicResult(movement: Movement): boolean {
-  return !(movement.link && NON_ECONOMIC_LINK_KINDS.has(movement.link.kind));
-}
+import type { Movement } from '../domain/movement';
+import { countsTowardEconomicResult } from './economic-result';
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates. */
 function utcMonthKey(d: Date): string {
@@ -33,7 +21,8 @@ export interface YearlyEvolutionResult {
  * Compute 12-month income vs expenses series for a given year.
  *
  * Used for the yearly evolution chart — shows income and expenses as
- * separate series across 12 months. Transfers and opening excluded.
+ * separate series across 12 months. Internal flows (transfers, opening
+ * balances) and financing capital (credit principals) are excluded.
  *
  * Pure function: takes already-loaded movements and a target year,
  * returns bucketed data for chart rendering.

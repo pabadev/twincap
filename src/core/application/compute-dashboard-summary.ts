@@ -1,23 +1,12 @@
-import type { Movement, MovementLinkKind } from "../domain/movement";
-
-/**
- * Link kinds that do NOT represent economic result (decision D2):
- * - `transfer`: moving money between own accounts changes WHERE money is,
- *   not the financial outcome (both legs excluded).
- * - `opening`: seeding an account with its starting balance is not income.
- */
-const NON_ECONOMIC_LINK_KINDS: ReadonlySet<MovementLinkKind> = new Set([
-  "transfer",
-  "opening",
-] as const);
+import type { Movement } from "../domain/movement";
+import {
+  countsTowardEconomicResult,
+  FINANCING_CAPITAL_LINK_KINDS,
+} from "./economic-result";
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
 function utcMonthKey(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-function countsTowardEconomicResult(movement: Movement): boolean {
-  return !(movement.link && NON_ECONOMIC_LINK_KINDS.has(movement.link.kind));
 }
 
 export interface MonthBucket {
@@ -28,10 +17,20 @@ export interface MonthBucket {
 }
 
 export interface DashboardMonthlySummary {
-  /** Economic income of the current calendar month (excludes transfers/opening). */
+  /** Economic income of the current calendar month (excludes internal flows and financing capital). */
   monthlyIncome: number;
-  /** Economic expenses of the current calendar month (excludes transfers/opening). */
+  /** Economic expenses of the current calendar month (excludes internal flows and financing capital). */
   monthlyExpenses: number;
+  /**
+   * Financing capital inflow of the current month — principals of credits
+   * received (debt, not income). Zero when there are none.
+   */
+  financingInflow: number;
+  /**
+   * Financing capital outflow of the current month — principals of credits
+   * granted (assets, not expenses). Zero when there are none.
+   */
+  financingOutflow: number;
   /** Last 6 calendar months ending with the current one, oldest first. */
   months: MonthBucket[];
 }
@@ -39,10 +38,13 @@ export interface DashboardMonthlySummary {
 /**
  * Aggregate dashboard economic-result numbers for ONE currency scope.
  *
- * Pure function over already-loaded movements. Movements whose link kind
- * marks them as internal flows (transfers, opening balance) never reach the
- * aggregates; every other movement keeps its existing cash-basis treatment
- * (credit principals, sale payments, payables — decision D2).
+ * Pure function over already-loaded movements. Movements classified as
+ * financing capital (credit principals) or as internal flows (transfers,
+ * opening balances) never reach the income/expense aggregates — decision D2,
+ * refined in round 8. The current-month financing capital movements are
+ * reported separately as `financingInflow`/`financingOutflow`; every other
+ * movement keeps its existing cash-basis treatment: credit abonos
+ * (received/granted), sale payments, and payable payments still count.
  *
  * Bucketing groups by the UTC year-month of each stored business date,
  * matching the civil-date storage convention (decision D1).
@@ -60,9 +62,19 @@ export function computeDashboardSummary(input: {
 
   let monthlyIncome = 0;
   let monthlyExpenses = 0;
+  let financingInflow = 0;
+  let financingOutflow = 0;
   const monthlyMap = new Map<string, { income: number; expenses: number }>();
 
   for (const m of movements) {
+    const financingCapital =
+      m.link !== undefined && FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind);
+
+    if (m.amount.currency === currency && financingCapital && utcMonthKey(m.date) === currentKey) {
+      if (m.type === 'income') financingInflow += m.amount.amount;
+      else financingOutflow += m.amount.amount;
+    }
+
     if (!countsTowardEconomicResult(m)) continue;
     if (m.amount.currency !== currency) continue;
 
@@ -87,5 +99,11 @@ export function computeDashboardSummary(input: {
     months.push({ month: key, ...bucket });
   }
 
-  return { monthlyIncome, monthlyExpenses, months };
+  return {
+    monthlyIncome,
+    monthlyExpenses,
+    financingInflow,
+    financingOutflow,
+    months,
+  };
 }

@@ -1,13 +1,5 @@
-import type { Movement, MovementLinkKind } from "../domain/movement";
-
-const NON_ECONOMIC_LINK_KINDS: ReadonlySet<MovementLinkKind> = new Set([
-  "transfer",
-  "opening",
-] as const);
-
-function countsTowardEconomicResult(movement: Movement): boolean {
-  return !(movement.link && NON_ECONOMIC_LINK_KINDS.has(movement.link.kind));
-}
+import type { Movement } from "../domain/movement";
+import { countsTowardEconomicResult } from "./economic-result";
 
 export interface CategoryAmount {
   categoryId: string;

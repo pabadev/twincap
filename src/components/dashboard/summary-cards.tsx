@@ -2,7 +2,7 @@
 
 import { Card } from '../ui/card';
 import { Icon } from '../ui/icon';
-import { TrendingUp, TrendingDown, Wallet, Scale } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight } from 'lucide-react';
 import { useT } from '../../i18n/client';
 import { formatAmount } from '../../lib/format';
 
@@ -18,7 +18,10 @@ interface SummaryCardsProps {
   currency: string;
   monthlyIncome: number;
   monthlyExpenses: number;
-  netPosition: number;
+  /** Financing capital inflow of the current month, in `currency` minor units. */
+  financingInflow: number;
+  /** Financing capital outflow of the current month, in `currency` minor units. */
+  financingOutflow: number;
   locale: string;
   currencyBreakdown?: CurrencyBreakdown[];
 }
@@ -64,12 +67,14 @@ export function SummaryCards({
   currency,
   monthlyIncome,
   monthlyExpenses,
-  netPosition,
+  financingInflow,
+  financingOutflow,
   locale,
   currencyBreakdown,
 }: SummaryCardsProps) {
   const t = useT('Dashboard');
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
+  const financingNet = financingInflow - financingOutflow;
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -130,12 +135,12 @@ export function SummaryCards({
       <Card className="p-3 sm:p-4">
         <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
           <div className="shrink-0 rounded-lg bg-info/10 p-2">
-            <Icon icon={Scale} size="md" className="text-info" />
+            <Icon icon={ArrowLeftRight} size="md" className="text-info" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('netPosition')}</p>
-            <p className={`text-base sm:text-lg font-semibold leading-tight ${netPosition >= 0 ? 'text-income' : 'text-expense'}`}>
-              {netPosition >= 0 ? '+' : ''}{formatAmount(netPosition, currency, locale)}
+            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('financingThisMonth')}</p>
+            <p className="text-base sm:text-lg font-semibold leading-tight text-info">
+              {financingNet >= 0 ? '+' : '−'}{formatAmount(financingNet, currency, locale)}
             </p>
           </div>
         </div>
