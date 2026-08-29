@@ -38,7 +38,11 @@ export class MongoCategoryRepository implements CategoryRepository {
   async create(category: Category): Promise<Category> {
     try {
       const docData = toCategoryDocData(category);
-      const created = await CategoryModel.create(docData);
+      // Group-A gap (R8): persist the entity-generated id as the real `_id`,
+      // same as Account did in R8 and the Group-B repos did in R7-B. Without
+      // it, `category.id` (used by movements' categoryId) no longer matches
+      // the stored `_id` — movements would resolve to a missing category.
+      const created = await CategoryModel.create({ ...docData, _id: category.id });
       return toCategoryEntity(created as CategoryDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
