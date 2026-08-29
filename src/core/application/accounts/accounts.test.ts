@@ -4,6 +4,9 @@ import { updateAccount } from './update-account';
 import { deleteAccount } from './delete-account';
 import { listAccounts } from './list-accounts';
 import { Account } from '../../domain/account';
+import { Category } from '../../domain/category';
+import { Movement } from '../../domain/movement';
+import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { AccountRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -67,6 +70,28 @@ function makeAccount(overrides: Partial<ConstructorParameters<typeof Account>[0]
     name: 'My Account',
     currency: 'COP',
     isFixed: false,
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+function makeMovement(
+  overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
+): Movement {
+  return new Movement({
+    id: 'mov-1',
+    userId: 'user-1',
+    accountId: 'acc-1',
+    category: new Category({
+      id: 'cat-1',
+      userId: 'user-1',
+      name: 'Initial',
+      type: 'income',
+      createdAt: new Date(),
+    }),
+    type: 'income',
+    amount: new Money(50000, 'COP'),
+    date: new Date(),
     createdAt: new Date(),
     ...overrides,
   });
@@ -200,7 +225,7 @@ describe('deleteAccount', () => {
       findById: vi.fn().mockResolvedValue(account),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo);
+    await deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo());
 
     expect(accountRepo.deleted).toContain('acc-1');
   });
@@ -212,7 +237,7 @@ describe('deleteAccount', () => {
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo),
+      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo()),
     ).rejects.toThrow(ValidationError);
   });
 
@@ -224,8 +249,92 @@ describe('deleteAccount', () => {
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo),
+      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo()),
     ).rejects.toThrow(ConflictError);
+  });
+
+  it('deletes a non-fixed account and cascades its opening movements', async () => {
+    const account = makeAccount();
+    const opening = makeMovement({
+      id: 'mov-opening',
+      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+    });
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByAccountId: vi.fn().mockResolvedValue([opening]),
+    });
+
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+
+    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening');
+    expect(accountRepo.deleted).toContain('acc-1');
+  });
+
+  it('cascades openings before deleting the account', async () => {
+    const account = makeAccount();
+    const opening = makeMovement({
+      id: 'mov-opening',
+      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+    });
+    const order: string[] = [];
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+      delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+        order.push(`account:${id}`);
+        accountRepo.deleted.push(id);
+      }),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByAccountId: vi.fn().mockResolvedValue([opening]),
+      delete: vi.fn().mockImplementation(async () => {
+        order.push('movement:mov-opening');
+      }),
+    });
+
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+
+    expect(order).toEqual(['movement:mov-opening', 'account:acc-1']);
+  });
+
+  it('is tolerant when an opening no longer exists', async () => {
+    const account = makeAccount();
+    const opening = makeMovement({
+      id: 'mov-opening',
+      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+    });
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByAccountId: vi.fn().mockResolvedValue([opening]),
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement mov-opening not found')),
+    });
+
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+
+    expect(accountRepo.deleted).toContain('acc-1');
+  });
+
+  it('only deletes openings, not other movements', async () => {
+    const account = makeAccount();
+    const opening = makeMovement({
+      id: 'mov-opening',
+      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+    });
+    const manual = makeMovement({ id: 'mov-manual' });
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByAccountId: vi.fn().mockResolvedValue([opening, manual]),
+    });
+
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+
+    expect(movementRepo.delete).toHaveBeenCalledTimes(1);
+    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening');
   });
 });
 

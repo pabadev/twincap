@@ -9,12 +9,18 @@ const { revalidatePath } = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
 const { MongoAccountRepository } = vi.hoisted(() => ({
   MongoAccountRepository: vi.fn(),
 }));
+const { MongoMovementRepository } = vi.hoisted(() => ({
+  MongoMovementRepository: vi.fn(),
+}));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
 vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('../../../infrastructure/repositories/account-repository', () => ({
   MongoAccountRepository,
+}));
+vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
+  MongoMovementRepository,
 }));
 
 const { deleteAccountAction } = await import('./actions');
@@ -32,6 +38,11 @@ describe('deleteAccountAction', () => {
     connectDb.mockResolvedValue(undefined);
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue(null),
+      delete: vi.fn().mockResolvedValue(undefined),
+      countReferences: vi.fn().mockResolvedValue(0),
+    }));
+    MongoMovementRepository.mockImplementation(() => ({
+      findByAccountId: vi.fn().mockResolvedValue([]),
       delete: vi.fn().mockResolvedValue(undefined),
     }));
   });

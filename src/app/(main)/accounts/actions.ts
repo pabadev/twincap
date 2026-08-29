@@ -59,7 +59,8 @@ export async function deleteAccountAction(
   try {
     await connectDb();
     const accountRepo = new MongoAccountRepository();
-    await deleteAccount(user.userId, accountId, accountRepo);
+    const movementRepo = new MongoMovementRepository();
+    await deleteAccount(user.userId, accountId, accountRepo, movementRepo);
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');

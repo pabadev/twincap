@@ -79,7 +79,10 @@ export class MongoAccountRepository implements AccountRepository {
   /**
    * ACC-4: count references to an account across all collections that
    * reference it — movements, transfers, credits, sales, and payables.
-   * Returns the total number of references (0 means safe to delete).
+   * Opening movements do NOT count as references: they are intrinsic to the
+   * account (created when it is opened with an initial balance) and are removed
+   * in cascade on deletion. Returns the total number of references
+   * (0 means safe to delete).
    */
   async countReferences(userId: string, accountId: string): Promise<number> {
     const uid = new Types.ObjectId(userId);
@@ -87,7 +90,11 @@ export class MongoAccountRepository implements AccountRepository {
 
     const [movements, transfersAsSource, transfersAsDest, creditsReceived, creditsGranted, sales, payables] =
       await Promise.all([
-        MovementModel.countDocuments({ userId: uid, accountId: aid }),
+        MovementModel.countDocuments({
+          userId: uid,
+          accountId: aid,
+          'link.kind': { $ne: 'opening' },
+        }),
         TransferModel.countDocuments({ userId: uid, sourceAccountId: aid }),
         TransferModel.countDocuments({ userId: uid, destinationAccountId: aid }),
         CreditReceivedModel.countDocuments({ userId: uid, accountId: aid }),
