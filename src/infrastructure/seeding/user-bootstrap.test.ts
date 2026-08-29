@@ -87,6 +87,24 @@ describe("seedUser", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
+  it("uses ObjectId-compatible ids (24-hex) because repos persist account._id (R8)", async () => {
+    const accountRepo = fakeAccountRepo();
+    const categoryRepo = fakeCategoryRepo();
+
+    await seedUser(USER_ID, accountRepo, categoryRepo);
+
+    // R8 regression guard: AccountModel.create({..., _id: account.id}) casts the
+    // id to ObjectId. A crypto.randomUUID() here would throw CastError at insert
+    // and break new-user registration — fake repos never catch that, so pin the format.
+    const allIds = [
+      ...accountRepo.created.map((a) => a.id),
+      ...categoryRepo.created.map((c) => c.id),
+    ];
+    for (const id of allIds) {
+      expect(id).toMatch(/^[0-9a-f]{24}$/);
+    }
+  });
+
   it("is idempotent — calling twice does not throw", async () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();

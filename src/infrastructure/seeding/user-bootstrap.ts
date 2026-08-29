@@ -2,6 +2,7 @@ import type { AccountRepository } from "../../core/domain/repositories";
 import type { CategoryRepository } from "../../core/domain/repositories";
 import { Account } from "../../core/domain/account";
 import { Category } from "../../core/domain/category";
+import { objectIdGenerator } from "../config/id-generator";
 
 // R5-D4/R5-D5: only the fixed Cash account is seeded. Legacy Nequi accounts
 // (removed from the seed) stay in place for existing users but stop being
@@ -37,7 +38,7 @@ export async function seedUser(
 
   for (const acct of FIXED_ACCOUNTS) {
     const account = new Account({
-      id: crypto.randomUUID(),
+      id: objectIdGenerator.generate(),
       userId,
       name: acct.name,
       currency: acct.currency,
@@ -49,7 +50,7 @@ export async function seedUser(
 
   for (const cat of DEFAULT_CATEGORIES) {
     const category = new Category({
-      id: crypto.randomUUID(),
+      id: objectIdGenerator.generate(),
       userId,
       name: cat.name,
       type: cat.type,
