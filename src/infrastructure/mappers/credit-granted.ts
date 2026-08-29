@@ -21,6 +21,9 @@ export function toCreditGrantedEntity(
     date: a.date,
     accountId: a.accountId.toString(),
     movementId: a.movementId,
+    capitalAmount: a.capitalAmount !== undefined ? new Money(a.capitalAmount, currency) : undefined,
+    interestAmount: a.interestAmount !== undefined ? new Money(a.interestAmount, currency) : undefined,
+    interestMovementId: a.interestMovementId,
   }));
 
   return new CreditGranted(
@@ -40,6 +43,9 @@ export function toCreditGrantedEntity(
           : undefined,
       frequency: doc.frequency,
       saleId: doc.saleId,
+      writtenOff: doc.writtenOff
+        ? { date: doc.writtenOff.date, movementId: doc.writtenOff.movementId }
+        : undefined,
       createdAt: doc.createdAt,
     },
     abonos,
@@ -60,12 +66,16 @@ export function toCreditGrantedDocData(
     installmentValue: entity.installmentValue?.amount,
     frequency: entity.frequency,
     saleId: entity.saleId,
+    writtenOff: entity.writtenOff,
     abonos: entity.abonos.map((a) => ({
       id: a.id,
       amount: a.amount.amount,
       date: a.date,
       accountId: new Types.ObjectId(a.accountId),
       movementId: a.movementId,
+      capitalAmount: a.capitalAmount?.amount,
+      interestAmount: a.interestAmount?.amount,
+      interestMovementId: a.interestMovementId,
     })),
   };
 }

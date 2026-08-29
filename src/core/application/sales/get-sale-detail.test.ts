@@ -69,6 +69,7 @@ function fakeCreditGrantedRepo(credits: CreditGranted[]) {
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
     deleteAbono: vi.fn().mockResolvedValue(undefined),
+    markWrittenOff: vi.fn().mockResolvedValue(undefined),
   };
 }
 

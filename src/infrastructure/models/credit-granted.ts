@@ -7,6 +7,18 @@ export interface CreditGrantedAbonoDoc {
   date: Date;
   accountId: mongoose.Types.ObjectId;
   movementId?: string;
+  /** Capital-recovery portion of the abono (R9/D9.3), minor units. */
+  capitalAmount?: number;
+  /** Interest portion of the abono (R9/D9.3), minor units. */
+  interestAmount?: number;
+  /** Linked interest movement when the abono split into capital + interest (R9/D9.1). */
+  interestMovementId?: string;
+}
+
+/** Write-off marker shape (R9/D9.4). */
+export interface CreditGrantedWrittenOffDoc {
+  date: Date;
+  movementId: string;
 }
 
 /** Mongoose document shape for CreditGranted. */
@@ -23,6 +35,8 @@ export interface CreditGrantedDoc {
   frequency?: string;
   /** Origin POS sale id, when the credit was born from a sale (H14). */
   saleId?: string;
+  /** Write-off marker when the credit was written off (R9/D9.4). */
+  writtenOff?: CreditGrantedWrittenOffDoc;
   abonos: CreditGrantedAbonoDoc[];
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +51,17 @@ const CreditGrantedAbonoSchema = new Schema<CreditGrantedAbonoDoc>(
     date: { type: Date, required: true },
     accountId: { type: Schema.Types.ObjectId, required: true },
     movementId: { type: String },
+    capitalAmount: { type: Number },
+    interestAmount: { type: Number },
+    interestMovementId: { type: String },
+  },
+  { _id: false },
+);
+
+const CreditGrantedWrittenOffSchema = new Schema<CreditGrantedWrittenOffDoc>(
+  {
+    date: { type: Date, required: true },
+    movementId: { type: String, required: true },
   },
   { _id: false },
 );
@@ -76,6 +101,9 @@ const CreditGrantedSchema = new Schema<CreditGrantedDoc>(
     },
     saleId: {
       type: String,
+    },
+    writtenOff: {
+      type: CreditGrantedWrittenOffSchema,
     },
     abonos: {
       type: [CreditGrantedAbonoSchema],

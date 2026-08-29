@@ -120,11 +120,15 @@ export interface CreditGrantedRepository {
   update(credit: CreditGranted): Promise<CreditGranted>;
   delete(userId: string, id: string): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5). */
-  addAbono(userId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }): Promise<void>;
-  /** Atomic $set on embedded abono by abono.id (design §5). */
-  editAbono(userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
+  addAbono(userId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string; capitalAmount?: number; interestAmount?: number; interestMovementId?: string }): Promise<void>;
+  /** Atomic $set on embedded abono by abono.id (design §5).
+   *  An explicitly `undefined` value is turned into `$unset` so split fields
+   *  (e.g. interestMovementId when a portion drops to zero) can be cleared. */
+  editAbono(userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string; capitalAmount: number; interestAmount: number; interestMovementId: string }>): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5). */
   deleteAbono(userId: string, creditId: string, abonoId: string): Promise<void>;
+  /** R9/D9.4: mark the credit as written off (`$set` on the writtenOff marker). */
+  markWrittenOff(userId: string, creditId: string, writtenOff: { date: Date; movementId: string }): Promise<void>;
 }
 
 // ─── Payable ─────────────────────────────────────────────────────────

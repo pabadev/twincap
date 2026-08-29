@@ -6,6 +6,12 @@ import { deleteAbono } from './delete-abono';
 import { editPrincipal } from './edit-principal';
 import { deleteCreditGranted } from './delete-credit-granted';
 import { markAsPaid } from './mark-as-paid';
+import { writeOffCreditGranted } from './write-off-credit-granted';
+import {
+  WRITE_OFF_ALREADY_MSG,
+  WRITE_OFF_PAID_MSG,
+  WRITE_OFF_NO_LOSS_MSG,
+} from './write-off-credit-granted';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
@@ -26,6 +32,9 @@ interface AbonoRecord {
   date: Date;
   accountId: string;
   movementId?: string;
+  capitalAmount?: number;
+  interestAmount?: number;
+  interestMovementId?: string;
 }
 
 function fakeAccountRepo(
@@ -58,13 +67,14 @@ function makeAccount(
 
 function fakeCreditRepo(
   overrides: Partial<CreditGrantedRepository> = {},
-): CreditGrantedRepository & { created: CreditGranted[]; updated: CreditGranted[]; deleted: string[]; abonosAdded: { creditId: string; abono: AbonoRecord }[]; abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[]; abonosDeleted: { creditId: string; abonoId: string }[] } {
+): CreditGrantedRepository & { created: CreditGranted[]; updated: CreditGranted[]; deleted: string[]; abonosAdded: { creditId: string; abono: AbonoRecord }[]; abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string; capitalAmount: number; interestAmount: number; interestMovementId: string }> }[]; abonosDeleted: { creditId: string; abonoId: string }[]; writtenOff: { userId: string; creditId: string; writtenOff: { date: Date; movementId: string } }[] } {
   const created: CreditGranted[] = [];
   const updated: CreditGranted[] = [];
   const deleted: string[] = [];
   const abonosAdded: { creditId: string; abono: AbonoRecord }[] = [];
-  const abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[] = [];
+  const abonosEdited: { creditId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string; capitalAmount: number; interestAmount: number; interestMovementId: string }> }[] = [];
   const abonosDeleted: { creditId: string; abonoId: string }[] = [];
+  const writtenOff: { userId: string; creditId: string; writtenOff: { date: Date; movementId: string } }[] = [];
   return {
     created,
     updated,
@@ -72,6 +82,7 @@ function fakeCreditRepo(
     abonosAdded,
     abonosEdited,
     abonosDeleted,
+    writtenOff,
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
@@ -88,11 +99,14 @@ function fakeCreditRepo(
     addAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abono: AbonoRecord) => {
       abonosAdded.push({ creditId, abono });
     }),
-    editAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>) => {
+    editAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string; capitalAmount: number; interestAmount: number; interestMovementId: string }>) => {
       abonosEdited.push({ creditId, abonoId, updates });
     }),
     deleteAbono: vi.fn().mockImplementation(async (_userId: string, creditId: string, abonoId: string) => {
       abonosDeleted.push({ creditId, abonoId });
+    }),
+    markWrittenOff: vi.fn().mockImplementation(async (userId: string, creditId: string, marker: { date: Date; movementId: string }) => {
+      writtenOff.push({ userId, creditId, writtenOff: marker });
     }),
     ...overrides,
   };
@@ -415,6 +429,7 @@ describe('editAbono', () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existingMovement),
     });
+    const ids = fakeIdGen();
 
     const result = await editAbono(
       'user-1',
@@ -423,6 +438,7 @@ describe('editAbono', () => {
       { amount: 30000 },
       creditRepo,
       movementRepo,
+      ids,
     );
 
     expect(result.abonos[0].amount.amount).toBe(30000);
@@ -445,6 +461,7 @@ describe('editAbono', () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existingMovement),
     });
+    const ids = fakeIdGen();
 
     const result = await editAbono(
       'user-1',
@@ -453,6 +470,7 @@ describe('editAbono', () => {
       { amount: 40000 },
       creditRepo,
       movementRepo,
+      ids,
     );
 
     // Embedded abono and linked movement must end with the SAME amount
@@ -469,6 +487,7 @@ describe('editAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
 
     const result = await editAbono(
       'user-1',
@@ -477,6 +496,7 @@ describe('editAbono', () => {
       { amount: 30000 },
       creditRepo,
       movementRepo,
+      ids,
     );
 
     expect(result.abonos[0].amount.amount).toBe(30000);
@@ -493,9 +513,10 @@ describe('editAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
 
     await expect(
-      editAbono('user-1', 'cg-1', 'ab-1', { amount: 200000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'cg-1', 'ab-1', { amount: 200000 }, creditRepo, movementRepo, ids),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -504,9 +525,10 @@ describe('editAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
 
     await expect(
-      editAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, creditRepo, movementRepo, ids),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -516,9 +538,10 @@ describe('editAbono', () => {
       findByUserId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
 
     await expect(
-      editAbono('user-1', 'cg-1', 'missing-abono', { amount: 30000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'cg-1', 'missing-abono', { amount: 30000 }, creditRepo, movementRepo, ids),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -819,5 +842,503 @@ describe('deleteCreditGranted', () => {
     await expect(
       deleteCreditGranted('user-1', 'missing', creditRepo, movementRepo),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── R9/D9.1 — addAbono capital/interest split ─────────────────────
+
+describe('addAbono — capital/interest split (R9)', () => {
+  it('first abono recovers capital only — 1 capital movement, no interest', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(55000, 'COP') });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const result = await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 55000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const abono = result.abonos[0];
+    expect(abono.capitalAmount?.amount).toBe(55000);
+    expect(abono.interestAmount).toBeUndefined();
+    expect(abono.interestMovementId).toBeUndefined();
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].amount.amount).toBe(55000);
+    expect(abono.movementId).toBe(movementRepo.created[0].id);
+    expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBe(55000);
+    expect(creditRepo.abonosAdded[0].abono.interestAmount).toBeUndefined();
+  });
+
+  it('second abono splits into capital recovery + realized interest (2 movements)', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(55000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(55000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(55000, 'COP') },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const result = await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 55000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-08-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const abono = result.abonos[1];
+    expect(abono.capitalAmount?.amount).toBe(45000);
+    expect(abono.interestAmount?.amount).toBe(10000);
+    expect(movementRepo.created).toHaveLength(2);
+    // capital recovery first, interest second — both Personal context
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].amount.amount).toBe(45000);
+    expect(movementRepo.created[0].context).toBe('Personal');
+    expect(movementRepo.created[1].link?.kind).toBe('creditGrantedAbonoInterest');
+    expect(movementRepo.created[1].amount.amount).toBe(10000);
+    expect(movementRepo.created[1].context).toBe('Personal');
+    expect(abono.movementId).toBe(movementRepo.created[0].id);
+    expect(abono.interestMovementId).toBe(movementRepo.created[1].id);
+    expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBe(45000);
+    expect(creditRepo.abonosAdded[0].abono.interestAmount).toBe(10000);
+    expect(creditRepo.abonosAdded[0].abono.interestMovementId).toBe(movementRepo.created[1].id);
+  });
+
+  it('100%-interest abono makes the interest movement the PRIMARY one (no capital movement)', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(60000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(100000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(100000, 'COP') },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const result = await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 20000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-08-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const abono = result.abonos[1];
+    expect(abono.capitalAmount).toBeUndefined();
+    expect(abono.interestAmount?.amount).toBe(20000);
+    expect(abono.interestMovementId).toBeUndefined();
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbonoInterest');
+    expect(movementRepo.created[0].amount.amount).toBe(20000);
+    expect(abono.movementId).toBe(movementRepo.created[0].id);
+  });
+
+  it('sale-born credit keeps the legacy single-movement behavior (never split)', async () => {
+    const credit = makeCredit({ saleId: 'sale-1' });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const result = await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    const abono = result.abonos[0];
+    expect(abono.capitalAmount).toBeUndefined();
+    expect(abono.interestAmount).toBeUndefined();
+    expect(abono.interestMovementId).toBeUndefined();
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBeUndefined();
+  });
+});
+
+// ─── R9/D9.3 — editAbono split synchronization ─────────────────────
+
+describe('editAbono — split synchronization (R9)', () => {
+  it('resyncs both movements when an amount edit shrinks a split abono', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(65000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(65000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-cap1', capitalAmount: new Money(65000, 'COP') },
+      { id: 'ab-2', amount: new Money(65000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-cap2', capitalAmount: new Money(35000, 'COP'), interestAmount: new Money(30000, 'COP'), interestMovementId: 'm-int2' },
+    ]);
+    const interestMov = makeMovement({
+      id: 'm-int2', type: 'income', amount: new Money(30000, 'COP'),
+      link: { kind: 'creditGrantedAbonoInterest', refId: 'cg-1', opId: 'op-1' },
+    });
+    const capitalMov = makeMovement({
+      id: 'm-cap2', type: 'income', amount: new Money(35000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockImplementation(async (_u: string, id: string) => {
+        if (id === 'm-int2') return interestMov;
+        if (id === 'm-cap2') return capitalMov;
+        return null;
+      }),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono('user-1', 'cg-1', 'ab-2', { amount: 50000 }, creditRepo, movementRepo, ids);
+
+    expect(creditRepo.abonosEdited[0].updates.amount).toBe(50000);
+    expect(creditRepo.abonosEdited[0].updates.capitalAmount).toBe(35000);
+    expect(creditRepo.abonosEdited[0].updates.interestAmount).toBe(15000);
+    expect(creditRepo.abonosEdited[0].updates.interestMovementId).toBe('m-int2');
+    expect(movementRepo.updated).toHaveLength(2);
+    expect(movementRepo.updated[0].amount.amount).toBe(15000);
+    expect(movementRepo.updated[1].amount.amount).toBe(35000);
+    expect(movementRepo.created).toHaveLength(0);
+    const abono = result.abonos.find(a => a.id === 'ab-2')!;
+    expect(abono.amount.amount).toBe(50000);
+    expect(abono.capitalAmount?.amount).toBe(35000);
+    expect(abono.interestAmount?.amount).toBe(15000);
+  });
+
+  it('deletes the interest movement and unsets markers when interest drops to zero', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(65000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(65000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-cap1', capitalAmount: new Money(65000, 'COP') },
+      { id: 'ab-2', amount: new Money(65000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-cap2', capitalAmount: new Money(35000, 'COP'), interestAmount: new Money(30000, 'COP'), interestMovementId: 'm-int2' },
+    ]);
+    const capitalMov = makeMovement({
+      id: 'm-cap2', type: 'income', amount: new Money(35000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockImplementation(async (_u: string, id: string) => {
+        if (id === 'm-cap2') return capitalMov;
+        return null;
+      }),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono('user-1', 'cg-1', 'ab-2', { amount: 35000 }, creditRepo, movementRepo, ids);
+
+    expect(movementRepo.deleted).toContain('m-int2');
+    expect(creditRepo.abonosEdited[0].updates.amount).toBe(35000);
+    expect(creditRepo.abonosEdited[0].updates.capitalAmount).toBe(35000);
+    expect(creditRepo.abonosEdited[0].updates.interestAmount).toBeUndefined();
+    expect(creditRepo.abonosEdited[0].updates.interestMovementId).toBeUndefined();
+    const abono = result.abonos.find(a => a.id === 'ab-2')!;
+    expect(abono.capitalAmount?.amount).toBe(35000);
+    expect(abono.interestAmount).toBeUndefined();
+    expect(abono.interestMovementId).toBeUndefined();
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('creates the interest movement when a fully-capital abono is edited upward', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(65000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(65000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-cap1', capitalAmount: new Money(65000, 'COP') },
+      { id: 'ab-2', amount: new Money(35000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-cap2', capitalAmount: new Money(35000, 'COP') },
+    ]);
+    const capitalMov = makeMovement({
+      id: 'm-cap2', type: 'income', amount: new Money(35000, 'COP'),
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-2' },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockImplementation(async (_u: string, id: string) => {
+        if (id === 'm-cap2') return capitalMov;
+        return null;
+      }),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono('user-1', 'cg-1', 'ab-2', { amount: 50000 }, creditRepo, movementRepo, ids);
+
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbonoInterest');
+    expect(movementRepo.created[0].amount.amount).toBe(15000);
+    expect(creditRepo.abonosEdited[0].updates.capitalAmount).toBe(35000);
+    expect(creditRepo.abonosEdited[0].updates.interestAmount).toBe(15000);
+    expect(creditRepo.abonosEdited[0].updates.interestMovementId).toBe(movementRepo.created[0].id);
+    const abono = result.abonos.find(a => a.id === 'ab-2')!;
+    expect(abono.interestAmount?.amount).toBe(15000);
+    expect(abono.interestMovementId).toBe(movementRepo.created[0].id);
+  });
+
+  it('keeps the primary = interest movement on a 100%-interest abono (no duplicate created)', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(60000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(100000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(100000, 'COP') },
+      { id: 'ab-2', amount: new Money(20000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-int', interestAmount: new Money(20000, 'COP') },
+    ]);
+    const interestMov = makeMovement({
+      id: 'm-int', type: 'income', amount: new Money(20000, 'COP'),
+      link: { kind: 'creditGrantedAbonoInterest', refId: 'cg-1', opId: 'op-1' },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockImplementation(async (_u: string, id: string) => {
+        if (id === 'm-int') return interestMov;
+        return null;
+      }),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono('user-1', 'cg-1', 'ab-2', { amount: 20000 }, creditRepo, movementRepo, ids);
+
+    expect(movementRepo.created).toHaveLength(0);
+    expect(movementRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated[0].id).toBe('m-int');
+    expect(movementRepo.updated[0].amount.amount).toBe(20000);
+    const abono = result.abonos.find(a => a.id === 'ab-2')!;
+    expect(abono.capitalAmount).toBeUndefined();
+    expect(abono.interestAmount?.amount).toBe(20000);
+    expect(abono.interestMovementId).toBeUndefined();
+  });
+
+  it('date-only edit never clears the legacy abono amount ($unset guard)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({ id: 'mov-1', type: 'income', amount: new Money(25000, 'COP') });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { date: new Date('2025-08-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(creditRepo.abonosEdited[0].updates.amount).toBe(25000);
+    expect(creditRepo.abonosEdited[0].updates.interestAmount).toBeUndefined();
+    expect(result.abonos[0].amount.amount).toBe(25000);
+  });
+});
+
+// ─── R9/D9.1 — deleteAbono with split-linked movements ─────────────
+
+describe('deleteAbono — split-linked movements (R9)', () => {
+  it('deletes interest movement, then primary movement, THEN pulls the abono', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(65000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-cap', capitalAmount: new Money(35000, 'COP'), interestAmount: new Money(30000, 'COP'), interestMovementId: 'm-int' },
+    ]);
+    const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
+    const deleteMovementMock = vi.fn().mockImplementation(async () => {});
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+      deleteAbono: deleteAbonoMock,
+    });
+    const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
+
+    const result = await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    expect(deleteMovementMock.mock.calls.map(c => c[1])).toEqual(['m-int', 'm-cap']);
+    expect(result.abonos).toHaveLength(0);
+    expect(deleteMovementMock.mock.invocationCallOrder[0])
+      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+    expect(deleteMovementMock.mock.invocationCallOrder[1])
+      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+  });
+
+  it('tolerates an already-missing interest movement and still removes the split abono', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(65000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-cap', capitalAmount: new Money(35000, 'COP'), interestAmount: new Money(30000, 'COP'), interestMovementId: 'm-int' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    const result = await deleteAbono('user-1', 'cg-1', 'ab-1', creditRepo, movementRepo);
+
+    expect(result.abonos).toHaveLength(0);
+    expect(creditRepo.deleteAbono).toHaveBeenCalledOnce();
+  });
+});
+
+// ─── R9/D9.4 — writeOffCreditGranted ───────────────────────────────
+
+describe('writeOffCreditGranted', () => {
+  it('writes off the full principal when no abonos exist (expense on credit account)', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    const result = await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids);
+
+    expect(movementRepo.created).toHaveLength(1);
+    const movement = movementRepo.created[0];
+    expect(movement.type).toBe('expense');
+    expect(movement.amount.amount).toBe(100000);
+    expect(movement.signedAmount).toBe(-100000);
+    expect(movement.accountId).toBe('acc-1');
+    expect(movement.context).toBe('Personal');
+    expect(movement.link?.kind).toBe('creditGrantedWriteOff');
+    expect(movement.link?.refId).toBe('cg-1');
+    expect(creditRepo.writtenOff).toHaveLength(1);
+    expect(creditRepo.writtenOff[0].writtenOff.date).toBeInstanceOf(Date);
+    expect(creditRepo.writtenOff[0].writtenOff.movementId).toBe(movement.id);
+    expect(result.writtenOff?.movementId).toBe(movement.id);
+  });
+
+  it('writes off only the UNRECOVERED capital (recovery reduces the loss)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(55000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(55000, 'COP') },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids);
+
+    expect(movementRepo.created[0].amount.amount).toBe(45000);
+  });
+
+  it('blocks sale-born credits (owned by their sale, R5-D0c)', async () => {
+    const credit = makeCredit({ saleId: 'sale-1' });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+    ).rejects.toThrow(ConflictError);
+
+    expect(movementRepo.created).toHaveLength(0);
+    expect(creditRepo.writtenOff).toHaveLength(0);
+  });
+
+  it('blocks a second write-off', async () => {
+    const credit = makeCredit({ writtenOff: { date: new Date(), movementId: 'm-x' } });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+    ).rejects.toThrow(WRITE_OFF_ALREADY_MSG);
+
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('blocks a fully-paid credit', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(100000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(100000, 'COP') },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+    ).rejects.toThrow(WRITE_OFF_PAID_MSG);
+
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('blocks write-off when the debtor returned ALL capital (no capital loss, interest pending)', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(60000, 'COP') }, [
+      { id: 'ab-1', amount: new Money(100000, 'COP'), date: new Date('2025-08-01'), accountId: 'acc-1', movementId: 'm-ab1', capitalAmount: new Money(100000, 'COP') },
+      { id: 'ab-2', amount: new Money(10000, 'COP'), date: new Date('2025-09-01'), accountId: 'acc-1', movementId: 'm-ab2', interestAmount: new Money(10000, 'COP') },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+    ).rejects.toThrow(WRITE_OFF_NO_LOSS_MSG);
+
+    expect(movementRepo.created).toHaveLength(0);
+    expect(creditRepo.writtenOff).toHaveLength(0);
+  });
+
+  it('throws NotFoundError when credit does not exist', async () => {
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const ids = fakeIdGen();
+
+    await expect(
+      writeOffCreditGranted('user-1', 'missing', creditRepo, movementRepo, ids),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ─── R9/D9.1 — markAsPaid final settlement splits ──────────────────
+
+describe('markAsPaid — split on final settlement (R9)', () => {
+  it('splits the pending settlement into capital recovery + interest', async () => {
+    const credit = makeCredit({ installments: 2, installmentValue: new Money(65000, 'COP') });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    const result = await markAsPaid('user-1', 'cg-1', creditRepo, movementRepo, ids, accountRepo);
+
+    expect(result.pending).toBe(0);
+    expect(creditRepo.abonosAdded).toHaveLength(1);
+    expect(creditRepo.abonosAdded[0].abono.amount).toBe(130000);
+    expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBe(100000);
+    expect(creditRepo.abonosAdded[0].abono.interestAmount).toBe(30000);
+    expect(movementRepo.created).toHaveLength(2);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].amount.amount).toBe(100000);
+    expect(movementRepo.created[1].link?.kind).toBe('creditGrantedAbonoInterest');
+    expect(movementRepo.created[1].amount.amount).toBe(30000);
   });
 });

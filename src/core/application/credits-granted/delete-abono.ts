@@ -28,6 +28,22 @@ export async function deleteAbono(
   // intact (debt still pending, no balance inflation). Full transactionality
   // would require a Mongoose ClientSession across every port — out of scope.
   //
+  // R9/D9.1 delete: a split abono has TWO linked movements (capital primary +
+  // interest). Remove BOTH before pulling the abono, following the R5-B
+  // atomicity rule (movement-first: a mid-way failure leaves the abono intact
+  // with no phantom balance impact — a phantom movement would be worse).
+  if (abono.interestMovementId) {
+    try {
+      await movementRepo.delete(userId, abono.interestMovementId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        // movement already gone — continue
+      } else {
+        throw err;
+      }
+    }
+  }
+
   // Reverse linked movement (tolerant: an already-missing movement is fine)
   if (abono.movementId) {
     try {

@@ -8,6 +8,7 @@ import {
   editPrincipal,
   deleteCreditGranted,
   markAsPaid,
+  writeOffCreditGranted,
 } from '../../../../core/application/credits-granted';
 import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
@@ -117,6 +118,7 @@ export async function editAbonoAction(
       { amount, date },
       creditRepo,
       movementRepo,
+      ids,
     );
     revalidateMovementData('/credits/granted');
   } catch (error) {
@@ -222,4 +224,32 @@ export async function markAsPaidAction(
   }
 
   return { success: 'creditMarkedAsPaid' };
+}
+
+export async function writeOffCreditAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const creditId = formData.get('creditId') as string;
+
+  try {
+    await connectDb();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const movementRepo = new MongoMovementRepository();
+    await writeOffCreditGranted(
+      user.userId,
+      creditId,
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+    revalidateMovementData('/credits/granted');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'creditWrittenOff' };
 }

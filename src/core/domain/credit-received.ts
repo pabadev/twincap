@@ -20,6 +20,12 @@ export interface CreditAbono {
    * and only tolerate the field.
    */
   interestAmount?: Money;
+  /**
+   * Linked interest movement when the abono split into capital + interest
+   * (R9/D9.1). Optional; set only on credits granted standalone. Credits
+   * received do not set it and only tolerate the field.
+   */
+  interestMovementId?: string;
 }
 
 export interface CreditReceivedInput {

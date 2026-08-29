@@ -113,6 +113,9 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       date: Date;
       accountId: string;
       movementId?: string;
+      capitalAmount?: number;
+      interestAmount?: number;
+      interestMovementId?: string;
     },
   ): Promise<void> {
     if (abono.movementId) {
@@ -138,24 +141,45 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     }
   }
 
-  /** Edit an embedded abono by its id. */
+  /** Edit an embedded abono by its id.
+   *  Values explicitly passed as `undefined` become `$unset` so optional
+   *  split fields (capitalAmount / interestAmount / interestMovementId) can be
+   *  cleared when a recomputed portion drops to zero (R9/D9.3 edit sync). */
   async editAbono(
     userId: string,
     creditId: string,
     abonoId: string,
-    updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    updates: Partial<{
+      amount: number;
+      date: Date;
+      movementId: string;
+      capitalAmount: number;
+      interestAmount: number;
+      interestMovementId: string;
+    }>,
   ): Promise<void> {
     const setFields: Record<string, unknown> = {};
+    const unsetFields: Record<string, string> = {};
     for (const [key, value] of Object.entries(updates)) {
-      setFields[`abonos.$.${key}`] = value;
+      if (value === undefined) {
+        unsetFields[`abonos.$.${key}`] = "";
+      } else {
+        setFields[`abonos.$.${key}`] = value;
+      }
     }
+    if (Object.keys(setFields).length === 0 && Object.keys(unsetFields).length === 0) {
+      return;
+    }
+    const update: Record<string, Record<string, unknown>> = {};
+    if (Object.keys(setFields).length > 0) update.$set = setFields;
+    if (Object.keys(unsetFields).length > 0) update.$unset = unsetFields;
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
         userId: new Types.ObjectId(userId),
         "abonos.id": abonoId,
       },
-      { $set: setFields },
+      update,
     ).exec();
   }
 
@@ -171,6 +195,21 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
         userId: new Types.ObjectId(userId),
       },
       { $pull: { abonos: { id: abonoId } } },
+    ).exec();
+  }
+
+  /** Mark the credit as written off (R9/D9.4) — `$set` on the write-off marker. */
+  async markWrittenOff(
+    userId: string,
+    creditId: string,
+    writtenOff: { date: Date; movementId: string },
+  ): Promise<void> {
+    await CreditGrantedModel.updateOne(
+      {
+        _id: creditId,
+        userId: new Types.ObjectId(userId),
+      },
+      { $set: { writtenOff } },
     ).exec();
   }
 

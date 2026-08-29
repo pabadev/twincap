@@ -74,6 +74,7 @@ function fakeCreditGrantedRepo(
     addAbono: async () => {},
     editAbono: async () => {},
     deleteAbono: async () => {},
+    markWrittenOff: async () => {},
   };
 }
 
