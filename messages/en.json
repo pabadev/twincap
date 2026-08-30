@@ -347,6 +347,12 @@
     "filterPending": "Pending",
     "filterPaid": "Paid",
     "filterSearch": "Search debtor...",
+    "writtenOff": "Written off",
+    "writeOff": "Write off",
+    "confirmWriteOff": "Mark this credit as uncollectible? An expense will be recorded for the unrecovered principal.",
+    "filterWrittenOff": "Written off",
+    "capital": "Principal",
+    "interest": "Interest",
     "noResults": "No credits found with these filters"
   },
   "Payables": {
@@ -517,6 +523,7 @@
     "abonoUpdated": "Payment updated successfully",
     "abonoDeleted": "Payment deleted successfully",
     "creditMarkedAsPaid": "Credit marked as paid",
+    "creditWrittenOff": "Credit written off",
     "saleCreated": "Sale recorded successfully",
     "saleDeleted": "Sale deleted successfully",
     "catalogItemCreated": "Item added successfully",

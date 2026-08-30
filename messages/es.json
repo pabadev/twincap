@@ -347,6 +347,12 @@
     "filterPending": "Pendiente",
     "filterPaid": "Pagado",
     "filterSearch": "Buscar deudor...",
+    "writtenOff": "Incobrable",
+    "writeOff": "Dar de baja",
+    "confirmWriteOff": "¿Marcar este crédito como incobrable? Se registrará un gasto por el capital no recuperado.",
+    "filterWrittenOff": "Incobrable",
+    "capital": "Capital",
+    "interest": "Interés",
     "noResults": "No se encontraron créditos con estos filtros"
   },
   "Payables": {
@@ -517,6 +523,7 @@
     "abonoUpdated": "Abono actualizado exitosamente",
     "abonoDeleted": "Abono eliminado exitosamente",
     "creditMarkedAsPaid": "Crédito marcado como pagado",
+    "creditWrittenOff": "Crédito marcado como incobrable",
     "saleCreated": "Venta registrada exitosamente",
     "saleDeleted": "Venta eliminada exitosamente",
     "catalogItemCreated": "Artículo agregado exitosamente",

@@ -11,6 +11,7 @@ import { EditCreditForm } from './edit-credit-form';
 import { DeleteCreditButton } from './delete-credit-button';
 import { DeleteAbonoButton } from './delete-abono-button';
 import { MarkAsPaidButton } from './mark-as-paid-button';
+import { WriteOffButton } from './write-off-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { businessDateToInputValue } from '../../../../lib/date';
 import { Icon } from '../../../../components/ui/icon';
@@ -37,7 +38,7 @@ export function CreditsGrantedList({
   const [editingCredit, setEditingCredit] = useState<SerializedCreditGranted | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'writtenOff'>('all');
   const [search, setSearch] = useState('');
   const t = useT('CreditsGranted');
   const tCommon = useT('Common');
@@ -46,8 +47,9 @@ export function CreditsGrantedList({
   const filtered = credits.filter((credit) => {
     if (dateFrom && new Date(credit.date).getTime() < new Date(dateFrom).getTime()) return false;
     if (dateTo && new Date(credit.date).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
-    if (statusFilter === 'pending' && credit.pending <= 0) return false;
-    if (statusFilter === 'paid' && credit.pending > 0) return false;
+    if (statusFilter === 'pending' && (credit.pending <= 0 || credit.writtenOff)) return false;
+    if (statusFilter === 'paid' && (credit.pending > 0 || credit.writtenOff)) return false;
+    if (statusFilter === 'writtenOff' && !credit.writtenOff) return false;
     if (search && !credit.counterparty.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -122,9 +124,10 @@ export function CreditsGrantedList({
                   { value: 'all', label: t('filterAllStatus') },
                   { value: 'pending', label: t('filterPending') },
                   { value: 'paid', label: t('filterPaid') },
+                  { value: 'writtenOff', label: t('filterWrittenOff') },
                 ]}
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'paid')}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'paid' | 'writtenOff')}
                 className="w-40"
               />
             </div>
@@ -152,6 +155,8 @@ export function CreditsGrantedList({
             const pending = credit.pending;
             const currency = credit.principal.currency;
             const isPaid = pending <= 0;
+            const isDimmed = isPaid || !!credit.writtenOff;
+            const showSplitColumns = credit.abonos?.some((a) => a.capitalAmount || a.interestAmount) ?? false;
             const paidInstallments =
               credit.installments && credit.installmentValue
                 ? Math.min(
@@ -166,7 +171,7 @@ export function CreditsGrantedList({
             return (
               <div
                 key={credit.id}
-                className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? 'opacity-60' : ''}`}
+                className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isDimmed ? 'opacity-60' : ''}`}
               >
                 <div
                   className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
@@ -176,6 +181,7 @@ export function CreditsGrantedList({
                     <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
                       {credit.counterparty}
                       {isPaid && <Badge variant="success">{tCommon('paid')}</Badge>}
+                      {credit.writtenOff && <Badge variant="danger">{t('writtenOff')}</Badge>}
                     </div>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       {formatDate(credit.date, locale)}
@@ -209,15 +215,17 @@ export function CreditsGrantedList({
                     <span className="text-xs text-zinc-400">
                       {credit.abonos?.length} {credit.abonos?.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
                     </span>
-                    <ActionIconButton
-                      icon={Pencil}
-                      label={tCommon('edit')}
-                      tone="primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCredit(credit);
-                      }}
-                    />
+                    {!credit.writtenOff && (
+                      <ActionIconButton
+                        icon={Pencil}
+                        label={tCommon('edit')}
+                        tone="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCredit(credit);
+                        }}
+                      />
+                    )}
                     <Icon
                       icon={ChevronDown}
                       size="sm"
@@ -238,6 +246,10 @@ export function CreditsGrantedList({
                             <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                               <th className="pb-1 text-left">{tCommon('date')}</th>
                               <th className="pb-1 text-right">{tCommon('amount')}</th>
+                              {showSplitColumns && (<>
+                                  <th className="pb-1 text-right">{t('capital')}</th>
+                                  <th className="pb-1 text-right">{t('interest')}</th>
+                                </>)}
                               <th className="pb-1 text-right">{tCommon('actions')}</th>
                             </tr>
                           </thead>
@@ -248,20 +260,35 @@ export function CreditsGrantedList({
                                 <td className="py-1 text-right">
                                   +{formatAmount(abono.amount.amount, currency, locale)}
                                 </td>
+                                {showSplitColumns && (<>
+                                    <td className="py-1 text-right">
+                                      {abono.capitalAmount
+                                        ? `+${formatAmount(abono.capitalAmount.amount, currency, locale)}`
+                                        : '—'}
+                                    </td>
+                                    <td className="py-1 text-right">
+                                      {abono.interestAmount
+                                        ? `+${formatAmount(abono.interestAmount.amount, currency, locale)}`
+                                        : '—'}
+                                    </td>
+                                  </>
+                                )}
                                 <td className="py-1 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <ActionIconButton
-                                      icon={Pencil}
-                                      label={tCommon('edit')}
-                                      tone="primary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
-                                        setShowAbonoFormId(null);
-                                      }}
-                                    />
-                                    <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
-                                  </div>
+                                  {!credit.writtenOff && (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <ActionIconButton
+                                        icon={Pencil}
+                                        label={tCommon('edit')}
+                                        tone="primary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
+                                          setShowAbonoFormId(null);
+                                        }}
+                                      />
+                                      <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -271,7 +298,7 @@ export function CreditsGrantedList({
                     )}
 
                     <div className="flex items-center gap-3">
-                      {pending > 0 && (
+                      {!credit.writtenOff && pending > 0 && (
                         <Button
                           variant="success"
                           size="sm"
@@ -284,8 +311,11 @@ export function CreditsGrantedList({
                           {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
                         </Button>
                       )}
-                      {pending > 0 && <MarkAsPaidButton creditId={credit.id} />}
-                      <DeleteCreditButton creditId={credit.id} />
+                      {!credit.writtenOff && pending > 0 && <MarkAsPaidButton creditId={credit.id} />}
+                      {!credit.saleId && !credit.writtenOff && pending > 0 && (
+                        <WriteOffButton creditId={credit.id} counterparty={credit.counterparty} />
+                      )}
+                      {!credit.writtenOff && <DeleteCreditButton creditId={credit.id} />}
                     </div>
 
                     {showAbonoFormId === credit.id && (
