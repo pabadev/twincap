@@ -252,7 +252,11 @@ export async function editAbono(
         amount: updatedAmount,
         date: updatedDate,
         note: movement.note,
-        context: movement.context,
+        // Legacy single-movement path is only reached for sale-born credits
+        // (this branch never applies to split standalone abonos). Reclassify
+        // a historically-wrong 'Personal' context to 'Business' so the abono
+        // counts toward economic result, matching the POS initial payment.
+        context: credit.saleId ? 'Business' : movement.context,
         link: movement.link,
         createdAt: movement.createdAt,
       });

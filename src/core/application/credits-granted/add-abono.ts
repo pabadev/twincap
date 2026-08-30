@@ -29,7 +29,10 @@ import type { AddAbonoInput } from './dto/credits-granted';
  *
  * Sale-born credits keep the legacy single-movement behavior — their ledger is
  * owned by the sale flow (salePayment); reaching this path via markAsPaid never
- * splits.
+ * splits. They still emit the same kind `creditGrantedAbono` as the standalone
+ * path, but with context 'Business' because a sale-born abono is commercial
+ * activity (matching the POS initial payment), while the standalone abono is
+ * capital recovery and stays 'Personal'.
  */
 export async function addAbono(
   userId: string,
@@ -173,7 +176,9 @@ export async function addAbono(
     amount: new Money(input.amount, input.currency),
     date: input.date,
     // No persisted note: display text derives at render from link.kind.
-    context: 'Personal',
+    // Sale-born credit abono is commercial activity (flows to Business),
+    // matching the POS initial payment (D3-bis).
+    context: 'Business',
     link: { kind: 'creditGrantedAbono', refId: creditId, opId: ids.generate() },
     createdAt: now,
   });

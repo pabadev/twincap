@@ -976,6 +976,30 @@ describe('addAbono — capital/interest split (R9)', () => {
     expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
     expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBeUndefined();
   });
+
+  it('sale-born credit abono movement is Business context (commercial activity)', async () => {
+    const credit = makeCredit({ saleId: 'sale-1' });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].context).toBe('Business');
+  });
 });
 
 // ─── R9/D9.3 — editAbono split synchronization ─────────────────────
@@ -1147,6 +1171,40 @@ describe('editAbono — split synchronization (R9)', () => {
     expect(creditRepo.abonosEdited[0].updates.amount).toBe(25000);
     expect(creditRepo.abonosEdited[0].updates.interestAmount).toBeUndefined();
     expect(result.abonos[0].amount.amount).toBe(25000);
+  });
+
+  it('reclassifies a legacy sale-born abono movement from Personal to Business context', async () => {
+    const credit = makeCredit({ saleId: 'sale-1' }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({
+      id: 'mov-1',
+      type: 'income',
+      amount: new Money(25000, 'COP'),
+      context: 'Personal', // historical erroneous data
+      link: { kind: 'creditGrantedAbono', refId: 'cg-1', opId: 'op-1' },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+    const ids = fakeIdGen();
+
+    await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { amount: 30000 },
+      creditRepo,
+      movementRepo,
+      ids,
+    );
+
+    expect(movementRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated[0].context).toBe('Business');
+    expect(creditRepo.abonosEdited[0].updates.amount).toBe(30000);
   });
 });
 
