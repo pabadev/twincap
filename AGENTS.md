@@ -143,6 +143,7 @@ Cada server action o route handler DEBE:
 4. **Venta ≠ cobro necesariamente**: una venta a crédito genera cuenta por cobrar sin que el dinero haya entrado.
 5. Las métricas del dashboard deben derivar del `kind`/naturaleza de cada movimiento — jamás sumar ciegamente por `type`.
 6. **Fechas financieras = fechas civiles**: distinguir instante temporal de fecha de negocio; PROHIBIDO compensar con offsets ±1 día sin entender la causa raíz; toda conversión/formateo debe ser explícito respecto de timezone.
+7. **Crédito otorgado: el abono amortiza primero el capital, solo el interés es ingreso**: en créditos otorgados standalone (Personal), cada abono recupera primero el capital prestado (`creditGrantedAbono`, NO económico); SOLO el excedente sobre el principal (`creditGrantedAbonoInterest`) es ingreso. La baja por incobrable (`creditGrantedWriteOff`) registra GASTO por el capital no recuperado (principal − Σ capital recuperado; el interés no realizado NO es pérdida) y excluye el crédito del activo en Posición Financiera. El pago inicial de una venta POS a crédito es un caso aparte: reusa el kind `creditGrantedAbono` con context Business y SÍ es ingreso (`salePayment`-equivalente), por lo que `countsTowardEconomicResult` es context-aware.
 
 ### Componentes UI
 - Antes de crear, verificar si `src/components/ui/` ya tiene uno equivalente.
