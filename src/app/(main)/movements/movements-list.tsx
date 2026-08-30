@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useT, useLocale } from '../../../i18n/client';
 import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedMovement } from '../../../core/domain/movement';
@@ -43,7 +43,19 @@ export function MovementsList({
   // (after router.refresh() following a create/update/delete). The list used
   // to hold a useState snapshot that never updated, so rows created/edited/
   // removed elsewhere stayed visible until a full reload.
+  // The server reconstructs initialMovements/initialCursor on every render, so
+  // re-syncing must compare the first page by CONTENT, not by reference, or the
+  // rows accumulated via "Cargar más" get silently reset to page 1.
+  const firstPageRef = useRef<SerializedMovement[]>(initialMovements);
   useEffect(() => {
+    const incoming = JSON.stringify(initialMovements);
+    if (incoming === JSON.stringify(firstPageRef.current)) {
+      // Fresh props but the first page is identical → keep the pagination the
+      // user already accumulated via "Cargar más". Only a real data change
+      // (row created/edited/deleted) should reset the accumulated list.
+      return;
+    }
+    firstPageRef.current = initialMovements;
     setMovements(initialMovements);
     setNextCursor(initialCursor);
   }, [initialMovements, initialCursor]);
