@@ -540,7 +540,13 @@
     "required": "This field is required",
     "invalidEmail": "The email is not valid",
     "invalidData": "The submitted data is invalid",
-    "operationFailed": "Operation failed. Please try again."
+    "operationFailed": "Operation failed. Please try again.",
+    "accountHasReferences": "The account has linked movements or transactions and cannot be deleted",
+    "categoryHasMovements": "The category has linked movements and cannot be deleted",
+    "catalogItemReferenced": "The item is referenced by a sale and cannot be deleted",
+    "saleBornCreditDelete": "This credit was created from a sale and must be deleted through the sale",
+    "fixedAccountDelete": "Fixed accounts cannot be deleted",
+    "systemMovementDelete": "System-linked movements cannot be deleted directly"
   },
   "Metadata": {
     "description": "Personal and small business finance management"

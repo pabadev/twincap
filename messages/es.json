@@ -540,7 +540,13 @@
     "required": "Este campo es obligatorio",
     "invalidEmail": "El email no es válido",
     "invalidData": "Los datos enviados son inválidos",
-    "operationFailed": "La operación falló. Intenta de nuevo."
+    "operationFailed": "La operación falló. Intenta de nuevo.",
+    "accountHasReferences": "La cuenta tiene movimientos u operaciones vinculadas y no puede eliminarse",
+    "categoryHasMovements": "La categoría tiene movimientos asociados y no puede eliminarse",
+    "catalogItemReferenced": "El artículo está referenciado por una venta y no puede eliminarse",
+    "saleBornCreditDelete": "Este crédito nació de una venta y debe eliminarse desde la venta",
+    "fixedAccountDelete": "Las cuentas fijas no pueden eliminarse",
+    "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente"
   },
   "Metadata": {
     "description": "Gestión de finanzas personales y pequeños negocios"

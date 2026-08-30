@@ -84,6 +84,7 @@ export function EntityDeleteButton({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const tToast = useT('Toast');
+  const tError = useT('error');
   const { addToast } = useToast();
   const router = useRouter();
 
@@ -101,7 +102,8 @@ export function EntityDeleteButton({
         router.refresh();
         onSuccess?.();
       } else if (result?.error) {
-        addToast(tToast(result.error) || errorMessage || result.error, 'error');
+        const errorKey = result.error.replace(/^error\./, '');
+        addToast(tError(errorKey) || errorMessage || result.error, 'error');
       }
     } catch (error) {
       // Action rejected (network/runtime): log quietly, matching the old
