@@ -42,6 +42,13 @@ describe('handleActionError', () => {
     expect(result).toEqual({ error: 'error.systemMovementDelete' });
   });
 
+  it('maps insufficient transfer funds to a descriptive key', () => {
+    const result = handleActionError(
+      new ConflictError('Insufficient funds in source account'),
+    );
+    expect(result).toEqual({ error: 'error.insufficientFunds' });
+  });
+
   it('falls back to error.conflict for other conflict errors', () => {
     const result = handleActionError(new ConflictError('A resource with that data already exists'));
     expect(result).toEqual({ error: 'error.conflict' });

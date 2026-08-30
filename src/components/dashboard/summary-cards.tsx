@@ -74,6 +74,8 @@ export function SummaryCards({
 }: SummaryCardsProps) {
   const t = useT('Dashboard');
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
+  const balanceClass =
+    totalBalance < 0 ? 'text-expense' : 'text-zinc-900 dark:text-zinc-100';
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -123,7 +125,7 @@ export function SummaryCards({
             {multi ? (
               <MultiCurrencyValue items={currencyBreakdown!} field="balance" locale={locale} className="text-zinc-900 dark:text-zinc-100" />
             ) : (
-              <p className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
+              <p className={`text-base sm:text-lg font-semibold leading-tight ${balanceClass}`}>
                 {formatAmount(totalBalance, currency, locale)}
               </p>
             )}

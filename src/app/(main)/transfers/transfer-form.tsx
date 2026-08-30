@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 import { toDateInputValue } from '../../../lib/date';
 
 export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
@@ -19,6 +20,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
   const t = useT('Transfers');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
 
@@ -36,9 +38,9 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-4">

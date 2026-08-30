@@ -548,7 +548,8 @@
     "catalogItemReferenced": "El artículo está referenciado por una venta y no puede eliminarse",
     "saleBornCreditDelete": "Este crédito nació de una venta y debe eliminarse desde la venta",
     "fixedAccountDelete": "Las cuentas fijas no pueden eliminarse",
-    "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente"
+    "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente",
+    "insufficientFunds": "Fondos insuficientes en la cuenta de origen"
   },
   "Metadata": {
     "description": "Gestión de finanzas personales y pequeños negocios"

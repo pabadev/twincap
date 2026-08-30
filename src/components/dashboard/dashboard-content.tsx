@@ -320,7 +320,13 @@ export function DashboardContent({
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {account.currency}
                   </span>
-                  <span className="text-xl font-semibold text-zinc-900 dark:text-white">
+                  <span
+                    className={`text-xl font-semibold ${
+                      account.balance < 0
+                        ? 'text-expense'
+                        : 'text-zinc-900 dark:text-white'
+                    }`}
+                  >
                     {formatAmount(account.balance, account.currency, locale)}
                   </span>
                   {account.isFixed && (

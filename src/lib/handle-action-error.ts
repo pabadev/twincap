@@ -31,6 +31,8 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.fixedAccountDelete' };
       case 'System-linked movements cannot be deleted directly':
         return { error: 'error.systemMovementDelete' };
+      case 'Insufficient funds in source account':
+        return { error: 'error.insufficientFunds' };
       default:
         return error instanceof ConflictError
           ? { error: 'error.conflict' }
