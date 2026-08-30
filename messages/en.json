@@ -90,6 +90,8 @@
     "incomeThisMonth": "Income this month",
     "expensesThisMonth": "Expenses this month",
     "financingThisMonth": "Financing flows",
+    "financingReceived": "Credits received",
+    "financingGranted": "Credits granted",
     "pendingCredits": "Outstanding debts",
     "monthlyTrend": "Monthly Trend (6 months)",
     "yearlyTrend": "Yearly Evolution",

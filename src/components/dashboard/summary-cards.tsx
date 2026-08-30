@@ -74,7 +74,6 @@ export function SummaryCards({
 }: SummaryCardsProps) {
   const t = useT('Dashboard');
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
-  const financingNet = financingInflow - financingOutflow;
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -137,10 +136,15 @@ export function SummaryCards({
           <div className="shrink-0 rounded-lg bg-info/10 p-2">
             <Icon icon={ArrowLeftRight} size="md" className="text-info" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex flex-col gap-0.5">
             <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('financingThisMonth')}</p>
-            <p className="text-base sm:text-lg font-semibold leading-tight text-info">
-              {financingNet >= 0 ? '+' : '−'}{formatAmount(financingNet, currency, locale)}
+            <p className="text-[11px] sm:text-xs leading-tight text-income">
+              {t('financingReceived')}:{' '}
+              <span className="font-semibold">+{formatAmount(financingInflow, currency, locale)}</span>
+            </p>
+            <p className="text-[11px] sm:text-xs leading-tight text-expense">
+              {t('financingGranted')}:{' '}
+              <span className="font-semibold">−{formatAmount(financingOutflow, currency, locale)}</span>
             </p>
           </div>
         </div>
