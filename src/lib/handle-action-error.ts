@@ -33,6 +33,8 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.systemMovementDelete' };
       case 'Insufficient funds in source account':
         return { error: 'error.insufficientFunds' };
+      case 'Future dates are not allowed':
+        return { error: 'error.futureDate' };
       default:
         return error instanceof ConflictError
           ? { error: 'error.conflict' }

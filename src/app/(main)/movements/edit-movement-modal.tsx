@@ -14,7 +14,7 @@ import { Button } from '../../../components/ui/button';
 import { Modal } from '../../../components/ui/modal';
 import { useToast } from '../../../lib/hooks/use-toast';
 import { filterCategoriesByType } from '../../../lib/movement-form';
-import { businessDateToInputValue } from '../../../lib/date';
+import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
 
 export function EditMovementModal({
   movement,
@@ -58,6 +58,7 @@ export function EditMovementModal({
   return (
     <Modal open onClose={onClose} title={t('editMovement')}>
       <form action={formAction} className="space-y-4">
+        <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
         <input type="hidden" name="movementId" value={movement.id} />
 
         <Select
@@ -108,6 +109,7 @@ export function EditMovementModal({
           required
           disabled={isPending}
           defaultValue={businessDateToInputValue(new Date(movement.date))}
+          max={toDateInputValue()}
         />
 
         <Input

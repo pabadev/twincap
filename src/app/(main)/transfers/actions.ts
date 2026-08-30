@@ -12,6 +12,7 @@ import { MongoAccountRepository } from '../../../infrastructure/repositories/acc
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
+import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 
 const ids = objectIdGenerator;
@@ -31,6 +32,7 @@ export async function createTransferAction(
   const destinationCurrency = (formData.get('destinationCurrency') as CreateTransferInput['destinationCurrency']) || undefined;
   const rate = Number(formData.get('rate') || '0') || undefined;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
 
   const input: CreateTransferInput = {
@@ -46,6 +48,7 @@ export async function createTransferAction(
   };
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const transferRepo = new MongoTransferRepository();
     const movementRepo = new MongoMovementRepository();

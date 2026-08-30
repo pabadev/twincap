@@ -15,6 +15,7 @@ import { MongoMovementRepository } from '../../../infrastructure/repositories/mo
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
+import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../lib/revalidate';
 
@@ -33,11 +34,13 @@ export async function createPayableAction(
   const currency = formData.get('currency') as Currency;
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const dueDateRaw = formData.get('dueDate') as string;
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
   const note = ((formData.get('note') as string) || '').trim() || undefined;
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
@@ -70,8 +73,10 @@ export async function addAbonoAction(
   const currency = formData.get('currency') as Currency;
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
@@ -104,8 +109,10 @@ export async function editAbonoAction(
   const abonoId = formData.get('abonoId') as string;
   const amount = Number(formData.get('amount') || '0');
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();

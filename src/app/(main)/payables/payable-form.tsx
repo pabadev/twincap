@@ -42,6 +42,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <Input
         id="counterparty"
         name="counterparty"
@@ -107,6 +108,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
+          max={toDateInputValue()}
         />
 
         <Input

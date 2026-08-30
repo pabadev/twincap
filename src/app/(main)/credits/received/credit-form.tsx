@@ -48,6 +48,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <Input
         id="counterparty"
         name="counterparty"
@@ -101,6 +102,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
         required
         disabled={isPending}
         defaultValue={toDateInputValue()}
+        max={toDateInputValue()}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

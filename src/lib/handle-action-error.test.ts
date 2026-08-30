@@ -49,6 +49,13 @@ describe('handleActionError', () => {
     expect(result).toEqual({ error: 'error.insufficientFunds' });
   });
 
+  it('maps future business dates to a descriptive key', () => {
+    const result = handleActionError(
+      new ValidationError('Future dates are not allowed'),
+    );
+    expect(result).toEqual({ error: 'error.futureDate' });
+  });
+
   it('falls back to error.conflict for other conflict errors', () => {
     const result = handleActionError(new ConflictError('A resource with that data already exists'));
     expect(result).toEqual({ error: 'error.conflict' });

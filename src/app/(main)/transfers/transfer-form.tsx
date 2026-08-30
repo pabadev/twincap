@@ -44,6 +44,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <Select
         id="sourceAccountId"
         name="sourceAccountId"
@@ -127,6 +128,7 @@ export function TransferForm({ accounts, onSuccess }: { accounts: SerializedAcco
         required
         disabled={isPending}
         defaultValue={toDateInputValue()}
+        max={toDateInputValue()}
       />
 
       <Input

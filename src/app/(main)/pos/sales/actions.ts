@@ -19,6 +19,7 @@ import { MongoAccountRepository } from '../../../../infrastructure/repositories/
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
+import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
 
@@ -35,6 +36,7 @@ export async function createSaleAction(
   const accountId = formData.get('accountId') as string;
   const clientId = (formData.get('clientId') as string) || undefined;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const paymentMode = formData.get('paymentMode') as PaymentMode;
   const currency = formData.get('currency') as Currency;
 
@@ -57,6 +59,7 @@ export async function createSaleAction(
       : undefined;
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
@@ -100,8 +103,10 @@ export async function addSaleAbonoAction(
   const currency = formData.get('currency') as Currency;
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();

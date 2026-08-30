@@ -75,6 +75,7 @@ export function MovementForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <FieldGroup title={t('groupSelection')}>
         <Select
           id="account"
@@ -124,6 +125,7 @@ export function MovementForm({
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
+          max={toDateInputValue()}
         />
       </FieldGroup>
 

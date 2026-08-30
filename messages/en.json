@@ -548,6 +548,7 @@
     "catalogItemReferenced": "The item is referenced by a sale and cannot be deleted",
     "saleBornCreditDelete": "This credit was created from a sale and must be deleted through the sale",
     "fixedAccountDelete": "Fixed accounts cannot be deleted",
+    "futureDate": "The date cannot be in the future",
     "systemMovementDelete": "System-linked movements cannot be deleted directly",
     "insufficientFunds": "Insufficient funds in the source account"
   },

@@ -20,6 +20,7 @@ import { MongoCategoryRepository } from '../../../infrastructure/repositories/ca
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
+import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
 
@@ -37,6 +38,7 @@ export async function createMovementAction(
   const amount = Number(formData.get('amount') || '0');
   const currency = formData.get('currency') as CreateMovementInput['currency'];
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
   const categoryId = formData.get('categoryId') as string;
   const contextRaw = formData.get('context') as string | null;
@@ -46,6 +48,7 @@ export async function createMovementAction(
   }
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const movementRepo = new MongoMovementRepository();
     const categoryRepo = new MongoCategoryRepository();
@@ -122,6 +125,7 @@ export async function updateMovementAction(
   const accountId = formData.get('accountId') as string;
   const amount = Number(formData.get('amount') || '0');
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
   const categoryId = formData.get('categoryId') as string;
   const contextRaw = formData.get('context') as string | null;
@@ -131,6 +135,7 @@ export async function updateMovementAction(
   }
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const movementRepo = new MongoMovementRepository();
     const categoryRepo = new MongoCategoryRepository();

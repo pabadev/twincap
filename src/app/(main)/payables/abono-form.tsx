@@ -51,6 +51,7 @@ export function AbonoForm({
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-zinc-800">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="payableId" value={payableId} />
       <input type="hidden" name="currency" value={currency} />
 
@@ -91,6 +92,7 @@ export function AbonoForm({
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
+          max={toDateInputValue()}
         />
       </div>
 

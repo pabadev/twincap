@@ -16,6 +16,7 @@ import { MongoMovementRepository } from '../../../../infrastructure/repositories
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
+import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../../lib/revalidate';
 
@@ -33,12 +34,14 @@ export async function createCreditReceivedAction(
   const currency = formData.get('currency') as Currency;
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const installments = Number(formData.get('installments') || '0') || undefined;
   const installmentValueValue = formData.get('installmentValue');
   const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
   const frequency = (formData.get('frequency') as string) || undefined;
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();
@@ -71,8 +74,10 @@ export async function addAbonoAction(
   const currency = formData.get('currency') as Currency;
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();
@@ -105,8 +110,10 @@ export async function editAbonoAction(
   const abonoId = formData.get('abonoId') as string;
   const amount = Number(formData.get('amount') || '0');
   const date = new Date(formData.get('date') as string);
+  const tzOffset = Number(formData.get('tzOffset') ?? 0);
 
   try {
+    assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const creditRepo = new MongoCreditReceivedRepository();
     const movementRepo = new MongoMovementRepository();

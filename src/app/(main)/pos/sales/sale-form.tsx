@@ -117,6 +117,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       }}
       className="space-y-4"
     >
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
           {tToast(state.error)}
@@ -210,6 +211,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         required
         disabled={isPending}
         defaultValue={toDateInputValue()}
+        max={toDateInputValue()}
       />
 
       <div>

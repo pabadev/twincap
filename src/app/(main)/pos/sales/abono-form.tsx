@@ -56,6 +56,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
       }}
       className="space-y-4"
     >
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="saleId" value={saleId} />
       <input type="hidden" name="currency" value={currency} />
 
@@ -96,6 +97,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
+          max={toDateInputValue()}
         />
       </div>
 

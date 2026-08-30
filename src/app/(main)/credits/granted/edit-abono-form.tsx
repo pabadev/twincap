@@ -7,6 +7,7 @@ import { editAbonoAction } from './actions';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { toDateInputValue } from '../../../../lib/date';
 
 export function EditAbonoForm({
   creditId,
@@ -49,6 +50,7 @@ export function EditAbonoForm({
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10">
+      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="creditId" value={creditId} />
       <input type="hidden" name="abonoId" value={abonoId} />
 
@@ -75,6 +77,7 @@ export function EditAbonoForm({
           label={t('date')}
           required
           defaultValue={date}
+          max={toDateInputValue()}
           disabled={isPending}
         />
       </div>
