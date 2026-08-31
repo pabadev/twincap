@@ -5,6 +5,7 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { bcryptPasswordHasher } from '../../../infrastructure/auth/password';
 import { User } from '../../../core/domain/user';
+import { passwordChangeRateLimiter } from '../../../infrastructure/auth/rate-limiter';
 
 export async function updateProfileAction(
   _prev: { error?: string; success?: string } | null,
@@ -47,6 +48,13 @@ export async function changePasswordAction(
   const authUser = await getCurrentUser();
   if (!authUser) return { error: 'Unauthorized' };
 
+  // Rate limiting: 5 attempts per 15 min per user
+  const rateLimitKey = `password:${authUser.userId}`;
+  const rateLimit = await passwordChangeRateLimiter.check(rateLimitKey);
+  if (!rateLimit.allowed) {
+    return { error: 'Too many password change attempts. Please try again later.' };
+  }
+
   const currentPassword = formData.get('currentPassword') as string;
   const newPassword = formData.get('newPassword') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
@@ -81,6 +89,8 @@ export async function changePasswordAction(
     });
 
     await userRepo.update(updated);
+    // Reset rate limit on successful password change
+    await passwordChangeRateLimiter.reset(rateLimitKey);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: 'error.operationFailed' };
