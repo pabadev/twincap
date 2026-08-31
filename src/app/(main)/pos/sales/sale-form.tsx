@@ -186,32 +186,30 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       </div>
 
       <div>
-        <div className="flex items-end justify-between gap-2">
-          <div className="flex-1">
-            <Select
-              id="clientId"
-              label={`${t('client')}${isOnCredit ? ' *' : ''}`}
-              disabled={isPending}
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              options={[
-                { value: '', label: t('generalClient') },
-                ...clients.map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                })),
-              ]}
-            />
-          </div>
+        <div className="mb-1 flex items-center justify-end">
           <button
             type="button"
             onClick={() => setShowClientForm(true)}
             disabled={isPending}
-            className="mb-0.5 shrink-0 text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+            className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
           >
-            {t('newClient')}
+            {t('createClient')}
           </button>
         </div>
+        <Select
+          id="clientId"
+          label={`${t('client')}${isOnCredit ? ' *' : ''}`}
+          disabled={isPending}
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          options={[
+            { value: '', label: t('generalClient') },
+            ...clients.map((c) => ({
+              value: c.id,
+              label: c.name,
+            })),
+          ]}
+        />
         {needsClient && (
           <p className="mt-1 text-xs text-warning">
             {t('clientRequiredForCredit')}
@@ -266,7 +264,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
               disabled={isPending}
               className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
             >
-              {t('newItem')}
+              {t('createItem')}
             </button>
             <button
               type="button"

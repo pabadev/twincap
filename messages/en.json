@@ -483,7 +483,9 @@
     "filterSearch": "Search client...",
     "noResults": "No sales found with these filters",
     "newClient": "New client",
-    "newItem": "New item"
+    "newItem": "New item",
+    "createClient": "Create client",
+    "createItem": "Create item"
   },
   "Clients": {
     "title": "Clients",

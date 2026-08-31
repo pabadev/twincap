@@ -483,7 +483,9 @@
     "filterSearch": "Buscar cliente...",
     "noResults": "No se encontraron ventas con estos filtros",
     "newClient": "Nuevo cliente",
-    "newItem": "Nuevo artículo"
+    "newItem": "Nuevo artículo",
+    "createClient": "Crear cliente",
+    "createItem": "Crear artículo"
   },
   "Clients": {
     "title": "Clientes",
