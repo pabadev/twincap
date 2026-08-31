@@ -16,6 +16,7 @@ import { MongoCreditGrantedRepository } from '../../../../infrastructure/reposit
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
@@ -40,10 +41,13 @@ export async function createCreditGrantedAction(
   const installmentValueValue = formData.get('installmentValue');
   const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
   const frequency = (formData.get('frequency') as string) || undefined;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -57,6 +61,7 @@ export async function createCreditGrantedAction(
     );
     revalidateMovementData('/credits/granted');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
     return handleActionError(error);
   }
 
@@ -76,10 +81,13 @@ export async function addAbonoAction(
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -94,6 +102,7 @@ export async function addAbonoAction(
     );
     revalidateMovementData('/credits/granted');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
     return handleActionError(error);
   }
 
@@ -218,15 +227,19 @@ export async function markAsPaidAction(
   if (!user) return { error: 'Unauthorized' };
 
   const creditId = formData.get('creditId') as string;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'markAsPaid');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
     await markAsPaid(user.userId, creditId, creditRepo, movementRepo, ids, accountRepo);
     revalidateMovementData('/credits/granted');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'markAsPaid');
     return handleActionError(error);
   }
 
@@ -241,9 +254,12 @@ export async function writeOffCreditAction(
   if (!user) return { error: 'Unauthorized' };
 
   const creditId = formData.get('creditId') as string;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const creditRepo = new MongoCreditGrantedRepository();
     const movementRepo = new MongoMovementRepository();
     await writeOffCreditGranted(
@@ -255,6 +271,7 @@ export async function writeOffCreditAction(
     );
     revalidateMovementData('/credits/granted');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
     return handleActionError(error);
   }
 

@@ -18,6 +18,7 @@ import { MongoClientRepository } from '../../../../infrastructure/repositories/c
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
@@ -39,6 +40,7 @@ export async function createSaleAction(
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const paymentMode = formData.get('paymentMode') as PaymentMode;
   const currency = formData.get('currency') as Currency;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   let items: { itemId: string; quantity: number; unitPrice: number }[];
   try {
@@ -61,6 +63,8 @@ export async function createSaleAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createSale');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
@@ -85,6 +89,7 @@ export async function createSaleAction(
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createSale');
     return handleActionError(error);
   }
 
@@ -104,10 +109,13 @@ export async function addSaleAbonoAction(
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const saleRepo = new MongoSaleRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -125,6 +133,7 @@ export async function addSaleAbonoAction(
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
     return handleActionError(error);
   }
 

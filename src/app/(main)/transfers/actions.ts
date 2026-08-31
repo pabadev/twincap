@@ -11,6 +11,7 @@ import { MongoTransferRepository } from '../../../infrastructure/repositories/tr
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
@@ -35,6 +36,7 @@ export async function createTransferAction(
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   const input: CreateTransferInput = {
     sourceAccountId,
@@ -51,6 +53,8 @@ export async function createTransferAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createTransfer');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const transferRepo = new MongoTransferRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -67,6 +71,7 @@ export async function createTransferAction(
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
     return handleActionError(error);
   }
 

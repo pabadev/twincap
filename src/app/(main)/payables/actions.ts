@@ -14,6 +14,7 @@ import { MongoPayableRepository } from '../../../infrastructure/repositories/pay
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
@@ -38,10 +39,13 @@ export async function createPayableAction(
   const dueDateRaw = formData.get('dueDate') as string;
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
   const note = ((formData.get('note') as string) || '').trim() || undefined;
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createPayable');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -55,6 +59,7 @@ export async function createPayableAction(
     );
     revalidateMovementData('/payables');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createPayable');
     return handleActionError(error);
   }
 
@@ -74,10 +79,13 @@ export async function addAbonoAction(
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const payableRepo = new MongoPayableRepository();
     const movementRepo = new MongoMovementRepository();
     const accountRepo = new MongoAccountRepository();
@@ -92,6 +100,7 @@ export async function addAbonoAction(
     );
     revalidateMovementData('/payables');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
     return handleActionError(error);
   }
 

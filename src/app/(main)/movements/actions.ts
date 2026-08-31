@@ -18,6 +18,7 @@ import { MongoAccountRepository } from '../../../infrastructure/repositories/acc
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
@@ -46,10 +47,16 @@ export async function createMovementAction(
   if (contextRaw && isMovementContext(contextRaw)) {
     context = contextRaw;
   }
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
+
+    // Idempotency: claim the client key before creating
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createMovement');
+    if (!claimed) return { error: 'error.duplicateRequest' };
+
     const movementRepo = new MongoMovementRepository();
     const categoryRepo = new MongoCategoryRepository();
     const accountRepo = new MongoAccountRepository();
@@ -65,6 +72,7 @@ export async function createMovementAction(
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
     return handleActionError(error);
   }
 

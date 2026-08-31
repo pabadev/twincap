@@ -11,6 +11,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
+import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
@@ -27,9 +28,12 @@ export async function createAccountAction(
   const name = formData.get('name') as string;
   const currency = formData.get('currency') as CreateAccountInput['currency'];
   const initialBalance = Number(formData.get('initialBalance') || '0');
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createAccount');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const accountRepo = new MongoAccountRepository();
     const movementRepo = new MongoMovementRepository();
     await createAccount(
@@ -43,6 +47,7 @@ export async function createAccountAction(
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'createAccount');
     return handleActionError(error);
   }
 
@@ -108,9 +113,12 @@ export async function setInitialBalanceAction(
 
   const accountId = formData.get('accountId') as string;
   const amount = Number(formData.get('amount') || '0');
+  const idempotencyKey = formData.get('idempotencyKey') as string | null;
 
   try {
     await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
+    if (!claimed) return { error: 'error.duplicateRequest' };
     const accountRepo = new MongoAccountRepository();
     const movementRepo = new MongoMovementRepository();
     await setInitialAccountBalance(
@@ -124,6 +132,7 @@ export async function setInitialBalanceAction(
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
+    await releaseIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
     return handleActionError(error);
   }
 
