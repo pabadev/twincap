@@ -1,36 +1,24 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import Link from 'next/link';
-import {
-  type DashboardFilters,
-  DashboardFilterBar,
-} from './dashboard-filters';
-import { SummaryCards, type CurrencyBreakdown } from './summary-cards';
+import { DashboardFilterBar } from './dashboard-filters';
+import { SummaryCards } from './summary-cards';
 import { MonthlyChart } from './monthly-chart';
-import {
-  RecentMovements,
-  type SerializedMovement,
-} from './recent-movements';
+import { RecentMovements } from './recent-movements';
 import { PositionCards } from './position-cards';
 import { DashboardReportsGrid } from './dashboard-reports-grid';
-import { SummaryTable, type SummaryTableRow } from './summary-table';
+import { SummaryTable } from './summary-table';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { Wallet } from 'lucide-react';
-import { computeDashboardSummary } from '../../core/application/compute-dashboard-summary';
-import { computeCategorySummary } from '../../core/application/compute-category-summary';
-import { computeYearlyEvolution } from '../../core/application/compute-yearly-evolution';
-import { countsTowardEconomicResult } from '../../core/application/economic-result';
 import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
-import { filterMovementsByPeriod } from '../../lib/movement-period-filter';
 import { useT } from '../../i18n/client';
 import type { SerializedCategory } from '../../core/domain/category';
-import { SYSTEM_NOTES_NAMESPACE } from '../../lib/system-note';
-import { syntheticCategoryLabel } from '../../lib/synthetic-category-label';
-import type { SerializedMovement as MovementSnapshot } from '../../core/domain/movement';
+import type { DashboardSnapshot } from './dashboard-snapshot';
+import { getDashboardSnapshotAction } from '../../app/(main)/dashboard/actions';
 
 interface DashboardAccount {
   id: string;
@@ -42,7 +30,6 @@ interface DashboardAccount {
 
 interface DashboardContentProps {
   accounts: DashboardAccount[];
-  movements: MovementSnapshot[];
   categories: SerializedCategory[];
   primaryCurrency: string;
   locale: string;
@@ -56,30 +43,26 @@ interface DashboardContentProps {
     pasivos: number;
     net: number;
   }>;
+  /** Aggregate server-side snapshot (initial render); never the raw movements. */
+  initialSnapshot: DashboardSnapshot;
 }
 
 export function DashboardContent({
   accounts,
-  movements: allMovements,
   categories,
-  primaryCurrency,
   locale,
   userLabel,
   userName,
   noAccountsMessage,
   noMovementsMessage,
   positionData,
+  initialSnapshot,
 }: DashboardContentProps) {
   const t = useT('Dashboard');
-  const tSystemNotes = useT(SYSTEM_NOTES_NAMESPACE);
 
-  const [filters, setFilters] = useState<DashboardFilters>({
-    scope: 'all',
-    accountId: 'all',
-    categoryId: 'all',
-    period: 'current_month',
-  });
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
+  const [isPending, startTransition] = useTransition();
 
   const accountOptions = useMemo(
     () => accounts.map((a) => ({ value: a.id, label: `${a.name} (${a.currency})` })),
@@ -92,168 +75,51 @@ export function DashboardContent({
       .map((c) => ({ value: c.id, label: c.name }));
   }, [categories]);
 
-  /** Resolve category label — real categories first, then synthetic fallback. */
-  const resolveCategoryLabel = useMemo(() => {
-    const realMap = new Map(categoryOptions.map((c) => [c.value, c.label]));
-    return (categoryId: string): string => {
-      return realMap.get(categoryId)
-        ?? syntheticCategoryLabel(categoryId, tSystemNotes)
-        ?? t('uncategorized');
-    };
-  }, [categoryOptions, tSystemNotes, t]);
-
-  const filteredMovements = useMemo(() => {
-    let result = allMovements;
-
-    if (filters.scope !== 'all') {
-      result = result.filter((m) => m.context === filters.scope);
-    }
-
-    if (filters.accountId !== 'all') {
-      result = result.filter((m) => m.accountId === filters.accountId);
-    }
-
-    if (filters.categoryId !== 'all') {
-      result = result.filter((m) => m.categoryId === filters.categoryId);
-    }
-
-    if (filters.period === 'current_month' || filters.period === 'this_year') {
-      result = filterMovementsByPeriod(result, filters.period);
-    }
-
-    return result;
-  }, [allMovements, filters]);
-
-  const accountBalances = useMemo(() => {
-    if (filters.accountId !== 'all') {
-      return accounts.filter((a) => a.id === filters.accountId);
-    }
-    return accounts;
-  }, [accounts, filters.accountId]);
-
-  /** Multi-currency breakdown for SummaryCards. */
-  const currencyBreakdown = useMemo((): CurrencyBreakdown[] => {
-    const byCurrency = new Map<string, { balance: number; income: number; expenses: number }>();
-
-    for (const a of accountBalances) {
-      const entry = byCurrency.get(a.currency) ?? { balance: 0, income: 0, expenses: 0 };
-      entry.balance += a.balance;
-      byCurrency.set(a.currency, entry);
-    }
-
-    for (const m of filteredMovements) {
-      if (!countsTowardEconomicResult(m)) continue;
-      const cur = m.amount.currency;
-      const entry = byCurrency.get(cur) ?? { balance: 0, income: 0, expenses: 0 };
-      if (m.type === 'income') entry.income += m.amount.amount;
-      else entry.expenses += m.amount.amount;
-      byCurrency.set(cur, entry);
-    }
-
-    return Array.from(byCurrency.entries())
-      .map(([currency, data]) => ({ currency, ...data }))
-      .sort((a, b) => (a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency)));
-  }, [accountBalances, filteredMovements]);
-
-  const currency = useMemo(() => {
-    if (filters.accountId !== 'all') {
-      const acc = accounts.find((a) => a.id === filters.accountId);
-      return acc?.currency ?? primaryCurrency;
-    }
-    return primaryCurrency;
-  }, [accounts, filters.accountId, primaryCurrency]);
-
-  const totalBalance = useMemo(
-    () => accountBalances.reduce((sum, a) => sum + a.balance, 0),
-    [accountBalances],
-  );
+  function handleFiltersChange(next: DashboardSnapshot['filters']) {
+    startTransition(async () => {
+      const nextSnapshot = await getDashboardSnapshotAction(next);
+      setSnapshot(nextSnapshot);
+    });
+  }
 
   const {
+    filters,
+    currency,
+    accountBalances,
+    currencyBreakdown,
     monthlyIncome,
     monthlyExpenses,
     financingInflow,
     financingOutflow,
-    months: monthlyData,
-  } = useMemo(
-    () =>
-      computeDashboardSummary({
-        movements: filteredMovements as any,
-        currency,
-      }),
-    [filteredMovements, currency],
-  );
+    incomeRows,
+    expenseRows,
+    totalIncome,
+    totalExpenses,
+    monthlyData,
+    yearlyData,
+    recentMovements,
+  } = snapshot;
 
-  const { incomeCategories, expenseCategories, totalIncome, totalExpenses } = useMemo(
-    () => computeCategorySummary({ movements: filteredMovements as any, currency }),
-    [filteredMovements, currency],
-  );
-
-  const incomeRows: SummaryTableRow[] = useMemo(
-    () =>
-      incomeCategories.map((c) => ({
-        label: resolveCategoryLabel(c.categoryId),
-        value: c.amount,
-      })),
-    [incomeCategories, resolveCategoryLabel],
-  );
-
-  const expenseRows: SummaryTableRow[] = useMemo(
-    () =>
-      expenseCategories.map((c) => ({
-        label: resolveCategoryLabel(c.categoryId),
-        value: c.amount,
-      })),
-    [expenseCategories, resolveCategoryLabel],
-  );
-
-  const topIncomeRows: SummaryTableRow[] = useMemo(
-    () => incomeRows.slice(0, 3),
-    [incomeRows],
-  );
-
-  const topExpenseRows: SummaryTableRow[] = useMemo(
-    () => expenseRows.slice(0, 3),
-    [expenseRows],
-  );
-
-  const { months: computedYearly } = useMemo(
-    () =>
-      computeYearlyEvolution({
-        movements: filteredMovements as any,
-        currency,
-      }),
-    [filteredMovements, currency],
-  );
+  const totalBalance = accountBalances.reduce((sum, a) => sum + a.balance, 0);
+  const topIncomeRows = incomeRows.slice(0, 3);
+  const topExpenseRows = expenseRows.slice(0, 3);
 
   const chartTitle = chartView === 'monthly' ? undefined : t('yearlyTrend');
-  const chartData = chartView === 'monthly' ? monthlyData : computedYearly;
-
-  const recentMovements: SerializedMovement[] = useMemo(
-    () =>
-      filteredMovements
-        .slice(0, 5)
-        .map((m) => ({
-          id: m.id,
-          type: m.type as 'income' | 'expense',
-          amount: m.amount.amount,
-          currency: m.amount.currency,
-          date: typeof m.date === 'string' ? m.date : new Date(m.date).toISOString(),
-          categoryName: resolveCategoryLabel(m.categoryId),
-        })),
-    [filteredMovements, resolveCategoryLabel],
-  );
+  const chartData = chartView === 'monthly' ? monthlyData : yearlyData;
 
   const greeting = userName
     ? t('welcomeUser', { name: userName })
     : userLabel;
 
   // R5-E onboarding: shown only while the user still has just the seeded
-  // fixed Cash account — i.e. they haven't created their own accounts yet.
+  // fixed Cash account — uses the FULL account list (not the filtered
+  // snapshot balances) so the banner reflects account count regardless of
+  // the active dashboard filters.
   const showOnboarding =
-    accountBalances.length === 1 && accountBalances[0].isFixed;
+    accounts.length === 1 && accounts[0].isFixed;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" aria-busy={isPending}>
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {greeting}
@@ -285,7 +151,7 @@ export function DashboardContent({
 
       <DashboardFilterBar
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={handleFiltersChange}
         accounts={accountOptions}
         categories={categoryOptions}
       />

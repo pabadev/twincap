@@ -1,3 +1,5 @@
+'use server';
+
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
@@ -12,32 +14,26 @@ import { MongoCreditGrantedRepository } from '../../../infrastructure/repositori
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
-import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
-import { DashboardContent } from '../../../components/dashboard/dashboard-content';
-import { computeActivosPasivos } from '../../../core/application/compute-activos-pasivos';
 import type { DashboardFilters } from '../../../components/dashboard/dashboard-filters';
+import type { DashboardSnapshot } from '../../../components/dashboard/dashboard-snapshot';
 import { makeCategoryLabelResolver } from '../../../lib/resolve-category-label';
 import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
 
-export const dynamic = 'force-dynamic';
-
-const DEFAULT_FILTERS: DashboardFilters = {
-  scope: 'all',
-  accountId: 'all',
-  categoryId: 'all',
-  period: 'current_month',
-};
-
-export default async function DashboardPage() {
+/**
+ * Server action that re-aggregates the dashboard snapshot for a given filter
+ * set. The client calls this on every filter change instead of re-filtering
+ * and re-aggregating the full movement list in memory — only the aggregate
+ * snapshot is sent back across the boundary.
+ */
+export async function getDashboardSnapshotAction(
+  filters: DashboardFilters,
+): Promise<DashboardSnapshot> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const t = await getT('Dashboard');
-  const locale = await getLocale();
-
   await connectDb();
-  const userRepo = new MongoUserRepository();
+
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
   const categoryRepo = new MongoCategoryRepository();
@@ -47,10 +43,7 @@ export default async function DashboardPage() {
   const saleRepo = new MongoSaleRepository();
   const transferRepo = new MongoTransferRepository();
 
-  const [userEntity, accounts] = await Promise.all([
-    userRepo.findById(user.userId),
-    listAccounts(user.userId, accountRepo),
-  ]);
+  const accounts = await listAccounts(user.userId, accountRepo);
 
   const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
     await Promise.all([
@@ -63,9 +56,7 @@ export default async function DashboardPage() {
       transferRepo.findByUserId(user.userId),
     ]);
 
-  // R6-P1: defensive filter — drop movements whose linked parent is gone
-  // (orphans from a deletion that failed to cascade must not reach the
-  // dashboard or its aggregations). See page.tsx history for details.
+  // R6-P1 defensive filter + R7-A balance derivation — same source/pattern as page.tsx.
   const liveParents = {
     accounts: new Set(accounts.map((a) => a.id)),
     transfers: new Set(transfers.map((tr) => tr.id)),
@@ -89,14 +80,11 @@ export default async function DashboardPage() {
     })),
     payables: new Set(payables.map((p) => p.id)),
   };
-  const liveMovements = filterMovementsWithLiveParents(allMovements, liveParents);
-  const serializedCategories = categories.map((c) => c.toJSON());
 
-  // R7-A: derive each account's balance from the LIVE (parent-filtered)
-  // movements instead of aggregateBalance.
+  const liveMovements = filterMovementsWithLiveParents(allMovements, liveParents);
   const balanceByAccount = accountBalancesFromMovements(accounts, liveMovements);
 
-  const accountBalances = accounts.map((account) => ({
+  const accountBalancesWithBalance = accounts.map((account) => ({
     id: account.id,
     name: account.name,
     currency: account.currency,
@@ -104,49 +92,30 @@ export default async function DashboardPage() {
     balance: balanceByAccount.get(account.id) ?? 0,
   }));
 
+  const serializedCategories = categories.map((c) => c.toJSON());
+
   const primaryCurrency =
     accounts.length > 0 ? accounts[0].currency : 'COP';
 
-  const positionData = computeActivosPasivos({
-    accounts: accountBalances,
-    creditsGranted: creditsGranted.map((c) => ({
-      principal: { currency: c.principal.currency },
-      pending: c.pending,
-      writtenOff: Boolean(c.writtenOff),
-    })),
-    creditsReceived,
-    payables,
-  });
+  const [tDashboard, tSystemNotes, locale] = await Promise.all([
+    getT('Dashboard'),
+    getT(SYSTEM_NOTES_NAMESPACE),
+    getLocale(),
+  ]);
 
-  const tSystemNotes = await getT(SYSTEM_NOTES_NAMESPACE);
   const resolveCategoryLabel = makeCategoryLabelResolver({
     categories: serializedCategories,
     tSystemNotes,
-    tDashboard: t,
+    tDashboard,
   });
 
-  const initialSnapshot = buildDashboardSnapshot({
-    accounts: accountBalances,
+  return buildDashboardSnapshot({
+    accounts: accountBalancesWithBalance,
     categories: serializedCategories,
     movements: liveMovements,
-    filters: DEFAULT_FILTERS,
+    filters,
     locale,
     primaryCurrency,
     resolveCategoryLabel,
   });
-
-  return (
-    <DashboardContent
-      accounts={accountBalances}
-      categories={serializedCategories}
-      primaryCurrency={primaryCurrency}
-      locale={locale}
-      userLabel={t('welcomeBack')}
-      userName={userEntity?.name}
-      noAccountsMessage={t('noAccounts')}
-      noMovementsMessage={t('noMovements')}
-      positionData={positionData.positions}
-      initialSnapshot={initialSnapshot}
-    />
-  );
 }
