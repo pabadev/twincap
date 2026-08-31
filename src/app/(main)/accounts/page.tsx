@@ -9,6 +9,7 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
 import { InitialBalanceButton } from './initial-balance-button';
+import { RenameAccountButton } from './rename-account-button';
 import { formatAmount } from '../../../lib/format';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
@@ -94,6 +95,10 @@ export default async function AccountsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <RenameAccountButton
+                          accountId={account.id}
+                          accountName={account.name}
+                        />
                         {!balances.has(account.id) && (
                           <InitialBalanceButton accountId={account.id} />
                         )}

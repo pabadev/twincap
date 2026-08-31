@@ -2,6 +2,7 @@
 
 import {
   createAccount,
+  updateAccount,
   deleteAccount,
   setInitialAccountBalance,
 } from '../../../core/application/accounts';
@@ -46,6 +47,31 @@ export async function createAccountAction(
   }
 
   return { success: 'accountCreated' };
+}
+
+export async function updateAccountAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const accountId = formData.get('accountId') as string;
+  const name = formData.get('name') as string;
+
+  try {
+    await connectDb();
+    const accountRepo = new MongoAccountRepository();
+    await updateAccount(user.userId, { accountId, name }, accountRepo);
+    revalidatePath('/accounts');
+    revalidatePath('/dashboard');
+    revalidatePath('/movements');
+    revalidatePath('/transfers');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'accountUpdated' };
 }
 
 export async function deleteAccountAction(

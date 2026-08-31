@@ -23,7 +23,8 @@ vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
 
-const { deleteAccountAction, setInitialBalanceAction } = await import('./actions');
+const { updateAccountAction, deleteAccountAction, setInitialBalanceAction } =
+  await import('./actions');
 
 function formData(accountId = 'acc-1', amount?: number): FormData {
   const fd = new FormData();
@@ -31,6 +32,64 @@ function formData(accountId = 'acc-1', amount?: number): FormData {
   if (amount !== undefined) fd.append('amount', String(amount));
   return fd;
 }
+
+describe('updateAccountAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue({
+        id: 'acc-1',
+        userId: 'user-1',
+        name: 'Efectivo',
+        currency: 'COP',
+        isFixed: true,
+        createdAt: new Date(),
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+    }));
+  });
+
+  function renameFormData(name = 'Caja diaria'): FormData {
+    const fd = new FormData();
+    fd.append('accountId', 'acc-1');
+    fd.append('name', name);
+    return fd;
+  }
+
+  it('renames the account and returns the success toast key', async () => {
+    const result = await updateAccountAction(null, renameFormData());
+
+    expect(result).toEqual({ success: 'accountUpdated' });
+    expect(revalidatePath).toHaveBeenCalledWith('/accounts');
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
+    expect(revalidatePath).toHaveBeenCalledWith('/movements');
+    expect(revalidatePath).toHaveBeenCalledWith('/transfers');
+  });
+
+  it('maps a missing account to the notFound error key', async () => {
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    const result = await updateAccountAction(null, renameFormData());
+
+    expect(result).toEqual({ error: 'error.notFound' });
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    const result = await updateAccountAction(null, renameFormData());
+
+    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoAccountRepository).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
 
 describe('deleteAccountAction', () => {
   beforeEach(() => {
