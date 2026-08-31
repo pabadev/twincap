@@ -4,6 +4,8 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
+import { ClientForm } from '../../clients/client-form';
+import { CatalogForm } from '../catalog/catalog-form';
 import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
 import type { SerializedAccount } from '../../../../core/domain/account';
 import type { SerializedClient } from '../../../../core/domain/client';
@@ -14,6 +16,7 @@ import type { Currency } from '../../../../core/domain/currency';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
+import { Modal } from '../../../../components/ui/modal';
 import { useToast } from '../../../../lib/hooks/use-toast';
 import { formatAmount } from '../../../../lib/format';
 import { toDateInputValue } from '../../../../lib/date';
@@ -62,9 +65,30 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
   const [clientId, setClientId] = useState<string>(''); // empty = general client
   const [initialPayment, setInitialPayment] = useState<string>('0');
+  const [showClientForm, setShowClientForm] = useState(false);
+  const [showItemForm, setShowItemForm] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { itemId: catalogItems[0]?.id ?? '', quantity: 1, unitPrice: catalogItems[0]?.unitPrice.amount ?? 0 },
   ]);
+
+  // Quick-create from inside the sale form: auto-select the new entity so the
+  // user can keep building the sale without leaving the form.
+  function handleClientCreated(client?: SerializedClient) {
+    setShowClientForm(false);
+    if (client) setClientId(client.id);
+  }
+
+  function handleItemCreated(item?: SerializedCatalogItem) {
+    setShowItemForm(false);
+    if (item) {
+      setLineItems(prev =>
+        prev.map((li, idx) =>
+          idx === 0 ? { ...li, itemId: item.id, unitPrice: item.unitPrice.amount } : li,
+        ),
+      );
+      setCurrency(item.unitPrice.currency);
+    }
+  }
 
   function updateLineItem(index: number, field: keyof LineItem, value: string | number) {
     setLineItems(prev => prev.map((item, idx) =>
@@ -158,26 +182,47 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       </div>
 
       <div>
-        <Select
-          id="clientId"
-          label={`${t('client')}${isOnCredit ? ' *' : ''}`}
-          disabled={isPending}
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          options={[
-            { value: '', label: t('generalClient') },
-            ...clients.map((c) => ({
-              value: c.id,
-              label: c.name,
-            })),
-          ]}
-        />
+        <div className="flex items-end justify-between gap-2">
+          <div className="flex-1">
+            <Select
+              id="clientId"
+              label={`${t('client')}${isOnCredit ? ' *' : ''}`}
+              disabled={isPending}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              options={[
+                { value: '', label: t('generalClient') },
+                ...clients.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                })),
+              ]}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowClientForm(true)}
+            disabled={isPending}
+            className="mb-0.5 shrink-0 text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+          >
+            {t('newClient')}
+          </button>
+        </div>
         {needsClient && (
           <p className="mt-1 text-xs text-warning">
             {t('clientRequiredForCredit')}
           </p>
         )}
       </div>
+
+      <Modal
+        open={showClientForm}
+        onClose={() => setShowClientForm(false)}
+        title={t('newClient')}
+        size="sm"
+      >
+        <ClientForm onSuccess={handleClientCreated} />
+      </Modal>
 
       {isOnCredit && (
         <div>
@@ -219,14 +264,24 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {t('lineItems')}
           </label>
-          <button
-            type="button"
-            onClick={addLineItem}
-            disabled={isPending}
-            className="text-xs text-primary hover:text-primary-hover dark:text-primary"
-          >
-            {t('addItem')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowItemForm(true)}
+              disabled={isPending}
+              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+            >
+              {t('newItem')}
+            </button>
+            <button
+              type="button"
+              onClick={addLineItem}
+              disabled={isPending}
+              className="text-xs text-primary hover:text-primary-hover dark:text-primary"
+            >
+              {t('addItem')}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -292,6 +347,15 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           {t('total')} {formatAmount(total, currency, locale)}
         </div>
       </div>
+
+      <Modal
+        open={showItemForm}
+        onClose={() => setShowItemForm(false)}
+        title={t('newItem')}
+        size="sm"
+      >
+        <CatalogForm onDone={handleItemCreated} />
+      </Modal>
 
       <div className="flex items-center gap-3">
         <Button

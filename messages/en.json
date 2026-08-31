@@ -475,7 +475,9 @@
     "filterPaid": "Paid in full",
     "filterCredit": "Credit",
     "filterSearch": "Search client...",
-    "noResults": "No sales found with these filters"
+    "noResults": "No sales found with these filters",
+    "newClient": "New client",
+    "newItem": "New item"
   },
   "Clients": {
     "title": "Clients",

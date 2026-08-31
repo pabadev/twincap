@@ -6,6 +6,7 @@ import {
   deleteCatalogItem,
 } from '../../../../core/application/catalog';
 import type { CatalogItemType } from '../../../../core/domain/catalog';
+import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
 import type { Currency } from '../../../../core/domain/currency';
 import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
 import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
@@ -17,10 +18,17 @@ import { handleActionError } from '../../../../lib/handle-action-error';
 
 const ids = objectIdGenerator;
 
+export type CatalogItemActionResult = {
+  error?: string;
+  success?: string;
+  /** Snapshot of the created/updated item — lets flows like the sale form auto-select it. */
+  item?: SerializedCatalogItem;
+};
+
 export async function createCatalogItemAction(
-  _prev: { error?: string; success?: string } | null,
+  _prev: CatalogItemActionResult | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<CatalogItemActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: 'Unauthorized' };
 
@@ -34,7 +42,7 @@ export async function createCatalogItemAction(
   try {
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
-    await createCatalogItem(
+    const item = await createCatalogItem(
       user.userId,
       { name, unitPrice, currency, type, stock },
       catalogRepo,
@@ -42,17 +50,16 @@ export async function createCatalogItemAction(
     );
     revalidatePath('/pos/catalog');
     revalidatePath('/pos/sales');
+    return { success: 'catalogItemCreated', item: item.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
-
-  return { success: 'catalogItemCreated' };
 }
 
 export async function updateCatalogItemAction(
-  _prev: { error?: string; success?: string } | null,
+  _prev: CatalogItemActionResult | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<CatalogItemActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: 'Unauthorized' };
 
@@ -66,7 +73,7 @@ export async function updateCatalogItemAction(
   try {
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
-    await updateCatalogItem(
+    const item = await updateCatalogItem(
       user.userId,
       itemId,
       { name, unitPrice, currency, stock },
@@ -74,11 +81,10 @@ export async function updateCatalogItemAction(
     );
     revalidatePath('/pos/catalog');
     revalidatePath('/pos/sales');
+    return { success: 'catalogItemUpdated', item: item.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
-
-  return { success: 'catalogItemUpdated' };
 }
 
 export async function deleteCatalogItemAction(

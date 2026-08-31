@@ -4,11 +4,17 @@ import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createClientAction } from './actions';
+import type { SerializedClient } from '../../../core/domain/client';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
 
-export function ClientForm({ onSuccess }: { onSuccess?: () => void }) {
+export function ClientForm({
+  onSuccess,
+}: {
+  /** Called after a successful create with the created client snapshot (when available). */
+  onSuccess?: (client?: SerializedClient) => void;
+}) {
   const [state, formAction, isPending] = useActionState(
     createClientAction,
     null,
@@ -22,7 +28,7 @@ export function ClientForm({ onSuccess }: { onSuccess?: () => void }) {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
       router.refresh();
-      onSuccess?.();
+      onSuccess?.(state.client);
     }
   }, [state?.success, addToast, tToast, router, onSuccess]);
 

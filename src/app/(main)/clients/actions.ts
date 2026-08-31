@@ -6,6 +6,7 @@ import {
   updateClient,
   deleteClient,
 } from '../../../core/application/clients';
+import type { SerializedClient } from '../../../core/domain/client';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
@@ -22,10 +23,17 @@ const clientSchema = z.object({
   note: z.string().optional(),
 });
 
+export type CreateClientActionResult = {
+  error?: string;
+  success?: string;
+  /** Snapshot of the created client — lets flows like the sale form auto-select it. */
+  client?: SerializedClient;
+};
+
 export async function createClientAction(
-  _prev: { error?: string; success?: string } | null,
+  _prev: CreateClientActionResult | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<CreateClientActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: 'Unauthorized' };
 
@@ -43,14 +51,13 @@ export async function createClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    await createClient(user.userId, parsed.data, clientRepo, ids);
+    const client = await createClient(user.userId, parsed.data, clientRepo, ids);
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
+    return { success: 'clientCreated', client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
-
-  return { success: 'clientCreated' };
 }
 
 export async function updateClientAction(

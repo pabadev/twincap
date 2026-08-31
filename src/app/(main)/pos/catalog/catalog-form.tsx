@@ -16,7 +16,8 @@ import { useToast } from '../../../../lib/hooks/use-toast';
 
 interface CatalogFormProps {
   item?: SerializedCatalogItem;
-  onDone?: () => void;
+  /** Called after a successful save; a create passes the created item snapshot (when available). */
+  onDone?: (item?: SerializedCatalogItem) => void;
 }
 
 export function CatalogForm({ item, onDone }: CatalogFormProps) {
@@ -41,7 +42,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
       successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
-      onDone?.();
+      onDone?.(state.item);
     }
   }, [state?.success, addToast, tToast, router, onDone]);
 
@@ -153,7 +154,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             type="button"
             variant="secondary"
             disabled={isPending}
-            onClick={onDone}
+            onClick={() => onDone()}
           >
             {tCommon('cancel')}
           </Button>

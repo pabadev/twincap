@@ -475,7 +475,9 @@
     "filterPaid": "Pago total",
     "filterCredit": "Crédito",
     "filterSearch": "Buscar cliente...",
-    "noResults": "No se encontraron ventas con estos filtros"
+    "noResults": "No se encontraron ventas con estos filtros",
+    "newClient": "Nuevo cliente",
+    "newItem": "Nuevo artículo"
   },
   "Clients": {
     "title": "Clientes",
