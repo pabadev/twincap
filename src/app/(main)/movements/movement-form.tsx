@@ -7,6 +7,7 @@ import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from '../../../core/domain/movement
 import type { MovementType } from '../../../core/domain/movement';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createMovementAction } from './actions';
+import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import type { SerializedCategory } from '../../../core/domain/category';
 import type { SerializedAccount } from '../../../core/domain/account';
 import { Input } from '../../../components/ui/input';
@@ -75,6 +76,7 @@ export function MovementForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <FieldGroup title={t('groupSelection')}>
         <Select

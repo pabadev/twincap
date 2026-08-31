@@ -564,7 +564,8 @@
     "fixedAccountDelete": "Fixed accounts cannot be deleted",
     "futureDate": "The date cannot be in the future",
     "systemMovementDelete": "System-linked movements cannot be deleted directly",
-    "insufficientFunds": "Insufficient funds in the source account"
+    "insufficientFunds": "Insufficient funds in the source account",
+    "duplicateRequest": "Duplicate request. The operation was already recorded."
   },
   "Metadata": {
     "description": "Personal and small business finance management"

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
 import { addSaleAbonoAction } from './actions';
+import { IdempotencyField } from '../../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../../core/domain/account';
 import { DEFAULT_CURRENCY } from '../../../../core/domain/currency';
 import type { Currency } from '../../../../core/domain/currency';
@@ -56,6 +57,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
       }}
       className="space-y-4"
     >
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="saleId" value={saleId} />
       <input type="hidden" name="currency" value={currency} />

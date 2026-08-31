@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { CURRENCIES } from '../../../core/domain/currency';
 import { createAccountAction } from './actions';
+import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
@@ -36,6 +37,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <form action={formAction} className="space-y-4">
+      <IdempotencyField />
       <Input
         id="name"
         name="name"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
 import { ConfirmDialog } from '../../../../components/ui/confirm-dialog';
@@ -18,6 +18,8 @@ export function WriteOffButton({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Fresh key per mount so rapid double-confirms on the same credit dedup server-side.
+  const idempotencyKey = useRef(crypto.randomUUID());
   const t = useT('CreditsGranted');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
@@ -29,6 +31,7 @@ export function WriteOffButton({
     try {
       const formData = new FormData();
       formData.append('creditId', creditId);
+      formData.append('idempotencyKey', idempotencyKey.current);
       const result = await writeOffCreditAction(null, formData);
       if (result?.success) {
         addToast(tToast(result.success), 'success');

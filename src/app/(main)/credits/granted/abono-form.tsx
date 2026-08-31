@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { addAbonoAction } from './actions';
+import { IdempotencyField } from '../../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../../core/domain/account';
 import { formatAmount } from '../../../../lib/format';
 import { Input } from '../../../../components/ui/input';
@@ -51,6 +52,7 @@ export function AbonoForm({
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-zinc-800">
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="creditId" value={creditId} />
       <input type="hidden" name="currency" value={currency} />

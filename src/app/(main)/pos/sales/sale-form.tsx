@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { createSaleAction } from './actions';
+import { IdempotencyField } from '../../../../components/ui/idempotency-field';
 import { ClientForm } from '../../clients/client-form';
 import { CatalogForm } from '../catalog/catalog-form';
 import type { SerializedCatalogItem } from '../../../../core/domain/catalog';
@@ -145,6 +146,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         }}
         className="space-y-4"
       >
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">

@@ -4,6 +4,7 @@ import { useState, useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { setInitialBalanceAction } from './actions';
+import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -51,6 +52,7 @@ export function InitialBalanceButton({ accountId }: { accountId: string }) {
         title={t('setInitialBalance')}
       >
         <form action={formAction} className="space-y-4">
+          <IdempotencyField />
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {t('setInitialBalanceDescription')}
           </p>

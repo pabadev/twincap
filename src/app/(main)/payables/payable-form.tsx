@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createPayableAction } from './actions';
+import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../core/domain/account';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../../../core/domain/currency';
 import type { Currency } from '../../../core/domain/currency';
@@ -42,6 +43,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
 
   return (
     <form action={formAction} className="space-y-4">
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <Input
         id="counterparty"

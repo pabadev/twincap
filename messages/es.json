@@ -564,7 +564,8 @@
     "fixedAccountDelete": "Las cuentas fijas no pueden eliminarse",
     "futureDate": "La fecha no puede ser futura",
     "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente",
-    "insufficientFunds": "Fondos insuficientes en la cuenta de origen"
+    "insufficientFunds": "Fondos insuficientes en la cuenta de origen",
+    "duplicateRequest": "Solicitud duplicada. La operación ya fue registrada."
   },
   "Metadata": {
     "description": "Gestión de finanzas personales y pequeños negocios"

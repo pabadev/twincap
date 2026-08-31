@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createTransferAction, updateTransferAction } from './actions';
+import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../core/domain/account';
 import type { SerializedTransfer } from '../../../core/domain/transfer';
 import { Input } from '../../../components/ui/input';
@@ -67,6 +68,7 @@ export function TransferForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {isEdit && <input type="hidden" name="transferId" value={transfer.id} />}
       <Select
