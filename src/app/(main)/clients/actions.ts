@@ -23,17 +23,17 @@ const clientSchema = z.object({
   note: z.string().optional(),
 });
 
-export type CreateClientActionResult = {
+export type ClientActionResult = {
   error?: string;
   success?: string;
-  /** Snapshot of the created client — lets flows like the sale form auto-select it. */
+  /** Snapshot of the created/updated client — lets flows like the sale form auto-select it. */
   client?: SerializedClient;
 };
 
 export async function createClientAction(
-  _prev: CreateClientActionResult | null,
+  _prev: ClientActionResult | null,
   formData: FormData,
-): Promise<CreateClientActionResult> {
+): Promise<ClientActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: 'Unauthorized' };
 
@@ -61,9 +61,9 @@ export async function createClientAction(
 }
 
 export async function updateClientAction(
-  _prev: { error?: string; success?: string } | null,
+  _prev: ClientActionResult | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<ClientActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: 'Unauthorized' };
 
@@ -84,14 +84,13 @@ export async function updateClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    await updateClient(user.userId, clientId, parsed.data, clientRepo);
+    const client = await updateClient(user.userId, clientId, parsed.data, clientRepo);
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
+    return { success: 'clientUpdated', client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
-
-  return { success: 'clientUpdated' };
 }
 
 export async function deleteClientAction(

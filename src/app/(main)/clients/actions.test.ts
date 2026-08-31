@@ -17,7 +17,7 @@ vi.mock('../../../infrastructure/repositories/client-repository', () => ({
   MongoClientRepository,
 }));
 
-const { createClientAction } = await import('./actions');
+const { createClientAction, updateClientAction } = await import('./actions');
 
 function clientFormData(name = 'Ana Gómez'): FormData {
   const fd = new FormData();
@@ -26,6 +26,32 @@ function clientFormData(name = 'Ana Gómez'): FormData {
   fd.append('email', '');
   fd.append('note', '');
   return fd;
+}
+
+/** Plain client-shaped object with a toJSON snapshot (what the repo returns). */
+function clientEntity(overrides: Record<string, string> = {}) {
+  const entity: Record<string, unknown> = {
+    id: 'cl-1',
+    userId: 'user-1',
+    name: 'Ana Gómez',
+    phone: '',
+    email: '',
+    note: '',
+    createdAt: new Date('2026-08-01'),
+    ...overrides,
+    toJSON() {
+      return {
+        id: entity.id,
+        userId: entity.userId,
+        name: entity.name,
+        phone: entity.phone,
+        email: entity.email,
+        note: entity.note,
+        createdAt: entity.createdAt,
+      };
+    },
+  };
+  return entity;
 }
 
 describe('createClientAction', () => {
@@ -54,6 +80,43 @@ describe('createClientAction', () => {
     getCurrentUser.mockResolvedValue(null);
 
     const result = await createClientAction(null, clientFormData());
+
+    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoClientRepository).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateClientAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    MongoClientRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(clientEntity()),
+      update: vi.fn().mockImplementation(async (client: unknown) => client),
+    }));
+  });
+
+  it('returns the updated serialized client snapshot', async () => {
+    const fd = clientFormData('Carlos Ruiz');
+    fd.append('clientId', 'cl-1');
+
+    const result = await updateClientAction(null, fd);
+
+    expect(result.success).toBe('clientUpdated');
+    expect(result.client).toBeTruthy();
+    expect(result.client?.id).toBe('cl-1');
+    expect(result.client?.name).toBe('Carlos Ruiz');
+    expect(revalidatePath).toHaveBeenCalledWith('/clients');
+    expect(revalidatePath).toHaveBeenCalledWith('/pos/sales');
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    const result = await updateClientAction(null, clientFormData());
 
     expect(result).toEqual({ error: 'Unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();

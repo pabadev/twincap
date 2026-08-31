@@ -3,8 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useT } from '../../../i18n/client';
 import { DeleteClientButton } from './delete-client-button';
+import { ClientForm } from './client-form';
 import { Icon } from '../../../components/ui/icon';
-import { Search } from 'lucide-react';
+import { Modal } from '../../../components/ui/modal';
+import { ActionIconButton } from '../../../components/ui/action-icon-button';
+import { Search, Pencil } from 'lucide-react';
 
 export interface SerializedClient {
   id: string;
@@ -17,6 +20,7 @@ export interface SerializedClient {
 export function ClientsList({ clients }: { clients: SerializedClient[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [editingClient, setEditingClient] = useState<SerializedClient | null>(null);
   const t = useT('Clients');
   const tCommon = useT('Common');
 
@@ -40,6 +44,19 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
 
   return (
     <>
+      <Modal
+        open={!!editingClient}
+        onClose={() => setEditingClient(null)}
+        title={t('editTitle')}
+      >
+        {editingClient && (
+          <ClientForm
+            client={editingClient}
+            onSuccess={() => setEditingClient(null)}
+          />
+        )}
+      </Modal>
+
       {clients.length > 0 && (
         <div className="mb-4">
           <div className="relative">
@@ -102,7 +119,15 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                   {client.email || '—'}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <DeleteClientButton clientId={client.id} />
+                  <div className="flex items-center justify-end gap-1">
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={tCommon('edit')}
+                      tone="primary"
+                      onClick={() => setEditingClient(client)}
+                    />
+                    <DeleteClientButton clientId={client.id} />
+                  </div>
                 </td>
               </tr>
             ))}

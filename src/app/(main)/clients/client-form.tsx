@@ -3,24 +3,40 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
-import { createClientAction } from './actions';
+import { createClientAction, updateClientAction } from './actions';
 import type { SerializedClient } from '../../../core/domain/client';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
+
+/** Editable subset of a client — enough to prefill and submit the edit form. */
+export interface ClientFormData {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  note: string;
+}
 
 export function ClientForm({
+  client,
   onSuccess,
 }: {
-  /** Called after a successful create with the created client snapshot (when available). */
+  /** Present → edit mode (prefills fields and calls updateClientAction). */
+  client?: ClientFormData;
+  /** Called after a successful save with the created/updated client snapshot (when available). */
   onSuccess?: (client?: SerializedClient) => void;
 }) {
+  const isEdit = !!client;
   const [state, formAction, isPending] = useActionState(
-    createClientAction,
+    isEdit ? updateClientAction : createClientAction,
     null,
   );
   const t = useT('Clients');
+  const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
 
@@ -34,18 +50,21 @@ export function ClientForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-4">
+      {isEdit && <input type="hidden" name="clientId" value={client.id} />}
+
       <Input
         id="name"
         name="name"
         type="text"
         label={t('name')}
         required
+        defaultValue={client?.name}
         disabled={isPending}
       />
 
@@ -54,6 +73,7 @@ export function ClientForm({
         name="phone"
         type="tel"
         label={t('phone')}
+        defaultValue={client?.phone}
         disabled={isPending}
       />
 
@@ -62,6 +82,7 @@ export function ClientForm({
         name="email"
         type="email"
         label={t('email')}
+        defaultValue={client?.email}
         disabled={isPending}
       />
 
@@ -70,18 +91,37 @@ export function ClientForm({
         name="note"
         type="text"
         label={t('note')}
+        defaultValue={client?.note}
         disabled={isPending}
       />
 
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        disabled={isPending}
-        loading={isPending}
-      >
-        {isPending ? t('adding') : t('newClient')}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button
+          type="submit"
+          variant="primary"
+          className="flex-1"
+          disabled={isPending}
+          loading={isPending}
+        >
+          {isPending
+            ? isEdit
+              ? t('updating')
+              : t('adding')
+            : isEdit
+              ? t('updateClient')
+              : t('newClient')}
+        </Button>
+        {isEdit && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isPending}
+            onClick={() => onSuccess?.()}
+          >
+            {tCommon('cancel')}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
