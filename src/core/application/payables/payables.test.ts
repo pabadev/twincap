@@ -931,6 +931,31 @@ describe('deletePayable', () => {
     expect(payableRepo.deleted).toContain('pay-1');
   });
 
+  it('is tolerant of an already-deleted linked movement (R5-B) and still deletes the payable', async () => {
+    const payable = makePayable({ initialPayment: 20000 }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-already-gone' },
+    ]);
+    const initialMov = makeMovement({
+      id: 'mov-initial',
+      type: 'expense',
+      link: { kind: 'payableInitialPayment', refId: 'pay-1', opId: 'op-1' },
+    });
+
+    const payableRepo = fakePayableRepo({
+      findByUserId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([initialMov]),
+      // Simulate that one linked movement was already deleted (prior cleanup).
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    await expect(
+      deletePayable('user-1', 'pay-1', payableRepo, movementRepo),
+    ).resolves.toBeUndefined();
+    expect(payableRepo.deleted).toContain('pay-1');
+  });
+
   it('throws NotFoundError when payable does not exist', async () => {
     const payableRepo = fakePayableRepo({
       findByUserId: vi.fn().mockResolvedValue([]),

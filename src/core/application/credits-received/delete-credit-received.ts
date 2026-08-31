@@ -20,8 +20,16 @@ export async function deleteCreditReceived(
   const movements = await movementRepo.findByUserId(userId);
   const linkedMovements = movements.filter(m => m.link?.refId === creditId);
 
+  // Movement deletion is tolerant (R5-B pattern): an already-missing movement
+  // (prior cleanup) must not block the credit deletion. Deleting movements
+  // first then the record keeps a failure from orphaning the credit.
   for (const m of linkedMovements) {
-    await movementRepo.delete(userId, m.id);
+    try {
+      await movementRepo.delete(userId, m.id);
+    } catch (err) {
+      if (err instanceof NotFoundError) continue;
+      throw err;
+    }
   }
 
   await creditRepo.delete(userId, creditId);

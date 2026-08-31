@@ -21,12 +21,16 @@ export async function deletePayable(
   const movements = await movementRepo.findByUserId(userId);
   const linkedMovements = movements.filter(m => m.link?.refId === payableId);
 
-  // Atomicity note: movement deletions + record deletion are separate writes
-  // inside this single use-case invocation. Full transactionality would
-  // require the repository ports to accept a Mongoose ClientSession — an
-  // infrastructure change deliberately out of scope here.
+  // Movement deletion is tolerant (R5-B pattern): an already-missing movement
+  // (prior cleanup) must not block the payable deletion. Deleting movements
+  // first then the record keeps a failure from orphaning the payable.
   for (const m of linkedMovements) {
-    await movementRepo.delete(userId, m.id);
+    try {
+      await movementRepo.delete(userId, m.id);
+    } catch (err) {
+      if (err instanceof NotFoundError) continue;
+      throw err;
+    }
   }
 
   await payableRepo.delete(userId, payableId);

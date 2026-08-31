@@ -778,4 +778,29 @@ describe('deleteCreditReceived', () => {
       deleteCreditReceived('user-1', 'missing', creditRepo, movementRepo),
     ).rejects.toThrow(NotFoundError);
   });
+
+  it('is tolerant of an already-deleted linked movement (R5-B) and still deletes the credit', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-already-gone' },
+    ]);
+    const principalMov = makeMovement({
+      id: 'mov-principal',
+      type: 'income',
+      link: { kind: 'creditReceivedPrincipal', refId: 'cr-1', opId: 'op-1' },
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByUserId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByUserId: vi.fn().mockResolvedValue([principalMov]),
+      // Simulate that one linked movement was already deleted (prior cleanup).
+      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+    });
+
+    await expect(
+      deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo),
+    ).resolves.toBeUndefined();
+    expect(creditRepo.deleted).toContain('cr-1');
+  });
 });

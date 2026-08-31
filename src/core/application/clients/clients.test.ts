@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Client } from "../../domain/client";
 import type { ClientRepository } from "../../domain/repositories";
 import type { IdGenerator } from "../ports";
-import { ConflictError } from "../../domain/errors";
+import { ConflictError, NotFoundError } from "../../domain/errors";
 import { createClient } from "./create-client";
 import { listClients } from "./list-clients";
 import { updateClient } from "./update-client";
@@ -120,7 +120,7 @@ describe("updateClient", () => {
     const repo = makeRepo();
     await expect(
       updateClient("u1", "c1", { name: "X" }, repo),
-    ).rejects.toThrow("Client not found");
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("trims updated fields", async () => {

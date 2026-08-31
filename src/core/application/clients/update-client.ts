@@ -1,4 +1,5 @@
 import { Client } from "../../domain/client";
+import { NotFoundError } from "../../domain/errors";
 import type { ClientRepository } from "../../domain/repositories";
 
 export interface UpdateClientInput {
@@ -15,7 +16,7 @@ export async function updateClient(
   clientRepo: ClientRepository,
 ): Promise<Client> {
   const client = await clientRepo.findById(userId, clientId);
-  if (!client) throw new Error("Client not found");
+  if (!client) throw new NotFoundError("Client not found");
 
   if (input.name !== undefined) client.name = input.name.trim();
   if (input.phone !== undefined) client.phone = input.phone.trim();
