@@ -131,16 +131,20 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const submitBlocked = isPending || needsClient || initialPaymentInvalid;
 
   return (
-    <form
-      action={formAction}
-      onSubmit={(e) => {
-        if (isPending) {
-          e.preventDefault();
-          return;
-        }
-      }}
-      className="space-y-4"
-    >
+    <div>
+      {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
+          another <form>, and browsers would bind the inner controls to the outer
+          form, so the create buttons would never submit (no-op). */}
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          if (isPending) {
+            e.preventDefault();
+            return;
+          }
+        }}
+        className="space-y-4"
+      >
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
@@ -214,15 +218,6 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           </p>
         )}
       </div>
-
-      <Modal
-        open={showClientForm}
-        onClose={() => setShowClientForm(false)}
-        title={t('newClient')}
-        size="sm"
-      >
-        <ClientForm onSuccess={handleClientCreated} />
-      </Modal>
 
       {isOnCredit && (
         <div>
@@ -348,15 +343,6 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
         </div>
       </div>
 
-      <Modal
-        open={showItemForm}
-        onClose={() => setShowItemForm(false)}
-        title={t('newItem')}
-        size="sm"
-      >
-        <CatalogForm onDone={handleItemCreated} />
-      </Modal>
-
       <div className="flex items-center gap-3">
         <Button
           type="submit"
@@ -377,6 +363,25 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           </Button>
         )}
       </div>
-    </form>
+      </form>
+
+      <Modal
+        open={showClientForm}
+        onClose={() => setShowClientForm(false)}
+        title={t('newClient')}
+        size="sm"
+      >
+        <ClientForm onSuccess={handleClientCreated} />
+      </Modal>
+
+      <Modal
+        open={showItemForm}
+        onClose={() => setShowItemForm(false)}
+        title={t('newItem')}
+        size="sm"
+      >
+        <CatalogForm onDone={handleItemCreated} />
+      </Modal>
+    </div>
   );
 }
