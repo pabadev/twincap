@@ -12,7 +12,8 @@ import { Icon } from '../../../components/ui/icon';
 import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
-import { ArrowRightLeft } from 'lucide-react';
+import { ActionIconButton } from '../../../components/ui/action-icon-button';
+import { ArrowRightLeft, Pencil } from 'lucide-react';
 
 function accountName(accounts: SerializedAccount[], id: string): string {
   const acc = accounts.find((a) => a.id === id);
@@ -27,6 +28,7 @@ export function TransfersList({
   transfers: SerializedTransfer[];
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingTransfer, setEditingTransfer] = useState<SerializedTransfer | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const t = useT('Transfers');
@@ -57,6 +59,20 @@ export function TransfersList({
         title={t('newTransfer')}
       >
         <TransferForm accounts={accounts} onSuccess={() => setShowForm(false)} />
+      </Modal>
+
+      <Modal
+        open={!!editingTransfer}
+        onClose={() => setEditingTransfer(null)}
+        title={t('editTitle')}
+      >
+        {editingTransfer && (
+          <TransferForm
+            accounts={accounts}
+            transfer={editingTransfer}
+            onSuccess={() => setEditingTransfer(null)}
+          />
+        )}
       </Modal>
 
       {transfers.length === 0 ? (
@@ -147,7 +163,15 @@ export function TransfersList({
                     {transfer.note || '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <DeleteTransferButton transferId={transfer.id} />
+                    <div className="flex items-center justify-end gap-1">
+                      <ActionIconButton
+                        icon={Pencil}
+                        label={tCommon('edit')}
+                        tone="primary"
+                        onClick={() => setEditingTransfer(transfer)}
+                      />
+                      <DeleteTransferButton transferId={transfer.id} />
+                    </div>
                   </td>
                 </tr>
               ))}
