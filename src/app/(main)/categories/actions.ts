@@ -2,6 +2,7 @@
 
 import {
   createCategory,
+  updateCategory,
   deleteCategory,
 } from '../../../core/application/categories';
 import type { CreateCategoryInput } from '../../../core/application/categories';
@@ -41,6 +42,29 @@ export async function createCategoryAction(
   }
 
   return { success: 'categoryCreated' };
+}
+
+export async function updateCategoryAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const categoryId = formData.get('categoryId') as string;
+  const name = formData.get('name') as string;
+
+  try {
+    await connectDb();
+    const categoryRepo = new MongoCategoryRepository();
+    await updateCategory(user.userId, { categoryId, name }, categoryRepo);
+    revalidatePath('/categories');
+    revalidatePath('/movements');
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: 'categoryUpdated' };
 }
 
 export async function deleteCategoryAction(

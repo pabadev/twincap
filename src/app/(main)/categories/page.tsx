@@ -6,6 +6,7 @@ import { MongoCategoryRepository } from '../../../infrastructure/repositories/ca
 import { connectDb } from '../../../infrastructure/db/connection';
 import { CategoriesPageClient } from './categories-page-client';
 import { DeleteCategoryButton } from './delete-category-button';
+import { RenameCategoryButton } from './rename-category-button';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { BackButton } from '../../../components/ui/back-button';
@@ -104,7 +105,13 @@ function CategorySection({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <DeleteCategoryButton categoryId={category.id} />
+                  <div className="flex items-center justify-end gap-1">
+                    <RenameCategoryButton
+                      categoryId={category.id}
+                      categoryName={category.name}
+                    />
+                    <DeleteCategoryButton categoryId={category.id} />
+                  </div>
                 </td>
               </tr>
             ))}
