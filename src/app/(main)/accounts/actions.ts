@@ -15,6 +15,8 @@ import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/au
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
+import { withAudit } from '../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -33,15 +35,32 @@ export async function createAccountAction(
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createAccount');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const accountRepo = new MongoAccountRepository();
-    const movementRepo = new MongoMovementRepository();
-    await createAccount(
-      user.userId,
-      { name, currency, initialBalance },
-      accountRepo,
-      movementRepo,
-      ids,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createAccount',
+        entityType: 'account',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createAccount', entityType: 'account', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const accountRepo = new MongoAccountRepository();
+        const movementRepo = new MongoMovementRepository();
+        return createAccount(
+          user.userId,
+          { name, currency, initialBalance },
+          accountRepo,
+          movementRepo,
+          ids,
+        );
+      },
     );
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
@@ -90,9 +109,16 @@ export async function deleteAccountAction(
 
   try {
     await connectDb();
-    const accountRepo = new MongoAccountRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteAccount(user.userId, accountId, accountRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteAccount', entityType: 'account', userId: user.userId },
+      () => {
+        const accountRepo = new MongoAccountRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteAccount(user.userId, accountId, accountRepo, movementRepo);
+      },
+    );
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
@@ -118,15 +144,32 @@ export async function setInitialBalanceAction(
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const accountRepo = new MongoAccountRepository();
-    const movementRepo = new MongoMovementRepository();
-    await setInitialAccountBalance(
-      user.userId,
-      { accountId, amount },
-      accountRepo,
-      movementRepo,
-      ids,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'setInitialBalance',
+        entityType: 'account',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'setInitialBalance', entityType: 'account', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const accountRepo = new MongoAccountRepository();
+        const movementRepo = new MongoMovementRepository();
+        return setInitialAccountBalance(
+          user.userId,
+          { accountId, amount },
+          accountRepo,
+          movementRepo,
+          ids,
+        );
+      },
     );
     revalidatePath('/accounts');
     revalidatePath('/dashboard');

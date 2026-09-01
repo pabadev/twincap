@@ -19,6 +19,8 @@ import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../lib/revalidate';
+import { withAudit } from '../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -45,17 +47,34 @@ export async function createPayableAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createPayable');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const payableRepo = new MongoPayableRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await createPayable(
-      user.userId,
-      { counterparty, total, initialPayment, currency, accountId, date, dueDate, note },
-      payableRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createPayable',
+        entityType: 'payable',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createPayable', entityType: 'payable', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return createPayable(
+          user.userId,
+          { counterparty, total, initialPayment, currency, accountId, date, dueDate, note },
+          payableRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidateMovementData('/payables');
   } catch (error) {
@@ -85,18 +104,35 @@ export async function addAbonoAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const payableRepo = new MongoPayableRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await addAbono(
-      user.userId,
-      payableId,
-      { amount, currency, accountId, date },
-      payableRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'addAbono',
+        entityType: 'payable',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'addAbono', entityType: 'payable', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return addAbono(
+          user.userId,
+          payableId,
+          { amount, currency, accountId, date },
+          payableRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidateMovementData('/payables');
   } catch (error) {
@@ -123,15 +159,22 @@ export async function editAbonoAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const payableRepo = new MongoPayableRepository();
-    const movementRepo = new MongoMovementRepository();
-    await editAbono(
-      user.userId,
-      payableId,
-      abonoId,
-      { amount, date },
-      payableRepo,
-      movementRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'editAbono', entityType: 'payable', userId: user.userId },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        const movementRepo = new MongoMovementRepository();
+        return editAbono(
+          user.userId,
+          payableId,
+          abonoId,
+          { amount, date },
+          payableRepo,
+          movementRepo,
+        );
+      },
     );
     revalidateMovementData('/payables');
   } catch (error) {
@@ -154,12 +197,19 @@ export async function editPayableAction(
 
   try {
     await connectDb();
-    const payableRepo = new MongoPayableRepository();
-    await editTotal(
-      user.userId,
-      payableId,
-      { total, currency },
-      payableRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'editPayable', entityType: 'payable', userId: user.userId },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        return editTotal(
+          user.userId,
+          payableId,
+          { total, currency },
+          payableRepo,
+        );
+      },
     );
     revalidateMovementData('/payables');
   } catch (error) {
@@ -181,9 +231,16 @@ export async function deleteAbonoAction(
 
   try {
     await connectDb();
-    const payableRepo = new MongoPayableRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteAbono(user.userId, payableId, abonoId, payableRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteAbono', entityType: 'payable', userId: user.userId },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteAbono(user.userId, payableId, abonoId, payableRepo, movementRepo);
+      },
+    );
     revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);
@@ -203,9 +260,16 @@ export async function deletePayableAction(
 
   try {
     await connectDb();
-    const payableRepo = new MongoPayableRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deletePayable(user.userId, payableId, payableRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deletePayable', entityType: 'payable', userId: user.userId },
+      () => {
+        const payableRepo = new MongoPayableRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deletePayable(user.userId, payableId, payableRepo, movementRepo);
+      },
+    );
     revalidateMovementData('/payables');
   } catch (error) {
     return handleActionError(error);

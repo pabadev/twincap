@@ -45,3 +45,27 @@ export interface Clock {
 export interface IdGenerator {
   generate(): string;
 }
+
+/**
+ * Audit log — durable, structured record of critical financial operations.
+ *
+ * Infrastructure-level out port (NOT a domain entity, per R12 C2). Records the
+ * minimal metadata about an operation: who, what, on which entity, outcome,
+ * correlation and timing. Deliberately excludes PII (no emails, names, tokens,
+ * payloads, entity snapshots or stack traces).
+ */
+export interface OperationLogRecord {
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  result: 'success' | 'error' | 'duplicate';
+  correlationId?: string;
+  durationMs?: number;
+  errorCode?: string;
+  occurredAt: Date;
+}
+
+export interface OperationLogger {
+  log(record: OperationLogRecord): Promise<void>;
+}

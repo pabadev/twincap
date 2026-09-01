@@ -16,6 +16,7 @@ import {
   loginRateLimiter,
   registerRateLimiter,
 } from '../../infrastructure/auth/rate-limiter';
+import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -59,6 +60,14 @@ export async function registerAction(
       ids,
     );
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
+    // Audit the successful registration (no actor exists before this point).
+    await new MongoOperationLogger().log({
+      userId,
+      action: 'register',
+      entityType: 'auth',
+      result: 'success',
+      occurredAt: new Date(),
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: error instanceof Error ? error.message : 'Registration failed' };
@@ -94,6 +103,14 @@ export async function loginAction(
     // Reset rate limit on successful login
     await loginRateLimiter.reset(rateLimitKey);
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
+    // Audit the successful login (no actor is known before this point).
+    await new MongoOperationLogger().log({
+      userId,
+      action: 'login',
+      entityType: 'auth',
+      result: 'success',
+      occurredAt: new Date(),
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: error instanceof Error ? error.message : 'Login failed' };

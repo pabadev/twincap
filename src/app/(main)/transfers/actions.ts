@@ -16,6 +16,8 @@ import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
+import { withAudit } from '../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -54,17 +56,34 @@ export async function createTransferAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createTransfer');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const transferRepo = new MongoTransferRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await createTransfer(
-      user.userId,
-      input,
-      transferRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createTransfer',
+        entityType: 'transfer',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createTransfer', entityType: 'transfer', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const transferRepo = new MongoTransferRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return createTransfer(
+          user.userId,
+          input,
+          transferRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidatePath('/transfers');
     revalidatePath('/accounts');
@@ -104,14 +123,21 @@ export async function updateTransferAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const transferRepo = new MongoTransferRepository();
-    const movementRepo = new MongoMovementRepository();
-    await updateTransfer(
-      user.userId,
-      transferId,
-      input,
-      transferRepo,
-      movementRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'updateTransfer', entityType: 'transfer', userId: user.userId },
+      () => {
+        const transferRepo = new MongoTransferRepository();
+        const movementRepo = new MongoMovementRepository();
+        return updateTransfer(
+          user.userId,
+          transferId,
+          input,
+          transferRepo,
+          movementRepo,
+        );
+      },
     );
     revalidatePath('/transfers');
     revalidatePath('/accounts');
@@ -135,9 +161,16 @@ export async function deleteTransferAction(
 
   try {
     await connectDb();
-    const transferRepo = new MongoTransferRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteTransfer(user.userId, transferId, transferRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteTransfer', entityType: 'transfer', userId: user.userId },
+      () => {
+        const transferRepo = new MongoTransferRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteTransfer(user.userId, transferId, transferRepo, movementRepo);
+      },
+    );
     revalidatePath('/transfers');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');

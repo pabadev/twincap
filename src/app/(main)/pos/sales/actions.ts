@@ -23,6 +23,8 @@ import { objectIdGenerator } from '../../../../infrastructure/config/id-generato
 import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
+import { withAudit } from '../../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -64,23 +66,40 @@ export async function createSaleAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createSale');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const catalogRepo = new MongoCatalogItemRepository();
-    const saleRepo = new MongoSaleRepository();
-    const movementRepo = new MongoMovementRepository();
-    const clientRepo = new MongoClientRepository();
-    const creditRepo = new MongoCreditGrantedRepository();
-    const accountRepo = new MongoAccountRepository();
-    await createSale(
-      user.userId,
-      { items, accountId, clientId, date, paymentMode, currency, initialPayment },
-      saleRepo,
-      catalogRepo,
-      movementRepo,
-      ids,
-      clientRepo,
-      creditRepo,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createSale',
+        entityType: 'sale',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createSale', entityType: 'sale', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const catalogRepo = new MongoCatalogItemRepository();
+        const saleRepo = new MongoSaleRepository();
+        const movementRepo = new MongoMovementRepository();
+        const clientRepo = new MongoClientRepository();
+        const creditRepo = new MongoCreditGrantedRepository();
+        const accountRepo = new MongoAccountRepository();
+        return createSale(
+          user.userId,
+          { items, accountId, clientId, date, paymentMode, currency, initialPayment },
+          saleRepo,
+          catalogRepo,
+          movementRepo,
+          ids,
+          clientRepo,
+          creditRepo,
+          accountRepo,
+        );
+      },
     );
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
@@ -115,18 +134,35 @@ export async function addSaleAbonoAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const saleRepo = new MongoSaleRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await addSaleAbono(
-      user.userId,
-      saleId,
-      { amount, currency, accountId, date },
-      saleRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'addSaleAbono',
+        entityType: 'sale',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'addSaleAbono', entityType: 'sale', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const saleRepo = new MongoSaleRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return addSaleAbono(
+          user.userId,
+          saleId,
+          { amount, currency, accountId, date },
+          saleRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidatePath('/pos/sales');
     revalidatePath('/accounts');
@@ -152,9 +188,16 @@ export async function deleteSaleAbonoAction(
 
   try {
     await connectDb();
-    const saleRepo = new MongoSaleRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteSaleAbono', entityType: 'sale', userId: user.userId },
+      () => {
+        const saleRepo = new MongoSaleRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
+      },
+    );
     revalidatePath('/pos/sales');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
@@ -177,11 +220,18 @@ export async function deleteSaleAction(
 
   try {
     await connectDb();
-    const catalogRepo = new MongoCatalogItemRepository();
-    const saleRepo = new MongoSaleRepository();
-    const movementRepo = new MongoMovementRepository();
-    const creditRepo = new MongoCreditGrantedRepository();
-    await deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteSale', entityType: 'sale', userId: user.userId },
+      () => {
+        const catalogRepo = new MongoCatalogItemRepository();
+        const saleRepo = new MongoSaleRepository();
+        const movementRepo = new MongoMovementRepository();
+        const creditRepo = new MongoCreditGrantedRepository();
+        return deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
+      },
+    );
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
     revalidatePath('/credits/granted');

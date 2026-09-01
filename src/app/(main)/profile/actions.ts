@@ -6,6 +6,8 @@ import { MongoUserRepository } from '../../../infrastructure/repositories/user-r
 import { bcryptPasswordHasher } from '../../../infrastructure/auth/password';
 import { User } from '../../../core/domain/user';
 import { passwordChangeRateLimiter } from '../../../infrastructure/auth/rate-limiter';
+import { withAudit } from '../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 
 export async function updateProfileAction(
   _prev: { error?: string; success?: string } | null,
@@ -78,19 +80,25 @@ export async function changePasswordAction(
       return { error: 'wrongPassword' };
     }
 
-    const newHash = await bcryptPasswordHasher.hash(newPassword);
-    const updated = new User({
-      id: existing.id,
-      email: existing.email,
-      passwordHash: newHash,
-      createdAt: existing.createdAt,
-      name: existing.name,
-      locale: existing.locale,
-    });
-
-    await userRepo.update(updated);
-    // Reset rate limit on successful password change
-    await passwordChangeRateLimiter.reset(rateLimitKey);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'changePassword', entityType: 'auth', userId: authUser.userId },
+      async () => {
+        const newHash = await bcryptPasswordHasher.hash(newPassword);
+        const updated = new User({
+          id: existing.id,
+          email: existing.email,
+          passwordHash: newHash,
+          createdAt: existing.createdAt,
+          name: existing.name,
+          locale: existing.locale,
+        });
+        await userRepo.update(updated);
+        // Reset rate limit on successful password change
+        await passwordChangeRateLimiter.reset(rateLimitKey);
+      },
+    );
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     return { error: 'error.operationFailed' };

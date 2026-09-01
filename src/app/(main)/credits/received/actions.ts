@@ -20,6 +20,8 @@ import { objectIdGenerator } from '../../../../infrastructure/config/id-generato
 import { assertBusinessDateNotFuture } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../../lib/revalidate';
+import { withAudit } from '../../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -46,17 +48,34 @@ export async function createCreditReceivedAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createCreditReceived');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await createCreditReceived(
-      user.userId,
-      { counterparty, principal, currency, accountId, date, installments, installmentValue, frequency },
-      creditRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createCreditReceived',
+        entityType: 'creditReceived',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createCreditReceived', entityType: 'creditReceived', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return createCreditReceived(
+          user.userId,
+          { counterparty, principal, currency, accountId, date, installments, installmentValue, frequency },
+          creditRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidateMovementData('/credits/received');
   } catch (error) {
@@ -86,18 +105,35 @@ export async function addAbonoAction(
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await addAbono(
-      user.userId,
-      creditId,
-      { amount, currency, accountId, date },
-      creditRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'addAbono',
+        entityType: 'creditReceived',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'addAbono', entityType: 'creditReceived', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return addAbono(
+          user.userId,
+          creditId,
+          { amount, currency, accountId, date },
+          creditRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidateMovementData('/credits/received');
   } catch (error) {
@@ -124,15 +160,22 @@ export async function editAbonoAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    await editAbono(
-      user.userId,
-      creditId,
-      abonoId,
-      { amount, date },
-      creditRepo,
-      movementRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'editAbono', entityType: 'creditReceived', userId: user.userId },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        return editAbono(
+          user.userId,
+          creditId,
+          abonoId,
+          { amount, date },
+          creditRepo,
+          movementRepo,
+        );
+      },
     );
     revalidateMovementData('/credits/received');
   } catch (error) {
@@ -155,14 +198,21 @@ export async function editCreditReceivedAction(
 
   try {
     await connectDb();
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    await editPrincipal(
-      user.userId,
-      creditId,
-      { principal, currency },
-      creditRepo,
-      movementRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'editCreditReceived', entityType: 'creditReceived', userId: user.userId },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        return editPrincipal(
+          user.userId,
+          creditId,
+          { principal, currency },
+          creditRepo,
+          movementRepo,
+        );
+      },
     );
     revalidateMovementData('/credits/received');
   } catch (error) {
@@ -184,9 +234,16 @@ export async function deleteAbonoAction(
 
   try {
     await connectDb();
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteAbono(user.userId, creditId, abonoId, creditRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteAbono', entityType: 'creditReceived', userId: user.userId },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteAbono(user.userId, creditId, abonoId, creditRepo, movementRepo);
+      },
+    );
     revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
@@ -206,9 +263,16 @@ export async function deleteCreditAction(
 
   try {
     await connectDb();
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    await deleteCreditReceived(user.userId, creditId, creditRepo, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteCreditReceived', entityType: 'creditReceived', userId: user.userId },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        return deleteCreditReceived(user.userId, creditId, creditRepo, movementRepo);
+      },
+    );
     revalidateMovementData('/credits/received');
   } catch (error) {
     return handleActionError(error);
@@ -230,11 +294,28 @@ export async function markAsPaidAction(
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'markAsPaid');
-    if (!claimed) return { error: 'error.duplicateRequest' };
-    const creditRepo = new MongoCreditReceivedRepository();
-    const movementRepo = new MongoMovementRepository();
-    const accountRepo = new MongoAccountRepository();
-    await markAsPaid(user.userId, creditId, creditRepo, movementRepo, ids, accountRepo);
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'markAsPaid',
+        entityType: 'creditReceived',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'markAsPaid', entityType: 'creditReceived', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const creditRepo = new MongoCreditReceivedRepository();
+        const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
+        return markAsPaid(user.userId, creditId, creditRepo, movementRepo, ids, accountRepo);
+      },
+    );
     revalidateMovementData('/credits/received');
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'markAsPaid');

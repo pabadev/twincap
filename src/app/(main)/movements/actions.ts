@@ -24,6 +24,8 @@ import { revalidatePath } from 'next/cache';
 import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
+import { withAudit } from '../../../lib/with-audit';
+import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 
 const ids = objectIdGenerator;
 
@@ -55,18 +57,35 @@ export async function createMovementAction(
 
     // Idempotency: claim the client key before creating
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createMovement');
-    if (!claimed) return { error: 'error.duplicateRequest' };
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: 'createMovement',
+        entityType: 'movement',
+        result: 'duplicate',
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: 'error.duplicateRequest' };
+    }
 
-    const movementRepo = new MongoMovementRepository();
-    const categoryRepo = new MongoCategoryRepository();
-    const accountRepo = new MongoAccountRepository();
-    await createMovement(
-      user.userId,
-      { accountId, type, amount, currency, date, note, categoryId, context },
-      movementRepo,
-      categoryRepo,
-      ids,
-      accountRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'createMovement', entityType: 'movement', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      () => {
+        const movementRepo = new MongoMovementRepository();
+        const categoryRepo = new MongoCategoryRepository();
+        const accountRepo = new MongoAccountRepository();
+        return createMovement(
+          user.userId,
+          { accountId, type, amount, currency, date, note, categoryId, context },
+          movementRepo,
+          categoryRepo,
+          ids,
+          accountRepo,
+        );
+      },
     );
     revalidatePath('/movements');
     revalidatePath('/accounts');
@@ -110,8 +129,15 @@ export async function deleteMovementAction(
 
   try {
     await connectDb();
-    const movementRepo = new MongoMovementRepository();
-    await deleteMovement(user.userId, movementId, movementRepo);
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'deleteMovement', entityType: 'movement', userId: user.userId },
+      () => {
+        const movementRepo = new MongoMovementRepository();
+        return deleteMovement(user.userId, movementId, movementRepo);
+      },
+    );
     revalidatePath('/movements');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
@@ -145,13 +171,20 @@ export async function updateMovementAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const movementRepo = new MongoMovementRepository();
-    const categoryRepo = new MongoCategoryRepository();
-    await updateMovement(
-      user.userId,
-      { movementId, amount, accountId, categoryId, date, note, context },
-      movementRepo,
-      categoryRepo,
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'updateMovement', entityType: 'movement', userId: user.userId },
+      () => {
+        const movementRepo = new MongoMovementRepository();
+        const categoryRepo = new MongoCategoryRepository();
+        return updateMovement(
+          user.userId,
+          { movementId, amount, accountId, categoryId, date, note, context },
+          movementRepo,
+          categoryRepo,
+        );
+      },
     );
     revalidatePath('/movements');
     revalidatePath('/accounts');
