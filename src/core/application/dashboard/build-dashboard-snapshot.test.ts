@@ -7,9 +7,57 @@ import type { Currency } from '../../domain/currency';
 import type { SerializedCategory } from '../../domain/category';
 import type { DashboardFilters } from '../../../components/dashboard/dashboard-filters';
 
-const SEED_DATE = new Date('2026-01-01');
-/** Fixed "today" inside the test window: August 2026 (current month). */
-const NOW = new Date('2026-08-20T12:00:00Z');
+const SEED_DATE = new Date('2020-01-01');
+/** Reference instant = the real clock. `buildDashboardSnapshot` computes
+ *  "current month"/"current year" from `new Date()` internally (it does not
+ *  accept an injected `now`), so fixtures and expectations must be derived
+ *  from the live clock instead of a hardcoded date, or the suite goes stale
+ *  when the month/year rolls over. */
+const NOW = new Date();
+const utcMonthKey = (d: Date): string =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+const nowKey = utcMonthKey(NOW);
+const nowYear = NOW.getUTCFullYear();
+const nowMonth = NOW.getUTCMonth(); // 0-indexed
+
+/** A calendar date in the current UTC year at the given 0-indexed month. */
+function inYear(monthIndex: number, day = 10): Date {
+  return new Date(Date.UTC(nowYear, monthIndex, day, 12));
+}
+/** A calendar date in the current UTC month. */
+function inCurrentMonth(day = 10): Date {
+  return new Date(Date.UTC(nowYear, nowMonth, day, 12));
+}
+/** A calendar date in the immediately preceding UTC month. */
+function inLastMonth(day = 15): Date {
+  return new Date(Date.UTC(nowYear, nowMonth - 1, day, 12));
+}
+/** A calendar date in the previous UTC year (December). */
+function inLastYear(day = 25): Date {
+  return new Date(Date.UTC(nowYear - 1, 11, day, 12));
+}
+/** A month (0-indexed) of the current year that is guaranteed not to be the
+ *  current month, so a "current month" assertion can never be affected by the
+ *  real rollover. Prefer March when available; else a month several away. */
+function otherMonthIndex(): number {
+  const candidate = [2, 3, 4, 5, 6, 7, 8, 9, 10].find((m) => m !== nowMonth) ?? 0;
+  return candidate;
+}
+/** The 6-month UTC window ending at the current month, oldest first. */
+function lastSixMonths(): string[] {
+  const keys: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(nowYear, nowMonth - i, 1));
+    keys.push(utcMonthKey(d));
+  }
+  return keys;
+}
+/** The 12 UTC months of the current year, oldest first. */
+function currentYearMonths(): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < 12; i++) keys.push(utcMonthKey(new Date(Date.UTC(nowYear, i, 1))));
+  return keys;
+}
 
 let seq = 0;
 
@@ -40,7 +88,7 @@ function movement(input: {
     category: category(input.type, input.categoryId),
     type: input.type,
     amount: new Money(input.amount, input.currency ?? 'COP'),
-    date: input.date ?? new Date('2026-08-10'),
+    date: input.date ?? inCurrentMonth(),
     context: input.context ?? 'Personal',
     createdAt: SEED_DATE,
     link: input.linkKind
@@ -129,13 +177,13 @@ describe('buildDashboardSnapshot', () => {
     const currentYear = movement({
       type: 'income',
       amount: 1_000_000,
-      date: new Date('2026-03-10'),
+      date: inYear(otherMonthIndex()),
       categoryId: 'cat-income',
     });
     const lastYear = movement({
       type: 'income',
       amount: 900_000,
-      date: new Date('2025-12-25'),
+      date: inLastYear(),
       categoryId: 'cat-income',
     });
 
@@ -156,7 +204,7 @@ describe('buildDashboardSnapshot', () => {
     const lastMonth = movement({
       type: 'income',
       amount: 700_000,
-      date: new Date('2026-07-15'),
+      date: inLastMonth(),
       categoryId: 'cat-income',
     });
 
@@ -238,34 +286,25 @@ describe('buildDashboardSnapshot', () => {
   });
 
   it('monthlyData: 6-month window padded, oldest first, current month last', () => {
-    const july = movement({ type: 'income', amount: 100_000, date: new Date('2026-07-05'), categoryId: 'cat-income' });
+    const july = movement({ type: 'income', amount: 100_000, date: inLastMonth(), categoryId: 'cat-income' });
     const snapshot = buildDashboardSnapshot(
       buildInput([july], { ...allFilters, period: 'this_year' }),
     );
 
-    expect(snapshot.monthlyData.map((b) => b.month)).toEqual([
-      '2026-03',
-      '2026-04',
-      '2026-05',
-      '2026-06',
-      '2026-07',
-      '2026-08',
-    ]);
-    expect(snapshot.monthlyData[4]).toEqual({ month: '2026-07', income: 100_000, expenses: 0 });
+    expect(snapshot.monthlyData.map((b) => b.month)).toEqual(lastSixMonths());
+    // The last-month bucket sits at index 4 in a 6-month window ending at the current month.
+    expect(snapshot.monthlyData[4]).toEqual({ month: utcMonthKey(inLastMonth()), income: 100_000, expenses: 0 });
   });
 
   it('yearlyData: 12-month window for the current year', () => {
-    const jan = movement({ type: 'income', amount: 50_000, date: new Date('2026-01-10'), categoryId: 'cat-income' });
+    const jan = movement({ type: 'income', amount: 50_000, date: inYear(0), categoryId: 'cat-income' });
     const snapshot = buildDashboardSnapshot(
       buildInput([jan], { ...allFilters, period: 'this_year' }),
     );
 
     expect(snapshot.yearlyData).toHaveLength(12);
-    expect(snapshot.yearlyData[0]).toEqual({ month: '2026-01', income: 50_000, expenses: 0 });
-    expect(snapshot.yearlyData.map((b) => b.month)).toEqual([
-      '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06',
-      '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12',
-    ]);
+    expect(snapshot.yearlyData[0]).toEqual({ month: utcMonthKey(inYear(0)), income: 50_000, expenses: 0 });
+    expect(snapshot.yearlyData.map((b) => b.month)).toEqual(currentYearMonths());
   });
 
   it('recentMovements: top 5 with resolved categoryName and ISO date', () => {
@@ -274,7 +313,7 @@ describe('buildDashboardSnapshot', () => {
         type: i % 2 === 0 ? 'income' : 'expense',
         amount: (i + 1) * 100_000,
         categoryId: i % 2 === 0 ? 'cat-income' : 'cat-food',
-        date: new Date(2026, 7, i + 1),
+        date: inCurrentMonth(i + 1),
       }),
     );
 
@@ -283,7 +322,7 @@ describe('buildDashboardSnapshot', () => {
     expect(snapshot.recentMovements).toHaveLength(5);
     expect(snapshot.recentMovements[0].id).toBe(movements[0].id);
     expect(snapshot.recentMovements[0].categoryName).toBe('Salario');
-    expect(snapshot.recentMovements[0].date).toBe(new Date(2026, 7, 1).toISOString());
+    expect(snapshot.recentMovements[0].date).toBe(inCurrentMonth(1).toISOString());
     expect(typeof snapshot.recentMovements[0].date).toBe('string');
   });
 
