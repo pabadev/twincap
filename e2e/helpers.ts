@@ -117,12 +117,110 @@ export async function waitForSnapshotValue(
 }
 
 /**
- * Slice 1 placeholder — overridden in Slice 4 with a real UI-driven financial
- * seed for the dashboard aggregation specs.
+ * Slice 4: REAL financial seeding for the dashboard aggregation specs.
+ * Creates manual income/expense movements through the /movements UI with
+ * deterministic amounts and traceable notes. Amounts are COP minor units
+ * ("100000" = COP 100,000). Movements land on the seeded "Efectivo" (COP)
+ * account and default to today's date so the dashboard "this month" window
+ * is deterministic.
+ */
+export interface FinancialSeed {
+  /** Income movement dated today (lands in the current-month window). */
+  monthlyIncome?: string;
+  /** Expense movement dated today (lands in the current-month window). */
+  monthlyExpense?: string;
+  /** Income movement dated on an explicit civil date (e.g. this year but outside the current month). */
+  datedIncome?: { amount: string; date: string };
+  /** Prefix for movement notes, e.g. 'slice4' → 'slice4-income'. */
+  notePrefix?: string;
+}
+
+/** Local calendar date as YYYY-MM-DD (same convention as the movement form default). */
+function todayInputValue(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/**
+ * Open the "New Movement" dialog and submit one manual movement.
+ * The dialog remounts on every open, so each call gets a fresh form mount
+ * and a fresh idempotency key (idempotency is mount-scoped).
+ */
+async function createManualMovementInUI(
+  page: Page,
+  {
+    type,
+    category,
+    amount,
+    date,
+    note,
+  }: {
+    type: 'income' | 'expense';
+    category: string;
+    amount: string;
+    date: string;
+    note: string;
+  },
+): Promise<void> {
+  await page.goto('/movements');
+  await page.getByRole('button', { name: 'Add Movement' }).click();
+  const dialog = page.getByRole('dialog', { name: /New Movement/i });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByLabel('Account').selectOption({ label: 'Efectivo (COP)' });
+  await dialog
+    .getByLabel('Type')
+    .selectOption({ label: type === 'income' ? 'Income' : 'Expense' });
+  await dialog.getByLabel('Category').selectOption({ label: category });
+  await dialog.getByLabel('Amount').fill(amount);
+  await dialog.getByLabel('Note').fill(note);
+  // Anchored so "Date" never substring-matches a sibling field label.
+  await dialog.getByLabel(/^Date/).fill(date);
+  // Dialog-scoped: the page header also has an "Add Movement" button.
+  await dialog.getByRole('button', { name: 'Add Movement' }).click();
+
+  await expect(dialog).toBeHidden();
+}
+
+/**
+ * Seed known-balance financial data through the real UI: manual income and/or
+ * expense movements on "Efectivo" (COP). Used by the dashboard aggregates and
+ * filter re-fetch specs; notes carry `notePrefix` so lists stay traceable.
  */
 export async function seedFinancialData(
-  _page: Page,
-  _seed: { locale?: string } = {},
+  page: Page,
+  seed: FinancialSeed = {},
 ): Promise<void> {
-  // Placeholder: Slice 4 implements real account/movement seeding.
+  const prefix = seed.notePrefix ?? 'seed';
+  const today = todayInputValue();
+
+  if (seed.monthlyIncome) {
+    await createManualMovementInUI(page, {
+      type: 'income',
+      category: 'Salario',
+      amount: seed.monthlyIncome,
+      date: today,
+      note: `${prefix}-income`,
+    });
+  }
+  if (seed.monthlyExpense) {
+    await createManualMovementInUI(page, {
+      type: 'expense',
+      category: 'Comida',
+      amount: seed.monthlyExpense,
+      date: today,
+      note: `${prefix}-expense`,
+    });
+  }
+  if (seed.datedIncome) {
+    await createManualMovementInUI(page, {
+      type: 'income',
+      category: 'Salario',
+      amount: seed.datedIncome.amount,
+      date: seed.datedIncome.date,
+      note: `${prefix}-income-${seed.datedIncome.date}`,
+    });
+  }
 }
