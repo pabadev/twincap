@@ -96,8 +96,8 @@ src/
 ### Clone and install
 
 ```bash
-git clone <repo-url> globalmoney
-cd globalmoney
+git clone <repo-url> twincap
+cd twincap
 pnpm install
 ```
 
@@ -113,7 +113,7 @@ Edit `.env.local`:
 
 ```bash
 # MongoDB connection string (Atlas shared tier)
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/globalmoney
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/twincap
 
 # Session encryption secret (jose JWE A256GCM) — must be at least 32 bytes
 # Generate one with: openssl rand -base64 32
@@ -163,7 +163,7 @@ pnpm test:watch    # watch mode
 ## Project Structure
 
 ```
-globalmoney/
+twincap/
 ├── src/                          # Application source
 │   ├── core/                     # Domain + Application (framework-free)
 │   ├── infrastructure/           # Mongoose, auth, config adapters

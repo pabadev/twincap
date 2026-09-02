@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const VALID_URI = "mongodb://localhost:27017/globalmoney";
+const VALID_URI = "mongodb://localhost:27017/twincap";
 // 32 random bytes → base64url (43 chars)
 const VALID_SECRET = Buffer.alloc(32, 0x42).toString("base64url");
 

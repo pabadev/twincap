@@ -47,7 +47,7 @@ Do NOT create a `middleware.ts` file. Request-level locale/DB interception goes 
 
 ---
 
-<!-- BEGIN:globalmoney-project-rules -->
+<!-- BEGIN:twincap-project-rules -->
 
 # TwinCap — Reglas Permanentes del Proyecto
 
@@ -193,4 +193,4 @@ El workflow completo de auditoría, planificación e implementación por fases e
 
 **⚠️ OBLIGATORIO:** Después de una compactación o al iniciar nueva sesión, lo PRIMERO es leer `docs/AUDIT-AND-PLAN.md` para identificar la fase actual y continuar desde ahí. El archivo contiene el estado completo del proyecto, las fases de la ronda vigente y el protocolo de continuación.
 
-<!-- END:globalmoney-project-rules -->
+<!-- END:twincap-project-rules -->

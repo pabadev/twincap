@@ -7,12 +7,12 @@ const CONNECTION_OPTIONS = {
   bufferCommands: false,
   serverSelectionTimeoutMS: 5000,
   maxPoolSize: 10,
-  appName: "globalmoney",
+  appName: "twincap",
 } as const;
 
 type MongooseGlobal = typeof globalThis & {
   /** Singleton cache — survives HMR so dev never opens a second connection. */
-  __globalmoneyMongoose?: typeof mongoose;
+  __twincapMongoose?: typeof mongoose;
 };
 
 const mongooseGlobal: MongooseGlobal = globalThis as MongooseGlobal;
@@ -25,20 +25,20 @@ const mongooseGlobal: MongooseGlobal = globalThis as MongooseGlobal;
 export async function connectDb(): Promise<typeof mongoose> {
   // If we have a cached instance AND the connection is still alive, return it.
   if (
-    mongooseGlobal.__globalmoneyMongoose &&
+    mongooseGlobal.__twincapMongoose &&
     mongoose.connection.readyState === 1
   ) {
-    return mongooseGlobal.__globalmoneyMongoose;
+    return mongooseGlobal.__twincapMongoose;
   }
 
   // Stale cache (HMR preserved the global but the TCP connection dropped).
-  mongooseGlobal.__globalmoneyMongoose = undefined;
+  mongooseGlobal.__twincapMongoose = undefined;
 
   if (mongoose.connection.readyState !== 1) {
     await mongoose.connect(env.MONGODB_URI, CONNECTION_OPTIONS);
   }
 
-  mongooseGlobal.__globalmoneyMongoose = mongoose;
+  mongooseGlobal.__twincapMongoose = mongoose;
   return mongoose;
 }
 
@@ -47,8 +47,8 @@ export function isDbConnected(): boolean {
 }
 
 export async function disconnectDb(): Promise<void> {
-  if (mongooseGlobal.__globalmoneyMongoose) {
+  if (mongooseGlobal.__twincapMongoose) {
     await mongoose.disconnect();
-    mongooseGlobal.__globalmoneyMongoose = undefined;
+    mongooseGlobal.__twincapMongoose = undefined;
   }
 }
