@@ -7,7 +7,6 @@ import { Money } from "../domain/money";
 import type { Currency } from "../domain/currency";
 
 const SEED_DATE = new Date("2026-01-01");
-const NOW = new Date("2026-08-20T12:00:00Z");
 
 function category(type: MovementType, id?: string): Category {
   return new Category({

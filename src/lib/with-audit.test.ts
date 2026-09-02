@@ -78,7 +78,6 @@ describe('withAudit', () => {
       await withAudit(logger, opts, async () => {
         throw new Error('x');
       });
-      // eslint-disable-next-line no-empty
     } catch {
       /* expected */
     }

@@ -25,6 +25,21 @@ type SortDirection = 'asc' | 'desc';
 
 const PAGE_SIZE = 50;
 
+function SortIcon({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: SortDirection;
+}) {
+  if (!active) return null;
+  return dir === 'asc' ? (
+    <Icon icon={ChevronUp} size="sm" className="ml-0.5 inline" />
+  ) : (
+    <Icon icon={ChevronDown} size="sm" className="ml-0.5 inline" />
+  );
+}
+
 export function MovementsList({
   initialMovements,
   nextCursor: initialCursor,
@@ -100,13 +115,6 @@ export function MovementsList({
       return field;
     });
   }, []);
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
-    return sortDir === 'asc'
-      ? <Icon icon={ChevronUp} size="sm" className="ml-0.5 inline" />
-      : <Icon icon={ChevronDown} size="sm" className="ml-0.5 inline" />;
-  };
 
   const handleLoadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -276,17 +284,17 @@ export function MovementsList({
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       <button type="button" onClick={() => toggleSort('date')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {tCommon('date')} <SortIcon field="date" />
+                        {tCommon('date')} <SortIcon active={sortField === 'date'} dir={sortDir} />
                       </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       <button type="button" onClick={() => toggleSort('amount')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {tCommon('amount')} <SortIcon field="amount" />
+                        {tCommon('amount')} <SortIcon active={sortField === 'amount'} dir={sortDir} />
                       </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                       <button type="button" onClick={() => toggleSort('category')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {t('category')} <SortIcon field="category" />
+                        {t('category')} <SortIcon active={sortField === 'category'} dir={sortDir} />
                       </button>
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">

@@ -31,6 +31,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem('twincap-theme') as ThemeMode | null;
     const initial = stored || 'system';
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación del tema desde localStorage tras el primer paint; lazy initializer rompería la hidratación SSR (hydration mismatch).
     setMode(initial);
     const resolved = resolveTheme(initial);
     setThemeState(resolved);

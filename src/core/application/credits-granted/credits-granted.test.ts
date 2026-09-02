@@ -17,7 +17,7 @@ import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money, MoneyError } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
+import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreditAbono } from '../../domain/credit-granted';

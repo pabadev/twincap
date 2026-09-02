@@ -30,8 +30,6 @@ const NAV_ITEMS = [
   { href: '/pos/sales', key: 'posSales', icon: ShoppingCart, color: 'text-income' },
 ] as const;
 
-type NavItem = (typeof NAV_ITEMS)[number];
-
 export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
   const [open, setOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);

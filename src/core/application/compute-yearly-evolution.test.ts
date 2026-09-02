@@ -3,6 +3,7 @@ import { computeYearlyEvolution } from './compute-yearly-evolution';
 import { Movement } from '../domain/movement';
 import { Category } from '../domain/category';
 import { Money } from '../domain/money';
+import type { Currency } from '../domain/currency';
 import type { MovementLinkKind, MovementType } from '../domain/movement';
 
 const SEED_DATE = new Date('2026-01-01');
@@ -32,7 +33,7 @@ function movement(input: {
     accountId: 'acc-1',
     category: category(input.type),
     type: input.type,
-    amount: new Money(input.amount, (input.currency ?? 'COP') as any),
+    amount: new Money(input.amount, (input.currency ?? 'COP') as Currency),
     date: input.date,
     createdAt: SEED_DATE,
     link: input.linkKind

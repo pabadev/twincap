@@ -11,6 +11,7 @@ vi.mock('../models/rate-limit', () => ({
 }));
 
 import { RateLimitModel } from '../models/rate-limit';
+import type { RateLimitDocument } from '../models/rate-limit';
 
 describe('MongoRateLimiter', () => {
   let rateLimiter: MongoRateLimiter;
@@ -26,7 +27,7 @@ describe('MongoRateLimiter', () => {
   describe('check', () => {
     it('allows first attempt and creates new entry', async () => {
       vi.mocked(RateLimitModel.findOne).mockResolvedValue(null);
-      vi.mocked(RateLimitModel.create).mockResolvedValue({} as any);
+      vi.mocked(RateLimitModel.create).mockResolvedValue([] as RateLimitDocument[]);
 
       const result = await rateLimiter.check('test:key');
 
@@ -48,7 +49,7 @@ describe('MongoRateLimiter', () => {
         expiresAt: new Date(),
         save: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(RateLimitModel.findOne).mockResolvedValue(existingEntry as any);
+      vi.mocked(RateLimitModel.findOne).mockResolvedValue(existingEntry as RateLimitDocument);
 
       const result = await rateLimiter.check('test:key');
 
@@ -65,7 +66,7 @@ describe('MongoRateLimiter', () => {
         expiresAt: new Date(),
         save: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(RateLimitModel.findOne).mockResolvedValue(existingEntry as any);
+      vi.mocked(RateLimitModel.findOne).mockResolvedValue(existingEntry as RateLimitDocument);
 
       const result = await rateLimiter.check('test:key');
 
@@ -75,7 +76,7 @@ describe('MongoRateLimiter', () => {
 
     it('resets window when no existing entry found', async () => {
       vi.mocked(RateLimitModel.findOne).mockResolvedValue(null);
-      vi.mocked(RateLimitModel.create).mockResolvedValue({} as any);
+      vi.mocked(RateLimitModel.create).mockResolvedValue([] as RateLimitDocument[]);
 
       const result = await rateLimiter.check('new:key');
 
@@ -87,7 +88,7 @@ describe('MongoRateLimiter', () => {
 
   describe('reset', () => {
     it('deletes all entries for a key', async () => {
-      vi.mocked(RateLimitModel.deleteMany).mockResolvedValue({ deletedCount: 2 } as any);
+      vi.mocked(RateLimitModel.deleteMany).mockResolvedValue({ acknowledged: true, deletedCount: 2 });
 
       await rateLimiter.reset('test:key');
 

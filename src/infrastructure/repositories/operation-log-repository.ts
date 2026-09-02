@@ -22,7 +22,6 @@ import { isDbConnected } from '../db/connection';
 export class MongoOperationLogger implements OperationLogger {
   async log(record: OperationLogRecord): Promise<void> {
     if (!isDbConnected()) {
-      // eslint-disable-next-line no-console
       console.error(
         JSON.stringify({
           level: 'error',
@@ -41,7 +40,6 @@ export class MongoOperationLogger implements OperationLogger {
     } catch (err: unknown) {
       // Best-effort: never propagate — the financial operation must flow.
       const message = err instanceof Error ? err.message : String(err);
-      // eslint-disable-next-line no-console
       console.error(
         JSON.stringify({
           level: 'error',

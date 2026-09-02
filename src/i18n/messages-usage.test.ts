@@ -22,12 +22,6 @@ interface TBinding {
   namespace: string;
 }
 
-interface KeyReference {
-  file: string;
-  namespace: string;
-  key: string;
-}
-
 function listSourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {

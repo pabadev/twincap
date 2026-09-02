@@ -44,7 +44,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
       router.refresh();
       onDone?.(state.item);
     }
-  }, [state?.success, addToast, tToast, router, onDone]);
+  }, [state?.success, state?.item, addToast, tToast, router, onDone]);
 
   useEffect(() => {
     if (state?.error) {

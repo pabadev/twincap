@@ -12,15 +12,7 @@ import { registerUser, logout, seedFinancialData, waitForSnapshotValue } from '.
  * cards) — never full movement lists. Amounts render via `formatAmount`
  * ("COP 10,000" with a non-breaking space), asserted with whitespace-agnostic
  * regexes.
- */
-
-/** Local calendar date as YYYY-MM-DD. */
-function todayInputValue(): string {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-}
+  */
 
 /**
  * A civil date that is inside the current year but OUTSIDE the current month

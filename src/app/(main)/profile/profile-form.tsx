@@ -41,7 +41,7 @@ const LOCALE_OPTIONS = [
 export function ProfileForm({ name, email, locale, translations: t }: ProfileFormProps) {
   const { addToast } = useToast();
 
-  const [profileState, profileAction, profilePending] = useActionState(
+  const [, profileAction, profilePending] = useActionState(
     async (_prev: { error?: string; success?: string } | null, formData: FormData) => {
       const result = await updateProfileAction(_prev, formData);
       if (result.success) addToast(t.profileSaved, 'success');
@@ -51,7 +51,7 @@ export function ProfileForm({ name, email, locale, translations: t }: ProfileFor
     null,
   );
 
-  const [passwordState, passwordAction, passwordPending] = useActionState(
+  const [, passwordAction, passwordPending] = useActionState(
     async (_prev: { error?: string; success?: string } | null, formData: FormData) => {
       const result = await changePasswordAction(_prev, formData);
       if (result.success) addToast(t.passwordChanged, 'success');

@@ -12,6 +12,7 @@ vi.mock('../db/connection', () => ({
 
 import { MongoOperationLogger } from './operation-log-repository';
 import { OperationLogModel } from '../models/operation-log';
+import type { OperationLogDocument } from '../models/operation-log';
 import { isDbConnected } from '../db/connection';
 
 function baseRecord(overrides: Partial<OperationLogRecord> = {}): OperationLogRecord {
@@ -38,7 +39,7 @@ describe('MongoOperationLogger', () => {
   describe('log (success)', () => {
     it('persists the document via OperationLogModel.create', async () => {
       const record = baseRecord({ durationMs: 12, correlationId: 'key-1', entityId: 'mov-1' });
-      vi.mocked(OperationLogModel.create).mockResolvedValue({} as any);
+      vi.mocked(OperationLogModel.create).mockResolvedValue([] as OperationLogDocument[]);
 
       await logger.log(record);
 
@@ -116,7 +117,7 @@ describe('MongoOperationLogger', () => {
         result: 'success',
         occurredAt: new Date(),
       };
-      vi.mocked(OperationLogModel.create).mockResolvedValue({} as any);
+      vi.mocked(OperationLogModel.create).mockResolvedValue([] as OperationLogDocument[]);
 
       await logger.log(record);
 

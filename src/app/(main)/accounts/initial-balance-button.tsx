@@ -25,6 +25,7 @@ export function InitialBalanceButton({ accountId }: { accountId: string }) {
     if (state?.success) {
       addToast(tToast(state.success), 'success');
       router.refresh();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar. Refactorizar derivaría el estado en render y no es aplicable aquí.
       setShowForm(false);
     }
   }, [state?.success, addToast, tToast, router]);

@@ -11,7 +11,6 @@ import { writeOffCreditAction } from './actions';
 /** Write off an uncollectible granted credit: records the expense for the unrecovered principal (R9/F). */
 export function WriteOffButton({
   creditId,
-  counterparty,
 }: {
   creditId: string;
   counterparty: string;

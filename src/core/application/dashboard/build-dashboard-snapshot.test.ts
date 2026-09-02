@@ -16,7 +16,6 @@ const SEED_DATE = new Date('2020-01-01');
 const NOW = new Date();
 const utcMonthKey = (d: Date): string =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-const nowKey = utcMonthKey(NOW);
 const nowYear = NOW.getUTCFullYear();
 const nowMonth = NOW.getUTCMonth(); // 0-indexed
 

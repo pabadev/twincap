@@ -351,7 +351,7 @@ describe('setInitialAccountBalance', () => {
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
-    const movement = await setInitialAccountBalance(
+    await setInitialAccountBalance(
       'user-1',
       { accountId: 'acc-1', amount: 50000 },
       accountRepo,

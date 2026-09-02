@@ -5,9 +5,9 @@ import { describe, it, expect, vi } from 'vitest';
 const { modelCalls } = vi.hoisted(() => ({ modelCalls: [] as { name: string }[] }));
 vi.mock('mongoose', () => {
   class FakeSchema {
-    obj: Record<string, any>;
-    options: Record<string, any>;
-    constructor(fields: Record<string, any> = {}, options: Record<string, any> = {}) {
+    obj: Record<string, unknown>;
+    options: Record<string, unknown>;
+    constructor(fields: Record<string, unknown> = {}, options: Record<string, unknown> = {}) {
       this.obj = fields;
       this.options = options;
     }
@@ -16,7 +16,7 @@ vi.mock('mongoose', () => {
       /* noop */
     }
   }
-  const models: Record<string, any> = {};
+  const models: Record<string, unknown> = {};
   const register = (name: string, schema: unknown) => {
     modelCalls.push({ name });
     models[name] = { name, schema };
@@ -35,13 +35,13 @@ import { OperationLogModel, OperationLogSchema } from './operation-log';
 
 describe('OperationLog mongoose model', () => {
   it('registers the model under the name "OperationLog"', () => {
-    expect((mongoose as any).models.OperationLog).toBeDefined();
+    expect((mongoose as { models: Record<string, unknown> }).models.OperationLog).toBeDefined();
     expect(modelCalls).toEqual([{ name: 'OperationLog' }]);
     expect(OperationLogModel.name).toBe('OperationLog');
   });
 
   it('defines the minimal, PII-free fields with correct types and constraints', () => {
-    const schemaFields = OperationLogSchema.obj as Record<string, any>;
+    const schemaFields = OperationLogSchema.obj as Record<string, Record<string, unknown>>;
 
     expect(schemaFields.userId).toMatchObject({ type: String, required: true });
     expect(schemaFields.action).toMatchObject({ type: String, required: true });
@@ -67,7 +67,7 @@ describe('OperationLog mongoose model', () => {
   });
 
   it('restricts `result` to the success/error/duplicate enum', () => {
-    const resultField = (OperationLogSchema.obj as Record<string, any>).result;
+    const resultField = (OperationLogSchema.obj as Record<string, Record<string, unknown>>).result;
     expect(resultField.enum).toEqual(['success', 'error', 'duplicate']);
   });
 

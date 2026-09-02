@@ -10,11 +10,9 @@ import { MongoCreditGrantedRepository } from '../../../infrastructure/repositori
 import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
-import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { MovementsList } from './movements-list';
 import { serializeEntities } from '@/lib/serialize';
-import type { SerializedMovement } from '../../../core/domain/movement';
 
 const PAGE_SIZE = 50;
 

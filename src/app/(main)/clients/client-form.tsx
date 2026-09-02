@@ -46,7 +46,7 @@ export function ClientForm({
       router.refresh();
       onSuccess?.(state.client);
     }
-  }, [state?.success, addToast, tToast, router, onSuccess]);
+  }, [state?.success, state?.client, addToast, tToast, router, onSuccess]);
 
   useEffect(() => {
     if (state?.error) {

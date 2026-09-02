@@ -29,7 +29,7 @@ export default async function globalSetup() {
   }
 
   // Make the instance reachable from the teardown.
-  (globalThis as any).__MONGOINSTANCE = mongod;
+  (globalThis as { __MONGOINSTANCE?: unknown }).__MONGOINSTANCE = mongod;
 
   // Drop the database so each run starts clean (also resets `ratelimits`).
   const conn = await mongoose.createConnection(uri).asPromise();

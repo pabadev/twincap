@@ -11,7 +11,6 @@ import {
   type LegacyTransferSnapshot,
   type LegacyTransferLegSnapshot,
   type LegacyStaleRefMovementSnapshot,
-  type StaleParentResolver,
 } from "./legacy-repair";
 
 const sale = (overrides: Partial<LegacySaleSnapshot> = {}): LegacySaleSnapshot => ({

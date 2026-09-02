@@ -8,7 +8,6 @@ import { Sale } from '../../domain/sale';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Client } from '../../domain/client';
 import { Movement } from '../../domain/movement';
-import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { CatalogItem } from '../../domain/catalog';

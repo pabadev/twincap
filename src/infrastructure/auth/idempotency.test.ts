@@ -10,6 +10,7 @@ vi.mock('../models/idempotency', () => ({
 }));
 
 import { IdempotencyModel } from '../models/idempotency';
+import type { IdempotencyDocument } from '../models/idempotency';
 
 describe('idempotency', () => {
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe('idempotency', () => {
 
   describe('claimIdempotency', () => {
     it('claims a new key and returns true', async () => {
-      vi.mocked(IdempotencyModel.create).mockResolvedValue({} as any);
+      vi.mocked(IdempotencyModel.create).mockResolvedValue([] as IdempotencyDocument[]);
 
       const result = await claimIdempotency('user-1', 'key-abc', 'createSale');
 
@@ -56,7 +57,7 @@ describe('idempotency', () => {
     });
 
     it('trims whitespace around the key', async () => {
-      vi.mocked(IdempotencyModel.create).mockResolvedValue({} as any);
+      vi.mocked(IdempotencyModel.create).mockResolvedValue([] as IdempotencyDocument[]);
 
       await claimIdempotency('user-1', '  key-abc  ', 'createSale');
 
@@ -68,7 +69,7 @@ describe('idempotency', () => {
 
   describe('releaseIdempotency', () => {
     it('deletes the key record for a given scope', async () => {
-      vi.mocked(IdempotencyModel.deleteOne).mockResolvedValue({ deletedCount: 1 } as any);
+      vi.mocked(IdempotencyModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 1 });
 
       await releaseIdempotency('user-1', 'key-abc', 'createSale');
 

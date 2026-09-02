@@ -15,16 +15,6 @@ import { describe, it, expect, vi } from 'vitest';
 
 // ── Domain ──────────────────────────────────────────────────────────
 import { Account } from '../domain/account';
-import { Movement } from '../domain/movement';
-import { Transfer } from '../domain/transfer';
-import { CreditGranted } from '../domain/credit-granted';
-import { CreditReceived } from '../domain/credit-received';
-import { Payable } from '../domain/payable';
-import { Sale } from '../domain/sale';
-import { Client } from '../domain/client';
-import { Category } from '../domain/category';
-import { CatalogItem } from '../domain/catalog';
-import { Money } from '../domain/money';
 import { NotFoundError } from '../domain/errors';
 import type {
   AccountRepository,
@@ -89,7 +79,6 @@ import { deleteCatalogItem } from './catalog/delete-catalog-item';
 
 // ── Constants ───────────────────────────────────────────────────────
 const USER_A = 'user-a';
-const USER_B = 'user-b';
 
 /** IDs belonging exclusively to User B. */
 const ACC_B = 'acc-b-1';
@@ -107,8 +96,6 @@ const CATL_B = 'catl-b-1';
 const ACC_A = 'acc-a-1';
 
 // ── Helpers ─────────────────────────────────────────────────────────
-const COP = (amount: number) => new Money(amount, 'COP');
-
 function makeAccount(overrides: Partial<{ id: string; userId: string; name: string }> = {}): Account {
   return new Account({
     id: ACC_A,
@@ -130,8 +117,8 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (a: any) => a),
-    update: vi.fn().mockImplementation(async (a: any) => a),
+    create: vi.fn().mockImplementation(async (a: unknown) => a),
+    update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
     countReferences: vi.fn().mockResolvedValue(0),
     ...overrides,
@@ -144,8 +131,8 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     findByUserId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     findPaged: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
-    create: vi.fn().mockImplementation(async (m: any) => m),
-    update: vi.fn().mockImplementation(async (m: any) => m),
+    create: vi.fn().mockImplementation(async (m: unknown) => m),
+    update: vi.fn().mockImplementation(async (m: unknown) => m),
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     aggregateBalance: vi.fn().mockResolvedValue(0),
@@ -158,8 +145,8 @@ function fakeTransferRepo(overrides: Partial<TransferRepository> = {}): Transfer
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (t: any) => t),
-    update: vi.fn().mockImplementation(async (t: any) => t),
+    create: vi.fn().mockImplementation(async (t: unknown) => t),
+    update: vi.fn().mockImplementation(async (t: unknown) => t),
     delete: vi.fn().mockResolvedValue(undefined),
     findByIdRaw: vi.fn().mockResolvedValue(null),
     ...overrides,
@@ -170,8 +157,8 @@ function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {})
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (c: any) => c),
-    update: vi.fn().mockImplementation(async (c: any) => c),
+    create: vi.fn().mockImplementation(async (c: unknown) => c),
+    update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
@@ -185,8 +172,8 @@ function fakeCreditReceivedRepo(overrides: Partial<CreditReceivedRepository> = {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (c: any) => c),
-    update: vi.fn().mockImplementation(async (c: any) => c),
+    create: vi.fn().mockImplementation(async (c: unknown) => c),
+    update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
@@ -199,8 +186,8 @@ function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRep
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (p: any) => p),
-    update: vi.fn().mockImplementation(async (p: any) => p),
+    create: vi.fn().mockImplementation(async (p: unknown) => p),
+    update: vi.fn().mockImplementation(async (p: unknown) => p),
     delete: vi.fn().mockResolvedValue(undefined),
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
@@ -213,8 +200,8 @@ function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (s: any) => s),
-    update: vi.fn().mockImplementation(async (s: any) => s),
+    create: vi.fn().mockImplementation(async (s: unknown) => s),
+    update: vi.fn().mockImplementation(async (s: unknown) => s),
     delete: vi.fn().mockResolvedValue(undefined),
     addAbono: vi.fn().mockResolvedValue(undefined),
     editAbono: vi.fn().mockResolvedValue(undefined),
@@ -228,8 +215,8 @@ function fakeClientRepo(overrides: Partial<ClientRepository> = {}): ClientReposi
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
     findByName: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockImplementation(async (c: any) => c),
-    update: vi.fn().mockImplementation(async (c: any) => c),
+    create: vi.fn().mockImplementation(async (c: unknown) => c),
+    update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -240,8 +227,8 @@ function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): Category
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
     findByNameAndType: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockImplementation(async (c: any) => c),
-    update: vi.fn().mockImplementation(async (c: any) => c),
+    create: vi.fn().mockImplementation(async (c: unknown) => c),
+    update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -251,8 +238,8 @@ function fakeCatalogItemRepo(overrides: Partial<CatalogItemRepository> = {}): Ca
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockImplementation(async (i: any) => i),
-    update: vi.fn().mockImplementation(async (i: any) => i),
+    create: vi.fn().mockImplementation(async (i: unknown) => i),
+    update: vi.fn().mockImplementation(async (i: unknown) => i),
     delete: vi.fn().mockResolvedValue(undefined),
     decrementStock: vi.fn().mockResolvedValue(true),
     incrementStock: vi.fn().mockResolvedValue(undefined),

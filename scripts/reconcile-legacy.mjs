@@ -62,7 +62,6 @@ try {
     clients.map((c) => [String(c._id), c.name ?? "Cliente general"]),
   );
   const saleById = new Map(sales.map((s) => [String(s._id), s]));
-  const creditById = new Map(credits.map((c) => [String(c._id), c]));
 
   // ─── Snapshots ────────────────────────────────────────────────────────
   const saleSnapshots = sales.map((s) => ({
