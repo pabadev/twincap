@@ -1,0 +1,113 @@
+# CI — TwinCap (Ronda 13, Fase A)
+#
+# Quality gate automático que la auditoría pre-beta pidió (auditoría externa
+# "Auditoría Pre-Beta ChatGPT.md", P0-a): lint → typecheck → unit/integration
+# tests → build → E2E Playwright.
+#
+# Estrategia:
+#   - Job "quality" (rápido, ~1-2 min): typecheck + lint + vitest + build.
+#     Es el gate principal y corre en cada push y PR.
+#   - Job "e2e" (lento, ~15 min serial): la suite crítica de Playwright contra
+#     mongodb-memory-server local. Corre en PR y en push a main, separado del
+#     gate rápido para no hacer esperar los checks básicos a los ~15 min E2E.
+#
+# La suite Vitest (unit/integration) NO requiere Mongo real: los tests de
+# acciones/server mockean connectDb/getCurrentUser/repositorios y los de
+# entorno setean sus propias env. La suite E2E levanta su propio mongod local
+# vía mongodb-memory-server (puerto 37017) sin tocar Atlas nunca.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality (typecheck · lint · tests · build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # next build valida el entorno (MONGODB_URI + AUTH_SECRET). Se inyectan
+      # valores de prueba no-secretos idénticos a los que usan los tests
+      # (env.test.ts). Nunca se usan para conectar a datos reales.
+      MONGODB_URI: mongodb://localhost:27017/twincap_ci
+      AUTH_SECRET: wPdh0ZCXq1krHoLD6Yxz7dVTDSWBYD6xS3pVWAfb8kM
+      TZ: America/Bogota
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit & integration tests (Vitest)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  e2e:
+    name: E2E (Playwright)
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TZ: America/Bogota
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium (with system deps)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E suite
+        # El script test:e2e carga .env.e2e (mongod local 37017) y arranca
+        # `next build && next start` vía webServer. Serial (workers:1).
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
