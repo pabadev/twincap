@@ -302,17 +302,20 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
     const page = await context.newPage();
 
     try {
-      // Register in the default (en) locale, then set the es cookie — the
-      // UI locale is driven by NEXT_LOCALE (the profile form only persists
-      // user.locale; the nav toggle is the real switch).
+      // Register in the default locale (en — Playwright's Accept-Language).
       await registerUser(page);
-      await context.addCookies([
-        { name: 'NEXT_LOCALE', value: 'es', domain: 'localhost', path: '/' },
-      ]);
-      await page.reload();
+      await expect(page).toHaveURL(/\/dashboard$/);
+
+      // Switch to Spanish through the REAL nav toggle (the production switch:
+      // sets NEXT_LOCALE + router.refresh). Never mutate NEXT_LOCALE from the
+      // test directly — the proxy persists it with `secure: true` under
+      // `next start`, so manual cookie writes create Secure/non-Secure twin
+      // cookies that race nondeterministically on reload.
+      await page
+        .getByRole('button', { name: /Switch to Spanish/i })
+        .click();
 
       // GIVEN a logged-in user whose UI is in Spanish.
-      await expect(page).toHaveURL(/\/dashboard$/);
       await expect(page.locator('html')).toHaveAttribute('lang', 'es');
       await expect(page.getByText('Ingresos este mes')).toBeVisible();
 
@@ -322,8 +325,8 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
           'es-ok';
       });
 
-      // WHEN the locale is switched to en via the nav toggle (router.refresh).
-      await page.getByRole('button', { name: 'Cambiar a inglés' }).click();
+      // WHEN the locale is switched back to en via the nav toggle.
+      await page.getByRole('button', { name: /Cambiar a inglés/i }).click();
 
       // THEN dashboard labels update to English without a hard refresh.
       await expect(page.getByText('Income this month')).toBeVisible();
