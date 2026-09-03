@@ -23,6 +23,19 @@ const envSchema = z.object({
   RESEND_FROM: z.string().optional(),
   // Public base URL used to build reset/verify links (e.g. http://localhost:3000).
   APP_BASE_URL: z.string().optional(),
+  // Error monitoring (R13-D). OPT-IN: defaults to false so the phase ships
+  // functional but SILENT until the operator explicitly enables it (no
+  // surprise for existing installs). Accepts "true"/"false" from the env.
+  ERROR_MONITORING_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  // Recipient for error incident alert emails (R13-D). If absent, alerts are
+  // a silent no-op (dev). Requires ERROR_MONITORING_ENABLED=true to activate.
+  ERROR_ALERT_EMAIL: z.string().optional(),
+  // Optional release/git sha recorded on each error event for triage; falls
+  // back to empty when not set. Mirrors 'release' in the error event model.
+  APP_RELEASE: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

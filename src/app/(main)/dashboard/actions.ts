@@ -19,6 +19,7 @@ import type { DashboardFilters } from '../../../components/dashboard/dashboard-f
 import type { DashboardSnapshot } from '../../../components/dashboard/dashboard-snapshot';
 import { makeCategoryLabelResolver } from '../../../lib/resolve-category-label';
 import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
+import { reportUnexpectedErrorAndWait } from '../../../lib/report-unexpected-error';
 
 /**
  * Server action that re-aggregates the dashboard snapshot for a given filter
@@ -32,90 +33,98 @@ export async function getDashboardSnapshotAction(
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  await connectDb();
+  try {
+    await connectDb();
 
-  const accountRepo = new MongoAccountRepository();
-  const movementRepo = new MongoMovementRepository();
-  const categoryRepo = new MongoCategoryRepository();
-  const creditReceivedRepo = new MongoCreditReceivedRepository();
-  const creditGrantedRepo = new MongoCreditGrantedRepository();
-  const payableRepo = new MongoPayableRepository();
-  const saleRepo = new MongoSaleRepository();
-  const transferRepo = new MongoTransferRepository();
+    const accountRepo = new MongoAccountRepository();
+    const movementRepo = new MongoMovementRepository();
+    const categoryRepo = new MongoCategoryRepository();
+    const creditReceivedRepo = new MongoCreditReceivedRepository();
+    const creditGrantedRepo = new MongoCreditGrantedRepository();
+    const payableRepo = new MongoPayableRepository();
+    const saleRepo = new MongoSaleRepository();
+    const transferRepo = new MongoTransferRepository();
 
-  const accounts = await listAccounts(user.userId, accountRepo);
+    const accounts = await listAccounts(user.userId, accountRepo);
 
-  const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
-    await Promise.all([
-      movementRepo.findByUserId(user.userId),
-      categoryRepo.findByUserId(user.userId),
-      creditReceivedRepo.findByUserId(user.userId),
-      creditGrantedRepo.findByUserId(user.userId),
-      payableRepo.findByUserId(user.userId),
-      saleRepo.findByUserId(user.userId),
-      transferRepo.findByUserId(user.userId),
+    const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
+      await Promise.all([
+        movementRepo.findByUserId(user.userId),
+        categoryRepo.findByUserId(user.userId),
+        creditReceivedRepo.findByUserId(user.userId),
+        creditGrantedRepo.findByUserId(user.userId),
+        payableRepo.findByUserId(user.userId),
+        saleRepo.findByUserId(user.userId),
+        transferRepo.findByUserId(user.userId),
+      ]);
+
+    // R6-P1 defensive filter + R7-A balance derivation — same source/pattern as page.tsx.
+    const liveParents = {
+      accounts: new Set(accounts.map((a) => a.id)),
+      transfers: new Set(transfers.map((tr) => tr.id)),
+      creditsReceived: creditsReceived.map((c) => ({
+        id: c.id,
+        accountId: c.accountId,
+        date: c.date,
+        amount: c.principal.amount,
+      })),
+      creditsGranted: creditsGranted.map((c) => ({
+        id: c.id,
+        accountId: c.accountId,
+        date: c.date,
+        amount: c.principal.amount,
+      })),
+      sales: sales.map((s) => ({
+        id: s.id,
+        accountId: s.accountId,
+        date: s.date,
+        amount: s.total,
+      })),
+      payables: new Set(payables.map((p) => p.id)),
+    };
+
+    const liveMovements = filterMovementsWithLiveParents(allMovements, liveParents);
+    const balanceByAccount = accountBalancesFromMovements(accounts, liveMovements);
+
+    const accountBalancesWithBalance = accounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      currency: account.currency,
+      isFixed: account.isFixed,
+      balance: balanceByAccount.get(account.id) ?? 0,
+    }));
+
+    const serializedCategories = categories.map((c) => c.toJSON());
+
+    const primaryCurrency =
+      accounts.length > 0 ? accounts[0].currency : 'COP';
+
+    const [tDashboard, tSystemNotes, locale] = await Promise.all([
+      getT('Dashboard'),
+      getT(SYSTEM_NOTES_NAMESPACE),
+      getLocale(),
     ]);
 
-  // R6-P1 defensive filter + R7-A balance derivation — same source/pattern as page.tsx.
-  const liveParents = {
-    accounts: new Set(accounts.map((a) => a.id)),
-    transfers: new Set(transfers.map((tr) => tr.id)),
-    creditsReceived: creditsReceived.map((c) => ({
-      id: c.id,
-      accountId: c.accountId,
-      date: c.date,
-      amount: c.principal.amount,
-    })),
-    creditsGranted: creditsGranted.map((c) => ({
-      id: c.id,
-      accountId: c.accountId,
-      date: c.date,
-      amount: c.principal.amount,
-    })),
-    sales: sales.map((s) => ({
-      id: s.id,
-      accountId: s.accountId,
-      date: s.date,
-      amount: s.total,
-    })),
-    payables: new Set(payables.map((p) => p.id)),
-  };
+    const resolveCategoryLabel = makeCategoryLabelResolver({
+      categories: serializedCategories,
+      tSystemNotes,
+      tDashboard,
+    });
 
-  const liveMovements = filterMovementsWithLiveParents(allMovements, liveParents);
-  const balanceByAccount = accountBalancesFromMovements(accounts, liveMovements);
-
-  const accountBalancesWithBalance = accounts.map((account) => ({
-    id: account.id,
-    name: account.name,
-    currency: account.currency,
-    isFixed: account.isFixed,
-    balance: balanceByAccount.get(account.id) ?? 0,
-  }));
-
-  const serializedCategories = categories.map((c) => c.toJSON());
-
-  const primaryCurrency =
-    accounts.length > 0 ? accounts[0].currency : 'COP';
-
-  const [tDashboard, tSystemNotes, locale] = await Promise.all([
-    getT('Dashboard'),
-    getT(SYSTEM_NOTES_NAMESPACE),
-    getLocale(),
-  ]);
-
-  const resolveCategoryLabel = makeCategoryLabelResolver({
-    categories: serializedCategories,
-    tSystemNotes,
-    tDashboard,
-  });
-
-  return buildDashboardSnapshot({
-    accounts: accountBalancesWithBalance,
-    categories: serializedCategories,
-    movements: liveMovements,
-    filters,
-    locale,
-    primaryCurrency,
-    resolveCategoryLabel,
-  });
+    return buildDashboardSnapshot({
+      accounts: accountBalancesWithBalance,
+      categories: serializedCategories,
+      movements: liveMovements,
+      filters,
+      locale,
+      primaryCurrency,
+      resolveCategoryLabel,
+    });
+  } catch (error) {
+    // Report the unexpected crash (fail-safe, never re-raises), then preserve
+    // the original behavior: let the exception propagate to the client's
+    // generic error surface (the action previously had no try/catch).
+    await reportUnexpectedErrorAndWait(error);
+    throw error;
+  }
 }

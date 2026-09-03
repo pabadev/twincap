@@ -1,10 +1,16 @@
 import { NotFoundError, ConflictError, ValidationError } from '../core/domain/errors';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
+import { reportUnexpectedError } from './report-unexpected-error';
 
 /**
  * Shared error handler for server actions.
  * Maps domain errors to user-friendly i18n keys and re-throws NEXT_REDIRECT.
  * Returns i18n keys under the "error" namespace — use tError() on the client to translate.
+ *
+ * UNKNOWN (non-domain) errors fall through to `error.operationFailed` AND are
+ * reported to the error monitoring backend in a non-blocking, fail-safe way
+ * (see reportUnexpectedError). Reporting NEVER changes the returned contract
+ * (`{ error: string }`) nor the sync signature.
  */
 export function handleActionError(error: unknown): { error: string } {
   // Next.js redirect must propagate
@@ -43,6 +49,10 @@ export function handleActionError(error: unknown): { error: string } {
   }
 
   if (error instanceof NotFoundError) return { error: 'error.notFound' };
+
+  // Any other error is UNEXPECTED: report it (non-blocking, fail-safe) and
+  // fall back to a generic i18n key so the caller's contract is unchanged.
+  reportUnexpectedError(error);
 
   // Fallback — use i18n key instead of hardcoded string
   return { error: 'error.operationFailed' };

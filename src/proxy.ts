@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {connectDb} from './infrastructure/db/connection';
+import {reportUnexpectedErrorAndWait} from './lib/report-unexpected-error';
 
 const DEFAULT_LOCALE = 'es';
 const LOCALES = ['es', 'en'];
@@ -26,7 +27,15 @@ export async function proxy(request: NextRequest) {
   // Ensure DB connection is established before any route handler runs.
   // This prevents the "Cannot call findOne() before initial connection"
   // error on Turbopack cold start.
-  await connectDb();
+  try {
+    await connectDb();
+  } catch (error) {
+    // Report the startup/connection failure (fail-safe, best-effort), then
+    // preserve the original behavior: let the exception propagate so Next
+    // fails the request exactly as it did before (no try/catch existed).
+    await reportUnexpectedErrorAndWait(error);
+    throw error;
+  }
 
   const locale = getLocaleFromRequest(request);
   const response = NextResponse.next();

@@ -5,6 +5,7 @@ import { useT } from '../../i18n/client';
 import { Button } from '../../components/ui/button';
 import { Icon } from '../../components/ui/icon';
 import { AlertTriangle } from 'lucide-react';
+import { reportClientError } from '../../lib/client-error-report';
 
 export default function Error({
   error,
@@ -16,7 +17,9 @@ export default function Error({
   const t = useT('Errors');
 
   useEffect(() => {
-    console.error(error);
+    // Report the render error (best-effort POST to /api/monitor + console.log)
+    // without ever breaking the boundary's reset/retry flow.
+    reportClientError(error, { path: typeof window !== 'undefined' ? window.location.pathname : undefined });
   }, [error]);
 
   return (

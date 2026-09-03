@@ -23,6 +23,8 @@ import {
 import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
 import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
 import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
+import { reportUnexpectedErrorAndWait } from '../../lib/report-unexpected-error';
+import { ValidationError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
 
 const ids = objectIdGenerator;
 
@@ -32,6 +34,19 @@ function getRepos() {
     accountRepo: new MongoAccountRepository(),
     categoryRepo: new MongoCategoryRepository(),
   };
+}
+
+/**
+ * Reports an auth-flow error to the monitoring backend (R13-D), distinguishing
+ * KNOWN/expected domain errors (validation/forbidden/not-found — never
+ * alerted) from UNEXPECTED crashes (reported with expected:false). Non-blocking
+ * and fail-safe; never changes the action's response contract.
+ */
+function reportAuthError(error: unknown): void {
+  const expected = error instanceof ValidationError
+    || error instanceof ForbiddenError
+    || error instanceof NotFoundError;
+  void reportUnexpectedErrorAndWait(error, { expected });
 }
 
 export async function registerAction(
@@ -81,6 +96,7 @@ export async function registerAction(
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    reportAuthError(error);
     return { error: error instanceof Error ? error.message : 'Registration failed' };
   }
 
@@ -124,6 +140,7 @@ export async function loginAction(
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    reportAuthError(error);
     return { error: error instanceof Error ? error.message : 'Login failed' };
   }
 
@@ -157,6 +174,7 @@ export async function forgotPasswordAction(
     await requestPasswordReset({ email }, buildAuthEmailDeps(userRepo));
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    reportAuthError(error);
     return { error: 'error.operationFailed' };
   }
 
@@ -181,6 +199,7 @@ export async function resetPasswordAction(
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    reportAuthError(error);
     return { error: 'Auth.invalidResetToken' };
   }
 
@@ -200,6 +219,7 @@ export async function verifyEmailAction(
     await verifyEmail({ email, token }, buildAuthEmailDeps(userRepo));
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    reportAuthError(error);
     return { error: 'Auth.invalidResetToken' };
   }
 

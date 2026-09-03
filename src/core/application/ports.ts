@@ -112,6 +112,80 @@ export interface AuthTokenRecord {
   createdAt: Date;
 }
 
+// ─── Error monitoring / alerting (R13-D) ──────────────────────────────────
+
+/**
+ * Severity of an error event. `fatal` and `error` are alert-worthy when the
+ * event is UNEXPECTED; `warning` never triggers an alert on its own.
+ */
+export type ErrorSeverity = 'fatal' | 'error' | 'warning';
+
+/**
+ * Extensible structured context for an error event (R13-D).
+ *
+ * The index signature lets callers attach additional keys without breaking the
+ * interface. Consumers must sanitize before persisting (never store
+ * passwords, JWTs, cookies, auth headers, full bodies, amounts or PII beyond
+ * `userId`/`workspaceId`). `userId`/`workspaceId` are captured from the start
+ * (workspaceId is pre-wired though Workspace is not yet implemented).
+ */
+export interface ErrorContext {
+  userId?: string;
+  workspaceId?: string;
+  path?: string;
+  method?: string;
+  userAgent?: string;
+  correlationId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Payload describing an exception to report to the error monitoring backend.
+ *
+ * `expected` distinguishes KNOWN/expected errors (validation, authorization,
+ * ordinary business rules — persisted but NEVER alerted) from UNEXPECTED
+ * errors/crashes (which may alert). The sanitizer strips PII before
+ * persistence regardless of this flag.
+ */
+export interface ErrorEventInput {
+  message: string;
+  name?: string;
+  stack?: string;
+  severity: ErrorSeverity;
+  expected: boolean;
+  code?: string;
+  context?: ErrorContext;
+  occurredAt?: Date;
+  /**
+   * Stable dedupe key computed by the monitor (R13-D). Optional at the port
+   * level so a generic consumer can report without pre-computing it; the Mongo
+   * implementation requires it for upsert, and the default monitor always
+   * provides it.
+   */
+  fingerprint?: string;
+  /** Environment (e.g. 'development' | 'production'). Defaults to NODE_ENV. */
+  environment?: string;
+  /** Optional release/git sha. */
+  release?: string;
+}
+
+/**
+ * Out port for the error monitoring system (R13-D).
+ *
+ * Deliberately SEPARATE from `OperationLogger` (which records operations with
+ * an actor, for auditing). `ErrorReporter` records EXCEPTIONS/incidents. The
+ * initial implementation persists to MongoDB and alerts via Resend; a future
+ * `SentryErrorReporter` can replace it without touching consumers.
+ */
+export interface ErrorReporter {
+  /**
+   * Records an error event, deduplicating by fingerprint. Returns whether this
+   * was the FIRST occurrence of the fingerprint (used by the monitor to gate
+   * anti-spam alerting). Must NEVER throw — fail-safe.
+   */
+  report(input: ErrorEventInput): Promise<{ isFirst: boolean; occurrenceCount: number }>;
+}
+
 /**
  * Persistence port for hashed one-time auth tokens (password reset + email
  * verify). One active token per user+purpose; a used token is revoked.
