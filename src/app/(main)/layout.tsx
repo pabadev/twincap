@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../infrastructure/auth/getCurrentUser';
 import { MainNav } from './nav';
 import { ToastProvider } from '../../components/ui/toast-provider';
 import { GlobalMovementProvider } from './global-movement-provider';
+import { FeedbackWidget } from '../../components/feedback/feedback-widget';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export default async function MainLayout({
           <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8 max-w-screen-2xl mx-auto">{children}</main>
         </GlobalMovementProvider>
       </ToastProvider>
+      <FeedbackWidget />
     </div>
   );
 }

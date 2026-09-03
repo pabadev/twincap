@@ -36,6 +36,10 @@ const envSchema = z.object({
   // Optional release/git sha recorded on each error event for triage; falls
   // back to empty when not set. Mirrors 'release' in the error event model.
   APP_RELEASE: z.string().optional(),
+  // Recipient for user feedback emails (R13-E). If absent, feedback sends
+  // are a silent no-op (dev). No feature flag needed — presence of this
+  // address is the gate.
+  FEEDBACK_EMAIL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -22,6 +22,8 @@ export type Namespace =
   | 'Landing'
   | 'SystemNotes'
   | 'Profile'
+  | 'Feedback'
+  | 'Help'
   | 'Legal';
 
 export type Messages = Record<Namespace, Record<string, string>>;
