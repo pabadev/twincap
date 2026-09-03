@@ -97,11 +97,27 @@ export async function migrateWorkspace(): Promise<MigrateWorkspaceResult> {
 
   const tenantDocs: MigrateWorkspaceResult["tenantDocs"] = {};
 
+  // 3a. Drop every collection index whose key references `userId` BEFORE the
+  //     rename. `$rename` changes the stored field but NOT index definitions:
+  //     after the rename a `userId`-led index keeps keying on the now-missing
+  //     field (every doc -> null), which (i) breaks multi-user/workspace unique
+  //     compound indexes with an E11000 collision and (ii) leaves a stale index
+  //     that shadows the new `workspaceId` scoping. Examples: a UNIQUE
+  //     `userId_1_name_1_type_1` on categories, and any `userId` support index.
   for (const model of MODELS) {
-    // Use the raw collection (driver) for the rename, NOT Mongoose's
-    // Model.updateMany: Mongoose strict mode strips `$rename` of the unknown
-    // legacy path `userId` (no longer part of the schema), silently no-oping
-    // the migration. The raw driver preserves the value and renames normally.
+    const indexes = await model.collection.indexes();
+    for (const idx of indexes) {
+      if (idx.name !== "_id_" && idx.key && Object.prototype.hasOwnProperty.call(idx.key, "userId") && idx.name) {
+        await model.collection.dropIndex(idx.name);
+      }
+    }
+  }
+
+  // 3b. Rename the field. Use the raw collection (driver), NOT Mongoose's
+  //     Model.updateMany: Mongoose strict mode strips `$rename` of the unknown
+  //     legacy path `userId` (no longer part of the schema), silently no-oping
+  //     the migration. The raw driver preserves the value and renames normally.
+  for (const model of MODELS) {
     const r = await model.collection.updateMany(
       { userId: { $exists: true }, workspaceId: { $exists: false } },
       { $rename: { userId: "workspaceId" } },
@@ -111,6 +127,16 @@ export async function migrateWorkspace(): Promise<MigrateWorkspaceResult> {
       modified: r.modifiedCount,
     };
   }
+
+  // 3c. Recreate the tenant-scoped unique constraint that the legacy index
+  //     expressed. In this beta each workspace == one personal workspace whose
+  //     `_id` equals the owner's `userId`, so `(workspaceId, name, type)` is the
+  //     value-preserving equivalent of the old `(userId, name, type)` unique
+  //     index on categories (one category with a given name+type per tenant).
+  await CategoryModel.collection.createIndex(
+    { workspaceId: 1, name: 1, type: 1 },
+    { unique: true, name: "workspaceId_1_name_1_type_1", background: true },
+  );
 
   return { workspacesCreated, membershipsCreated, tenantDocs };
 }

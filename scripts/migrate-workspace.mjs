@@ -87,7 +87,25 @@ try {
   console.log(`workspaces created: ${workspacesCreated}`);
   console.log(`memberships created: ${membershipsCreated}`);
 
-  // 3. Rename tenant field in all financial collections.
+  // 3. Drop every collection index whose key references the legacy `userId`
+  //    BEFORE the rename. `$rename` moves the stored field but NOT index
+  //    definitions: after the rename a `userId`-led index keeps keying on the
+  //    now-missing field (every doc -> null), which breaks multi-user/workspace
+  //    UNIQUE compound indexes (E11000 collision) and leaves a stale index.
+  //    The categories UNIQUE index `userId_1_name_1_type_1` is the case that
+  //    bit the first production run (same-name+type across users became
+  //    {userId:null, name, type} duplicates).
+  for (const coll of FINANCIAL_COLLECTIONS) {
+    const indexes = await db.collection(coll).listIndexes().toArray();
+    for (const idx of indexes) {
+      if (idx.name !== "_id_" && idx.key && Object.prototype.hasOwnProperty.call(idx.key, "userId")) {
+        await db.collection(coll).dropIndex(idx.name);
+        console.log(`dropped index ${idx.name} on ${coll}`);
+      }
+    }
+  }
+
+  // 4. Rename tenant field in all financial collections.
   for (const coll of FINANCIAL_COLLECTIONS) {
     const r = await db
       .collection(coll)
@@ -99,6 +117,16 @@ try {
       `${coll}: matched=${r.matchedCount} modified=${r.modifiedCount}`,
     );
   }
+
+  // 5. Recreate the tenant-scoped UNIQUE constraint that the legacy categories
+  //    index expressed: `(workspaceId, name, type)` is the value-preserving
+  //    equivalent of `(userId, name, type)` in this beta (one workspace == one
+  //    personal workspace whose _id equals the owner's userId).
+  await db.collection("categories").createIndex(
+    { workspaceId: 1, name: 1, type: 1 },
+    { unique: true, name: "workspaceId_1_name_1_type_1", background: true },
+  );
+  console.log("created index workspaceId_1_name_1_type_1 on categories");
 } catch (err) {
   console.error("migrate-workspace failed:", err);
   process.exitCode = 1;

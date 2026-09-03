@@ -9,6 +9,7 @@ import type { MembershipDoc } from "../models/membership";
 import { AccountModel } from "../models/account";
 import { MovementModel } from "../models/movement";
 import { SaleModel } from "../models/sale";
+import { CategoryModel } from "../models/category";
 import { migrateWorkspace } from "./migrate-workspace";
 
 describe("migrateWorkspace", () => {
@@ -34,15 +35,28 @@ describe("migrateWorkspace", () => {
       AccountModel.deleteMany({}),
       MovementModel.deleteMany({}),
       SaleModel.deleteMany({}),
+      CategoryModel.deleteMany({}),
     ]);
+    // Ensure a clean index state between tests: drop the legacy UNIQUE category
+    // index and any workspaceId-led one so each test sets up its own.
+    try {
+      await CategoryModel.collection.dropIndex("userId_1_name_1_type_1");
+    } catch {
+      /* index may not exist */
+    }
+    try {
+      await CategoryModel.collection.dropIndex("workspaceId_1_name_1_type_1");
+    } catch {
+      /* index may not exist */
+    }
   });
 
-  async function seedLegacyUser(id?: Types.ObjectId) {
+  async function seedLegacyUser(id?: Types.ObjectId, email?: string) {
     // The user doc is created fresh; then financial docs are seeded with the
     // OLD `userId` field directly (the models now expect `workspaceId`).
     const user = await UserModel.create({
       _id: id ?? new Types.ObjectId(),
-      email: "legacy@example.com",
+      email: email ?? `legacy-${new Types.ObjectId().toString()}@example.com`,
       passwordHash: "x",
     });
     return user;
@@ -162,5 +176,46 @@ describe("migrateWorkspace", () => {
     expect(result.membershipsCreated).toBe(1);
     // No collection matched anything.
     expect(result.tenantDocs["accounts"]).toEqual({ matched: 0, modified: 0 });
+  });
+
+  it("drops the legacy userId-led UNIQUE index and recreates it scoped on workspaceId (E11000 regression)", async () => {
+    // Reproduce the production constraint that made the first live run fail: a
+    // UNIQUE compound index `userId_1_name_1_type_1` on categories, with the
+    // SAME category name+type under different users. After a naive $rename all
+    // those categories key as {userId: null, name, type} -> duplicate key.
+    await CategoryModel.collection.createIndex(
+      { userId: 1, name: 1, type: 1 },
+      { unique: true, name: "userId_1_name_1_type_1", background: true },
+    );
+
+    const u1 = await seedLegacyUser();
+    const u2 = await seedLegacyUser();
+    // Same category name+type for both users (realistic: both got seeded
+    // defaults "Salario"/income and "Comida"/expense).
+    for (const uid of [u1._id, u2._id]) {
+      await CategoryModel.collection.insertMany([
+        { name: "Salario", type: "income", userId: uid, createdAt: new Date(), updatedAt: new Date() },
+        { name: "Comida", type: "expense", userId: uid, createdAt: new Date(), updatedAt: new Date() },
+      ]);
+    }
+
+    // Must NOT throw E11000.
+    const result = await migrateWorkspace();
+
+    // All 4 categories renamed; none left on userId.
+    expect(result.tenantDocs["categories"]).toEqual({ matched: 4, modified: 4 });
+    const stillUserId = await CategoryModel.collection.countDocuments({ userId: { $exists: true } });
+    expect(stillUserId).toBe(0);
+
+    // Legacy index gone, new workspaceId-scoped unique index present.
+    const idx = await CategoryModel.collection.indexes();
+    expect(idx.find((i) => i.name === "userId_1_name_1_type_1")).toBeUndefined();
+    const newIdx = idx.find((i) => i.name === "workspaceId_1_name_1_type_1");
+    expect(newIdx).toBeDefined();
+    expect(newIdx!.unique).toBe(true);
+    expect(newIdx!.key).toEqual({ workspaceId: 1, name: 1, type: 1 });
+
+    // Per-workspace uniqueness holds (each workspace kept its own Salario).
+    expect(await CategoryModel.collection.countDocuments({ name: "Salario", type: "income" })).toBe(2);
   });
 });
