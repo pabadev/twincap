@@ -1,5 +1,6 @@
 import type { EmailSender } from '../../core/application/ports';
 import { getEnv } from '../config/env';
+import { verificationEmail, passwordResetEmail } from './email-templates';
 
 /** Default sender address, overridable via RESEND_FROM (optional). */
 const DEFAULT_FROM = 'TwinCap <no-reply@twincap.app>';
@@ -24,11 +25,10 @@ export class ResendEmailSender implements EmailSender {
     to: string;
     token: string;
     baseUrl: string;
+    locale?: string;
   }): Promise<void> {
     const link = this.buildLink(payload.baseUrl, '/reset-password', payload.token, payload.to);
-    const subject = 'Reset your TwinCap password';
-    const html = `<p>Click the link below to reset your password. It expires in 1 hour.</p>
-<p><a href="${link}">${link}</a></p>`;
+    const { subject, html } = passwordResetEmail(payload.baseUrl, link, payload.locale);
     await this.deliver(payload.to, subject, html, link);
   }
 
@@ -36,11 +36,10 @@ export class ResendEmailSender implements EmailSender {
     to: string;
     token: string;
     baseUrl: string;
+    locale?: string;
   }): Promise<void> {
     const link = this.buildLink(payload.baseUrl, '/verify-email', payload.token, payload.to);
-    const subject = 'Verify your TwinCap email';
-    const html = `<p>Confirm your email to complete your TwinCap registration.</p>
-<p><a href="${link}">${link}</a></p>`;
+    const { subject, html } = verificationEmail(payload.baseUrl, link, payload.locale);
     await this.deliver(payload.to, subject, html, link);
   }
 

@@ -49,6 +49,7 @@ export async function requestPasswordReset(
     to: user.email,
     token,
     baseUrl: deps.baseUrl,
+    locale: user.locale ?? 'es',
   });
 
   return { ok: true };

@@ -86,8 +86,9 @@ export async function registerAction(
     );
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
     // R13-B2: fire the verification email best-effort (never blocks register).
+    // New users have no locale yet; default to 'es' (primary market: LatAm).
     await sendVerificationBestEffort(
-      { id: userId, email: sessionEmail },
+      { id: userId, email: sessionEmail, locale: 'es' },
       buildAuthEmailDeps(userRepo),
     );
     // Audit the successful registration (no actor exists before this point).

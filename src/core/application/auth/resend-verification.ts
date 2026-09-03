@@ -32,7 +32,7 @@ export async function resendVerification(
   }
 
   const now = deps.clock.now();
-  await issueVerificationEmail({ id: user.id, email: user.email }, deps, now);
+  await issueVerificationEmail({ id: user.id, email: user.email, locale: user.locale }, deps, now);
 
   return { ok: true, alreadyVerified: false };
 }

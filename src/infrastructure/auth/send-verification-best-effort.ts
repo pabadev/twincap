@@ -8,7 +8,7 @@ import { issueVerificationEmail } from '../../core/application/auth/email-deps';
  * failure is logged to the console and the function resolves normally.
  */
 export async function sendVerificationBestEffort(
-  user: { id: string; email: string },
+  user: { id: string; email: string; locale?: string },
   deps: AuthEmailDeps,
 ): Promise<void> {
   try {

@@ -84,12 +84,14 @@ export interface EmailSender {
     to: string;
     token: string;
     baseUrl: string;
+    locale?: string;
   }): Promise<void>;
   /** Email verification with a one-time verify link. */
   sendEmailVerification(payload: {
     to: string;
     token: string;
     baseUrl: string;
+    locale?: string;
   }): Promise<void>;
 }
 

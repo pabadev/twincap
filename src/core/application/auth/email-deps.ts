@@ -41,7 +41,7 @@ export const INVALID_TOKEN_MESSAGE = 'Invalid or expired token';
  * the resendVerification use case.
  */
 export async function issueVerificationEmail(
-  user: { id: string; email: string },
+  user: { id: string; email: string; locale?: string },
   deps: AuthEmailDeps,
   now: Date,
 ): Promise<void> {
@@ -63,5 +63,6 @@ export async function issueVerificationEmail(
     to: user.email,
     token,
     baseUrl: deps.baseUrl,
+    locale: user.locale,
   });
 }
