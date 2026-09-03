@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "node e2e/load-e2e-env.cjs test",
     "e2e:server": "next build && next start",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "migrate:workspace": "node scripts/migrate-workspace.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
