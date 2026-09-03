@@ -5,9 +5,11 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { bcryptPasswordHasher } from '../../../infrastructure/auth/password';
 import { User } from '../../../core/domain/user';
-import { passwordChangeRateLimiter } from '../../../infrastructure/auth/rate-limiter';
+import { passwordChangeRateLimiter, resendVerificationRateLimiter } from '../../../infrastructure/auth/rate-limiter';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { resendVerification } from '../../../core/application/auth/resend-verification';
+import { buildAuthEmailDeps } from '../../../infrastructure/auth/auth-email-deps';
 
 export async function updateProfileAction(
   _prev: { error?: string; success?: string } | null,
@@ -94,6 +96,7 @@ export async function changePasswordAction(
           createdAt: existing.createdAt,
           name: existing.name,
           locale: existing.locale,
+          emailVerified: existing.emailVerified,
         });
         await userRepo.update(updated);
         // Reset rate limit on successful password change
@@ -106,4 +109,27 @@ export async function changePasswordAction(
   }
 
   return { success: 'passwordChanged' };
+}
+
+export async function resendVerificationAction(): Promise<{ error?: string; success?: string }> {
+  const authUser = await getCurrentUser();
+  if (!authUser) return { error: 'Unauthorized' };
+
+  // Rate limiting: 3 re-sends per 15 min per user.
+  const rateLimitKey = `resendVerify:${authUser.userId}`;
+  const rateLimit = await resendVerificationRateLimiter.check(rateLimitKey);
+  if (!rateLimit.allowed) {
+    return { error: 'tooManyAttempts' };
+  }
+
+  try {
+    await connectDb();
+    const userRepo = new MongoUserRepository();
+    await resendVerification({ userId: authUser.userId }, buildAuthEmailDeps(userRepo));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    return { error: 'error.operationFailed' };
+  }
+
+  return { success: 'verificationSent' };
 }

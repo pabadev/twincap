@@ -4,6 +4,7 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
 import { getT, getLocale } from '../../../i18n/server';
 import { ProfileForm } from './profile-form';
+import { VerifyBanner } from './verify-banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,13 @@ export default async function ProfilePage() {
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
         {t('title')}
       </h1>
+      {snapshot.emailVerified === false && (
+        <VerifyBanner
+          title={t('emailNotVerified')}
+          description={t('emailNotVerifiedHint')}
+          resend={t('resendVerification')}
+        />
+      )}
       <ProfileForm
         name={snapshot.name ?? ''}
         email={snapshot.email}
