@@ -15,11 +15,13 @@ import type { Category } from "./category";
 import type { Client } from "./client";
 import type { CreditGranted } from "./credit-granted";
 import type { CreditReceived } from "./credit-received";
+import type { Membership } from "./membership";
 import type { Movement } from "./movement";
 import type { Payable } from "./payable";
 import type { Sale } from "./sale";
 import type { Transfer } from "./transfer";
 import type { User } from "./user";
+import type { Workspace } from "./workspace";
 
 // ─── User ────────────────────────────────────────────────────────────
 
@@ -186,4 +188,25 @@ export interface SaleRepository {
   editAbono(userId: string, saleId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5). */
   deleteAbono(userId: string, saleId: string, abonoId: string): Promise<void>;
+}
+
+// ─── Workspace ──────────────────────────────────────────────────────
+
+export interface WorkspaceRepository {
+  findById(id: string): Promise<Workspace | null>;
+  create(workspace: Workspace): Promise<Workspace>;
+  update(workspace: Workspace): Promise<Workspace>;
+  delete(id: string): Promise<void>;
+}
+
+// ─── Membership ─────────────────────────────────────────────────────
+
+export interface MembershipRepository {
+  findById(id: string): Promise<Membership | null>;
+  /** Active membership for a user+workspace, if any. */
+  findActiveByUserAndWorkspace(userId: string, workspaceId: string): Promise<Membership | null>;
+  findByUserId(userId: string): Promise<Membership[]>;
+  create(membership: Membership): Promise<Membership>;
+  update(membership: Membership): Promise<Membership>;
+  delete(id: string): Promise<void>;
 }
