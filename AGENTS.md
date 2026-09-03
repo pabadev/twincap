@@ -59,8 +59,8 @@ TwinCap es un **SaaS de finanzas personales y pequeños negocios** en etapa de p
 
 - NO es un proyecto nuevo — ya existe implementación funcional.
 - La funcionalidad existente tiene PRIORIDAD sobre cualquier mejora estética.
-- Cada usuario administra exclusivamente sus propios datos (aislamiento de tenant).
-- No existen equipos, colaboradores ni permisos internos.
+- Cada **Workspace** administra exclusivamente sus propios datos (aislamiento de tenant a nivel de `workspaceId`); el usuario accede vía su `Membership`.
+- Durante la beta cada usuario tiene un solo Workspace personal (equipos/membership múltiples desactivados); no existe selector de workspaces ni UI de equipos en esta etapa.
 - Actualmente NO existe módulo de Compras — no inventarlo ni implementarlo.
 
 ## Stack
