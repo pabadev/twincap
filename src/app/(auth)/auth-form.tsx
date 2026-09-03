@@ -19,6 +19,8 @@ export function AuthForm({
   alternateHref,
   alternateLabel,
   authMode,
+  forgotLabel,
+  forgotHref,
 }: {
   action: ActionFn;
   title: string;
@@ -27,6 +29,8 @@ export function AuthForm({
   alternateHref: string;
   alternateLabel: string;
   authMode: 'login' | 'register';
+  forgotLabel?: string;
+  forgotHref?: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
   const t = useT('Auth');
@@ -60,6 +64,16 @@ export function AuthForm({
           autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
           disabled={isPending}
         />
+        {authMode === 'login' && forgotLabel && forgotHref && (
+          <div className="-mt-2 text-right">
+            <a
+              href={forgotHref}
+              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+            >
+              {forgotLabel}
+            </a>
+          </div>
+        )}
         {authMode === 'register' && (
           <PasswordInput
             id="confirmPassword"

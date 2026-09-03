@@ -59,7 +59,11 @@
     "confirmNewPassword": "Confirm new password",
     "passwordChanged": "Password updated",
     "wrongPassword": "Current password is incorrect",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "emailNotVerified": "Your email is not verified",
+    "emailNotVerifiedHint": "Verify your email to keep your account protected.",
+    "resendVerification": "Resend verification",
+    "verificationSent": "A verification email was sent."
   },
   "Auth": {
     "signIn": "Sign In",
@@ -75,7 +79,23 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "confirmPassword": "Confirm password",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordHint": "Enter your account email and we will send you a link to reset your password.",
+    "sendResetLink": "Send reset link",
+    "resetLinkSent": "If the email is registered, we sent you a link to reset your password.",
+    "resetPassword": "Reset password",
+    "newPasswordLabel": "New password",
+    "resetPasswordCta": "Reset password",
+    "passwordReset": "Your password was reset successfully. You can now sign in.",
+    "invalidResetToken": "The link is invalid or has already been used. Request a new one.",
+    "tooManyAttempts": "Too many attempts. Try again later.",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "verifying": "Verifying your email...",
+    "emailVerifiedSuccess": "Your email was verified successfully!",
+    "goToDashboard": "Go to your dashboard",
+    "dashboard": "Dashboard",
+    "verificationSent": "A verification email was sent."
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",

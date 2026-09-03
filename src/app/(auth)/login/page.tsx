@@ -18,6 +18,8 @@ export default async function LoginPage() {
         alternateHref="/register"
         alternateLabel={t('registerLabel')}
         authMode="login"
+        forgotLabel={t('forgotPassword')}
+        forgotHref="/forgot-password"
       />
     </>
   );

@@ -59,7 +59,11 @@
     "confirmNewPassword": "Confirmar nueva contraseña",
     "passwordChanged": "Contraseña actualizada",
     "wrongPassword": "La contraseña actual es incorrecta",
-    "passwordMismatch": "Las contraseñas no coinciden"
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "emailNotVerified": "Tu correo no está verificado",
+    "emailNotVerifiedHint": "Verifica tu correo para proteger tu cuenta.",
+    "resendVerification": "Reenviar verificación",
+    "verificationSent": "Te enviamos un correo de verificación."
   },
   "Auth": {
     "signIn": "Iniciar sesión",
@@ -75,7 +79,23 @@
     "showPassword": "Mostrar contraseña",
     "hidePassword": "Ocultar contraseña",
     "confirmPassword": "Confirmar contraseña",
-    "passwordMismatch": "Las contraseñas no coinciden"
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPasswordHint": "Ingresa el correo de tu cuenta y te enviaremos un enlace para restablecer tu contraseña.",
+    "sendResetLink": "Enviar enlace",
+    "resetLinkSent": "Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.",
+    "resetPassword": "Restablecer contraseña",
+    "newPasswordLabel": "Nueva contraseña",
+    "resetPasswordCta": "Restablecer contraseña",
+    "passwordReset": "Tu contraseña se restableció correctamente. Ya puedes iniciar sesión.",
+    "invalidResetToken": "El enlace no es válido o ya fue utilizado. Solicita uno nuevo.",
+    "tooManyAttempts": "Demasiados intentos. Intenta de nuevo más tarde.",
+    "errorGeneric": "Ocurrió un error. Intenta de nuevo.",
+    "verifying": "Verificando tu correo...",
+    "emailVerifiedSuccess": "¡Tu correo fue verificado correctamente!",
+    "goToDashboard": "Ir a tu panel",
+    "dashboard": "Panel",
+    "verificationSent": "Te enviamos un correo de verificación."
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",

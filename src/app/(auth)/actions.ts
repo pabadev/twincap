@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation';
 import { register } from '../../core/application/auth/register';
 import { login } from '../../core/application/auth/login';
 import { logout } from '../../core/application/auth/logout';
+import { requestPasswordReset } from '../../core/application/auth/request-password-reset';
+import { resetPassword } from '../../core/application/auth/reset-password';
+import { verifyEmail } from '../../core/application/auth/verify-email';
 import { bcryptPasswordHasher } from '../../infrastructure/auth/password';
 import { joseSessionManager } from '../../infrastructure/auth/session';
 import { setSessionCookie } from '../../infrastructure/auth/session-cookie';
@@ -15,8 +18,11 @@ import { objectIdGenerator } from '../../infrastructure/config/id-generator';
 import {
   loginRateLimiter,
   registerRateLimiter,
+  forgotPasswordRateLimiter,
 } from '../../infrastructure/auth/rate-limiter';
 import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
+import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
+import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
 
 const ids = objectIdGenerator;
 
@@ -60,6 +66,11 @@ export async function registerAction(
       ids,
     );
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
+    // R13-B2: fire the verification email best-effort (never blocks register).
+    await sendVerificationBestEffort(
+      { id: userId, email: sessionEmail },
+      buildAuthEmailDeps(userRepo),
+    );
     // Audit the successful registration (no actor exists before this point).
     await new MongoOperationLogger().log({
       userId,
@@ -123,4 +134,74 @@ export async function loginAction(
 export async function logoutAction() {
   await logout();
   redirect('/login');
+}
+
+export async function forgotPasswordAction(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const email = (formData.get('email') as string) || '';
+
+  // Rate limiting: 3 requests per 15 min per email+IP.
+  const ip = (formData.get('_ip') as string) || 'unknown';
+  const rateLimitKey = `forgot:${email.toLowerCase().trim()}:${ip}`;
+  const rateLimit = await forgotPasswordRateLimiter.check(rateLimitKey);
+  if (!rateLimit.allowed) {
+    return { error: 'Auth.tooManyAttempts' };
+  }
+
+  try {
+    await connectDb();
+    const userRepo = new MongoUserRepository();
+    // Anti-enumeration: returns ok even when the email is not registered.
+    await requestPasswordReset({ email }, buildAuthEmailDeps(userRepo));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    return { error: 'error.operationFailed' };
+  }
+
+  // Always show success (no account/email enumeration).
+  return { success: true };
+}
+
+export async function resetPasswordAction(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const email = (formData.get('email') as string) || '';
+  const token = (formData.get('token') as string) || '';
+  const newPassword = (formData.get('newPassword') as string) || '';
+
+  try {
+    await connectDb();
+    const userRepo = new MongoUserRepository();
+    await resetPassword(
+      { email, token, newPassword },
+      buildAuthEmailDeps(userRepo),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    return { error: 'Auth.invalidResetToken' };
+  }
+
+  return { success: true };
+}
+
+export async function verifyEmailAction(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const email = (formData.get('email') as string) || '';
+  const token = (formData.get('token') as string) || '';
+
+  try {
+    await connectDb();
+    const userRepo = new MongoUserRepository();
+    await verifyEmail({ email, token }, buildAuthEmailDeps(userRepo));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    return { error: 'Auth.invalidResetToken' };
+  }
+
+  return { success: true };
 }
