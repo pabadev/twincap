@@ -53,6 +53,10 @@ export async function changePasswordAction(
   const authUser = await getCurrentUser();
   if (!authUser) return { error: 'Unauthorized' };
 
+  // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
+  // timeouts). connectDb() is a cached no-op once up.
+  await connectDb();
+
   // Rate limiting: 5 attempts per 15 min per user
   const rateLimitKey = `password:${authUser.userId}`;
   const rateLimit = await passwordChangeRateLimiter.check(rateLimitKey);
@@ -114,6 +118,10 @@ export async function changePasswordAction(
 export async function resendVerificationAction(): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
   if (!authUser) return { error: 'Unauthorized' };
+
+  // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
+  // timeouts). connectDb() is a cached no-op once up.
+  await connectDb();
 
   // Rate limiting: 3 re-sends per 15 min per user.
   const rateLimitKey = `resendVerify:${authUser.userId}`;

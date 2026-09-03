@@ -61,6 +61,10 @@ export async function registerAction(
     return { error: 'Passwords do not match' };
   }
 
+  // Connect BEFORE the rate limiter (DB-backed) to avoid Mongoose buffering
+  // timeouts on cold serverless starts. connectDb() is a cached no-op once up.
+  await connectDb();
+
   // Rate limiting: 3 registrations per 15 min per IP
   const ip = formData.get('_ip') as string || 'unknown';
   const rateLimitKey = `register:${ip}`;
@@ -111,6 +115,12 @@ export async function loginAction(
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
+  // Connect BEFORE any model/repo use (the rate limiter hits the DB). In a
+  // cold serverless start Mongoose buffers commands with no active connection
+  // → "buffering timed out after 10000ms". connectDb() is a cached no-op once
+  // connected, so this is cheap and idempotent.
+  await connectDb();
+
   // Rate limiting: 5 attempts per 15 min per email+IP
   const ip = formData.get('_ip') as string || 'unknown';
   const rateLimitKey = `login:${email.toLowerCase().trim()}:${ip}`;
@@ -158,6 +168,10 @@ export async function forgotPasswordAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
   const email = (formData.get('email') as string) || '';
+
+  // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
+  // timeouts in serverless cold starts). connectDb() is a cached no-op once up.
+  await connectDb();
 
   // Rate limiting: 3 requests per 15 min per email+IP.
   const ip = (formData.get('_ip') as string) || 'unknown';
