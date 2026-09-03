@@ -18,10 +18,14 @@ export interface PasswordHasher {
  * `email` is denormalized into the session so layouts can render it without
  * a per-navigation DB roundtrip (P5). Absent in sessions created before this
  * field existed — consumers must fall back gracefully.
+ * `workspaceId` is the denormalized tenant id of the user's active personal
+ * workspace. Absent for legacy sessions and resolved/backfilled by
+ * `getCurrentUser` or set at login/register.
  */
 export interface SessionClaims {
   sub: string;
   email?: string;
+  workspaceId?: string;
 }
 
 /**

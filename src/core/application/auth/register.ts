@@ -1,6 +1,8 @@
-import type { UserRepository, AccountRepository, CategoryRepository } from '../../domain/repositories';
+import type { UserRepository, AccountRepository, CategoryRepository, WorkspaceRepository, MembershipRepository } from '../../domain/repositories';
 import type { PasswordHasher, IdGenerator } from '../ports';
 import { User } from '../../domain/user';
+import { Workspace } from '../../domain/workspace';
+import { Membership } from '../../domain/membership';
 import { ValidationError, ConflictError } from '../../domain/errors';
 import { seedUser } from '../../../infrastructure/seeding/user-bootstrap';
 
@@ -13,6 +15,8 @@ export interface RegisterOutput {
   userId: string;
   /** Denormalized into the session token so layouts skip the DB roundtrip (P5). */
   email: string;
+  /** The newly created personal workspace id. */
+  workspaceId: string;
 }
 
 export async function register(
@@ -22,6 +26,8 @@ export async function register(
   categoryRepo: CategoryRepository,
   hasher: PasswordHasher,
   ids: IdGenerator,
+  workspaceRepo: WorkspaceRepository,
+  membershipRepo: MembershipRepository,
 ): Promise<RegisterOutput> {
   // AUTH-1: normalized email, min 8 chars password
   const normalizedEmail = input.email.trim().toLowerCase();
@@ -45,8 +51,26 @@ export async function register(
   });
   const createdUser = await userRepo.create(user);
 
+  // Create personal workspace + owner membership
+  const workspace = new Workspace({
+    id: ids.generate(),
+    ownerId: createdUser.id,
+    name: 'Mi espacio',
+    createdAt: new Date(),
+  });
+  const createdWorkspace = await workspaceRepo.create(workspace);
+
+  const membership = new Membership({
+    id: ids.generate(),
+    userId: createdUser.id,
+    workspaceId: createdWorkspace.id,
+    role: 'owner',
+    createdAt: new Date(),
+  });
+  await membershipRepo.create(membership);
+
   // AUTH-4: seed accounts + categories
   await seedUser(createdUser.id, accountRepo, categoryRepo);
 
-  return { userId: createdUser.id, email: createdUser.email };
+  return { userId: createdUser.id, email: createdUser.email, workspaceId: createdWorkspace.id };
 }

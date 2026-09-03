@@ -8,7 +8,7 @@ const HEADER = { alg: "dir", enc: "A256GCM" } as const;
 
 export const joseSessionManager: SessionManager = {
   create: async (claims) => {
-    return new EncryptJWT({ sub: claims.sub, email: claims.email })
+    return new EncryptJWT({ sub: claims.sub, email: claims.email, workspaceId: claims.workspaceId })
       .setProtectedHeader(HEADER)
       .setIssuedAt()
       .setExpirationTime("30d")
@@ -20,6 +20,7 @@ export const joseSessionManager: SessionManager = {
       return {
         sub: payload.sub as string,
         email: typeof payload.email === "string" ? payload.email : undefined,
+        workspaceId: typeof payload.workspaceId === "string" ? payload.workspaceId : undefined,
       };
     } catch {
       return null;

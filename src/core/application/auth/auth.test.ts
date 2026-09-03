@@ -3,11 +3,13 @@ import { register } from './register';
 import { login } from './login';
 import { logout } from './logout';
 import { ValidationError, ConflictError } from '../../domain/errors';
-import type { UserRepository, AccountRepository, CategoryRepository } from '../../domain/repositories';
+import type { UserRepository, AccountRepository, CategoryRepository, WorkspaceRepository, MembershipRepository } from '../../domain/repositories';
 import type { PasswordHasher, IdGenerator } from '../ports';
 import type { User } from '../../domain/user';
 import type { Account } from '../../domain/account';
 import type { Category } from '../../domain/category';
+import type { Workspace } from '../../domain/workspace';
+import type { Membership } from '../../domain/membership';
 
 // ─── Mocks ─────────────────────────────────────────────────────────
 
@@ -78,6 +80,36 @@ function fakeHasher(): PasswordHasher {
   };
 }
 
+function fakeWorkspaceRepo(): WorkspaceRepository & { created: Workspace[] } {
+  const created: Workspace[] = [];
+  return {
+    created,
+    findById: async () => null,
+    create: async (workspace) => {
+      created.push(workspace);
+      return workspace;
+    },
+    update: async (w) => w,
+    delete: async () => {},
+  };
+}
+
+function fakeMembershipRepo(): MembershipRepository & { created: Membership[] } {
+  const created: Membership[] = [];
+  return {
+    created,
+    findById: async () => null,
+    findActiveByUserAndWorkspace: async () => null,
+    findByUserId: async () => [],
+    create: async (membership) => {
+      created.push(membership);
+      return membership;
+    },
+    update: async (m) => m,
+    delete: async () => {},
+  };
+}
+
 function fakeIdGen(id = 'test-user-id'): IdGenerator {
   return { generate: () => id };
 }
@@ -91,6 +123,8 @@ describe('register', () => {
     const categoryRepo = fakeCategoryRepo();
     const hasher = fakeHasher();
     const ids = fakeIdGen();
+    const workspaceRepo = fakeWorkspaceRepo();
+    const membershipRepo = fakeMembershipRepo();
 
     const result = await register(
       { email: 'test@example.com', password: 'password123' },
@@ -99,6 +133,8 @@ describe('register', () => {
       categoryRepo,
       hasher,
       ids,
+      workspaceRepo,
+      membershipRepo,
     );
 
     expect(result.userId).toBe('test-user-id');
@@ -106,6 +142,43 @@ describe('register', () => {
     expect(userRepo.created).toHaveLength(1);
     expect(userRepo.created[0].email).toBe('test@example.com');
     expect(seedUser).toHaveBeenCalledWith('test-user-id', accountRepo, categoryRepo);
+  });
+
+  it('creates a personal Workspace and owner Membership on registration', async () => {
+    const userRepo = fakeUserRepo();
+    const accountRepo = fakeAccountRepo();
+    const categoryRepo = fakeCategoryRepo();
+    const hasher = fakeHasher();
+    const ids = fakeIdGen();
+    const workspaceRepo = fakeWorkspaceRepo();
+    const membershipRepo = fakeMembershipRepo();
+
+    const result = await register(
+      { email: 'test@example.com', password: 'password123' },
+      userRepo,
+      accountRepo,
+      categoryRepo,
+      hasher,
+      ids,
+      workspaceRepo,
+      membershipRepo,
+    );
+
+    // Personal workspace: ownerId = new user id
+    expect(workspaceRepo.created).toHaveLength(1);
+    const workspace = workspaceRepo.created[0];
+    expect(workspace.ownerId).toBe('test-user-id');
+    expect(workspace.name).toBe('Mi espacio');
+
+    // Owner membership linking user → workspace
+    expect(membershipRepo.created).toHaveLength(1);
+    const membership = membershipRepo.created[0];
+    expect(membership.userId).toBe('test-user-id');
+    expect(membership.workspaceId).toBe(workspace.id);
+    expect(membership.role).toBe('owner');
+
+    // Output carries the workspaceId
+    expect(result.workspaceId).toBe(workspace.id);
   });
 
   it('rejects duplicate email', async () => {
@@ -125,6 +198,8 @@ describe('register', () => {
         fakeCategoryRepo(),
         fakeHasher(),
         fakeIdGen(),
+        fakeWorkspaceRepo(),
+        fakeMembershipRepo(),
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -138,6 +213,8 @@ describe('register', () => {
         fakeCategoryRepo(),
         fakeHasher(),
         fakeIdGen(),
+        fakeWorkspaceRepo(),
+        fakeMembershipRepo(),
       ),
     ).rejects.toThrow(ValidationError);
   });

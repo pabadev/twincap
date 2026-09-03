@@ -13,6 +13,8 @@ import { setSessionCookie } from '../../infrastructure/auth/session-cookie';
 import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
 import { MongoAccountRepository } from '../../infrastructure/repositories/account-repository';
 import { MongoCategoryRepository } from '../../infrastructure/repositories/category-repository';
+import { MongoWorkspaceRepository } from '../../infrastructure/repositories/workspace-repository';
+import { MongoMembershipRepository } from '../../infrastructure/repositories/membership-repository';
 import { connectDb } from '../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../infrastructure/config/id-generator';
 import {
@@ -33,6 +35,8 @@ function getRepos() {
     userRepo: new MongoUserRepository(),
     accountRepo: new MongoAccountRepository(),
     categoryRepo: new MongoCategoryRepository(),
+    workspaceRepo: new MongoWorkspaceRepository(),
+    membershipRepo: new MongoMembershipRepository(),
   };
 }
 
@@ -75,16 +79,18 @@ export async function registerAction(
 
   try {
     await connectDb();
-    const { userRepo, accountRepo, categoryRepo } = getRepos();
-    const { userId, email: sessionEmail } = await register(
+    const { userRepo, accountRepo, categoryRepo, workspaceRepo, membershipRepo } = getRepos();
+    const { userId, email: sessionEmail, workspaceId } = await register(
       { email, password },
       userRepo,
       accountRepo,
       categoryRepo,
       bcryptPasswordHasher,
       ids,
+      workspaceRepo,
+      membershipRepo,
     );
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId });
     // R13-B2: fire the verification email best-effort (never blocks register).
     // New users have no locale yet; default to 'es' (primary market: LatAm).
     await sendVerificationBestEffort(
@@ -132,15 +138,18 @@ export async function loginAction(
 
   try {
     await connectDb();
-    const { userRepo } = getRepos();
+    const { userRepo, membershipRepo } = getRepos();
     const { userId, email: sessionEmail } = await login(
       { email, password },
       userRepo,
       bcryptPasswordHasher,
     );
+    // Resolve workspaceId for the session
+    const memberships = await membershipRepo.findByUserId(userId);
+    const workspaceId = memberships.find((m) => m.status === 'active')?.workspaceId;
     // Reset rate limit on successful login
     await loginRateLimiter.reset(rateLimitKey);
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail });
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId });
     // Audit the successful login (no actor is known before this point).
     await new MongoOperationLogger().log({
       userId,
