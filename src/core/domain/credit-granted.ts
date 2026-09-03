@@ -7,7 +7,7 @@ export type { CreditAbono } from "./credit-received";
 
 export interface CreditGrantedInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   /** Debtor name. */
   counterparty: string;
   principal: Money;
@@ -44,7 +44,7 @@ export interface CreditGrantedInput {
 
 export class CreditGranted {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly counterparty: string;
   readonly principal: Money;
   readonly accountId: string;
@@ -88,8 +88,8 @@ export class CreditGranted {
     if (input.id.length === 0) {
       throw new ValidationError("CreditGranted id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("CreditGranted userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("CreditGranted workspaceId must not be empty");
     }
     const counterparty = input.counterparty.trim();
     if (counterparty.length === 0) {
@@ -130,7 +130,7 @@ export class CreditGranted {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.counterparty = counterparty;
     this.principal = input.principal;
     this.accountId = input.accountId;
@@ -148,7 +148,7 @@ export class CreditGranted {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       counterparty: this.counterparty,
       principal: this.principal.toJSON(),
       accountId: this.accountId,

@@ -15,7 +15,7 @@ import { saleCategory } from './helpers';
  * Movement context: always 'Business' — sale movements are economic activity.
  */
 export async function addSaleAbono(
-  userId: string,
+  workspaceId: string,
   saleId: string,
   input: AddSaleAbonoInput,
   saleRepo: SaleRepository,
@@ -23,13 +23,13 @@ export async function addSaleAbono(
   ids: IdGenerator,
   accountRepo: AccountRepository,
 ): Promise<Sale> {
-  const sales = await saleRepo.findByUserId(userId);
+  const sales = await saleRepo.findByWorkspaceId(workspaceId);
   const sale = sales.find(s => s.id === saleId);
   if (!sale) throw new NotFoundError('Sale not found');
 
   // D3: resolve the RECEIVING account — validates existence/ownership and
   // provides the inherited scope.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -43,7 +43,7 @@ export async function addSaleAbono(
   const movementId = ids.generate();
   const now = new Date();
 
-  await saleRepo.addAbono(userId, saleId, {
+  await saleRepo.addAbono(workspaceId, saleId, {
     id: abonoId,
     amount: input.amount,
     date: input.date,
@@ -54,7 +54,7 @@ export async function addSaleAbono(
   // POS-4: each abono creates an income movement
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: saleCategory('income'),
     type: 'income',
@@ -78,7 +78,7 @@ export async function addSaleAbono(
   return new Sale(
     {
       id: sale.id,
-      userId: sale.userId,
+      workspaceId: sale.workspaceId,
       items: sale.items.map(i => ({ itemId: i.itemId, quantity: i.quantity, unitPrice: i.unitPrice })),
       date: sale.date,
       paymentMode: sale.paymentMode,

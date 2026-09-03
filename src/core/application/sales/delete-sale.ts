@@ -21,43 +21,43 @@ import type {
  * `deleteMany`, which never throws for "not found" (it reports 0 deleted).
  * Any non-NotFound repo error still propagates naturally. Because we delete
  * by refId instead of by pre-listed movement ids, we no longer need
- * `findByUserId` on movements nor a per-id delete loop.
+ * `findByWorkspaceId` on movements nor a per-id delete loop.
  */
 export async function deleteSale(
-  userId: string,
+  workspaceId: string,
   saleId: string,
   saleRepo: SaleRepository,
   catalogRepo: CatalogItemRepository,
   movementRepo: MovementRepository,
   creditRepo: CreditGrantedRepository,
 ): Promise<void> {
-  const sales = await saleRepo.findByUserId(userId);
+  const sales = await saleRepo.findByWorkspaceId(workspaceId);
   const sale = sales.find(s => s.id === saleId);
   if (!sale) throw new NotFoundError('Sale not found');
 
   // POS-8: restore stock for physical items
   for (const item of sale.items) {
-    const catalogItem = await catalogRepo.findById(userId, item.itemId);
+    const catalogItem = await catalogRepo.findById(workspaceId, item.itemId);
     if (catalogItem && catalogItem.type === 'product') {
-      await catalogRepo.incrementStock(userId, item.itemId, item.quantity);
+      await catalogRepo.incrementStock(workspaceId, item.itemId, item.quantity);
     }
   }
 
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const linkedCredit = credits.find(c => c.saleId === saleId);
 
   // Robust format-agnostic cascade: delete every movement that references the
   // sale (legacy salePayment — ObjectId or UUID) and, if a linked credit
   // exists, every movement that references the credit (initial payment +
   // abonos). deleteMany is tolerant of already-missing movements (returns 0).
-  await movementRepo.deleteByRefId(userId, saleId);
+  await movementRepo.deleteByRefId(workspaceId, saleId);
   if (linkedCredit) {
-    await movementRepo.deleteByRefId(userId, linkedCredit.id);
+    await movementRepo.deleteByRefId(workspaceId, linkedCredit.id);
   }
 
   if (linkedCredit) {
-    await creditRepo.delete(userId, linkedCredit.id);
+    await creditRepo.delete(workspaceId, linkedCredit.id);
   }
 
-  await saleRepo.delete(userId, saleId);
+  await saleRepo.delete(workspaceId, saleId);
 }

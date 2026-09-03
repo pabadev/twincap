@@ -10,7 +10,7 @@ export interface MovementLinkDoc {
 
 /** Mongoose document shape for Movement. */
 export interface MovementDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   accountId: mongoose.Types.ObjectId;
   type: "income" | "expense";
   /** Amount in integer minor units. */
@@ -39,7 +39,7 @@ const MovementLinkSchema = new Schema<MovementLinkDoc>(
 
 const MovementSchema = new Schema<MovementDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

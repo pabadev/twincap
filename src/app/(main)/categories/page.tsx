@@ -22,7 +22,7 @@ export default async function CategoriesPage() {
   await connectDb();
   const categoryRepo = new MongoCategoryRepository();
 
-  const categories = await listCategories(user.userId, categoryRepo);
+  const categories = await listCategories(user.workspaceId!, categoryRepo);
 
   const incomeCategories = categories.filter((c) => c.type === 'income');
   const expenseCategories = categories.filter((c) => c.type === 'expense');

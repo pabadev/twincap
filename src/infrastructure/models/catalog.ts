@@ -2,7 +2,7 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 
 /** Mongoose document shape for CatalogItem. */
 export interface CatalogItemDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   name: string;
   unitPrice: number;
   type: "product" | "service";
@@ -16,7 +16,7 @@ export type CatalogItemDocument = HydratedDocument<CatalogItemDoc>;
 
 const CatalogItemSchema = new Schema<CatalogItemDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

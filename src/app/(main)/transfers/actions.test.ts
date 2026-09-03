@@ -32,7 +32,7 @@ const { updateTransferAction } = await import('./actions');
 function makeTransfer(): Transfer {
   return new Transfer({
     id: 'tr-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     sourceAccountId: 'acc-1',
     destinationAccountId: 'acc-2',
     sourceAmount: new Money(50000, 'COP'),
@@ -49,11 +49,11 @@ function makeTransfer(): Transfer {
 function makeMovement(type: 'expense' | 'income'): Movement {
   return new Movement({
     id: type === 'expense' ? 'mov-exp' : 'mov-inc',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: type === 'expense' ? 'acc-1' : 'acc-2',
     category: new Category({
       id: 'cat-transfer',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       name: 'Transfer',
       type,
       createdAt: new Date(),
@@ -80,7 +80,7 @@ function transferFormData(): FormData {
 describe('updateTransferAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoTransferRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue(makeTransfer()),

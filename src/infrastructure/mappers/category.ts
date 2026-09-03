@@ -6,7 +6,7 @@ import { Category, type CategoryType } from "../../core/domain/category";
 export function toCategoryEntity(doc: CategoryDocument): Category {
   return new Category({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     name: doc.name,
     type: doc.type as CategoryType,
     createdAt: doc.createdAt,
@@ -16,7 +16,7 @@ export function toCategoryEntity(doc: CategoryDocument): Category {
 /** Convert a domain Category entity to plain data for Mongoose writes. */
 export function toCategoryDocData(entity: Category): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     name: entity.name,
     type: entity.type,
   };

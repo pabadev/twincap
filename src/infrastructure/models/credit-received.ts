@@ -11,7 +11,7 @@ export interface CreditReceivedAbonoDoc {
 
 /** Mongoose document shape for CreditReceived. */
 export interface CreditReceivedDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   counterparty: string;
   principal: number;
   accountId: mongoose.Types.ObjectId;
@@ -40,7 +40,7 @@ const CreditReceivedAbonoSchema = new Schema<CreditReceivedAbonoDoc>(
 
 const CreditReceivedSchema = new Schema<CreditReceivedDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

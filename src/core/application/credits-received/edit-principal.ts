@@ -13,13 +13,13 @@ import type { EditPrincipalInput } from './dto/credits-received';
  * Cascades update to the principal movement.
  */
 export async function editPrincipal(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   input: EditPrincipalInput,
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
 ): Promise<CreditReceived> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -33,7 +33,7 @@ export async function editPrincipal(
   const updatedCredit = new CreditReceived(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: updatedPrincipal,
       accountId: credit.accountId,
@@ -54,14 +54,14 @@ export async function editPrincipal(
   // infrastructure change deliberately out of scope here.
   //
   // Find and update principal movement (link.kind = creditReceivedPrincipal)
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const principalMovement = movements.find(
     m => m.link?.kind === 'creditReceivedPrincipal' && m.link?.refId === creditId,
   );
   if (principalMovement) {
     const updatedMovement = new Movement({
       id: principalMovement.id,
-      userId: principalMovement.userId,
+      workspaceId: principalMovement.workspaceId,
       accountId: principalMovement.accountId,
       category: creditCategory('income'),
       type: 'income',

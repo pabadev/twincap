@@ -43,7 +43,7 @@ export async function createCatalogItemAction(
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
     const item = await createCatalogItem(
-      user.userId,
+      user.workspaceId!,
       { name, unitPrice, currency, type, stock },
       catalogRepo,
       ids,
@@ -74,7 +74,7 @@ export async function updateCatalogItemAction(
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
     const item = await updateCatalogItem(
-      user.userId,
+      user.workspaceId!,
       itemId,
       { name, unitPrice, currency, stock },
       catalogRepo,
@@ -100,7 +100,7 @@ export async function deleteCatalogItemAction(
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
     const saleRepo = new MongoSaleRepository();
-    await deleteCatalogItem(user.userId, itemId, catalogRepo, saleRepo);
+    await deleteCatalogItem(user.workspaceId!, itemId, catalogRepo, saleRepo);
     revalidatePath('/pos/catalog');
     revalidatePath('/pos/sales');
   } catch (error) {

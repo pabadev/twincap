@@ -24,7 +24,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     updated,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
@@ -50,7 +50,7 @@ function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): Category
   return {
     categories,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByNameAndType: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (cat: Category) => { categories.push(cat); return cat; }),
     update: vi.fn().mockImplementation(async (cat: Category) => cat),
@@ -66,7 +66,7 @@ function fakeIdGen(): IdGenerator {
 function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}): Category {
   return new Category({
     id: 'cat-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Salary',
     type: 'income',
     createdAt: new Date(),
@@ -81,7 +81,7 @@ function fakeAccountRepo(
     findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
       accounts.find((a) => a.id === id) ?? null,
     ),
-    findByUserId: vi.fn().mockResolvedValue(accounts),
+    findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -94,7 +94,7 @@ function makeAccount(
 ): Account {
   return new Account({
     id,
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
@@ -105,7 +105,7 @@ function makeAccount(
 function makeMovement(overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {}): Movement {
   return new Movement({
     id: 'mov-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: 'acc-1',
     category: makeCategory(),
     type: 'income',

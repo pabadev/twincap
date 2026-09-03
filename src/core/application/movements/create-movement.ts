@@ -19,7 +19,7 @@ export interface CreateMovementInput {
 }
 
 export async function createMovement(
-  userId: string,
+  workspaceId: string,
   input: CreateMovementInput,
   movementRepo: MovementRepository,
   categoryRepo: CategoryRepository,
@@ -32,7 +32,7 @@ export async function createMovement(
   }
 
   // MOV-2: category-type match — category must be same type as movement
-  const category = await categoryRepo.findById(userId, input.categoryId);
+  const category = await categoryRepo.findById(workspaceId, input.categoryId);
   if (!category) {
     throw new ValidationError('Category not found');
   }
@@ -41,7 +41,7 @@ export async function createMovement(
   }
 
   // D3: validate account exists/owned (context comes from the client form).
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError('Account not found');
   }
@@ -49,7 +49,7 @@ export async function createMovement(
   const now = new Date();
   const movement = new Movement({
     id: ids.generate(),
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category,
     type: input.type,

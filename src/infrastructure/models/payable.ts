@@ -11,7 +11,7 @@ export interface PayableAbonoDoc {
 
 /** Mongoose document shape for Payable. Stores the purchase TOTAL (never net debt). */
 export interface PayableDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   counterparty: string;
   total: number;
   initialPayment: number;
@@ -39,7 +39,7 @@ const PayableAbonoSchema = new Schema<PayableAbonoDoc>(
 
 const PayableSchema = new Schema<PayableDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

@@ -8,7 +8,7 @@ import { Money } from "../../core/domain/money";
 export function toTransferEntity(doc: TransferDocument): Transfer {
   return new Transfer({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     sourceAccountId: doc.sourceAccountId.toString(),
     destinationAccountId: doc.destinationAccountId.toString(),
     sourceAmount: new Money(doc.sourceAmount, doc.sourceCurrency as Currency),
@@ -34,7 +34,7 @@ export function toTransferEntity(doc: TransferDocument): Transfer {
 /** Convert a domain Transfer entity to plain data for Mongoose writes. */
 export function toTransferDocData(entity: Transfer): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     sourceAccountId: new Types.ObjectId(entity.sourceAccountId),
     destinationAccountId: new Types.ObjectId(entity.destinationAccountId),
     sourceAmount: entity.sourceAmount.amount,

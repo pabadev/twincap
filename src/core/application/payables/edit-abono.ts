@@ -13,14 +13,14 @@ import type { EditAbonoInput } from './dto/payables';
  * via abono.movementId — embedded abono and movement move together.
  */
 export async function editAbono(
-  userId: string,
+  workspaceId: string,
   payableId: string,
   abonoId: string,
   input: EditAbonoInput,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
 ): Promise<Payable> {
-  const payables = await payableRepo.findByUserId(userId);
+  const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
@@ -45,18 +45,18 @@ export async function editAbono(
   // writes inside this single use-case invocation. Full transactionality
   // would require the repository ports to accept a Mongoose ClientSession —
   // an infrastructure change deliberately out of scope here.
-  await payableRepo.editAbono(userId, payableId, abonoId, {
+  await payableRepo.editAbono(workspaceId, payableId, abonoId, {
     amount: input.amount,
     date: input.date,
   });
 
   // Update linked movement (cascade via abono.movementId)
   if (abono.movementId) {
-    const movement = await movementRepo.findById(userId, abono.movementId);
+    const movement = await movementRepo.findById(workspaceId, abono.movementId);
     if (movement) {
       const updatedMovement = new Movement({
         id: movement.id,
-        userId: movement.userId,
+        workspaceId: movement.workspaceId,
         accountId: updatedAccountId,
         category: payableCategory('expense'),
         type: 'expense',
@@ -74,7 +74,7 @@ export async function editAbono(
   return new Payable(
     {
       id: payable.id,
-      userId: payable.userId,
+      workspaceId: payable.workspaceId,
       counterparty: payable.counterparty,
       total: payable.total,
       initialPayment: payable.initialPayment,

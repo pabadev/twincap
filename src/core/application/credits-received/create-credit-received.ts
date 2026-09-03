@@ -15,7 +15,7 @@ import type { CreateCreditReceivedInput } from './dto/credits-received';
  * Movement context: always 'Personal' — credits received are personal financing.
  */
 export async function createCreditReceived(
-  userId: string,
+  workspaceId: string,
   input: CreateCreditReceivedInput,
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
@@ -23,7 +23,7 @@ export async function createCreditReceived(
   accountRepo: AccountRepository,
 ): Promise<CreditReceived> {
   // D3: resolve the receiving account — validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -49,7 +49,7 @@ export async function createCreditReceived(
 
   const credit = new CreditReceived({
     id: creditId,
-    userId,
+    workspaceId,
     counterparty: input.counterparty,
     principal: principalMoney,
     accountId: input.accountId,
@@ -67,7 +67,7 @@ export async function createCreditReceived(
   const opId = ids.generate();
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: creditCategory('income'),
     type: 'income',

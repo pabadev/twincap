@@ -14,22 +14,22 @@ import {
 } from "../mappers/credit-granted";
 
 export class MongoCreditGrantedRepository implements CreditGrantedRepository {
-  async findById(userId: string, id: string): Promise<CreditGranted | null> {
+  async findById(workspaceId: string, id: string): Promise<CreditGranted | null> {
     const doc = await CreditGrantedModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
-      userId,
+      workspaceId,
       (doc as CreditGrantedDocument).accountId.toString(),
     );
     return toCreditGrantedEntity(doc as CreditGrantedDocument, currency);
   }
 
-  async findByUserId(userId: string): Promise<CreditGranted[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<CreditGranted[]> {
     const docs = await CreditGrantedModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
@@ -37,7 +37,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       ...new Set(docs.map((d) => d.accountId.toString())),
     ];
     const currencyMap = await this.resolveBulkAccountCurrencies(
-      userId,
+      workspaceId,
       accountIds,
     );
 
@@ -53,14 +53,14 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       const docData = toCreditGrantedDocData(credit);
       const created = await CreditGrantedModel.create({ ...docData, _id: credit.id });
       const currency = await this.resolveAccountCurrency(
-        credit.userId,
+        credit.workspaceId,
         credit.accountId,
       );
       return toCreditGrantedEntity(created as CreditGrantedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `CreditGranted for user ${credit.userId} already exists`,
+          `CreditGranted for user ${credit.workspaceId} already exists`,
         );
       }
       throw err;
@@ -72,31 +72,31 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     const result = await CreditGrantedModel.findOneAndUpdate(
       {
         _id: credit.id,
-        userId: new Types.ObjectId(credit.userId),
+        workspaceId: new Types.ObjectId(credit.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `CreditGranted ${credit.id} not found for user ${credit.userId}`,
+        `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
       );
     }
     const currency = await this.resolveAccountCurrency(
-      credit.userId,
+      credit.workspaceId,
       credit.accountId,
     );
     return toCreditGrantedEntity(result as CreditGrantedDocument, currency);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await CreditGrantedModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
       throw new NotFoundError(
-        `CreditGranted ${id} not found for user ${userId}`,
+        `CreditGranted ${id} not found for user ${workspaceId}`,
       );
     }
   }
@@ -105,7 +105,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   /** Add an abono — idempotent: skips if movementId already present. */
   async addAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abono: {
       id: string;
@@ -122,7 +122,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       const result = await CreditGrantedModel.updateOne(
         {
           _id: creditId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
@@ -134,7 +134,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       await CreditGrantedModel.updateOne(
         {
           _id: creditId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
       ).exec();
@@ -146,7 +146,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
    *  split fields (capitalAmount / interestAmount / interestMovementId) can be
    *  cleared when a recomputed portion drops to zero (R9/D9.3 edit sync). */
   async editAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abonoId: string,
     updates: Partial<{
@@ -176,7 +176,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
         "abonos.id": abonoId,
       },
       update,
@@ -185,14 +185,14 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   /** Delete an embedded abono by its id. */
   async deleteAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abonoId: string,
   ): Promise<void> {
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
     ).exec();
@@ -200,14 +200,14 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   /** Mark the credit as written off (R9/D9.4) — `$set` on the write-off marker. */
   async markWrittenOff(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     writtenOff: { date: Date; movementId: string },
   ): Promise<void> {
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       },
       { $set: { writtenOff } },
     ).exec();
@@ -216,29 +216,29 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   // ─── Private helpers ───────────────────────────────────────────────
 
   private async resolveAccountCurrency(
-    userId: string,
+    workspaceId: string,
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
       _id: accountId,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) {
       throw new NotFoundError(
-        `Account ${accountId} not found for user ${userId}`,
+        `Account ${accountId} not found for user ${workspaceId}`,
       );
     }
     return (doc as AccountDocument).currency as Currency;
   }
 
   private async resolveBulkAccountCurrencies(
-    userId: string,
+    workspaceId: string,
     accountIds: string[],
   ): Promise<Map<string, Currency>> {
-    const uid = new Types.ObjectId(userId);
+    const uid = new Types.ObjectId(workspaceId);
     const docs = await AccountModel.find({
       _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      userId: uid,
+      workspaceId: uid,
     }).exec();
 
     const map = new Map<string, Currency>();

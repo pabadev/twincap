@@ -17,7 +17,7 @@ import type { CreatePayableInput } from './dto/payables';
  * D3: that movement inherits the payment account's scope.
  */
 export async function createPayable(
-  userId: string,
+  workspaceId: string,
   input: CreatePayableInput,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
@@ -25,7 +25,7 @@ export async function createPayable(
   accountRepo: AccountRepository,
 ): Promise<Payable> {
   // D3: resolve the payment account — validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -38,7 +38,7 @@ export async function createPayable(
   // any write happens.
   const payable = new Payable({
     id: payableId,
-    userId,
+    workspaceId,
     counterparty: input.counterparty,
     total: totalMoney,
     initialPayment: input.initialPayment ?? 0,
@@ -60,7 +60,7 @@ export async function createPayable(
     const movementId = ids.generate();
     const movement = new Movement({
       id: movementId,
-      userId,
+      workspaceId,
       accountId: input.accountId,
       category: payableCategory('expense'),
       type: 'expense',

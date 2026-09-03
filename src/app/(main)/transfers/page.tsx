@@ -16,8 +16,8 @@ export default async function TransfersPage() {
   const transferRepo = new MongoTransferRepository();
 
   const [accounts, transfers] = await Promise.all([
-    listAccounts(user.userId, accountRepo),
-    transferRepo.findByUserId(user.userId),
+    listAccounts(user.workspaceId!, accountRepo),
+    transferRepo.findByWorkspaceId(user.workspaceId!),
   ]);
 
   return (

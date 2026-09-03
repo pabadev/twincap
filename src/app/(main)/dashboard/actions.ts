@@ -45,17 +45,17 @@ export async function getDashboardSnapshotAction(
     const saleRepo = new MongoSaleRepository();
     const transferRepo = new MongoTransferRepository();
 
-    const accounts = await listAccounts(user.userId, accountRepo);
+    const accounts = await listAccounts(user.workspaceId!, accountRepo);
 
     const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
       await Promise.all([
-        movementRepo.findByUserId(user.userId),
-        categoryRepo.findByUserId(user.userId),
-        creditReceivedRepo.findByUserId(user.userId),
-        creditGrantedRepo.findByUserId(user.userId),
-        payableRepo.findByUserId(user.userId),
-        saleRepo.findByUserId(user.userId),
-        transferRepo.findByUserId(user.userId),
+        movementRepo.findByWorkspaceId(user.workspaceId!),
+        categoryRepo.findByWorkspaceId(user.workspaceId!),
+        creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
+        creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
+        payableRepo.findByWorkspaceId(user.workspaceId!),
+        saleRepo.findByWorkspaceId(user.workspaceId!),
+        transferRepo.findByWorkspaceId(user.workspaceId!),
       ]);
 
     // R6-P1 defensive filter + R7-A balance derivation — same source/pattern as page.tsx.

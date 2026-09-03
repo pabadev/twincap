@@ -69,7 +69,7 @@ export async function createCreditGrantedAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return createCreditGranted(
-          user.userId,
+          user.workspaceId!,
           { counterparty, principal, currency, accountId, date, installments, installmentValue, frequency },
           creditRepo,
           movementRepo,
@@ -126,7 +126,7 @@ export async function addAbonoAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return addAbono(
-          user.userId,
+          user.workspaceId!,
           creditId,
           { amount, currency, accountId, date },
           creditRepo,
@@ -169,7 +169,7 @@ export async function editAbonoAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         return editAbono(
-          user.userId,
+          user.workspaceId!,
           creditId,
           abonoId,
           { amount, date },
@@ -208,7 +208,7 @@ export async function editCreditGrantedAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         return editPrincipal(
-          user.userId,
+          user.workspaceId!,
           creditId,
           { principal, currency },
           creditRepo,
@@ -243,7 +243,7 @@ export async function deleteAbonoAction(
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAbono(user.userId, creditId, abonoId, creditRepo, movementRepo);
+        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo);
       },
     );
     revalidateMovementData('/credits/granted');
@@ -272,7 +272,7 @@ export async function deleteCreditAction(
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteCreditGranted(user.userId, creditId, creditRepo, movementRepo);
+        return deleteCreditGranted(user.workspaceId!, creditId, creditRepo, movementRepo);
       },
     );
     revalidateMovementData('/credits/granted');
@@ -315,7 +315,7 @@ export async function markAsPaidAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return markAsPaid(user.userId, creditId, creditRepo, movementRepo, ids, accountRepo);
+        return markAsPaid(user.workspaceId!, creditId, creditRepo, movementRepo, ids, accountRepo);
       },
     );
     revalidateMovementData('/credits/granted');
@@ -359,7 +359,7 @@ export async function writeOffCreditAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         return writeOffCreditGranted(
-          user.userId,
+          user.workspaceId!,
           creditId,
           creditRepo,
           movementRepo,

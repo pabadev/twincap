@@ -11,7 +11,7 @@ import {
 const DATE = new Date("2026-01-01T00:00:00Z");
 
 function category(type: "income" | "expense"): Category {
-  return new Category({ id: `cat-${type}`, userId: "u1", name: `Cat ${type}`, type, createdAt: DATE });
+  return new Category({ id: `cat-${type}`, workspaceId: "u1", name: `Cat ${type}`, type, createdAt: DATE });
 }
 
 function movement(
@@ -19,7 +19,7 @@ function movement(
 ): Movement {
   return new Movement({
     id: "m1",
-    userId: "u1",
+    workspaceId: "u1",
     accountId: "a1",
     category: category("expense"),
     type: "expense",

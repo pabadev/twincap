@@ -14,7 +14,7 @@ function makeMovement(overrides: Partial<ConstructorParameters<typeof Movement>[
   const { type = "income", category, ...rest } = overrides;
   return new Movement({
     id: "mov-1",
-    userId: "user-1",
+    workspaceId: "user-1",
     accountId: "acc-1",
     category: category ?? makeCategory(type),
     type,
@@ -35,7 +35,7 @@ function makeSaleLinkMovement(
 ): Movement {
   return new Movement({
     id,
-    userId: "user-1",
+    workspaceId: "user-1",
     accountId,
     category: saleCategory("income"),
     type: "income",

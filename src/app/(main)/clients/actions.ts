@@ -51,7 +51,7 @@ export async function createClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    const client = await createClient(user.userId, parsed.data, clientRepo, ids);
+    const client = await createClient(user.workspaceId!, parsed.data, clientRepo, ids);
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
     return { success: 'clientCreated', client: client.toJSON() };
@@ -84,7 +84,7 @@ export async function updateClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    const client = await updateClient(user.userId, clientId, parsed.data, clientRepo);
+    const client = await updateClient(user.workspaceId!, clientId, parsed.data, clientRepo);
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
     return { success: 'clientUpdated', client: client.toJSON() };
@@ -105,7 +105,7 @@ export async function deleteClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    await deleteClient(user.userId, clientId, clientRepo);
+    await deleteClient(user.workspaceId!, clientId, clientRepo);
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
   } catch (error) {

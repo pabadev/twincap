@@ -2,7 +2,7 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 
 /** Mongoose document shape for Client. */
 export interface ClientDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   name: string;
   phone: string;
   email: string;
@@ -15,7 +15,7 @@ export type ClientDocument = HydratedDocument<ClientDoc>;
 
 const ClientSchema = new Schema<ClientDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,
@@ -44,7 +44,7 @@ const ClientSchema = new Schema<ClientDoc>(
   { timestamps: true },
 );
 
-ClientSchema.index({ userId: 1, name: 1 });
+ClientSchema.index({ workspaceId: 1, name: 1 });
 
 export const ClientModel =
   mongoose.models["Client"] ||

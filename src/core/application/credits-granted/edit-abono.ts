@@ -30,7 +30,7 @@ import { splitAbonoCapitalInterest } from './split-abono';
  * behavior — this is required so historical data and its tests stay intact.
  */
 export async function editAbono(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   abonoId: string,
   input: EditAbonoInput,
@@ -38,7 +38,7 @@ export async function editAbono(
   movementRepo: MovementRepository,
   ids: IdGenerator,
 ): Promise<CreditGranted> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -88,7 +88,7 @@ export async function editAbono(
 
     if (split.interestAmount === 0 && abono.interestMovementId) {
       try {
-        await movementRepo.delete(userId, abono.interestMovementId);
+        await movementRepo.delete(workspaceId, abono.interestMovementId);
       } catch (err) {
         // tolerant: already-missing interest movement is fine
         if (!(err instanceof NotFoundError)) throw err;
@@ -98,12 +98,12 @@ export async function editAbono(
 
     if (split.interestAmount > 0) {
       if (abono.interestMovementId) {
-        const movement = await movementRepo.findById(userId, abono.interestMovementId);
+        const movement = await movementRepo.findById(workspaceId, abono.interestMovementId);
         if (movement) {
           await movementRepo.update(
             new Movement({
               id: movement.id,
-              userId: movement.userId,
+              workspaceId: movement.workspaceId,
               accountId: updatedAccountId,
               category: creditGrantedCategory('income'),
               type: 'income',
@@ -125,7 +125,7 @@ export async function editAbono(
         await movementRepo.create(
           new Movement({
             id: interestMovementId,
-            userId,
+            workspaceId,
             accountId: updatedAccountId,
             category: creditGrantedCategory('income'),
             type: 'income',
@@ -143,12 +143,12 @@ export async function editAbono(
     if (split.capitalAmount > 0 && abono.movementId) {
       // Primary capital movement — sync its amount. (Only the 100%-interest
       // abono has no capital movement; that case is handled below.)
-      const movement = await movementRepo.findById(userId, abono.movementId);
+      const movement = await movementRepo.findById(workspaceId, abono.movementId);
       if (movement) {
         await movementRepo.update(
           new Movement({
             id: movement.id,
-            userId: movement.userId,
+            workspaceId: movement.workspaceId,
             accountId: updatedAccountId,
             category: creditGrantedCategory('income'),
             type: 'income',
@@ -163,12 +163,12 @@ export async function editAbono(
       }
     } else if (abono.movementId) {
       // 100%-interest abono: the primary movement IS the interest movement.
-      const movement = await movementRepo.findById(userId, abono.movementId);
+      const movement = await movementRepo.findById(workspaceId, abono.movementId);
       if (movement) {
         await movementRepo.update(
           new Movement({
             id: movement.id,
-            userId: movement.userId,
+            workspaceId: movement.workspaceId,
             accountId: updatedAccountId,
             category: creditGrantedCategory('income'),
             type: 'income',
@@ -185,7 +185,7 @@ export async function editAbono(
 
     // ── Persist the abono (resolved amounts; undefined → $unset clears the
     //    dropped markers so the split stays self-consistent).
-    await creditRepo.editAbono(userId, creditId, abonoId, {
+    await creditRepo.editAbono(workspaceId, creditId, abonoId, {
       amount: updatedAmount.amount,
       date: updatedDate,
       capitalAmount: split.capitalAmount > 0 ? split.capitalAmount : undefined,
@@ -196,7 +196,7 @@ export async function editAbono(
     return new CreditGranted(
       {
         id: credit.id,
-        userId: credit.userId,
+        workspaceId: credit.workspaceId,
         counterparty: credit.counterparty,
         principal: credit.principal,
         accountId: credit.accountId,
@@ -234,18 +234,18 @@ export async function editAbono(
   // ── Legacy single-movement path (sale-born + pre-R9 abonos) ──────────────
   // Resolved values only — passing `undefined` to the repository would $unset
   // the field (undefined → $unset contract), clearing amounts by accident.
-  await creditRepo.editAbono(userId, creditId, abonoId, {
+  await creditRepo.editAbono(workspaceId, creditId, abonoId, {
     amount: updatedAmount.amount,
     date: updatedDate,
   });
 
   // Update linked movement (income type for abonos)
   if (abono.movementId) {
-    const movement = await movementRepo.findById(userId, abono.movementId);
+    const movement = await movementRepo.findById(workspaceId, abono.movementId);
     if (movement) {
       const updatedMovement = new Movement({
         id: movement.id,
-        userId: movement.userId,
+        workspaceId: movement.workspaceId,
         accountId: updatedAccountId,
         category: creditGrantedCategory('income'),
         type: 'income',
@@ -267,7 +267,7 @@ export async function editAbono(
   return new CreditGranted(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

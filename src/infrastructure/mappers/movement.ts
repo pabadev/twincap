@@ -22,7 +22,7 @@ export function toMovementEntity(
 ): Movement {
   return new Movement({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     accountId: doc.accountId.toString(),
     category,
     type: doc.type,
@@ -44,7 +44,7 @@ export function toMovementEntity(
 /** Convert a domain Movement entity to plain data for Mongoose writes. */
 export function toMovementDocData(entity: Movement): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     accountId: new Types.ObjectId(entity.accountId),
     type: entity.type,
     amount: entity.amount.amount,

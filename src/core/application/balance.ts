@@ -15,11 +15,11 @@ import type { MovementRepository } from "../domain/repositories";
  * Returns 0 when the account has no movements.
  */
 export async function getAccountBalance(
-  userId: string,
+  workspaceId: string,
   accountId: string,
   movementRepo: MovementRepository,
 ): Promise<number> {
-  return movementRepo.aggregateBalance(userId, accountId);
+  return movementRepo.aggregateBalance(workspaceId, accountId);
 }
 
 /**
@@ -31,10 +31,10 @@ export async function getAccountBalance(
  * will be added in Phase 7.
  */
 export async function getUserBalances(
-  userId: string,
+  workspaceId: string,
   movementRepo: MovementRepository,
 ): Promise<Map<string, number>> {
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const balances = new Map<string, number>();
 
   for (const m of movements) {

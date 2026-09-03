@@ -6,18 +6,18 @@ import { TransferModel, type TransferDocument } from "../models/transfer";
 import { toTransferEntity, toTransferDocData } from "../mappers/transfer";
 
 export class MongoTransferRepository implements TransferRepository {
-  async findById(userId: string, id: string): Promise<Transfer | null> {
+  async findById(workspaceId: string, id: string): Promise<Transfer | null> {
     const doc = await TransferModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     return toTransferEntity(doc as TransferDocument);
   }
 
-  async findByUserId(userId: string): Promise<Transfer[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Transfer[]> {
     const docs = await TransferModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     return docs.map((doc) => toTransferEntity(doc as TransferDocument));
   }
@@ -30,7 +30,7 @@ export class MongoTransferRepository implements TransferRepository {
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Transfer for user ${transfer.userId} already exists`,
+          `Transfer for user ${transfer.workspaceId} already exists`,
         );
       }
       throw err;
@@ -42,26 +42,26 @@ export class MongoTransferRepository implements TransferRepository {
     const result = await TransferModel.findOneAndUpdate(
       {
         _id: transfer.id,
-        userId: new Types.ObjectId(transfer.userId),
+        workspaceId: new Types.ObjectId(transfer.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Transfer ${transfer.id} not found for user ${transfer.userId}`,
+        `Transfer ${transfer.id} not found for user ${transfer.workspaceId}`,
       );
     }
     return toTransferEntity(result as TransferDocument);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await TransferModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Transfer ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Transfer ${id} not found for user ${workspaceId}`);
     }
   }
 

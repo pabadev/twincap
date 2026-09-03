@@ -11,7 +11,7 @@ function makeTransfer(
 ): Transfer {
   const transfer = new Transfer({
     id: "t1",
-    userId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    workspaceId: "aaaaaaaaaaaaaaaaaaaaaaaa",
     sourceAccountId: "bbbbbbbbbbbbbbbbbbbbbbbb",
     destinationAccountId: "cccccccccccccccccccccccc",
     sourceAmount: new Money(100, "COP"),

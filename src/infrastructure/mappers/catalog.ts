@@ -20,7 +20,7 @@ export function toCatalogItemEntity(
 ): CatalogItem {
   return new CatalogItem({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     name: doc.name,
     unitPrice: new Money(doc.unitPrice, currency),
     type: doc.type as CatalogItemType,
@@ -34,7 +34,7 @@ export function toCatalogItemDocData(
   entity: CatalogItem,
 ): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     name: entity.name,
     unitPrice: entity.unitPrice.amount,
     type: entity.type,

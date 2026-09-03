@@ -13,12 +13,12 @@ import type { EditTotalInput } from './dto/payables';
  * initial payment/abono movements are independent of the total.
  */
 export async function editTotal(
-  userId: string,
+  workspaceId: string,
   payableId: string,
   input: EditTotalInput,
   payableRepo: PayableRepository,
 ): Promise<Payable> {
-  const payables = await payableRepo.findByUserId(userId);
+  const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
@@ -32,7 +32,7 @@ export async function editTotal(
   const updatedPayable = new Payable(
     {
       id: payable.id,
-      userId: payable.userId,
+      workspaceId: payable.workspaceId,
       counterparty: payable.counterparty,
       total: new Money(input.total, input.currency),
       initialPayment: payable.initialPayment,

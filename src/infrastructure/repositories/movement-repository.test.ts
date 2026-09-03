@@ -22,7 +22,7 @@ import { MongoMovementRepository } from "./movement-repository";
 function fakeMovementDoc(overrides: Partial<Record<string, unknown>>) {
   return {
     _id: new Types.ObjectId(),
-    userId: new Types.ObjectId(),
+    workspaceId: new Types.ObjectId(),
     accountId: new Types.ObjectId(),
     type: "income",
     categoryId: new Types.ObjectId(),
@@ -41,7 +41,7 @@ function fakeMovementDoc(overrides: Partial<Record<string, unknown>>) {
 function fakeAccountDoc(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     _id: new Types.ObjectId(),
-    userId: new Types.ObjectId(),
+    workspaceId: new Types.ObjectId(),
     name: "Efectivo",
     currency: "COP" as const,
     isFixed: false,
@@ -53,7 +53,7 @@ function fakeAccountDoc(overrides: Partial<Record<string, unknown>> = {}) {
 function fakeCategoryDoc(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     _id: new Types.ObjectId(),
-    userId: new Types.ObjectId(),
+    workspaceId: new Types.ObjectId(),
     name: "Sueldo",
     type: "income" as const,
     createdAt: new Date(),
@@ -81,7 +81,7 @@ function pagedExecResult(result: unknown[], limit: number) {
 
 describe("MongoMovementRepository orphan guard (R8)", () => {
   let repo: MongoMovementRepository;
-  // The repo passes userId/accountId through `new Types.ObjectId()`, so they
+  // The repo passes workspaceId/accountId through `new Types.ObjectId()`, so they
   // must be valid 24-hex ObjectId strings here.
   const UID = new Types.ObjectId().toString();
   const ACCOUNT_ID = new Types.ObjectId().toString();
@@ -93,7 +93,7 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     accountFind.mockReset();
   });
 
-  it("findByUserId skips a movement whose account does not exist (orphan), instead of crashing", async () => {
+  it("findByWorkspaceId skips a movement whose account does not exist (orphan), instead of crashing", async () => {
     const account = fakeAccountDoc();
     const category = fakeCategoryDoc();
     // Two movements: one references the live account, one references a missing account.
@@ -111,12 +111,12 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     categoryFind.mockImplementation(() => execResult([category]));
     accountFind.mockImplementation(() => execResult([account]));
 
-    const result = await repo.findByUserId(UID);
+    const result = await repo.findByWorkspaceId(UID);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(live._id.toString());
   });
 
-  it("findByUserId still maps every movement when all accounts resolve", async () => {
+  it("findByWorkspaceId still maps every movement when all accounts resolve", async () => {
     const account = fakeAccountDoc();
     const category = fakeCategoryDoc();
     const m1 = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
@@ -126,11 +126,11 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     categoryFind.mockImplementation(() => execResult([category]));
     accountFind.mockImplementation(() => execResult([account]));
 
-    const result = await repo.findByUserId(UID);
+    const result = await repo.findByWorkspaceId(UID);
     expect(result).toHaveLength(2);
   });
 
-  it("findByUserId reconstructs the Money currency from the live account", async () => {
+  it("findByWorkspaceId reconstructs the Money currency from the live account", async () => {
     const account = fakeAccountDoc({ currency: "USD" });
     const category = fakeCategoryDoc();
     const live = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
@@ -139,7 +139,7 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     categoryFind.mockImplementation(() => execResult([category]));
     accountFind.mockImplementation(() => execResult([account]));
 
-    const [result] = await repo.findByUserId(UID);
+    const [result] = await repo.findByWorkspaceId(UID);
     expect(result.amount.currency).toBe("USD");
     expect(result.amount.amount).toBe(100000);
   });

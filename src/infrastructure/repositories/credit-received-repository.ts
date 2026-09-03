@@ -14,22 +14,22 @@ import {
 } from "../mappers/credit-received";
 
 export class MongoCreditReceivedRepository implements CreditReceivedRepository {
-  async findById(userId: string, id: string): Promise<CreditReceived | null> {
+  async findById(workspaceId: string, id: string): Promise<CreditReceived | null> {
     const doc = await CreditReceivedModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
-      userId,
+      workspaceId,
       (doc as CreditReceivedDocument).accountId.toString(),
     );
     return toCreditReceivedEntity(doc as CreditReceivedDocument, currency);
   }
 
-  async findByUserId(userId: string): Promise<CreditReceived[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<CreditReceived[]> {
     const docs = await CreditReceivedModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
@@ -37,7 +37,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       ...new Set(docs.map((d) => d.accountId.toString())),
     ];
     const currencyMap = await this.resolveBulkAccountCurrencies(
-      userId,
+      workspaceId,
       accountIds,
     );
 
@@ -53,14 +53,14 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       const docData = toCreditReceivedDocData(credit);
       const created = await CreditReceivedModel.create({ ...docData, _id: credit.id });
       const currency = await this.resolveAccountCurrency(
-        credit.userId,
+        credit.workspaceId,
         credit.accountId,
       );
       return toCreditReceivedEntity(created as CreditReceivedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `CreditReceived for user ${credit.userId} already exists`,
+          `CreditReceived for user ${credit.workspaceId} already exists`,
         );
       }
       throw err;
@@ -72,31 +72,31 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     const result = await CreditReceivedModel.findOneAndUpdate(
       {
         _id: credit.id,
-        userId: new Types.ObjectId(credit.userId),
+        workspaceId: new Types.ObjectId(credit.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `CreditReceived ${credit.id} not found for user ${credit.userId}`,
+        `CreditReceived ${credit.id} not found for user ${credit.workspaceId}`,
       );
     }
     const currency = await this.resolveAccountCurrency(
-      credit.userId,
+      credit.workspaceId,
       credit.accountId,
     );
     return toCreditReceivedEntity(result as CreditReceivedDocument, currency);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await CreditReceivedModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
       throw new NotFoundError(
-        `CreditReceived ${id} not found for user ${userId}`,
+        `CreditReceived ${id} not found for user ${workspaceId}`,
       );
     }
   }
@@ -105,7 +105,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
 
   /** Add an abono — idempotent: skips if movementId already present. */
   async addAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abono: {
       id: string;
@@ -121,7 +121,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       const result = await CreditReceivedModel.updateOne(
         {
           _id: creditId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
@@ -134,7 +134,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       await CreditReceivedModel.updateOne(
         {
           _id: creditId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
       ).exec();
@@ -143,7 +143,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
 
   /** Edit an embedded abono by its id. */
   async editAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
@@ -155,7 +155,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     await CreditReceivedModel.updateOne(
       {
         _id: creditId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
         "abonos.id": abonoId,
       },
       { $set: setFields },
@@ -164,14 +164,14 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
 
   /** Delete an embedded abono by its id. */
   async deleteAbono(
-    userId: string,
+    workspaceId: string,
     creditId: string,
     abonoId: string,
   ): Promise<void> {
     await CreditReceivedModel.updateOne(
       {
         _id: creditId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
     ).exec();
@@ -180,29 +180,29 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   // ─── Private helpers ───────────────────────────────────────────────
 
   private async resolveAccountCurrency(
-    userId: string,
+    workspaceId: string,
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
       _id: accountId,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) {
       throw new NotFoundError(
-        `Account ${accountId} not found for user ${userId}`,
+        `Account ${accountId} not found for user ${workspaceId}`,
       );
     }
     return (doc as AccountDocument).currency as Currency;
   }
 
   private async resolveBulkAccountCurrencies(
-    userId: string,
+    workspaceId: string,
     accountIds: string[],
   ): Promise<Map<string, Currency>> {
-    const uid = new Types.ObjectId(userId);
+    const uid = new Types.ObjectId(workspaceId);
     const docs = await AccountModel.find({
       _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      userId: uid,
+      workspaceId: uid,
     }).exec();
 
     const map = new Map<string, Currency>();

@@ -36,12 +36,12 @@ function formData(accountId = 'acc-1', amount?: number): FormData {
 describe('updateAccountAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({
         id: 'acc-1',
-        userId: 'user-1',
+        workspaceId: 'user-1',
         name: 'Efectivo',
         currency: 'COP',
         isFixed: true,
@@ -94,7 +94,7 @@ describe('updateAccountAction', () => {
 describe('deleteAccountAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue(null),
@@ -122,12 +122,12 @@ describe('deleteAccountAction', () => {
 describe('setInitialBalanceAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({
         id: 'acc-1',
-        userId: 'user-1',
+        workspaceId: 'user-1',
         name: 'Efectivo',
         currency: 'COP',
         isFixed: true,

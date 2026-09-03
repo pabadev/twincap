@@ -76,7 +76,7 @@ export async function createTransferAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return createTransfer(
-          user.userId,
+          user.workspaceId!,
           input,
           transferRepo,
           movementRepo,
@@ -131,7 +131,7 @@ export async function updateTransferAction(
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
         return updateTransfer(
-          user.userId,
+          user.workspaceId!,
           transferId,
           input,
           transferRepo,
@@ -168,7 +168,7 @@ export async function deleteTransferAction(
       () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteTransfer(user.userId, transferId, transferRepo, movementRepo);
+        return deleteTransfer(user.workspaceId!, transferId, transferRepo, movementRepo);
       },
     );
     revalidatePath('/transfers');

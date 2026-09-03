@@ -13,7 +13,7 @@ const DATE = new Date("2026-01-01T00:00:00Z");
 function makeClient(overrides: Partial<{ id: string; name: string; phone: string; email: string; note: string }> = {}): Client {
   return new Client({
     id: overrides.id ?? "c1",
-    userId: "u1",
+    workspaceId: "u1",
     name: overrides.name ?? "Juan Pérez",
     phone: overrides.phone ?? "+57 300 1234567",
     email: overrides.email ?? "juan@example.com",
@@ -25,7 +25,7 @@ function makeClient(overrides: Partial<{ id: string; name: string; phone: string
 function makeRepo(overrides: Partial<ClientRepository> = {}): ClientRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByName: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
     update: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
@@ -45,7 +45,7 @@ describe("createClient", () => {
     const client = await createClient("u1", { name: "Juan" }, repo, ids);
 
     expect(client.name).toBe("Juan");
-    expect(client.userId).toBe("u1");
+    expect(client.workspaceId).toBe("u1");
     expect(repo.findByName).toHaveBeenCalledWith("u1", "Juan");
     expect(repo.create).toHaveBeenCalledWith(client);
   });
@@ -90,12 +90,12 @@ describe("createClient", () => {
 describe("listClients", () => {
   it("returns clients for user", async () => {
     const clients = [makeClient({ id: "c1" }), makeClient({ id: "c2" })];
-    const repo = makeRepo({ findByUserId: vi.fn().mockResolvedValue(clients) });
+    const repo = makeRepo({ findByWorkspaceId: vi.fn().mockResolvedValue(clients) });
 
     const result = await listClients("u1", repo);
 
     expect(result).toHaveLength(2);
-    expect(repo.findByUserId).toHaveBeenCalledWith("u1");
+    expect(repo.findByWorkspaceId).toHaveBeenCalledWith("u1");
   });
 
   it("returns empty array when no clients", async () => {

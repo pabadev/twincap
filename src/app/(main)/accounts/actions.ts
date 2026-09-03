@@ -54,7 +54,7 @@ export async function createAccountAction(
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
         return createAccount(
-          user.userId,
+          user.workspaceId!,
           { name, currency, initialBalance },
           accountRepo,
           movementRepo,
@@ -86,7 +86,7 @@ export async function updateAccountAction(
   try {
     await connectDb();
     const accountRepo = new MongoAccountRepository();
-    await updateAccount(user.userId, { accountId, name }, accountRepo);
+    await updateAccount(user.workspaceId!, { accountId, name }, accountRepo);
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
@@ -116,7 +116,7 @@ export async function deleteAccountAction(
       () => {
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAccount(user.userId, accountId, accountRepo, movementRepo);
+        return deleteAccount(user.workspaceId!, accountId, accountRepo, movementRepo);
       },
     );
     revalidatePath('/accounts');
@@ -163,7 +163,7 @@ export async function setInitialBalanceAction(
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
         return setInitialAccountBalance(
-          user.userId,
+          user.workspaceId!,
           { accountId, amount },
           accountRepo,
           movementRepo,

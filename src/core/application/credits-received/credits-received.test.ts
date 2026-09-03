@@ -34,7 +34,7 @@ function fakeAccountRepo(
     findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
       accounts.find((a) => a.id === id) ?? null,
     ),
-    findByUserId: vi.fn().mockResolvedValue(accounts),
+    findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -47,7 +47,7 @@ function makeAccount(
 ): Account {
   return new Account({
     id,
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
@@ -72,7 +72,7 @@ function fakeCreditRepo(
     abonosEdited,
     abonosDeleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditReceived) => {
       created.push(credit);
       return credit;
@@ -108,7 +108,7 @@ function fakeMovementRepo(
     updated,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
@@ -140,7 +140,7 @@ function makeCredit(
   return new CreditReceived(
     {
       id: 'cr-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       counterparty: 'Juan',
       principal: new Money(100000, 'COP'),
       accountId: 'acc-1',
@@ -158,9 +158,9 @@ function makeMovement(
   const type = overrides.type ?? 'expense';
   return new Movement({
     id: 'mov-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: 'acc-1',
-    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Credit', type, createdAt: new Date() }),
+    category: new Category({ id: 'cat-1', workspaceId: 'user-1', name: 'Credit', type, createdAt: new Date() }),
     type,
     amount: new Money(50000, 'COP'),
     date: new Date('2025-06-01'),
@@ -298,7 +298,7 @@ describe('addAbono', () => {
   it('adds an abono and creates expense movement', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -330,7 +330,7 @@ describe('addAbono', () => {
   it('sets context to Personal (hardcoded) for credit received abono movement', async () => {
     const credit = makeCredit(); // credit.accountId = acc-1
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -354,7 +354,7 @@ describe('addAbono', () => {
   it('throws ConflictError on overpayment (CRED-R-2)', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -375,7 +375,7 @@ describe('addAbono', () => {
 
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -397,7 +397,7 @@ describe('addAbono', () => {
   it('throws NotFoundError when the payment account does not exist (D3)', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([]);
@@ -427,7 +427,7 @@ describe('editAbono', () => {
     const existingMovement = makeMovement({ id: 'mov-1', amount: new Money(25000, 'COP') });
 
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existingMovement),
@@ -457,7 +457,7 @@ describe('editAbono', () => {
     const existingMovement = makeMovement({ id: 'mov-1', amount: new Money(25000, 'COP') });
 
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existingMovement),
@@ -483,7 +483,7 @@ describe('editAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -507,7 +507,7 @@ describe('editAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -518,7 +518,7 @@ describe('editAbono', () => {
 
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -530,7 +530,7 @@ describe('editAbono', () => {
   it('throws NotFoundError when abono does not exist', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -548,7 +548,7 @@ describe('deleteAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -565,7 +565,7 @@ describe('deleteAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -583,7 +583,7 @@ describe('deleteAbono', () => {
     const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
     const deleteMovementMock = vi.fn().mockImplementation(async () => {});
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
       deleteAbono: deleteAbonoMock,
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
@@ -599,7 +599,7 @@ describe('deleteAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
@@ -617,7 +617,7 @@ describe('deleteAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
       delete: vi.fn().mockRejectedValue(new Error('db down')),
@@ -632,7 +632,7 @@ describe('deleteAbono', () => {
 
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -644,7 +644,7 @@ describe('deleteAbono', () => {
   it('throws NotFoundError when abono does not exist', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -667,10 +667,10 @@ describe('editPrincipal', () => {
     });
 
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([principalMovement]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMovement]),
     });
 
     const result = await editPrincipal(
@@ -690,10 +690,10 @@ describe('editPrincipal', () => {
   it('still updates credit when principal movement does not exist', async () => {
     const credit = makeCredit();
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
 
     const result = await editPrincipal(
@@ -714,7 +714,7 @@ describe('editPrincipal', () => {
       { id: 'ab-1', amount: new Money(50000, 'COP'), date: new Date(), accountId: 'acc-1' },
     ]);
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -725,7 +725,7 @@ describe('editPrincipal', () => {
 
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -754,10 +754,10 @@ describe('deleteCreditReceived', () => {
     });
 
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([principalMov, abonoMov]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMov, abonoMov]),
     });
 
     await deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo);
@@ -770,7 +770,7 @@ describe('deleteCreditReceived', () => {
 
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -790,10 +790,10 @@ describe('deleteCreditReceived', () => {
     });
 
     const creditRepo = fakeCreditRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([principalMov]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMov]),
       // Simulate that one linked movement was already deleted (prior cleanup).
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
     });

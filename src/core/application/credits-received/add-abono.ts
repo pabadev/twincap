@@ -15,7 +15,7 @@ import type { AddAbonoInput } from './dto/credits-received';
  * Movement context: always 'Personal' — credit abonos are personal financing.
  */
 export async function addAbono(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   input: AddAbonoInput,
   creditRepo: CreditReceivedRepository,
@@ -24,13 +24,13 @@ export async function addAbono(
   accountRepo: AccountRepository,
 ): Promise<CreditReceived> {
   // Re-fetch via repo — returns CreditReceived instance with pending getter
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
   // D3: resolve the PAYMENT account (may differ from the credit's account) —
   // validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -44,7 +44,7 @@ export async function addAbono(
   const movementId = ids.generate();
   const now = new Date();
 
-  await creditRepo.addAbono(userId, creditId, {
+  await creditRepo.addAbono(workspaceId, creditId, {
     id: abonoId,
     amount: input.amount,
     date: input.date,
@@ -55,7 +55,7 @@ export async function addAbono(
   // Create expense movement (abono = payment from account)
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: creditCategory('expense'),
     type: 'expense',
@@ -79,7 +79,7 @@ export async function addAbono(
   return new CreditReceived(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

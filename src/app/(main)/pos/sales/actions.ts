@@ -89,7 +89,7 @@ export async function createSaleAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const accountRepo = new MongoAccountRepository();
         return createSale(
-          user.userId,
+          user.workspaceId!,
           { items, accountId, clientId, date, paymentMode, currency, initialPayment },
           saleRepo,
           catalogRepo,
@@ -154,7 +154,7 @@ export async function addSaleAbonoAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return addSaleAbono(
-          user.userId,
+          user.workspaceId!,
           saleId,
           { amount, currency, accountId, date },
           saleRepo,
@@ -195,7 +195,7 @@ export async function deleteSaleAbonoAction(
       () => {
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteSaleAbono(user.userId, saleId, abonoId, saleRepo, movementRepo);
+        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo);
       },
     );
     revalidatePath('/pos/sales');
@@ -229,7 +229,7 @@ export async function deleteSaleAction(
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
         const creditRepo = new MongoCreditGrantedRepository();
-        return deleteSale(user.userId, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
+        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
       },
     );
     revalidatePath('/pos/sales');
@@ -267,7 +267,7 @@ export async function getSaleDetailAction(
     const accountRepo = new MongoAccountRepository();
     const creditRepo = new MongoCreditGrantedRepository();
     const snapshot = await getSaleDetail(
-      user.userId,
+      user.workspaceId!,
       saleId,
       saleRepo,
       clientRepo,

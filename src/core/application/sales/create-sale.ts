@@ -37,7 +37,7 @@ import { creditGrantedCategory } from '../../domain/synthetic-categories';
  * credit abonos keep context 'Personal' (credits-granted/add-abono.ts).
  */
 export async function createSale(
-  userId: string,
+  workspaceId: string,
   input: CreateSaleInput,
   saleRepo: SaleRepository,
   catalogRepo: CatalogItemRepository,
@@ -51,7 +51,7 @@ export async function createSale(
   const now = new Date();
 
   // D3: resolve the sale account — validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -72,9 +72,9 @@ export async function createSale(
     if (!input.clientId || input.clientId.length === 0) {
       throw new ValidationError('On-credit sale requires an existing client');
     }
-    client = await clientRepo.findById(userId, input.clientId);
+    client = await clientRepo.findById(workspaceId, input.clientId);
     if (!client) {
-      throw new NotFoundError(`Client ${input.clientId} not found for user ${userId}`);
+      throw new NotFoundError(`Client ${input.clientId} not found for user ${workspaceId}`);
     }
     initialPayment = input.initialPayment ?? 0;
     if (!Number.isFinite(initialPayment) || initialPayment < 0) {
@@ -89,9 +89,9 @@ export async function createSale(
 
   // POS-3: Decrement stock for physical products (atomic guard)
   for (const item of input.items) {
-    const catalogItem = await catalogRepo.findById(userId, item.itemId);
+    const catalogItem = await catalogRepo.findById(workspaceId, item.itemId);
     if (catalogItem && catalogItem.type === 'product') {
-      const success = await catalogRepo.decrementStock(userId, item.itemId, item.quantity);
+      const success = await catalogRepo.decrementStock(workspaceId, item.itemId, item.quantity);
       if (!success) {
         throw new ConflictError(`Insufficient stock for item ${catalogItem.name}`);
       }
@@ -100,7 +100,7 @@ export async function createSale(
 
   const sale = new Sale({
     id: saleId,
-    userId,
+    workspaceId,
     items: lineItems,
     date: input.date,
     paymentMode: input.paymentMode,
@@ -114,7 +114,7 @@ export async function createSale(
   // POS-4: Paid-in-full → one income movement for the total
   if (input.paymentMode === 'paid-in-full') {
     await movementRepo.create(buildSalePaymentMovement({
-      userId,
+      workspaceId,
       saleId,
       accountId: sale.accountId,
       amount: sale.total,
@@ -149,7 +149,7 @@ export async function createSale(
     const credit = new CreditGranted(
       {
         id: creditId,
-        userId,
+        workspaceId,
         counterparty: client.name,
         principal,
         accountId: sale.accountId,
@@ -163,7 +163,7 @@ export async function createSale(
 
     if (initialPayment > 0) {
       await movementRepo.create(buildInitialPaymentMovement({
-        userId,
+        workspaceId,
         movementId: firstAbono[0].movementId,
         creditId,
         accountId: sale.accountId,
@@ -180,7 +180,7 @@ export async function createSale(
 }
 
 function buildSalePaymentMovement(args: {
-  userId: string;
+  workspaceId: string;
   saleId: string;
   accountId: string;
   amount: number;
@@ -191,7 +191,7 @@ function buildSalePaymentMovement(args: {
 }): Movement {
   return new Movement({
     id: args.ids.generate(),
-    userId: args.userId,
+    workspaceId: args.workspaceId,
     accountId: args.accountId,
     category: saleCategory('income'),
     type: 'income',
@@ -213,7 +213,7 @@ function buildSalePaymentMovement(args: {
  * which stay 'Personal'. Documented for review.
  */
 function buildInitialPaymentMovement(args: {
-  userId: string;
+  workspaceId: string;
   movementId: string;
   creditId: string;
   accountId: string;
@@ -225,7 +225,7 @@ function buildInitialPaymentMovement(args: {
 }): Movement {
   return new Movement({
     id: args.movementId,
-    userId: args.userId,
+    workspaceId: args.workspaceId,
     accountId: args.accountId,
     category: creditGrantedCategory('income'),
     type: 'income',

@@ -10,14 +10,14 @@ export interface CreateCategoryInput {
 }
 
 export async function createCategory(
-  userId: string,
+  workspaceId: string,
   input: CreateCategoryInput,
   categoryRepo: CategoryRepository,
   ids: IdGenerator,
 ): Promise<Category> {
   // CAT-2: name unique per user+type
   const existing = await categoryRepo.findByNameAndType(
-    userId,
+    workspaceId,
     input.name.trim(),
     input.type,
   );
@@ -27,7 +27,7 @@ export async function createCategory(
 
   const category = new Category({
     id: ids.generate(),
-    userId,
+    workspaceId,
     name: input.name.trim(),
     type: input.type,
     createdAt: new Date(),

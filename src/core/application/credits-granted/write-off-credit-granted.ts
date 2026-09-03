@@ -37,13 +37,13 @@ export const WRITE_OFF_NO_LOSS_MSG = 'No capital loss to write off';
  * Personal) and stamps the credit with the write-off marker.
  */
 export async function writeOffCreditGranted(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
 ): Promise<CreditGranted> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -82,7 +82,7 @@ export async function writeOffCreditGranted(
   // the loss hits the account that funded the credit.
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: credit.accountId,
     category: creditGrantedCategory('expense'),
     type: 'expense',
@@ -96,12 +96,12 @@ export async function writeOffCreditGranted(
   await movementRepo.create(movement);
 
   const writtenOff = { date: now, movementId };
-  await creditRepo.markWrittenOff(userId, creditId, writtenOff);
+  await creditRepo.markWrittenOff(workspaceId, creditId, writtenOff);
 
   return new CreditGranted(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

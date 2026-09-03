@@ -6,25 +6,25 @@ import { ClientModel, type ClientDocument } from "../models/client";
 import { toClientEntity, toClientDocData } from "../mappers/client";
 
 export class MongoClientRepository implements ClientRepository {
-  async findById(userId: string, id: string): Promise<Client | null> {
+  async findById(workspaceId: string, id: string): Promise<Client | null> {
     const doc = await ClientModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     return toClientEntity(doc as ClientDocument);
   }
 
-  async findByUserId(userId: string): Promise<Client[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Client[]> {
     const docs = await ClientModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ name: 1 }).exec();
     return docs.map((doc) => toClientEntity(doc as ClientDocument));
   }
 
-  async findByName(userId: string, name: string): Promise<Client | null> {
+  async findByName(workspaceId: string, name: string): Promise<Client | null> {
     const doc = await ClientModel.findOne({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
       name: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i"),
     }).exec();
     return doc ? toClientEntity(doc as ClientDocument) : null;
@@ -38,7 +38,7 @@ export class MongoClientRepository implements ClientRepository {
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Client "${client.name}" already exists for user ${client.userId}`,
+          `Client "${client.name}" already exists for user ${client.workspaceId}`,
         );
       }
       throw err;
@@ -50,26 +50,26 @@ export class MongoClientRepository implements ClientRepository {
     const result = await ClientModel.findOneAndUpdate(
       {
         _id: client.id,
-        userId: new Types.ObjectId(client.userId),
+        workspaceId: new Types.ObjectId(client.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Client ${client.id} not found for user ${client.userId}`,
+        `Client ${client.id} not found for user ${client.workspaceId}`,
       );
     }
     return toClientEntity(result as ClientDocument);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await ClientModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Client ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Client ${id} not found for user ${workspaceId}`);
     }
   }
 }

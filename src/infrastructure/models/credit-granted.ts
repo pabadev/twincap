@@ -23,7 +23,7 @@ export interface CreditGrantedWrittenOffDoc {
 
 /** Mongoose document shape for CreditGranted. */
 export interface CreditGrantedDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   /** Debtor name. */
   counterparty: string;
   principal: number;
@@ -68,7 +68,7 @@ const CreditGrantedWrittenOffSchema = new Schema<CreditGrantedWrittenOffDoc>(
 
 const CreditGrantedSchema = new Schema<CreditGrantedDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

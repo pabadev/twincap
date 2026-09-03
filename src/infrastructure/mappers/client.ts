@@ -6,7 +6,7 @@ import { Client } from "../../core/domain/client";
 export function toClientEntity(doc: ClientDocument): Client {
   return new Client({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     name: doc.name,
     phone: doc.phone,
     email: doc.email,
@@ -18,7 +18,7 @@ export function toClientEntity(doc: ClientDocument): Client {
 /** Convert a domain Client entity to plain data for Mongoose writes. */
 export function toClientDocData(entity: Client): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     name: entity.name,
     phone: entity.phone,
     email: entity.email,

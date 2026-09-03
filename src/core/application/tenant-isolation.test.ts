@@ -7,7 +7,7 @@
  * (or equivalent) with zero mutation side-effects.
  *
  * Pattern A repos (findById scoped by userId): findById('user-a', id) → null
- * Pattern B repos (findByUserId + .find):      findByUserId('user-a') → []
+ * Pattern B repos (findByWorkspaceId + .find):      findByWorkspaceId('user-a') → []
  *
  * NO database. ALL fakes. NO product files modified.
  */
@@ -96,10 +96,10 @@ const CATL_B = 'catl-b-1';
 const ACC_A = 'acc-a-1';
 
 // ── Helpers ─────────────────────────────────────────────────────────
-function makeAccount(overrides: Partial<{ id: string; userId: string; name: string }> = {}): Account {
+function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Account {
   return new Account({
     id: ACC_A,
-    userId: USER_A,
+    workspaceId: USER_A,
     name: 'Account A',
     currency: 'COP',
     isFixed: false,
@@ -116,7 +116,7 @@ function makeAccount(overrides: Partial<{ id: string; userId: string; name: stri
 function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (a: unknown) => a),
     update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -128,7 +128,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
 function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     findPaged: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     create: vi.fn().mockImplementation(async (m: unknown) => m),
@@ -144,7 +144,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
 function fakeTransferRepo(overrides: Partial<TransferRepository> = {}): TransferRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (t: unknown) => t),
     update: vi.fn().mockImplementation(async (t: unknown) => t),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -156,7 +156,7 @@ function fakeTransferRepo(overrides: Partial<TransferRepository> = {}): Transfer
 function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {}): CreditGrantedRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -171,7 +171,7 @@ function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {})
 function fakeCreditReceivedRepo(overrides: Partial<CreditReceivedRepository> = {}): CreditReceivedRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -185,7 +185,7 @@ function fakeCreditReceivedRepo(overrides: Partial<CreditReceivedRepository> = {
 function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (p: unknown) => p),
     update: vi.fn().mockImplementation(async (p: unknown) => p),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -199,7 +199,7 @@ function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRep
 function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (s: unknown) => s),
     update: vi.fn().mockImplementation(async (s: unknown) => s),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -213,7 +213,7 @@ function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
 function fakeClientRepo(overrides: Partial<ClientRepository> = {}): ClientRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByName: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
@@ -225,7 +225,7 @@ function fakeClientRepo(overrides: Partial<ClientRepository> = {}): ClientReposi
 function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): CategoryRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByNameAndType: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
@@ -237,7 +237,7 @@ function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): Category
 function fakeCatalogItemRepo(overrides: Partial<CatalogItemRepository> = {}): CatalogItemRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (i: unknown) => i),
     update: vi.fn().mockImplementation(async (i: unknown) => i),
     delete: vi.fn().mockResolvedValue(undefined),

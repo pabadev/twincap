@@ -8,18 +8,18 @@ export interface UpdateCategoryInput {
 }
 
 export async function updateCategory(
-  userId: string,
+  workspaceId: string,
   input: UpdateCategoryInput,
   categoryRepo: CategoryRepository,
 ): Promise<Category> {
-  const category = await categoryRepo.findById(userId, input.categoryId);
+  const category = await categoryRepo.findById(workspaceId, input.categoryId);
   if (!category) throw new NotFoundError('Category not found');
 
   // CAT-2: type immutable — only name can change
   // Check uniqueness if name changed
   if (input.name.trim() !== category.name) {
     const existing = await categoryRepo.findByNameAndType(
-      userId,
+      workspaceId,
       input.name.trim(),
       category.type,
     );
@@ -30,7 +30,7 @@ export async function updateCategory(
 
   const updated = new Category({
     id: category.id,
-    userId: category.userId,
+    workspaceId: category.workspaceId,
     name: input.name.trim(),
     type: category.type,
     createdAt: category.createdAt,

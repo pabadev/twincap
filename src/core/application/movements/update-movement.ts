@@ -16,12 +16,12 @@ export interface UpdateMovementInput {
 }
 
 export async function updateMovement(
-  userId: string,
+  workspaceId: string,
   input: UpdateMovementInput,
   movementRepo: MovementRepository,
   categoryRepo: CategoryRepository,
 ): Promise<Movement> {
-  const existing = await movementRepo.findById(userId, input.movementId);
+  const existing = await movementRepo.findById(workspaceId, input.movementId);
   if (!existing) throw new NotFoundError('Movement not found');
 
   // MOV-5: system-linked movements cannot be edited directly
@@ -32,7 +32,7 @@ export async function updateMovement(
   // Resolve category — fetch only if changed
   let resolvedCategory: Category;
   if (input.categoryId && input.categoryId !== existing.categoryId) {
-    const category = await categoryRepo.findById(userId, input.categoryId);
+    const category = await categoryRepo.findById(workspaceId, input.categoryId);
     if (!category) throw new NotFoundError('Category not found');
     if (category.type !== existing.type) {
       throw new ValidationError('Category type must match movement type');
@@ -40,7 +40,7 @@ export async function updateMovement(
     resolvedCategory = category;
   } else {
     // Category unchanged — re-fetch to satisfy Movement constructor
-    const category = await categoryRepo.findById(userId, existing.categoryId);
+    const category = await categoryRepo.findById(workspaceId, existing.categoryId);
     if (!category) throw new NotFoundError('Category not found');
     resolvedCategory = category;
   }
@@ -48,7 +48,7 @@ export async function updateMovement(
   // MOV-4: recalculate signedAmount if amount changes
   const updated = new Movement({
     id: existing.id,
-    userId: existing.userId,
+    workspaceId: existing.workspaceId,
     accountId: input.accountId ?? existing.accountId,
     category: resolvedCategory,
     type: existing.type,

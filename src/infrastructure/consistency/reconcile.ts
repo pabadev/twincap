@@ -33,9 +33,9 @@ export interface ReconcileResult {
  */
 export async function findIncompleteTransfers(
   transferRepo: TransferRepository,
-  userId: string,
+  workspaceId: string,
 ): Promise<ReconcileAction[]> {
-  const transfers = await transferRepo.findByUserId(userId);
+  const transfers = await transferRepo.findByWorkspaceId(workspaceId);
   const actions: ReconcileAction[] = [];
 
   for (const transfer of transfers) {
@@ -80,23 +80,23 @@ export async function findOrphanMovements(
   creditReceivedRepo: CreditReceivedRepository,
   creditGrantedRepo: CreditGrantedRepository,
   saleRepo: SaleRepository,
-  userId: string,
+  workspaceId: string,
 ): Promise<ReconcileAction[]> {
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const actions: ReconcileAction[] = [];
 
   // Pre-load parent IDs per collection for efficient membership checks
   const transferIds = new Set(
-    (await transferRepo.findByUserId(userId)).map((t) => t.id),
+    (await transferRepo.findByWorkspaceId(workspaceId)).map((t) => t.id),
   );
   const creditReceivedIds = new Set(
-    (await creditReceivedRepo.findByUserId(userId)).map((c) => c.id),
+    (await creditReceivedRepo.findByWorkspaceId(workspaceId)).map((c) => c.id),
   );
   const creditGrantedIds = new Set(
-    (await creditGrantedRepo.findByUserId(userId)).map((c) => c.id),
+    (await creditGrantedRepo.findByWorkspaceId(workspaceId)).map((c) => c.id),
   );
   const saleIds = new Set(
-    (await saleRepo.findByUserId(userId)).map((s) => s.id),
+    (await saleRepo.findByWorkspaceId(workspaceId)).map((s) => s.id),
   );
 
   for (const movement of movements) {
@@ -145,9 +145,9 @@ export async function findOrphanMovements(
  */
 export async function findPendingStockRestores(
   saleRepo: SaleRepository,
-  userId: string,
+  workspaceId: string,
 ): Promise<ReconcileAction[]> {
-  const sales = await saleRepo.findByUserId(userId);
+  const sales = await saleRepo.findByWorkspaceId(workspaceId);
   const actions: ReconcileAction[] = [];
 
   for (const sale of sales) {

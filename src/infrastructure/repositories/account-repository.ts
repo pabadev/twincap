@@ -12,18 +12,18 @@ import { PayableModel } from "../models/payable";
 import { toAccountEntity, toAccountDocData } from "../mappers/account";
 
 export class MongoAccountRepository implements AccountRepository {
-  async findById(userId: string, id: string): Promise<Account | null> {
+  async findById(workspaceId: string, id: string): Promise<Account | null> {
     const doc = await AccountModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     return toAccountEntity(doc as AccountDocument);
   }
 
-  async findByUserId(userId: string): Promise<Account[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Account[]> {
     const docs = await AccountModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ name: 1 }).exec();
     return docs.map((doc) => toAccountEntity(doc as AccountDocument));
   }
@@ -41,7 +41,7 @@ export class MongoAccountRepository implements AccountRepository {
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Account "${account.name}" already exists for user ${account.userId}`,
+          `Account "${account.name}" already exists for user ${account.workspaceId}`,
         );
       }
       throw err;
@@ -53,26 +53,26 @@ export class MongoAccountRepository implements AccountRepository {
     const result = await AccountModel.findOneAndUpdate(
       {
         _id: account.id,
-        userId: new Types.ObjectId(account.userId),
+        workspaceId: new Types.ObjectId(account.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Account ${account.id} not found for user ${account.userId}`,
+        `Account ${account.id} not found for user ${account.workspaceId}`,
       );
     }
     return toAccountEntity(result as AccountDocument);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await AccountModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Account ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Account ${id} not found for user ${workspaceId}`);
     }
   }
 
@@ -84,27 +84,27 @@ export class MongoAccountRepository implements AccountRepository {
    * in cascade on deletion. Returns the total number of references
    * (0 means safe to delete).
    */
-  async countReferences(userId: string, accountId: string): Promise<number> {
-    const uid = new Types.ObjectId(userId);
+  async countReferences(workspaceId: string, accountId: string): Promise<number> {
+    const uid = new Types.ObjectId(workspaceId);
     const aid = new Types.ObjectId(accountId);
 
     const [movements, transfersAsSource, transfersAsDest, creditsReceived, creditsGranted, sales, payables] =
       await Promise.all([
         MovementModel.countDocuments({
-          userId: uid,
+          workspaceId: uid,
           accountId: aid,
           'link.kind': { $ne: 'opening' },
         }),
-        TransferModel.countDocuments({ userId: uid, sourceAccountId: aid }),
-        TransferModel.countDocuments({ userId: uid, destinationAccountId: aid }),
-        CreditReceivedModel.countDocuments({ userId: uid, accountId: aid }),
-        CreditGrantedModel.countDocuments({ userId: uid, accountId: aid }),
+        TransferModel.countDocuments({ workspaceId: uid, sourceAccountId: aid }),
+        TransferModel.countDocuments({ workspaceId: uid, destinationAccountId: aid }),
+        CreditReceivedModel.countDocuments({ workspaceId: uid, accountId: aid }),
+        CreditGrantedModel.countDocuments({ workspaceId: uid, accountId: aid }),
         SaleModel.countDocuments({
-          userId: uid,
+          workspaceId: uid,
           accountId: aid,
           deletedAt: { $exists: false },
         }),
-        PayableModel.countDocuments({ userId: uid, accountId: aid }),
+        PayableModel.countDocuments({ workspaceId: uid, accountId: aid }),
       ]);
 
     return (

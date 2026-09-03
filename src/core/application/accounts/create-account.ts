@@ -13,7 +13,7 @@ export interface CreateAccountInput {
 }
 
 export async function createAccount(
-  userId: string,
+  workspaceId: string,
   input: CreateAccountInput,
   accountRepo: AccountRepository,
   movementRepo: MovementRepository,
@@ -23,7 +23,7 @@ export async function createAccount(
   const accountId = ids.generate();
   const account = new Account({
     id: accountId,
-    userId,
+    workspaceId,
     name: input.name.trim(),
     currency: input.currency,
     isFixed: false,
@@ -35,7 +35,7 @@ export async function createAccount(
   if (input.initialBalance > 0) {
     const movement = new Movement({
       id: ids.generate(),
-      userId,
+      workspaceId,
       accountId,
       category: openingCategory(),
       type: 'income',
@@ -54,7 +54,7 @@ export async function createAccount(
       // opening movement fails to persist, compensate by deleting the just-created
       // account so we never leave an account without its opening — or, had the
       // account already been the anomaly, an opening without its account.
-      await accountRepo.delete(userId, accountId);
+      await accountRepo.delete(workspaceId, accountId);
       throw err;
     }
   }

@@ -12,7 +12,7 @@ export interface PayableAbono {
 
 export interface PayableInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   /** Vendor / seller name (free text). */
   counterparty: string;
   /** Purchase total — stored as TOTAL debt, never netted (PAY-R-1). */
@@ -37,7 +37,7 @@ export interface PayableInput {
  */
 export class Payable {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly counterparty: string;
   readonly total: Money;
   readonly initialPayment: number;
@@ -63,8 +63,8 @@ export class Payable {
     if (input.id.length === 0) {
       throw new ValidationError("Payable id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Payable userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Payable workspaceId must not be empty");
     }
     const counterparty = input.counterparty.trim();
     if (counterparty.length === 0) {
@@ -103,7 +103,7 @@ export class Payable {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.counterparty = counterparty;
     this.total = input.total;
     this.initialPayment = input.initialPayment;
@@ -119,7 +119,7 @@ export class Payable {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       counterparty: this.counterparty,
       total: this.total.toJSON(),
       initialPayment: this.initialPayment,

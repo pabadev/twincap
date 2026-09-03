@@ -30,7 +30,7 @@ export async function createCategoryAction(
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
     await createCategory(
-      user.userId,
+      user.workspaceId!,
       { name, type },
       categoryRepo,
       ids,
@@ -57,7 +57,7 @@ export async function updateCategoryAction(
   try {
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
-    await updateCategory(user.userId, { categoryId, name }, categoryRepo);
+    await updateCategory(user.workspaceId!, { categoryId, name }, categoryRepo);
     revalidatePath('/categories');
     revalidatePath('/movements');
   } catch (error) {
@@ -80,7 +80,7 @@ export async function deleteCategoryAction(
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
     const movementRepo = new MongoMovementRepository();
-    await deleteCategory(user.userId, categoryId, categoryRepo, movementRepo);
+    await deleteCategory(user.workspaceId!, categoryId, categoryRepo, movementRepo);
     revalidatePath('/categories');
     revalidatePath('/movements');
   } catch (error) {

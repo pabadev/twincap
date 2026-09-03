@@ -32,7 +32,7 @@ function catalogItemFormData(): FormData {
 describe('createCatalogItemAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoCatalogItemRepository.mockImplementation(() => ({
       create: vi.fn().mockImplementation(async (item: unknown) => item),

@@ -22,7 +22,7 @@ function fakeAccountRepo(
     findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
       accounts.find((a) => a.id === id) ?? null,
     ),
-    findByUserId: vi.fn().mockResolvedValue(accounts),
+    findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -35,7 +35,7 @@ function makeAccount(
 ): Account {
   return new Account({
     id,
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
@@ -55,7 +55,7 @@ function fakeTransferRepo(
     deleted,
     findById: vi.fn().mockResolvedValue(null),
     findByIdRaw: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (transfer: Transfer) => {
       created.push(transfer);
       return transfer;
@@ -82,7 +82,7 @@ function fakeMovementRepo(
     updated,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
@@ -112,7 +112,7 @@ function makeTransfer(
 ): Transfer {
   return new Transfer({
     id: 'tr-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     sourceAccountId: 'acc-src',
     destinationAccountId: 'acc-dst',
     sourceAmount: new Money(50000, 'COP'),
@@ -133,9 +133,9 @@ function makeMovement(
   const type = overrides.type ?? 'expense';
   return new Movement({
     id: 'mov-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: 'acc-src',
-    category: new Category({ id: 'cat-1', userId: 'user-1', name: 'Transfer', type, createdAt: new Date() }),
+    category: new Category({ id: 'cat-1', workspaceId: 'user-1', name: 'Transfer', type, createdAt: new Date() }),
     type,
     amount: new Money(50000, 'COP'),
     date: new Date('2025-06-01'),

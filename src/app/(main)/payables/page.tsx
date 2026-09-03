@@ -16,8 +16,8 @@ export default async function PayablesPage() {
   const payableRepo = new MongoPayableRepository();
 
   const [accounts, payables] = await Promise.all([
-    listAccounts(user.userId, accountRepo),
-    payableRepo.findByUserId(user.userId),
+    listAccounts(user.workspaceId!, accountRepo),
+    payableRepo.findByWorkspaceId(user.workspaceId!),
   ]);
 
   return (

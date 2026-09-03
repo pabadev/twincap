@@ -20,7 +20,7 @@ function sale(
   return new Sale(
     {
       id: "s1",
-      userId: "u1",
+      workspaceId: "u1",
       items: [saleItem()],
       date: DATE,
       paymentMode: "paid-in-full",
@@ -117,7 +117,7 @@ describe("Sale entity", () => {
 
   it("rejects empty ids", () => {
     expect(() => sale({ id: "" })).toThrow(ValidationError);
-    expect(() => sale({ userId: "" })).toThrow(ValidationError);
+    expect(() => sale({ workspaceId: "" })).toThrow(ValidationError);
     expect(() => sale({ accountId: "" })).toThrow(ValidationError);
   });
 });

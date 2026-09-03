@@ -11,7 +11,7 @@ const SEED_DATE = new Date("2026-01-01");
 function category(type: MovementType, id?: string): Category {
   return new Category({
     id: id ?? `cat-${type}`,
-    userId: "u1",
+    workspaceId: "u1",
     name: `Cat ${type}`,
     type,
     createdAt: SEED_DATE,
@@ -31,7 +31,7 @@ function movement(input: {
 }): Movement {
   return new Movement({
     id: `m-${++seq}`,
-    userId: "u1",
+    workspaceId: "u1",
     accountId: "acc-1",
     category: category(input.categoryType ?? input.type, input.categoryId),
     type: input.type,
@@ -54,11 +54,11 @@ function movementWithCategory(input: {
 }): Movement {
   return new Movement({
     id: `m-${++seq}`,
-    userId: "u1",
+    workspaceId: "u1",
     accountId: "acc-1",
     category: new Category({
       id: input.categoryId,
-      userId: "u1",
+      workspaceId: "u1",
       name: input.categoryId,
       type: input.type,
       createdAt: SEED_DATE,

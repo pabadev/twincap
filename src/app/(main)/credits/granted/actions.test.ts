@@ -31,7 +31,7 @@ const { writeOffCreditAction } = await import('./actions');
 function makeCreditGranted(): CreditGranted {
   return new CreditGranted({
     id: 'cg-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     counterparty: 'Pedro',
     principal: new Money(100000, 'COP'),
     accountId: 'acc-1',
@@ -49,10 +49,10 @@ function formData(creditId = 'cg-1'): FormData {
 describe('writeOffCreditAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoCreditGrantedRepository.mockImplementation(() => ({
-      findByUserId: vi.fn().mockResolvedValue([makeCreditGranted()]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
       markWrittenOff: vi.fn().mockResolvedValue(undefined),
     }));
     MongoMovementRepository.mockImplementation(() => ({
@@ -75,7 +75,7 @@ describe('writeOffCreditAction', () => {
     const markWrittenOff = vi.fn().mockResolvedValue(undefined);
     const created: unknown[] = [];
     MongoCreditGrantedRepository.mockImplementation(() => ({
-      findByUserId: vi.fn().mockResolvedValue([makeCreditGranted()]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
       markWrittenOff,
     }));
     MongoMovementRepository.mockImplementation(() => ({
@@ -106,7 +106,7 @@ describe('writeOffCreditAction', () => {
 
   it('maps a NotFoundError to the i18n notFound toast key', async () => {
     MongoCreditGrantedRepository.mockImplementation(() => ({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
       markWrittenOff: vi.fn().mockResolvedValue(undefined),
     }));
 

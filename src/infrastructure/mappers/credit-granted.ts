@@ -29,7 +29,7 @@ export function toCreditGrantedEntity(
   return new CreditGranted(
     {
       id: doc._id.toString(),
-      userId: doc.userId.toString(),
+      workspaceId: doc.workspaceId.toString(),
       counterparty: doc.counterparty,
       // H14: sale-born credits can be stored with principal 0 (born
       // paid-in-full), so reconstruction must allow non-negative amounts.
@@ -57,7 +57,7 @@ export function toCreditGrantedDocData(
   entity: CreditGranted,
 ): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     counterparty: entity.counterparty,
     principal: entity.principal.amount,
     accountId: new Types.ObjectId(entity.accountId),

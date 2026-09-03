@@ -22,7 +22,7 @@ const { updateCategoryAction } = await import('./actions');
 function categoryEntity() {
   return {
     id: 'cat-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Comida',
     type: 'expense',
     createdAt: new Date(),
@@ -39,7 +39,7 @@ function renameFormData(name = 'Alimentación'): FormData {
 describe('updateCategoryAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoCategoryRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue(categoryEntity()),

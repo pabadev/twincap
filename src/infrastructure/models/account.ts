@@ -2,7 +2,7 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 
 /** Mongoose document shape for Account. */
 export interface AccountDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   name: string;
   currency: string;
   isFixed: boolean;
@@ -16,7 +16,7 @@ export type AccountDocument = HydratedDocument<AccountDoc>;
 
 const AccountSchema = new Schema<AccountDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

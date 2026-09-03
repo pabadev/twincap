@@ -11,19 +11,19 @@ export interface CreateClientInput {
 }
 
 export async function createClient(
-  userId: string,
+  workspaceId: string,
   input: CreateClientInput,
   clientRepo: ClientRepository,
   ids: IdGenerator,
 ): Promise<Client> {
-  const existing = await clientRepo.findByName(userId, input.name);
+  const existing = await clientRepo.findByName(workspaceId, input.name);
   if (existing) {
     throw new ConflictError("A client with this name already exists");
   }
 
   const client = new Client({
     id: ids.generate(),
-    userId,
+    workspaceId,
     name: input.name.trim(),
     phone: input.phone?.trim() ?? "",
     email: input.email?.trim() ?? "",

@@ -70,7 +70,7 @@ export function signedAmountOf(movementType: MovementType, amountMinorUnits: num
 
 export interface MovementInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   accountId: string;
   category: Category;
   type: MovementType;
@@ -84,7 +84,7 @@ export interface MovementInput {
 
 export class Movement {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly accountId: string;
   readonly categoryId: string;
   readonly type: MovementType;
@@ -102,8 +102,8 @@ export class Movement {
     if (input.id.length === 0) {
       throw new ValidationError("Movement id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Movement userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Movement workspaceId must not be empty");
     }
     if (input.accountId.length === 0) {
       throw new ValidationError("Movement accountId must not be empty");
@@ -127,7 +127,7 @@ export class Movement {
       }
     }
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.accountId = input.accountId;
     this.categoryId = input.category.id;
     this.type = input.type;
@@ -149,7 +149,7 @@ export class Movement {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       accountId: this.accountId,
       categoryId: this.categoryId,
       type: this.type,

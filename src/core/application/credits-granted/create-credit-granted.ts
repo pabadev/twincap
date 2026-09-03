@@ -15,7 +15,7 @@ import type { CreateCreditGrantedInput } from './dto/credits-granted';
  * Movement context: always 'Personal' — credits granted are personal lending.
  */
 export async function createCreditGranted(
-  userId: string,
+  workspaceId: string,
   input: CreateCreditGrantedInput,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
@@ -23,7 +23,7 @@ export async function createCreditGranted(
   accountRepo: AccountRepository,
 ): Promise<CreditGranted> {
   // D3: resolve the paying account — validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -50,7 +50,7 @@ export async function createCreditGranted(
 
   const credit = new CreditGranted({
     id: creditId,
-    userId,
+    workspaceId,
     counterparty: input.counterparty,
     principal: principalMoney,
     accountId: input.accountId,
@@ -68,7 +68,7 @@ export async function createCreditGranted(
   const opId = ids.generate();
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: creditGrantedCategory('expense'),
     type: 'expense',

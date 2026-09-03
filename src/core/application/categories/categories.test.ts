@@ -23,7 +23,7 @@ function fakeCategoryRepo(
     deleted,
     updated,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByNameAndType: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (category: Category) => {
       created.push(category);
@@ -45,7 +45,7 @@ function fakeMovementRepo(
 ): MovementRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
@@ -65,7 +65,7 @@ function fakeIdGen(): IdGenerator {
 function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}): Category {
   return new Category({
     id: 'cat-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Salary',
     type: 'income',
     createdAt: new Date(),
@@ -239,12 +239,12 @@ describe('listCategories', () => {
       makeCategory({ id: 'c2', name: 'Freelance' }),
     ];
     const categoryRepo = fakeCategoryRepo({
-      findByUserId: vi.fn().mockResolvedValue(categories),
+      findByWorkspaceId: vi.fn().mockResolvedValue(categories),
     });
 
     const result = await listCategories('user-1', categoryRepo);
 
     expect(result).toHaveLength(2);
-    expect(categoryRepo.findByUserId).toHaveBeenCalledWith('user-1');
+    expect(categoryRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
   });
 });

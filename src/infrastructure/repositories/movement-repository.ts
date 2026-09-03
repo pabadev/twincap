@@ -12,15 +12,15 @@ import { toMovementEntity, toMovementDocData } from "../mappers/movement";
 import { resolveSyntheticCategory } from "../../core/domain/synthetic-categories";
 
 export class MongoMovementRepository implements MovementRepository {
-  async findById(userId: string, id: string): Promise<Movement | null> {
+  async findById(workspaceId: string, id: string): Promise<Movement | null> {
     const doc = await MovementModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     const movementDoc = doc as MovementDocument;
     const { category, currency } = await this.resolveDependencies(
-      userId,
+      workspaceId,
       movementDoc.categoryId.toString(),
       movementDoc.accountId.toString(),
       movementDoc.type,
@@ -28,13 +28,13 @@ export class MongoMovementRepository implements MovementRepository {
     return toMovementEntity(movementDoc, category, currency);
   }
 
-  async findByUserId(userId: string): Promise<Movement[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Movement[]> {
     const docs = await MovementModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
-    const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
 
     // Orphan guard: a movement whose account (or category) does not resolve to a
     // live parent must not crash the read — skip it instead of dereferencing
@@ -50,12 +50,12 @@ export class MongoMovementRepository implements MovementRepository {
   }
 
   async findPaged(
-    userId: string,
+    workspaceId: string,
     limit: number,
     cursor?: { date: Date; createdAt: Date },
   ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }> {
     const query: Record<string, unknown> = {
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     };
 
     if (cursor) {
@@ -79,7 +79,7 @@ export class MongoMovementRepository implements MovementRepository {
       return { items: [], nextCursor: null };
     }
 
-    const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, pageDocs);
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, pageDocs);
 
     // Orphan guard: skip movements whose account/category does not resolve
     // instead of crashing on `account.currency` (R8).
@@ -100,14 +100,14 @@ export class MongoMovementRepository implements MovementRepository {
     return { items, nextCursor };
   }
 
-  async findByAccountId(userId: string, accountId: string): Promise<Movement[]> {
+  async findByAccountId(workspaceId: string, accountId: string): Promise<Movement[]> {
     const docs = await MovementModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
       accountId: new Types.ObjectId(accountId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
-    const { categoryMap, accountMap } = await this.resolveBulkDependencies(userId, docs);
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
 
     // Orphan guard: skip movements whose account/category does not resolve
     // instead of crashing on `account.currency` (R8).
@@ -127,7 +127,7 @@ export class MongoMovementRepository implements MovementRepository {
       const created = await MovementModel.create({ ...docData, _id: movement.id });
       const movementDoc = created as MovementDocument;
       const { category, currency } = await this.resolveDependencies(
-        movement.userId,
+        movement.workspaceId,
         movementDoc.categoryId.toString(),
         movementDoc.accountId.toString(),
         movementDoc.type,
@@ -136,7 +136,7 @@ export class MongoMovementRepository implements MovementRepository {
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Movement with duplicate link operation id for user ${movement.userId}`,
+          `Movement with duplicate link operation id for user ${movement.workspaceId}`,
         );
       }
       throw err;
@@ -148,19 +148,19 @@ export class MongoMovementRepository implements MovementRepository {
     const result = await MovementModel.findOneAndUpdate(
       {
         _id: movement.id,
-        userId: new Types.ObjectId(movement.userId),
+        workspaceId: new Types.ObjectId(movement.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Movement ${movement.id} not found for user ${movement.userId}`,
+        `Movement ${movement.id} not found for user ${movement.workspaceId}`,
       );
     }
     const movementDoc = result as MovementDocument;
     const { category, currency } = await this.resolveDependencies(
-      movement.userId,
+      movement.workspaceId,
       movementDoc.categoryId.toString(),
       movementDoc.accountId.toString(),
       movementDoc.type,
@@ -168,29 +168,29 @@ export class MongoMovementRepository implements MovementRepository {
     return toMovementEntity(movementDoc, category, currency);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await MovementModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Movement ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Movement ${id} not found for user ${workspaceId}`);
     }
   }
 
-  async deleteByRefId(userId: string, refId: string): Promise<number> {
+  async deleteByRefId(workspaceId: string, refId: string): Promise<number> {
     const result = await MovementModel.deleteMany({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
       'link.refId': refId,
     }).exec();
     return result.deletedCount ?? 0;
   }
 
-  async aggregateBalance(userId: string, accountId: string): Promise<number> {
+  async aggregateBalance(workspaceId: string, accountId: string): Promise<number> {
     const result = await MovementModel.aggregate([
       {
         $match: {
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
           accountId: new Types.ObjectId(accountId),
         },
       },
@@ -205,9 +205,9 @@ export class MongoMovementRepository implements MovementRepository {
     return result.length > 0 ? result[0].total : 0;
   }
 
-  async countByCategoryId(userId: string, categoryId: string): Promise<number> {
+  async countByCategoryId(workspaceId: string, categoryId: string): Promise<number> {
     return MovementModel.countDocuments({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
       categoryId: new Types.ObjectId(categoryId),
     }).exec();
   }
@@ -216,7 +216,7 @@ export class MongoMovementRepository implements MovementRepository {
 
   /** Resolve Category + Currency for a single movement. */
   private async resolveDependencies(
-    userId: string,
+    workspaceId: string,
     categoryId: string,
     accountId: string,
     movementType?: string,
@@ -224,11 +224,11 @@ export class MongoMovementRepository implements MovementRepository {
     const [catDoc, accDoc] = await Promise.all([
       CategoryModel.findOne({
         _id: categoryId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       }).exec(),
       AccountModel.findOne({
         _id: accountId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       }).exec(),
     ]);
 
@@ -236,10 +236,10 @@ export class MongoMovementRepository implements MovementRepository {
     if (!catDoc) {
       const synthetic = resolveSyntheticCategory(categoryId, movementType as 'income' | 'expense');
       if (!synthetic) {
-        throw new NotFoundError(`Category ${categoryId} not found for user ${userId}`);
+        throw new NotFoundError(`Category ${categoryId} not found for user ${workspaceId}`);
       }
       if (!accDoc) {
-        throw new NotFoundError(`Account ${accountId} not found for user ${userId}`);
+        throw new NotFoundError(`Account ${accountId} not found for user ${workspaceId}`);
       }
       return {
         category: synthetic,
@@ -248,7 +248,7 @@ export class MongoMovementRepository implements MovementRepository {
     }
 
     if (!accDoc) {
-      throw new NotFoundError(`Account ${accountId} not found for user ${userId}`);
+      throw new NotFoundError(`Account ${accountId} not found for user ${workspaceId}`);
     }
 
     return {
@@ -259,7 +259,7 @@ export class MongoMovementRepository implements MovementRepository {
 
   /** Resolve Category and Account maps for bulk operations. */
   private async resolveBulkDependencies(
-    userId: string,
+    workspaceId: string,
     docs: MovementDocument[],
   ): Promise<{
     categoryMap: Map<string, Category>;
@@ -268,15 +268,15 @@ export class MongoMovementRepository implements MovementRepository {
     const categoryIds = [...new Set(docs.map((d) => d.categoryId.toString()))];
     const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
 
-    const uid = new Types.ObjectId(userId);
+    const uid = new Types.ObjectId(workspaceId);
     const [catDocs, accDocs] = await Promise.all([
       CategoryModel.find({
         _id: { $in: categoryIds.map((id) => new Types.ObjectId(id)) },
-        userId: uid,
+        workspaceId: uid,
       }).exec(),
       AccountModel.find({
         _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-        userId: uid,
+        workspaceId: uid,
       }).exec(),
     ]);
 

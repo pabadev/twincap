@@ -35,7 +35,7 @@ export function toSaleEntity(
   return new Sale(
     {
       id: doc._id.toString(),
-      userId: doc.userId.toString(),
+      workspaceId: doc.workspaceId.toString(),
       items,
       date: doc.date,
       paymentMode: doc.paymentMode,
@@ -52,7 +52,7 @@ export function toSaleEntity(
 /** Convert a domain Sale entity to plain data for Mongoose writes. */
 export function toSaleDocData(entity: Sale): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     items: entity.items.map((item) => ({
       itemId: new Types.ObjectId(item.itemId),
       quantity: item.quantity,

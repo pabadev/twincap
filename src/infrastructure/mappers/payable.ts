@@ -27,7 +27,7 @@ export function toPayableEntity(
   return new Payable(
     {
       id: doc._id.toString(),
-      userId: doc.userId.toString(),
+      workspaceId: doc.workspaceId.toString(),
       counterparty: doc.counterparty,
       total: new Money(doc.total, currency),
       initialPayment: doc.initialPayment,
@@ -46,7 +46,7 @@ export function toPayableDocData(
   entity: Payable,
 ): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     counterparty: entity.counterparty,
     total: entity.total.amount,
     initialPayment: entity.initialPayment,

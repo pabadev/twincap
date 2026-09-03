@@ -11,7 +11,7 @@ export function isCatalogItemType(value: string): value is CatalogItemType {
 
 export interface CatalogItemInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   name: string;
   unitPrice: Money;
   type: CatalogItemType;
@@ -22,7 +22,7 @@ export interface CatalogItemInput {
 
 export class CatalogItem {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly name: string;
   readonly unitPrice: Money;
   readonly type: CatalogItemType;
@@ -34,8 +34,8 @@ export class CatalogItem {
     if (input.id.length === 0) {
       throw new ValidationError("CatalogItem id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("CatalogItem userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("CatalogItem workspaceId must not be empty");
     }
     const name = input.name.trim();
     if (name.length === 0) {
@@ -63,7 +63,7 @@ export class CatalogItem {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.name = name;
     this.unitPrice = input.unitPrice;
     this.type = input.type;
@@ -74,7 +74,7 @@ export class CatalogItem {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       name: this.name,
       unitPrice: this.unitPrice.toJSON(),
       type: this.type,

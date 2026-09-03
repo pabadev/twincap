@@ -20,7 +20,7 @@ function makeCredit(): CreditReceived {
   return new CreditReceived(
     {
       id: "credit-1",
-      userId: "user-1",
+      workspaceId: "user-1",
       counterparty: "Lender",
       principal: new Money(10_000_000, "COP"),
       accountId: "acc-1",
@@ -36,7 +36,7 @@ describe("serializeEntity", () => {
   it("returns a plain snapshot of a single entity", () => {
     const account = new Account({
       id: "acc-1",
-      userId: "user-1",
+      workspaceId: "user-1",
       name: "Efectivo",
       currency: "COP",
       isFixed: true,
@@ -47,7 +47,7 @@ describe("serializeEntity", () => {
 
     expect(result).toEqual({
       id: "acc-1",
-      userId: "user-1",
+      workspaceId: "user-1",
       name: "Efectivo",
       currency: "COP",
       isFixed: true,
@@ -81,7 +81,7 @@ describe("serializeEntities", () => {
     const accounts = [
       new Account({
         id: "acc-1",
-        userId: "user-1",
+        workspaceId: "user-1",
         name: "Efectivo",
         currency: "COP",
         isFixed: true,
@@ -89,7 +89,7 @@ describe("serializeEntities", () => {
       }),
       new Account({
         id: "acc-2",
-        userId: "user-1",
+        workspaceId: "user-1",
         name: "Nequi",
         currency: "COP",
         isFixed: true,

@@ -32,7 +32,7 @@ function clientFormData(name = 'Ana Gómez'): FormData {
 function clientEntity(overrides: Record<string, string> = {}) {
   const entity: Record<string, unknown> = {
     id: 'cl-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Ana Gómez',
     phone: '',
     email: '',
@@ -42,7 +42,7 @@ function clientEntity(overrides: Record<string, string> = {}) {
     toJSON() {
       return {
         id: entity.id,
-        userId: entity.userId,
+        workspaceId: entity.workspaceId,
         name: entity.name,
         phone: entity.phone,
         email: entity.email,
@@ -57,7 +57,7 @@ function clientEntity(overrides: Record<string, string> = {}) {
 describe('createClientAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoClientRepository.mockImplementation(() => ({
       findByName: vi.fn().mockResolvedValue(null),
@@ -91,7 +91,7 @@ describe('createClientAction', () => {
 describe('updateClientAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     MongoClientRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue(clientEntity()),

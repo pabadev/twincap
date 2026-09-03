@@ -11,7 +11,7 @@ import type { CreateCatalogItemInput } from './dto/catalog';
  * id generation and repository persistence.
  */
 export async function createCatalogItem(
-  userId: string,
+  workspaceId: string,
   input: CreateCatalogItemInput,
   catalogRepo: CatalogItemRepository,
   ids: IdGenerator,
@@ -22,7 +22,7 @@ export async function createCatalogItem(
 
   const item = new CatalogItem({
     id,
-    userId,
+    workspaceId,
     name: input.name,
     unitPrice,
     type: input.type,

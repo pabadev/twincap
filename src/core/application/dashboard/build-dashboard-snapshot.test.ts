@@ -63,7 +63,7 @@ let seq = 0;
 function category(type: MovementType, id?: string, name?: string): Category {
   return new Category({
     id: id ?? `cat-${type}`,
-    userId: 'u1',
+    workspaceId: 'u1',
     name: name ?? `Cat ${type}`,
     type,
     createdAt: SEED_DATE,
@@ -82,7 +82,7 @@ function movement(input: {
 }): Movement {
   return new Movement({
     id: `m-${++seq}`,
-    userId: 'u1',
+    workspaceId: 'u1',
     accountId: input.accountId ?? 'acc-1',
     category: category(input.type, input.categoryId),
     type: input.type,
@@ -102,11 +102,11 @@ const accounts = [
 ];
 
 const categories: SerializedCategory[] = [
-  { id: 'cat-income', userId: 'u1', name: 'Salario', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-salary-in', userId: 'u1', name: 'Salario in', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-freelance', userId: 'u1', name: 'Freelance', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-food', userId: 'u1', name: 'Comida', type: 'expense', createdAt: SEED_DATE },
-  { id: 'cat-rent', userId: 'u1', name: 'Arriendo', type: 'expense', createdAt: SEED_DATE },
+  { id: 'cat-income', workspaceId: 'u1', name: 'Salario', type: 'income', createdAt: SEED_DATE },
+  { id: 'cat-salary-in', workspaceId: 'u1', name: 'Salario in', type: 'income', createdAt: SEED_DATE },
+  { id: 'cat-freelance', workspaceId: 'u1', name: 'Freelance', type: 'income', createdAt: SEED_DATE },
+  { id: 'cat-food', workspaceId: 'u1', name: 'Comida', type: 'expense', createdAt: SEED_DATE },
+  { id: 'cat-rent', workspaceId: 'u1', name: 'Arriendo', type: 'expense', createdAt: SEED_DATE },
 ];
 
 const resolveCategoryLabel = (categoryId: string): string => {

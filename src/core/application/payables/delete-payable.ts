@@ -8,17 +8,17 @@ import type { PayableRepository, MovementRepository } from '../../domain/reposit
  * abonos) and deletes them, then the payable record itself.
  */
 export async function deletePayable(
-  userId: string,
+  workspaceId: string,
   payableId: string,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
 ): Promise<void> {
-  const payables = await payableRepo.findByUserId(userId);
+  const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
   // Find all movements linked to this payable (initial payment + abonos)
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const linkedMovements = movements.filter(m => m.link?.refId === payableId);
 
   // Movement deletion is tolerant (R5-B pattern): an already-missing movement
@@ -26,12 +26,12 @@ export async function deletePayable(
   // first then the record keeps a failure from orphaning the payable.
   for (const m of linkedMovements) {
     try {
-      await movementRepo.delete(userId, m.id);
+      await movementRepo.delete(workspaceId, m.id);
     } catch (err) {
       if (err instanceof NotFoundError) continue;
       throw err;
     }
   }
 
-  await payableRepo.delete(userId, payableId);
+  await payableRepo.delete(workspaceId, payableId);
 }

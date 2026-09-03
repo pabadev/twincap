@@ -11,7 +11,7 @@ import type { SaleDetailSnapshot } from './dto/sales';
 /**
  * H17: assemble the full sale detail read model.
  *
- * Joins (all scoped by userId):
+ * Joins (all scoped by workspaceId):
  * - client name via ClientRepository
  * - item names via CatalogItemRepository
  * - account name via AccountRepository
@@ -28,7 +28,7 @@ import type { SaleDetailSnapshot } from './dto/sales';
  * - legacy on-credit → falls back to the sale's own embedded abonos
  */
 export async function getSaleDetail(
-  userId: string,
+  workspaceId: string,
   saleId: string,
   saleRepo: SaleRepository,
   clientRepo: ClientRepository,
@@ -36,24 +36,24 @@ export async function getSaleDetail(
   accountRepo: AccountRepository,
   creditRepo: CreditGrantedRepository,
 ): Promise<SaleDetailSnapshot> {
-  const sale = await saleRepo.findById(userId, saleId);
-  if (!sale) throw new NotFoundError(`Sale ${saleId} not found for user ${userId}`);
+  const sale = await saleRepo.findById(workspaceId, saleId);
+  if (!sale) throw new NotFoundError(`Sale ${saleId} not found for user ${workspaceId}`);
 
   const currency = sale.items[0].unitPrice.currency;
 
   // Catalog names in a single query.
-  const catalogItems = await catalogRepo.findByUserId(userId);
+  const catalogItems = await catalogRepo.findByWorkspaceId(workspaceId);
   const itemNameById = new Map(catalogItems.map((item) => [item.id, item.name]));
 
   // Optional joins: repos honor the nullable port contract, so a dangling
   // reference simply resolves to null instead of failing the detail view.
-  const account = await accountRepo.findById(userId, sale.accountId);
+  const account = await accountRepo.findById(workspaceId, sale.accountId);
   const accountName = account?.name ?? null;
   const clientName = sale.clientId
-    ? ((await clientRepo.findById(userId, sale.clientId))?.name ?? null)
+    ? ((await clientRepo.findById(workspaceId, sale.clientId))?.name ?? null)
     : null;
 
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const linkedCredit = credits.find((c) => c.saleId === saleId) ?? null;
 
   let initialPayment: number;

@@ -9,7 +9,7 @@ export function isCategoryType(value: string): value is CategoryType {
 
 export interface CategoryInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   name: string;
   type: CategoryType;
   createdAt: Date;
@@ -17,7 +17,7 @@ export interface CategoryInput {
 
 export class Category {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly name: string;
   /** Type-scoped and immutable (CAT-2). Name unique per user+type is a repo concern. */
   readonly type: CategoryType;
@@ -27,8 +27,8 @@ export class Category {
     if (input.id.length === 0) {
       throw new ValidationError("Category id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Category userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Category workspaceId must not be empty");
     }
     const name = input.name.trim();
     if (name.length === 0) {
@@ -38,7 +38,7 @@ export class Category {
       throw new ValidationError(`Unknown category type: ${String(input.type)}`);
     }
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.name = name;
     this.type = input.type;
     this.createdAt = input.createdAt;
@@ -48,7 +48,7 @@ export class Category {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       name: this.name,
       type: this.type,
       createdAt: this.createdAt,

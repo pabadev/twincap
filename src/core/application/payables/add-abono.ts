@@ -15,7 +15,7 @@ import type { AddAbonoInput } from './dto/payables';
  * Movement context: always 'Personal' — payable abonos are personal purchases.
  */
 export async function addAbono(
-  userId: string,
+  workspaceId: string,
   payableId: string,
   input: AddAbonoInput,
   payableRepo: PayableRepository,
@@ -24,13 +24,13 @@ export async function addAbono(
   accountRepo: AccountRepository,
 ): Promise<Payable> {
   // Re-fetch via repo — returns Payable instance with pending getter
-  const payables = await payableRepo.findByUserId(userId);
+  const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
   // D3: resolve the PAYMENT account (may differ from the payable's account) —
   // validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -44,7 +44,7 @@ export async function addAbono(
   const movementId = ids.generate();
   const now = new Date();
 
-  await payableRepo.addAbono(userId, payableId, {
+  await payableRepo.addAbono(workspaceId, payableId, {
     id: abonoId,
     amount: input.amount,
     date: input.date,
@@ -60,7 +60,7 @@ export async function addAbono(
   // Create expense movement (abono = payment from account)
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: payableCategory('expense'),
     type: 'expense',
@@ -84,7 +84,7 @@ export async function addAbono(
   return new Payable(
     {
       id: payable.id,
-      userId: payable.userId,
+      workspaceId: payable.workspaceId,
       counterparty: payable.counterparty,
       total: payable.total,
       initialPayment: payable.initialPayment,

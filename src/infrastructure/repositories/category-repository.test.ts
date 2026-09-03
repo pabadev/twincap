@@ -12,7 +12,7 @@ import { MongoCategoryRepository } from "./category-repository";
 function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}) {
   return new Category({
     id: new Types.ObjectId().toString(),
-    userId: new Types.ObjectId().toString(),
+    workspaceId: new Types.ObjectId().toString(),
     name: "Comida",
     type: "expense",
     createdAt: new Date(),

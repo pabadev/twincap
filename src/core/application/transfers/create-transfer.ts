@@ -18,7 +18,7 @@ import type { CreateTransferInput } from './dto/transfers';
  * without economic classification.
  */
 export async function createTransfer(
-  userId: string,
+  workspaceId: string,
   input: CreateTransferInput,
   transferRepo: TransferRepository,
   movementRepo: MovementRepository,
@@ -32,8 +32,8 @@ export async function createTransfer(
 
   // D3: resolve both accounts up front — validates existence/ownership.
   const [sourceAccount, destinationAccount] = await Promise.all([
-    accountRepo.findById(userId, input.sourceAccountId),
-    accountRepo.findById(userId, input.destinationAccountId),
+    accountRepo.findById(workspaceId, input.sourceAccountId),
+    accountRepo.findById(workspaceId, input.destinationAccountId),
   ]);
   if (!sourceAccount) {
     throw new NotFoundError(`Source account ${input.sourceAccountId} not found`);
@@ -58,7 +58,7 @@ export async function createTransfer(
   }
 
   // TRA-4: source funds check (derived balance)
-  const sourceBalance = await movementRepo.aggregateBalance(userId, input.sourceAccountId);
+  const sourceBalance = await movementRepo.aggregateBalance(workspaceId, input.sourceAccountId);
   if (sourceBalance < input.sourceAmount) {
     throw new ConflictError('Insufficient funds in source account');
   }
@@ -73,7 +73,7 @@ export async function createTransfer(
 
   const transfer = new Transfer({
     id: transferId,
-    userId,
+    workspaceId,
     sourceAccountId: input.sourceAccountId,
     destinationAccountId: input.destinationAccountId,
     sourceAmount: sourceAmountMoney,
@@ -92,7 +92,7 @@ export async function createTransfer(
   // Create expense movement (source account)
   const expenseMovement = new Movement({
     id: expenseMovementId,
-    userId,
+    workspaceId,
     accountId: input.sourceAccountId,
     category: transferCategory('expense'),
     type: 'expense',
@@ -107,7 +107,7 @@ export async function createTransfer(
   // Create income movement (destination account)
   const incomeMovement = new Movement({
     id: incomeMovementId,
-    userId,
+    workspaceId,
     accountId: input.destinationAccountId,
     category: transferCategory('income'),
     type: 'income',

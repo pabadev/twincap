@@ -67,7 +67,7 @@ export async function createPayableAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return createPayable(
-          user.userId,
+          user.workspaceId!,
           { counterparty, total, initialPayment, currency, accountId, date, dueDate, note },
           payableRepo,
           movementRepo,
@@ -124,7 +124,7 @@ export async function addAbonoAction(
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return addAbono(
-          user.userId,
+          user.workspaceId!,
           payableId,
           { amount, currency, accountId, date },
           payableRepo,
@@ -167,7 +167,7 @@ export async function editAbonoAction(
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
         return editAbono(
-          user.userId,
+          user.workspaceId!,
           payableId,
           abonoId,
           { amount, date },
@@ -204,7 +204,7 @@ export async function editPayableAction(
       () => {
         const payableRepo = new MongoPayableRepository();
         return editTotal(
-          user.userId,
+          user.workspaceId!,
           payableId,
           { total, currency },
           payableRepo,
@@ -238,7 +238,7 @@ export async function deleteAbonoAction(
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAbono(user.userId, payableId, abonoId, payableRepo, movementRepo);
+        return deleteAbono(user.workspaceId!, payableId, abonoId, payableRepo, movementRepo);
       },
     );
     revalidateMovementData('/payables');
@@ -267,7 +267,7 @@ export async function deletePayableAction(
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
-        return deletePayable(user.userId, payableId, payableRepo, movementRepo);
+        return deletePayable(user.workspaceId!, payableId, payableRepo, movementRepo);
       },
     );
     revalidateMovementData('/payables');

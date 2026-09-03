@@ -24,11 +24,11 @@ export default async function SalesPage() {
   const creditRepo = new MongoCreditGrantedRepository();
 
   const [sales, catalogItems, accounts, clients, creditsGranted] = await Promise.all([
-    listSales(user.userId, saleRepo),
-    listCatalogItems(user.userId, catalogRepo),
-    accountRepo.findByUserId(user.userId),
-    listClients(user.userId, clientRepo),
-    creditRepo.findByUserId(user.userId),
+    listSales(user.workspaceId!, saleRepo),
+    listCatalogItems(user.workspaceId!, catalogRepo),
+    accountRepo.findByWorkspaceId(user.workspaceId!),
+    listClients(user.workspaceId!, clientRepo),
+    creditRepo.findByWorkspaceId(user.workspaceId!),
   ]);
 
   // H14/R5-D0b: linked credits own the pending of their sale AND their first

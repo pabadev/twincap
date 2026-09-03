@@ -51,7 +51,7 @@ function fakeSaleRepo(
     abonosEdited,
     abonosDeleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (sale: Sale) => {
       created.push(sale);
       return sale;
@@ -90,7 +90,7 @@ function fakeCatalogRepo(
     incremented,
     state,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (item: CatalogItem) => item),
     update: vi.fn().mockImplementation(async (item: CatalogItem) => item),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -119,7 +119,7 @@ function fakeMovementRepo(
     deleted,
     deletedByRefId,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
@@ -152,7 +152,7 @@ function fakeClientRepo(
 ): ClientRepository & { client: Client } {
   const client = new Client({
     id: 'client-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Juan Pérez',
     phone: '',
     email: '',
@@ -162,7 +162,7 @@ function fakeClientRepo(
   return {
     client,
     findById: vi.fn().mockResolvedValue(client),
-    findByUserId: vi.fn().mockResolvedValue([client]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([client]),
     findByName: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: Client) => c),
     update: vi.fn().mockImplementation(async (c: Client) => c),
@@ -180,7 +180,7 @@ function fakeCreditGrantedRepo(
     created,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
       created.push(credit);
       return credit;
@@ -204,7 +204,7 @@ function fakeAccountRepo(
     findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
       accounts.find((a) => a.id === id) ?? null,
     ),
-    findByUserId: vi.fn().mockResolvedValue(accounts),
+    findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -217,7 +217,7 @@ function makeAccount(
 ): Account {
   return new Account({
     id,
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: `Account ${id}`,
     currency: 'COP',
     isFixed: false,
@@ -232,7 +232,7 @@ function makeSale(
   return new Sale(
     {
       id: 'sale-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       items: [{ itemId: 'item-1', quantity: 2, unitPrice: new Money(50000, 'COP') }],
       date: new Date('2025-06-01'),
       paymentMode: 'on-credit',
@@ -249,7 +249,7 @@ function makeProduct(
 ): CatalogItem {
   return new CatalogItem({
     id: 'item-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Product A',
     unitPrice: new Money(50000, 'COP'),
     type: 'product',
@@ -264,7 +264,7 @@ function makeService(
 ): CatalogItem {
   return new CatalogItem({
     id: 'item-2',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Service B',
     unitPrice: new Money(30000, 'COP'),
     type: 'service',
@@ -768,7 +768,7 @@ describe('addSaleAbono', () => {
   it('adds an abono and creates income movement (POS-4)', async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -796,7 +796,7 @@ describe('addSaleAbono', () => {
   it('sets context to Business (hardcoded) regardless of account', async () => {
     const sale = makeSale(); // sale.accountId = acc-1
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([
@@ -823,7 +823,7 @@ describe('addSaleAbono', () => {
   it('rejects abono exceeding pending amount (POS-5)', async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -844,7 +844,7 @@ describe('addSaleAbono', () => {
 
   it('rejects when sale not found', async () => {
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
@@ -872,7 +872,7 @@ describe('deleteSaleAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -891,7 +891,7 @@ describe('deleteSaleAbono', () => {
     const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
     const deleteMovementMock = vi.fn().mockImplementation(async () => {});
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
       deleteAbono: deleteAbonoMock,
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
@@ -907,7 +907,7 @@ describe('deleteSaleAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo({
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
@@ -925,7 +925,7 @@ describe('deleteSaleAbono', () => {
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
     ]);
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo({
       delete: vi.fn().mockRejectedValue(new Error('db down')),
@@ -940,7 +940,7 @@ describe('deleteSaleAbono', () => {
 
   it('rejects when sale not found', async () => {
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -952,7 +952,7 @@ describe('deleteSaleAbono', () => {
   it('rejects when abono not found', async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -972,7 +972,7 @@ describe('deleteSale', () => {
     ]);
 
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
@@ -998,7 +998,7 @@ describe('deleteSale', () => {
     const credit = new CreditGranted(
       {
         id: 'cg-1',
-        userId: 'user-1',
+        workspaceId: 'user-1',
         counterparty: 'Juan Pérez',
         principal: new Money(150000, 'COP'),
         accountId: 'acc-1',
@@ -1013,14 +1013,14 @@ describe('deleteSale', () => {
     );
 
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
     });
     const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
 
     await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
@@ -1040,7 +1040,7 @@ describe('deleteSale', () => {
     const credit = new CreditGranted(
       {
         id: 'cg-1',
-        userId: 'user-1',
+        workspaceId: 'user-1',
         counterparty: 'Juan Pérez',
         principal: new Money(50000, 'COP'),
         accountId: 'acc-1',
@@ -1054,7 +1054,7 @@ describe('deleteSale', () => {
     );
 
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
@@ -1062,7 +1062,7 @@ describe('deleteSale', () => {
     // deleteByRefId tolerates already-gone movements (returns count, never throws).
     const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo({
-      findByUserId: vi.fn().mockResolvedValue([credit]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
 
     await expect(
@@ -1078,7 +1078,7 @@ describe('deleteSale', () => {
 
   it('rejects when sale not found', async () => {
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const catalogRepo = fakeCatalogRepo();
     const movementRepo = fakeMovementRepo();
@@ -1097,12 +1097,12 @@ describe('listSales', () => {
     const sale1 = makeSale({ id: 'sale-1' });
     const sale2 = makeSale({ id: 'sale-2' });
     const saleRepo = fakeSaleRepo({
-      findByUserId: vi.fn().mockResolvedValue([sale1, sale2]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale1, sale2]),
     });
 
     const result = await listSales('user-1', saleRepo);
 
     expect(result).toHaveLength(2);
-    expect(saleRepo.findByUserId).toHaveBeenCalledWith('user-1');
+    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
   });
 });

@@ -12,7 +12,7 @@ export default async function CatalogPage() {
 
   await connectDb();
   const catalogRepo = new MongoCatalogItemRepository();
-  const items = await listCatalogItems(user.userId, catalogRepo);
+  const items = await listCatalogItems(user.workspaceId!, catalogRepo);
 
   return <CatalogList items={serializeEntities(items)} />;
 }

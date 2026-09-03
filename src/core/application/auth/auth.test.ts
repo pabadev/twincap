@@ -46,7 +46,7 @@ function fakeAccountRepo(): AccountRepository & { created: Account[] } {
   return {
     created,
     findById: async () => null,
-    findByUserId: async () => [],
+    findByWorkspaceId: async () => [],
     create: async (account) => {
       created.push(account);
       return account;
@@ -62,7 +62,7 @@ function fakeCategoryRepo(): CategoryRepository & { created: Category[] } {
   return {
     created,
     findById: async () => null,
-    findByUserId: async () => [],
+    findByWorkspaceId: async () => [],
     findByNameAndType: async () => null,
     create: async (category) => {
       created.push(category);

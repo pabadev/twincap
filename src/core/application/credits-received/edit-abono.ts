@@ -12,14 +12,14 @@ import type { EditAbonoInput } from './dto/credits-received';
  * Recalculates pending with the new amount and updates the linked movement.
  */
 export async function editAbono(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   abonoId: string,
   input: EditAbonoInput,
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
 ): Promise<CreditReceived> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -45,18 +45,18 @@ export async function editAbono(
   // repository ports to accept a Mongoose ClientSession (signature change
   // across every port/implementation) plus a replica-set connection — an
   // infrastructure change deliberately out of scope here.
-  await creditRepo.editAbono(userId, creditId, abonoId, {
+  await creditRepo.editAbono(workspaceId, creditId, abonoId, {
     amount: input.amount,
     date: input.date,
   });
 
   // Update linked movement
   if (abono.movementId) {
-    const movement = await movementRepo.findById(userId, abono.movementId);
+    const movement = await movementRepo.findById(workspaceId, abono.movementId);
     if (movement) {
       const updatedMovement = new Movement({
         id: movement.id,
-        userId: movement.userId,
+        workspaceId: movement.workspaceId,
         accountId: updatedAccountId,
         category: creditCategory('expense'),
         type: 'expense',
@@ -74,7 +74,7 @@ export async function editAbono(
   return new CreditReceived(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

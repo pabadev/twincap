@@ -38,7 +38,7 @@ export interface SaleAbono {
 
 export interface SaleInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   items: SaleLineItemInput[];
   date: Date;
   paymentMode: PaymentMode;
@@ -70,7 +70,7 @@ export interface SaleAbonoInput {
 
 export class Sale {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly items: readonly Readonly<SaleLineItem>[];
   readonly date: Date;
   readonly paymentMode: PaymentMode;
@@ -100,8 +100,8 @@ export class Sale {
     if (input.id.length === 0) {
       throw new ValidationError("Sale id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Sale userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Sale workspaceId must not be empty");
     }
     if (input.accountId.length === 0) {
       throw new ValidationError("Sale accountId must not be empty");
@@ -150,7 +150,7 @@ export class Sale {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.items = items;
     this.date = input.date;
     this.paymentMode = input.paymentMode;
@@ -167,7 +167,7 @@ export class Sale {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       items: this.items.map((item) => ({
         ...item,
         unitPrice: item.unitPrice.toJSON(),

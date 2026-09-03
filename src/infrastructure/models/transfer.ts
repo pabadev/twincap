@@ -8,7 +8,7 @@ export interface TransferMovementIdsDoc {
 
 /** Mongoose document shape for Transfer. */
 export interface TransferDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   sourceAccountId: mongoose.Types.ObjectId;
   destinationAccountId: mongoose.Types.ObjectId;
   sourceAmount: number;
@@ -35,7 +35,7 @@ const TransferMovementIdsSchema = new Schema<TransferMovementIdsDoc>(
 
 const TransferSchema = new Schema<TransferDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

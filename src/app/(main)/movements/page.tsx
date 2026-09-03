@@ -56,14 +56,14 @@ export default async function MovementsPage() {
   // Fetch parent operations for note derivation (needed for refLabels)
   const [creditsReceived, creditsGranted, payables, sales, clients, firstPage, transfers, accounts] =
     await Promise.all([
-      creditReceivedRepo.findByUserId(user.userId),
-      creditGrantedRepo.findByUserId(user.userId),
-      payableRepo.findByUserId(user.userId),
-      saleRepo.findByUserId(user.userId),
-      clientRepo.findByUserId(user.userId),
-      listMovementsPaged(user.userId, PAGE_SIZE, movementRepo),
-      transferRepo.findByUserId(user.userId),
-      listAccounts(user.userId, accountRepo),
+      creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
+      creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
+      payableRepo.findByWorkspaceId(user.workspaceId!),
+      saleRepo.findByWorkspaceId(user.workspaceId!),
+      clientRepo.findByWorkspaceId(user.workspaceId!),
+      listMovementsPaged(user.workspaceId!, PAGE_SIZE, movementRepo),
+      transferRepo.findByWorkspaceId(user.workspaceId!),
+      listAccounts(user.workspaceId!, accountRepo),
     ]);
 
   // R6-P1: defensive filter — drop movements whose linked parent is gone.

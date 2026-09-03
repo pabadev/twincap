@@ -8,7 +8,7 @@ const DATE = new Date("2026-01-01T00:00:00Z");
 function transfer(overrides: Partial<ConstructorParameters<typeof Transfer>[0]> = {}): Transfer {
   return new Transfer({
     id: "t1",
-    userId: "u1",
+    workspaceId: "u1",
     sourceAccountId: "a-src",
     destinationAccountId: "a-dst",
     sourceAmount: new Money(300_000, "COP"),
@@ -90,7 +90,7 @@ describe("Transfer entity", () => {
 
   it("rejects transfer with empty ids", () => {
     expect(() => transfer({ id: "" })).toThrow(ValidationError);
-    expect(() => transfer({ userId: "" })).toThrow(ValidationError);
+    expect(() => transfer({ workspaceId: "" })).toThrow(ValidationError);
     expect(() => transfer({ sourceAccountId: "" })).toThrow(ValidationError);
     expect(() => transfer({ destinationAccountId: "" })).toThrow(ValidationError);
   });

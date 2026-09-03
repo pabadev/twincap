@@ -24,7 +24,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
     created,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (account: Account) => {
       created.push(account);
       return account;
@@ -43,7 +43,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
   return {
     created,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement) => {
       created.push(movement);
@@ -68,7 +68,7 @@ function fakeIdGen(): IdGenerator {
 function makeAccount(overrides: Partial<ConstructorParameters<typeof Account>[0]> = {}): Account {
   return new Account({
     id: 'acc-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'My Account',
     currency: 'COP',
     isFixed: false,
@@ -82,11 +82,11 @@ function makeMovement(
 ): Movement {
   return new Movement({
     id: 'mov-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: 'acc-1',
     category: new Category({
       id: 'cat-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       name: 'Initial',
       type: 'income',
       createdAt: new Date(),
@@ -475,12 +475,12 @@ describe('listAccounts', () => {
   it('returns all accounts for the user', async () => {
     const accounts = [makeAccount({ id: 'a1' }), makeAccount({ id: 'a2' })];
     const accountRepo = fakeAccountRepo({
-      findByUserId: vi.fn().mockResolvedValue(accounts),
+      findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     });
 
     const result = await listAccounts('user-1', accountRepo);
 
     expect(result).toHaveLength(2);
-    expect(accountRepo.findByUserId).toHaveBeenCalledWith('user-1');
+    expect(accountRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
   });
 });

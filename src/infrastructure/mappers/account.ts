@@ -7,7 +7,7 @@ import type { Currency } from "../../core/domain/currency";
 export function toAccountEntity(doc: AccountDocument): Account {
   return new Account({
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
+    workspaceId: doc.workspaceId.toString(),
     name: doc.name,
     currency: doc.currency as Currency,
     isFixed: doc.isFixed,
@@ -18,7 +18,7 @@ export function toAccountEntity(doc: AccountDocument): Account {
 /** Convert a domain Account entity to plain data for Mongoose writes. */
 export function toAccountDocData(entity: Account): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     name: entity.name,
     currency: entity.currency,
     isFixed: entity.isFixed,

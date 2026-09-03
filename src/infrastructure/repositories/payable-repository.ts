@@ -11,22 +11,22 @@ import {
 } from "../mappers/payable";
 
 export class MongoPayableRepository implements PayableRepository {
-  async findById(userId: string, id: string): Promise<Payable | null> {
+  async findById(workspaceId: string, id: string): Promise<Payable | null> {
     const doc = await PayableModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
-      userId,
+      workspaceId,
       (doc as PayableDocument).accountId.toString(),
     );
     return toPayableEntity(doc as PayableDocument, currency);
   }
 
-  async findByUserId(userId: string): Promise<Payable[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Payable[]> {
     const docs = await PayableModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
@@ -34,7 +34,7 @@ export class MongoPayableRepository implements PayableRepository {
       ...new Set(docs.map((d) => d.accountId.toString())),
     ];
     const currencyMap = await this.resolveBulkAccountCurrencies(
-      userId,
+      workspaceId,
       accountIds,
     );
 
@@ -50,14 +50,14 @@ export class MongoPayableRepository implements PayableRepository {
       const docData = toPayableDocData(payable);
       const created = await PayableModel.create({ ...docData, _id: payable.id });
       const currency = await this.resolveAccountCurrency(
-        payable.userId,
+        payable.workspaceId,
         payable.accountId,
       );
       return toPayableEntity(created as PayableDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Payable for user ${payable.userId} already exists`,
+          `Payable for user ${payable.workspaceId} already exists`,
         );
       }
       throw err;
@@ -69,31 +69,31 @@ export class MongoPayableRepository implements PayableRepository {
     const result = await PayableModel.findOneAndUpdate(
       {
         _id: payable.id,
-        userId: new Types.ObjectId(payable.userId),
+        workspaceId: new Types.ObjectId(payable.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Payable ${payable.id} not found for user ${payable.userId}`,
+        `Payable ${payable.id} not found for user ${payable.workspaceId}`,
       );
     }
     const currency = await this.resolveAccountCurrency(
-      payable.userId,
+      payable.workspaceId,
       payable.accountId,
     );
     return toPayableEntity(result as PayableDocument, currency);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await PayableModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
       throw new NotFoundError(
-        `Payable ${id} not found for user ${userId}`,
+        `Payable ${id} not found for user ${workspaceId}`,
       );
     }
   }
@@ -102,7 +102,7 @@ export class MongoPayableRepository implements PayableRepository {
 
   /** Add an abono — idempotent: skips if movementId already present. */
   async addAbono(
-    userId: string,
+    workspaceId: string,
     payableId: string,
     abono: {
       id: string;
@@ -118,7 +118,7 @@ export class MongoPayableRepository implements PayableRepository {
       const result = await PayableModel.updateOne(
         {
           _id: payableId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
@@ -131,7 +131,7 @@ export class MongoPayableRepository implements PayableRepository {
       await PayableModel.updateOne(
         {
           _id: payableId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
       ).exec();
@@ -140,7 +140,7 @@ export class MongoPayableRepository implements PayableRepository {
 
   /** Edit an embedded abono by its id. */
   async editAbono(
-    userId: string,
+    workspaceId: string,
     payableId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
@@ -152,7 +152,7 @@ export class MongoPayableRepository implements PayableRepository {
     await PayableModel.updateOne(
       {
         _id: payableId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
         "abonos.id": abonoId,
       },
       { $set: setFields },
@@ -161,14 +161,14 @@ export class MongoPayableRepository implements PayableRepository {
 
   /** Delete an embedded abono by its id. */
   async deleteAbono(
-    userId: string,
+    workspaceId: string,
     payableId: string,
     abonoId: string,
   ): Promise<void> {
     await PayableModel.updateOne(
       {
         _id: payableId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
     ).exec();
@@ -177,29 +177,29 @@ export class MongoPayableRepository implements PayableRepository {
   // ─── Private helpers ───────────────────────────────────────────────
 
   private async resolveAccountCurrency(
-    userId: string,
+    workspaceId: string,
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
       _id: accountId,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) {
       throw new NotFoundError(
-        `Account ${accountId} not found for user ${userId}`,
+        `Account ${accountId} not found for user ${workspaceId}`,
       );
     }
     return (doc as AccountDocument).currency as Currency;
   }
 
   private async resolveBulkAccountCurrencies(
-    userId: string,
+    workspaceId: string,
     accountIds: string[],
   ): Promise<Map<string, Currency>> {
-    const uid = new Types.ObjectId(userId);
+    const uid = new Types.ObjectId(workspaceId);
     const docs = await AccountModel.find({
       _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      userId: uid,
+      workspaceId: uid,
     }).exec();
 
     const map = new Map<string, Currency>();

@@ -71,7 +71,7 @@ describe("Account", () => {
   it("has NO stored balance field — balance is derived from movements (design rev.2 §2)", () => {
     const account = new Account({
       id: "a1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Efectivo",
       currency: "COP",
       isFixed: true,
@@ -83,7 +83,7 @@ describe("Account", () => {
   it("trims names and rejects empty ones", () => {
     const account = new Account({
       id: "a1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "  BBVA  ",
       currency: "USD",
       isFixed: false,
@@ -91,17 +91,17 @@ describe("Account", () => {
     });
     expect(account.name).toBe("BBVA");
     expect(() =>
-      new Account({ id: "a2", userId: "u1", name: "   ", currency: "COP", isFixed: false, createdAt: DATE }),
+      new Account({ id: "a2", workspaceId: "u1", name: "   ", currency: "COP", isFixed: false, createdAt: DATE }),
     ).toThrow(ValidationError);
   });
 });
 
 describe("Category", () => {
   it("is type-scoped and rejects unknown types", () => {
-    const income = new Category({ id: "c1", userId: "u1", name: "Salario", type: "income", createdAt: DATE });
+    const income = new Category({ id: "c1", workspaceId: "u1", name: "Salario", type: "income", createdAt: DATE });
     expect(income.type).toBe("income");
     expect(() =>
-      new Category({ id: "c2", userId: "u1", name: "X", type: "savings" as never, createdAt: DATE }),
+      new Category({ id: "c2", workspaceId: "u1", name: "X", type: "savings" as never, createdAt: DATE }),
     ).toThrow(ValidationError);
   });
 });

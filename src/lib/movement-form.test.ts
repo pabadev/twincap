@@ -7,12 +7,12 @@ import type { SerializedAccount } from '../core/domain/account';
 import type { SerializedCategory } from '../core/domain/category';
 
 const accounts: SerializedAccount[] = [
-  { id: 'acc-1', userId: 'user-1', name: 'Efectivo', currency: 'COP', isFixed: true, createdAt: new Date('2026-01-01') },
-  { id: 'acc-2', userId: 'user-1', name: 'Nequi', currency: 'COP', isFixed: true, createdAt: new Date('2026-01-02') },
+  { id: 'acc-1', workspaceId: 'user-1', name: 'Efectivo', currency: 'COP', isFixed: true, createdAt: new Date('2026-01-01') },
+  { id: 'acc-2', workspaceId: 'user-1', name: 'Nequi', currency: 'COP', isFixed: true, createdAt: new Date('2026-01-02') },
 ];
 
 function makeCategory(id: string, type: SerializedCategory['type']): SerializedCategory {
-  return { id, userId: 'user-1', name: `cat-${id}`, type, createdAt: new Date('2026-01-01') };
+  return { id, workspaceId: 'user-1', name: `cat-${id}`, type, createdAt: new Date('2026-01-01') };
 }
 
 describe('resolveDefaultAccountId', () => {

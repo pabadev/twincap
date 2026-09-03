@@ -16,7 +16,7 @@ const SYNTHETIC_IDS = {
 } as const;
 
 function makeCategory(id: string, name: string, type: CategoryType): Category {
-  return new Category({ id, userId: '__system__', name, type, createdAt: new Date(0) });
+  return new Category({ id, workspaceId: '__system__', name, type, createdAt: new Date(0) });
 }
 
 // Key = `${id}:${type}` → supports same ID with different types

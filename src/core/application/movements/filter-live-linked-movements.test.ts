@@ -5,7 +5,7 @@ import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import type { MovementLinkKind } from '../../domain/movement';
 
-const CAT = new Category({ id: 'cat-1', userId: 'user-1', name: 'Sale', type: 'income', createdAt: new Date() });
+const CAT = new Category({ id: 'cat-1', workspaceId: 'user-1', name: 'Sale', type: 'income', createdAt: new Date() });
 
 function makeMovement(
   kind: MovementLinkKind | undefined,
@@ -14,7 +14,7 @@ function makeMovement(
 ): Movement {
   return new Movement({
     id: `mov-${Math.random().toString(36).slice(2, 8)}`,
-    userId: 'user-1',
+    workspaceId: 'user-1',
     accountId: overrides.accountId ?? 'acc-1',
     category: CAT,
     type: 'income',

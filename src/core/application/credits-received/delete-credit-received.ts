@@ -7,17 +7,17 @@ import type { CreditReceivedRepository, MovementRepository } from '../../domain/
  * Deletes principal movement + all abono movements, then the credit record.
  */
 export async function deleteCreditReceived(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
 ): Promise<void> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
   // Find all movements linked to this credit (principal + abonos)
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const linkedMovements = movements.filter(m => m.link?.refId === creditId);
 
   // Movement deletion is tolerant (R5-B pattern): an already-missing movement
@@ -25,12 +25,12 @@ export async function deleteCreditReceived(
   // first then the record keeps a failure from orphaning the credit.
   for (const m of linkedMovements) {
     try {
-      await movementRepo.delete(userId, m.id);
+      await movementRepo.delete(workspaceId, m.id);
     } catch (err) {
       if (err instanceof NotFoundError) continue;
       throw err;
     }
   }
 
-  await creditRepo.delete(userId, creditId);
+  await creditRepo.delete(workspaceId, creditId);
 }

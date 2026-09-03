@@ -14,7 +14,7 @@ export interface TransferMovementIds {
 
 export interface TransferInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   sourceAccountId: string;
   destinationAccountId: string;
   sourceAmount: Money;
@@ -32,7 +32,7 @@ export interface TransferInput {
 
 export class Transfer {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly sourceAccountId: string;
   readonly destinationAccountId: string;
   readonly sourceAmount: Money;
@@ -49,8 +49,8 @@ export class Transfer {
     if (input.id.length === 0) {
       throw new ValidationError("Transfer id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Transfer userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Transfer workspaceId must not be empty");
     }
     if (input.sourceAccountId.length === 0) {
       throw new ValidationError("Transfer sourceAccountId must not be empty");
@@ -89,7 +89,7 @@ export class Transfer {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.sourceAccountId = input.sourceAccountId;
     this.destinationAccountId = input.destinationAccountId;
     this.sourceAmount = input.sourceAmount;
@@ -107,7 +107,7 @@ export class Transfer {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       sourceAccountId: this.sourceAccountId,
       destinationAccountId: this.destinationAccountId,
       sourceAmount: this.sourceAmount.toJSON(),

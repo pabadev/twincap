@@ -30,7 +30,7 @@ const DEFAULT_CATEGORIES: Array<{ name: string; type: "income" | "expense" }> = 
  * for a new user. Unique indexes make re-runs safe.
  */
 export async function seedUser(
-  userId: string,
+  workspaceId: string,
   accountRepo: AccountRepository,
   categoryRepo: CategoryRepository,
 ): Promise<void> {
@@ -39,7 +39,7 @@ export async function seedUser(
   for (const acct of FIXED_ACCOUNTS) {
     const account = new Account({
       id: objectIdGenerator.generate(),
-      userId,
+      workspaceId,
       name: acct.name,
       currency: acct.currency,
       isFixed: acct.isFixed,
@@ -51,7 +51,7 @@ export async function seedUser(
   for (const cat of DEFAULT_CATEGORIES) {
     const category = new Category({
       id: objectIdGenerator.generate(),
-      userId,
+      workspaceId,
       name: cat.name,
       type: cat.type,
       createdAt: now,

@@ -2,7 +2,7 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 
 /** Mongoose document shape for Category. */
 export interface CategoryDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   name: string;
   type: "income" | "expense";
   createdAt: Date;
@@ -13,7 +13,7 @@ export type CategoryDocument = HydratedDocument<CategoryDoc>;
 
 const CategorySchema = new Schema<CategoryDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,
@@ -33,7 +33,7 @@ const CategorySchema = new Schema<CategoryDoc>(
 );
 
 // CAT-2: name + type must be unique per user
-CategorySchema.index({ userId: 1, name: 1, type: 1 }, { unique: true });
+CategorySchema.index({ workspaceId: 1, name: 1, type: 1 }, { unique: true });
 
 export const CategoryModel =
   mongoose.models["Category"] ||

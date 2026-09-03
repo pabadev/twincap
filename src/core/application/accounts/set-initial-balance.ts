@@ -11,27 +11,27 @@ export interface SetInitialBalanceInput {
 }
 
 export async function setInitialAccountBalance(
-  userId: string,
+  workspaceId: string,
   input: SetInitialBalanceInput,
   accountRepo: AccountRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
 ): Promise<Movement> {
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) throw new NotFoundError('Account not found');
 
   if (input.amount <= 0) {
     throw new ValidationError('Initial balance must be greater than zero');
   }
 
-  const references = await accountRepo.countReferences(userId, input.accountId);
+  const references = await accountRepo.countReferences(workspaceId, input.accountId);
   if (references > 0) {
     throw new ConflictError('Account already has activity and cannot receive an initial balance');
   }
 
   const movement = new Movement({
     id: ids.generate(),
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: openingCategory(),
     type: 'income',

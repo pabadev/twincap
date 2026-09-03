@@ -9,7 +9,7 @@ describe("CatalogItem entity", () => {
   it("creates a product with stock (POS-1)", () => {
     const item = new CatalogItem({
       id: "ci1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Café",
       unitPrice: new Money(5_000, "COP"),
       type: "product",
@@ -24,7 +24,7 @@ describe("CatalogItem entity", () => {
   it("creates a service without stock (POS-1)", () => {
     const item = new CatalogItem({
       id: "ci2",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Consultoría",
       unitPrice: new Money(50_000, "COP"),
       type: "service",
@@ -37,7 +37,7 @@ describe("CatalogItem entity", () => {
   it("trims name and rejects empty (POS-1)", () => {
     const item = new CatalogItem({
       id: "ci1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "  Café  ",
       unitPrice: new Money(5_000, "COP"),
       type: "product",
@@ -48,7 +48,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci2",
-        userId: "u1",
+        workspaceId: "u1",
         name: "   ",
         unitPrice: new Money(5_000, "COP"),
         type: "service",
@@ -61,7 +61,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Café",
         unitPrice: new Money(5_000, "COP"),
         type: "product",
@@ -74,7 +74,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Café",
         unitPrice: new Money(5_000, "COP"),
         type: "product",
@@ -87,7 +87,7 @@ describe("CatalogItem entity", () => {
   it("allows product with zero stock", () => {
     const item = new CatalogItem({
       id: "ci1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Café",
       unitPrice: new Money(5_000, "COP"),
       type: "product",
@@ -101,7 +101,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Consultoría",
         unitPrice: new Money(50_000, "COP"),
         type: "service",
@@ -115,7 +115,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "u1",
+        workspaceId: "u1",
         name: "X",
         unitPrice: new Money(5_000, "COP"),
         type: "digital" as never,
@@ -128,7 +128,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Café",
         unitPrice: new Money(0, "COP"),
         type: "product",
@@ -142,7 +142,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Café",
         unitPrice: new Money(5_000, "COP"),
         type: "product",
@@ -153,7 +153,7 @@ describe("CatalogItem entity", () => {
     expect(() =>
       new CatalogItem({
         id: "ci1",
-        userId: "",
+        workspaceId: "",
         name: "Café",
         unitPrice: new Money(5_000, "COP"),
         type: "product",

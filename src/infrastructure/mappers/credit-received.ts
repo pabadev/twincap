@@ -28,7 +28,7 @@ export function toCreditReceivedEntity(
   return new CreditReceived(
     {
       id: doc._id.toString(),
-      userId: doc.userId.toString(),
+      workspaceId: doc.workspaceId.toString(),
       counterparty: doc.counterparty,
       principal: new Money(doc.principal, currency),
       accountId: doc.accountId.toString(),
@@ -50,7 +50,7 @@ export function toCreditReceivedDocData(
   entity: CreditReceived,
 ): Record<string, unknown> {
   return {
-    userId: new Types.ObjectId(entity.userId),
+    workspaceId: new Types.ObjectId(entity.workspaceId),
     counterparty: entity.counterparty,
     principal: entity.principal.amount,
     accountId: new Types.ObjectId(entity.accountId),

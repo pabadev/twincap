@@ -69,8 +69,8 @@ export async function register(
   });
   await membershipRepo.create(membership);
 
-  // AUTH-4: seed accounts + categories
-  await seedUser(createdUser.id, accountRepo, categoryRepo);
+  // AUTH-4: seed accounts + categories into the workspace
+  await seedUser(createdWorkspace.id, accountRepo, categoryRepo);
 
   return { userId: createdUser.id, email: createdUser.email, workspaceId: createdWorkspace.id };
 }

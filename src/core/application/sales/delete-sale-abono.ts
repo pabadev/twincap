@@ -8,13 +8,13 @@ import type { SaleRepository, MovementRepository } from '../../domain/repositori
  * Removes the abono and reverses the linked movement.
  */
 export async function deleteSaleAbono(
-  userId: string,
+  workspaceId: string,
   saleId: string,
   abonoId: string,
   saleRepo: SaleRepository,
   movementRepo: MovementRepository,
 ): Promise<Sale> {
-  const sales = await saleRepo.findByUserId(userId);
+  const sales = await saleRepo.findByWorkspaceId(workspaceId);
   const sale = sales.find(s => s.id === saleId);
   if (!sale) throw new NotFoundError('Sale not found');
 
@@ -28,7 +28,7 @@ export async function deleteSaleAbono(
   // intact (no balance inflation). Tolerant: an already-missing movement is fine.
   if (abono.movementId) {
     try {
-      await movementRepo.delete(userId, abono.movementId);
+      await movementRepo.delete(workspaceId, abono.movementId);
     } catch (err) {
       if (err instanceof NotFoundError) {
         // movement already gone — continue to pull the abono
@@ -39,12 +39,12 @@ export async function deleteSaleAbono(
   }
 
   // POS-6: remove abono (atomic $pull)
-  await saleRepo.deleteAbono(userId, saleId, abonoId);
+  await saleRepo.deleteAbono(workspaceId, saleId, abonoId);
 
   return new Sale(
     {
       id: sale.id,
-      userId: sale.userId,
+      workspaceId: sale.workspaceId,
       items: sale.items.map(i => ({ itemId: i.itemId, quantity: i.quantity, unitPrice: i.unitPrice })),
       date: sale.date,
       paymentMode: sale.paymentMode,

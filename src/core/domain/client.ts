@@ -2,7 +2,7 @@ import { ValidationError } from "./errors";
 
 export interface ClientInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   name: string;
   phone: string;
   email: string;
@@ -12,7 +12,7 @@ export interface ClientInput {
 
 export class Client {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   name: string;
   phone: string;
   email: string;
@@ -23,15 +23,15 @@ export class Client {
     if (input.id.length === 0) {
       throw new ValidationError("Client id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("Client userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("Client workspaceId must not be empty");
     }
     const name = input.name.trim();
     if (name.length === 0) {
       throw new ValidationError("Client name must not be empty");
     }
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.name = name;
     this.phone = input.phone.trim();
     this.email = input.email.trim();
@@ -43,7 +43,7 @@ export class Client {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       name: this.name,
       phone: this.phone,
       email: this.email,

@@ -12,7 +12,7 @@ function fakeAccountRepo(): AccountRepository & { created: Account[] } {
   return {
     created,
     findById: async () => null,
-    findByUserId: async () => [],
+    findByWorkspaceId: async () => [],
     create: async (account) => {
       created.push(account);
       return account;
@@ -28,7 +28,7 @@ function fakeCategoryRepo(): CategoryRepository & { created: Category[] } {
   return {
     created,
     findById: async () => null,
-    findByUserId: async () => [],
+    findByWorkspaceId: async () => [],
     findByNameAndType: async () => null,
     create: async (category) => {
       created.push(category);
@@ -41,14 +41,14 @@ function fakeCategoryRepo(): CategoryRepository & { created: Category[] } {
 
 // ─── Tests ──────────────────────────────────────────────────────────
 
-const USER_ID = "user-test-123";
+const WORKSPACE_ID = "user-test-123";
 
 describe("seedUser", () => {
   it("creates 1 fixed account and 8 default categories", async () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();
 
-    await seedUser(USER_ID, accountRepo, categoryRepo);
+    await seedUser(WORKSPACE_ID, accountRepo, categoryRepo);
 
     expect(accountRepo.created).toHaveLength(1);
     expect(categoryRepo.created).toHaveLength(8);
@@ -63,14 +63,14 @@ describe("seedUser", () => {
     expect(categoryNames).toContain("Salario");
     expect(categoryNames).toContain("Comida");
 
-    // All accounts belong to the correct user
+    // All accounts belong to the correct workspace
     for (const acct of accountRepo.created) {
-      expect(acct.userId).toBe(USER_ID);
+      expect(acct.workspaceId).toBe(WORKSPACE_ID);
     }
 
-    // All categories belong to the correct user
+    // All categories belong to the correct workspace
     for (const cat of categoryRepo.created) {
-      expect(cat.userId).toBe(USER_ID);
+      expect(cat.workspaceId).toBe(WORKSPACE_ID);
     }
   });
 
@@ -78,7 +78,7 @@ describe("seedUser", () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();
 
-    await seedUser(USER_ID, accountRepo, categoryRepo);
+    await seedUser(WORKSPACE_ID, accountRepo, categoryRepo);
 
     const accountIds = accountRepo.created.map((a) => a.id);
     const categoryIds = categoryRepo.created.map((c) => c.id);
@@ -91,7 +91,7 @@ describe("seedUser", () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();
 
-    await seedUser(USER_ID, accountRepo, categoryRepo);
+    await seedUser(WORKSPACE_ID, accountRepo, categoryRepo);
 
     // R8 regression guard: AccountModel.create({..., _id: account.id}) casts the
     // id to ObjectId. A crypto.randomUUID() here would throw CastError at insert
@@ -109,8 +109,8 @@ describe("seedUser", () => {
     const accountRepo = fakeAccountRepo();
     const categoryRepo = fakeCategoryRepo();
 
-    await seedUser(USER_ID, accountRepo, categoryRepo);
-    await seedUser(USER_ID, accountRepo, categoryRepo);
+    await seedUser(WORKSPACE_ID, accountRepo, categoryRepo);
+    await seedUser(WORKSPACE_ID, accountRepo, categoryRepo);
 
     // Fake repos allow duplicates; the important thing is no error
     expect(accountRepo.created.length).toBe(2);

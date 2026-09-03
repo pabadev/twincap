@@ -6,29 +6,29 @@ import { CategoryModel, type CategoryDocument } from "../models/category";
 import { toCategoryEntity, toCategoryDocData } from "../mappers/category";
 
 export class MongoCategoryRepository implements CategoryRepository {
-  async findById(userId: string, id: string): Promise<Category | null> {
+  async findById(workspaceId: string, id: string): Promise<Category | null> {
     const doc = await CategoryModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     return toCategoryEntity(doc as CategoryDocument);
   }
 
-  async findByUserId(userId: string): Promise<Category[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Category[]> {
     const docs = await CategoryModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ name: 1 }).exec();
     return docs.map((doc) => toCategoryEntity(doc as CategoryDocument));
   }
 
   async findByNameAndType(
-    userId: string,
+    workspaceId: string,
     name: string,
     type: string,
   ): Promise<Category | null> {
     const doc = await CategoryModel.findOne({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
       name: name.trim(),
       type,
     }).exec();
@@ -47,7 +47,7 @@ export class MongoCategoryRepository implements CategoryRepository {
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Category "${category.name}" of type "${category.type}" already exists for user ${category.userId}`,
+          `Category "${category.name}" of type "${category.type}" already exists for user ${category.workspaceId}`,
         );
       }
       throw err;
@@ -59,26 +59,26 @@ export class MongoCategoryRepository implements CategoryRepository {
     const result = await CategoryModel.findOneAndUpdate(
       {
         _id: category.id,
-        userId: new Types.ObjectId(category.userId),
+        workspaceId: new Types.ObjectId(category.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Category ${category.id} not found for user ${category.userId}`,
+        `Category ${category.id} not found for user ${category.workspaceId}`,
       );
     }
     return toCategoryEntity(result as CategoryDocument);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await CategoryModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Category ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Category ${id} not found for user ${workspaceId}`);
     }
   }
 }

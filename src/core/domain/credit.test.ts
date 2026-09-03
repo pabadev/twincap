@@ -10,7 +10,7 @@ describe("CreditReceived entity", () => {
   it("creates with principal and no abonos → pending equals principal (CRED-R-2)", () => {
     const cr = new CreditReceived({
       id: "cr1",
-      userId: "u1",
+      workspaceId: "u1",
       counterparty: "Juan",
       principal: new Money(2_000_000, "COP"),
       accountId: "a1",
@@ -24,7 +24,7 @@ describe("CreditReceived entity", () => {
     const cr = new CreditReceived(
       {
         id: "cr1",
-        userId: "u1",
+        workspaceId: "u1",
         counterparty: "Juan",
         principal: new Money(2_000_000, "COP"),
         accountId: "a1",
@@ -45,7 +45,7 @@ describe("CreditReceived entity", () => {
         new CreditReceived(
           {
             id: "cr1",
-            userId: "u1",
+            workspaceId: "u1",
             counterparty: "Juan",
             principal: new Money(500_000, "COP"),
             accountId: "a1",
@@ -63,7 +63,7 @@ describe("CreditReceived entity", () => {
         new CreditReceived(
           {
             id: "cr1",
-            userId: "u1",
+            workspaceId: "u1",
             counterparty: "Juan",
             principal: new Money(500_000, "COP"),
             accountId: "a1",
@@ -81,7 +81,7 @@ describe("CreditReceived entity", () => {
         new CreditReceived(
           {
             id: "cr1",
-            userId: "u1",
+            workspaceId: "u1",
             counterparty: "Juan",
             principal: new Money(500_000, "COP"),
             accountId: "a1",
@@ -98,7 +98,7 @@ describe("CreditReceived entity", () => {
       () =>
         new CreditReceived({
           id: "cr1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "Juan",
           principal: new Money(0, "COP"),
           accountId: "a1",
@@ -111,7 +111,7 @@ describe("CreditReceived entity", () => {
   it("trims counterparty and rejects empty", () => {
     const cr = new CreditReceived({
       id: "cr1",
-      userId: "u1",
+      workspaceId: "u1",
       counterparty: "  Juan  ",
       principal: new Money(1_000_000, "COP"),
       accountId: "a1",
@@ -124,7 +124,7 @@ describe("CreditReceived entity", () => {
       () =>
         new CreditReceived({
           id: "cr1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "   ",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -139,7 +139,7 @@ describe("CreditReceived entity", () => {
       () =>
         new CreditReceived({
           id: "",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "Juan",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -151,7 +151,7 @@ describe("CreditReceived entity", () => {
       () =>
         new CreditReceived({
           id: "cr1",
-          userId: "",
+          workspaceId: "",
           counterparty: "Juan",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -163,7 +163,7 @@ describe("CreditReceived entity", () => {
       () =>
         new CreditReceived({
           id: "cr1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "Juan",
           principal: new Money(1_000_000, "COP"),
           accountId: "",
@@ -178,7 +178,7 @@ describe("CreditGranted entity", () => {
   it("creates with principal and no abonos → pending equals principal (CRED-G-2)", () => {
     const cg = new CreditGranted({
       id: "cg1",
-      userId: "u1",
+      workspaceId: "u1",
       counterparty: "María",
       principal: new Money(1_000_000, "COP"),
       accountId: "a1",
@@ -192,7 +192,7 @@ describe("CreditGranted entity", () => {
     const cg = new CreditGranted(
       {
         id: "cg1",
-        userId: "u1",
+        workspaceId: "u1",
         counterparty: "María",
         principal: new Money(1_000_000, "COP"),
         accountId: "a1",
@@ -213,7 +213,7 @@ describe("CreditGranted entity", () => {
         new CreditGranted(
           {
             id: "cg1",
-            userId: "u1",
+            workspaceId: "u1",
             counterparty: "María",
             principal: new Money(600_000, "COP"),
             accountId: "a1",
@@ -231,7 +231,7 @@ describe("CreditGranted entity", () => {
         new CreditGranted(
           {
             id: "cg1",
-            userId: "u1",
+            workspaceId: "u1",
             counterparty: "María",
             principal: new Money(600_000, "COP"),
             accountId: "a1",
@@ -248,7 +248,7 @@ describe("CreditGranted entity", () => {
       () =>
         new CreditGranted({
           id: "cg1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "María",
           principal: new Money(-1, "COP"),
           accountId: "a1",
@@ -262,7 +262,7 @@ describe("CreditGranted entity", () => {
     // initialPayment = total → net debt of zero, linked via saleId.
     const paidInFull = new CreditGranted({
       id: "cg2",
-      userId: "u1",
+      workspaceId: "u1",
       counterparty: "María",
       principal: Money.nonNegative(0, "COP"),
       accountId: "a1",
@@ -277,7 +277,7 @@ describe("CreditGranted entity", () => {
   it("trims counterparty and rejects empty", () => {
     const cg = new CreditGranted({
       id: "cg1",
-      userId: "u1",
+      workspaceId: "u1",
       counterparty: "  María  ",
       principal: new Money(1_000_000, "COP"),
       accountId: "a1",
@@ -290,7 +290,7 @@ describe("CreditGranted entity", () => {
       () =>
         new CreditGranted({
           id: "cg1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "   ",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -305,7 +305,7 @@ describe("CreditGranted entity", () => {
       () =>
         new CreditGranted({
           id: "",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "María",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -317,7 +317,7 @@ describe("CreditGranted entity", () => {
       () =>
         new CreditGranted({
           id: "cg1",
-          userId: "",
+          workspaceId: "",
           counterparty: "María",
           principal: new Money(1_000_000, "COP"),
           accountId: "a1",
@@ -329,7 +329,7 @@ describe("CreditGranted entity", () => {
       () =>
         new CreditGranted({
           id: "cg1",
-          userId: "u1",
+          workspaceId: "u1",
           counterparty: "María",
           principal: new Money(1_000_000, "COP"),
           accountId: "",

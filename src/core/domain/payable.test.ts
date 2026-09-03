@@ -10,7 +10,7 @@ function makePayable(
   return new Payable(
     {
       id: "pay-1",
-      userId: "user-1",
+      workspaceId: "user-1",
       counterparty: "Proveedor SA",
       total: new Money(100000, "COP"),
       initialPayment: 0,
@@ -48,9 +48,9 @@ describe("Payable", () => {
     expect(payable.pending).toBe(0);
   });
 
-  it("rejects empty id / userId / counterparty / accountId", () => {
+  it("rejects empty id / workspaceId / counterparty / accountId", () => {
     expect(() => makePayable({ id: "" })).toThrow(ValidationError);
-    expect(() => makePayable({ userId: "" })).toThrow(ValidationError);
+    expect(() => makePayable({ workspaceId: "" })).toThrow(ValidationError);
     expect(() => makePayable({ counterparty: "   " })).toThrow(ValidationError);
     expect(() => makePayable({ accountId: "" })).toThrow(ValidationError);
   });

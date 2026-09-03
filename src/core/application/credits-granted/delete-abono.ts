@@ -8,13 +8,13 @@ import type { CreditGrantedRepository, MovementRepository } from '../../domain/r
  * Removes the abono and reverses the linked movement.
  */
 export async function deleteAbono(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   abonoId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
 ): Promise<CreditGranted> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -34,7 +34,7 @@ export async function deleteAbono(
   // with no phantom balance impact — a phantom movement would be worse).
   if (abono.interestMovementId) {
     try {
-      await movementRepo.delete(userId, abono.interestMovementId);
+      await movementRepo.delete(workspaceId, abono.interestMovementId);
     } catch (err) {
       if (err instanceof NotFoundError) {
         // movement already gone — continue
@@ -47,7 +47,7 @@ export async function deleteAbono(
   // Reverse linked movement (tolerant: an already-missing movement is fine)
   if (abono.movementId) {
     try {
-      await movementRepo.delete(userId, abono.movementId);
+      await movementRepo.delete(workspaceId, abono.movementId);
     } catch (err) {
       if (err instanceof NotFoundError) {
         // movement already gone — continue to pull the abono
@@ -58,12 +58,12 @@ export async function deleteAbono(
   }
 
   // Remove abono from embedded array (atomic $pull)
-  await creditRepo.deleteAbono(userId, creditId, abonoId);
+  await creditRepo.deleteAbono(workspaceId, creditId, abonoId);
 
   return new CreditGranted(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

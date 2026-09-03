@@ -12,14 +12,14 @@ import { addAbono } from './add-abono';
  * guard stay in a single place. Rejected when the credit is already paid.
  */
 export async function markAsPaid(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   creditRepo: CreditReceivedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
 ): Promise<CreditReceived> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -28,7 +28,7 @@ export async function markAsPaid(
   }
 
   return addAbono(
-    userId,
+    workspaceId,
     creditId,
     {
       amount: credit.pending,

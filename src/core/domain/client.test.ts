@@ -8,7 +8,7 @@ describe("Client entity", () => {
   it("creates a valid client", () => {
     const client = new Client({
       id: "c1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Juan Pérez",
       phone: "+57 300 1234567",
       email: "juan@example.com",
@@ -16,7 +16,7 @@ describe("Client entity", () => {
       createdAt: DATE,
     });
     expect(client.id).toBe("c1");
-    expect(client.userId).toBe("u1");
+    expect(client.workspaceId).toBe("u1");
     expect(client.name).toBe("Juan Pérez");
     expect(client.phone).toBe("+57 300 1234567");
     expect(client.email).toBe("juan@example.com");
@@ -27,7 +27,7 @@ describe("Client entity", () => {
   it("trims name and rejects empty", () => {
     const client = new Client({
       id: "c1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "  Juan Pérez  ",
       phone: "",
       email: "",
@@ -39,7 +39,7 @@ describe("Client entity", () => {
     expect(() =>
       new Client({
         id: "c2",
-        userId: "u1",
+        workspaceId: "u1",
         name: "   ",
         phone: "",
         email: "",
@@ -53,7 +53,7 @@ describe("Client entity", () => {
     expect(() =>
       new Client({
         id: "",
-        userId: "u1",
+        workspaceId: "u1",
         name: "Juan",
         phone: "",
         email: "",
@@ -63,11 +63,11 @@ describe("Client entity", () => {
     ).toThrow(ValidationError);
   });
 
-  it("rejects empty userId", () => {
+  it("rejects empty workspaceId", () => {
     expect(() =>
       new Client({
         id: "c1",
-        userId: "",
+        workspaceId: "",
         name: "Juan",
         phone: "",
         email: "",
@@ -80,7 +80,7 @@ describe("Client entity", () => {
   it("allows empty phone, email, note", () => {
     const client = new Client({
       id: "c1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Juan",
       phone: "",
       email: "",
@@ -95,7 +95,7 @@ describe("Client entity", () => {
   it("trims phone, email, note", () => {
     const client = new Client({
       id: "c1",
-      userId: "u1",
+      workspaceId: "u1",
       name: "Juan",
       phone: "  +57 300 1234567  ",
       email: "  juan@example.com  ",

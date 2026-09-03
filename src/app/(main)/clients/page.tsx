@@ -19,7 +19,7 @@ export default async function ClientsPage() {
 
   await connectDb();
   const clientRepo = new MongoClientRepository();
-  const clients = await listClients(user.userId, clientRepo);
+  const clients = await listClients(user.workspaceId!, clientRepo);
   const serializedClients: SerializedClient[] = clients.map((c) => ({
     id: c.id,
     name: c.name,

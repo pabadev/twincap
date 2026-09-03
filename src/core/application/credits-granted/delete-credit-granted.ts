@@ -18,12 +18,12 @@ export const SALE_BORN_CREDIT_DELETE_MSG =
  * (already-missing movements are skipped, no false error).
  */
 export async function deleteCreditGranted(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
 ): Promise<void> {
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
@@ -34,17 +34,17 @@ export async function deleteCreditGranted(
   }
 
   // Find all movements linked to this credit (principal + abonos)
-  const movements = await movementRepo.findByUserId(userId);
+  const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const linkedMovements = movements.filter(m => m.link?.refId === creditId);
 
   for (const m of linkedMovements) {
     try {
-      await movementRepo.delete(userId, m.id);
+      await movementRepo.delete(workspaceId, m.id);
     } catch (err) {
       if (err instanceof NotFoundError) continue;
       throw err;
     }
   }
 
-  await creditRepo.delete(userId, creditId);
+  await creditRepo.delete(workspaceId, creditId);
 }

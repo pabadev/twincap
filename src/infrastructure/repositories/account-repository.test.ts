@@ -12,7 +12,7 @@ import { MongoAccountRepository } from "./account-repository";
 function makeAccount(overrides: Partial<ConstructorParameters<typeof Account>[0]> = {}) {
   return new Account({
     id: new Types.ObjectId().toString(),
-    userId: new Types.ObjectId().toString(),
+    workspaceId: new Types.ObjectId().toString(),
     name: "Ahorros",
     currency: "COP" as const,
     isFixed: false,

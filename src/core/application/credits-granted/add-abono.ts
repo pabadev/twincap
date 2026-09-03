@@ -35,7 +35,7 @@ import type { AddAbonoInput } from './dto/credits-granted';
  * capital recovery and stays 'Personal'.
  */
 export async function addAbono(
-  userId: string,
+  workspaceId: string,
   creditId: string,
   input: AddAbonoInput,
   creditRepo: CreditGrantedRepository,
@@ -44,13 +44,13 @@ export async function addAbono(
   accountRepo: AccountRepository,
 ): Promise<CreditGranted> {
   // Re-fetch via repo — returns CreditGranted instance with pending getter
-  const credits = await creditRepo.findByUserId(userId);
+  const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
   // D3: resolve the RECEIVING account (may differ from the credit's account) —
   // validates existence/ownership.
-  const account = await accountRepo.findById(userId, input.accountId);
+  const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
@@ -91,7 +91,7 @@ export async function addAbono(
 
     // Abono first, then movements (legacy ordering: a mid-way failure leaves
     // the abono embedded without a phantom balance-affecting movement).
-    await creditRepo.addAbono(userId, creditId, {
+    await creditRepo.addAbono(workspaceId, creditId, {
       id: abono.id,
       amount: abono.amount.amount,
       date: abono.date,
@@ -106,7 +106,7 @@ export async function addAbono(
       await movementRepo.create(
         new Movement({
           id: primaryMovementId,
-          userId,
+          workspaceId,
           accountId: input.accountId,
           category: creditGrantedCategory('income'),
           type: 'income',
@@ -123,7 +123,7 @@ export async function addAbono(
       await movementRepo.create(
         new Movement({
           id: interestMovementId ?? primaryMovementId,
-          userId,
+          workspaceId,
           accountId: input.accountId,
           category: creditGrantedCategory('income'),
           type: 'income',
@@ -139,7 +139,7 @@ export async function addAbono(
     return new CreditGranted(
       {
         id: credit.id,
-        userId: credit.userId,
+        workspaceId: credit.workspaceId,
         counterparty: credit.counterparty,
         principal: credit.principal,
         accountId: credit.accountId,
@@ -158,7 +158,7 @@ export async function addAbono(
   // ─── Sale-born credit: legacy single-movement behavior (never split) ───
   const movementId = ids.generate();
 
-  await creditRepo.addAbono(userId, creditId, {
+  await creditRepo.addAbono(workspaceId, creditId, {
     id: abonoId,
     amount: input.amount,
     date: input.date,
@@ -169,7 +169,7 @@ export async function addAbono(
   // Create income movement (abono = debtor pays back → income on receiving account)
   const movement = new Movement({
     id: movementId,
-    userId,
+    workspaceId,
     accountId: input.accountId,
     category: creditGrantedCategory('income'),
     type: 'income',
@@ -195,7 +195,7 @@ export async function addAbono(
   return new CreditGranted(
     {
       id: credit.id,
-      userId: credit.userId,
+      workspaceId: credit.workspaceId,
       counterparty: credit.counterparty,
       principal: credit.principal,
       accountId: credit.accountId,

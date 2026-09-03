@@ -78,7 +78,7 @@ export async function createMovementAction(
         const categoryRepo = new MongoCategoryRepository();
         const accountRepo = new MongoAccountRepository();
         return createMovement(
-          user.userId,
+          user.workspaceId!,
           { accountId, type, amount, currency, date, note, categoryId, context },
           movementRepo,
           categoryRepo,
@@ -104,7 +104,7 @@ export async function listAccountsAction(): Promise<SerializedAccount[]> {
 
   await connectDb();
   const accountRepo = new MongoAccountRepository();
-  const accounts = await listAccounts(user.userId, accountRepo);
+  const accounts = await listAccounts(user.workspaceId!, accountRepo);
   return serializeEntities(accounts);
 }
 
@@ -114,7 +114,7 @@ export async function listCategoriesAction(): Promise<SerializedCategory[]> {
 
   await connectDb();
   const categoryRepo = new MongoCategoryRepository();
-  const categories = await listCategories(user.userId, categoryRepo);
+  const categories = await listCategories(user.workspaceId!, categoryRepo);
   return serializeEntities(categories);
 }
 
@@ -135,7 +135,7 @@ export async function deleteMovementAction(
       { action: 'deleteMovement', entityType: 'movement', userId: user.userId },
       () => {
         const movementRepo = new MongoMovementRepository();
-        return deleteMovement(user.userId, movementId, movementRepo);
+        return deleteMovement(user.workspaceId!, movementId, movementRepo);
       },
     );
     revalidatePath('/movements');
@@ -179,7 +179,7 @@ export async function updateMovementAction(
         const movementRepo = new MongoMovementRepository();
         const categoryRepo = new MongoCategoryRepository();
         return updateMovement(
-          user.userId,
+          user.workspaceId!,
           { movementId, amount, accountId, categoryId, date, note, context },
           movementRepo,
           categoryRepo,
@@ -217,7 +217,7 @@ export async function listMovementsPagedAction(
   await connectDb();
   const movementRepo = new MongoMovementRepository();
   const result = await listMovementsPaged(
-    user.userId,
+    user.workspaceId!,
     limit,
     movementRepo,
     cursor

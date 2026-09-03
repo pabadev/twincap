@@ -15,7 +15,7 @@ function fakeSaleRepo(sale: Sale | null): SaleRepository & { created: Sale[] } {
   return {
     created: [],
     findById: vi.fn().mockResolvedValue(sale),
-    findByUserId: vi.fn().mockResolvedValue(sale ? [sale] : []),
+    findByWorkspaceId: vi.fn().mockResolvedValue(sale ? [sale] : []),
     create: vi.fn().mockImplementation(async (s: Sale) => s),
     update: vi.fn().mockImplementation(async (s: Sale) => s),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -28,7 +28,7 @@ function fakeSaleRepo(sale: Sale | null): SaleRepository & { created: Sale[] } {
 function fakeClientRepo(client: Client | null) {
   return {
     findById: vi.fn().mockResolvedValue(client),
-    findByUserId: vi.fn().mockResolvedValue(client ? [client] : []),
+    findByWorkspaceId: vi.fn().mockResolvedValue(client ? [client] : []),
     findByName: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: Client) => c),
     update: vi.fn().mockImplementation(async (c: Client) => c),
@@ -39,7 +39,7 @@ function fakeClientRepo(client: Client | null) {
 function fakeCatalogRepo(items: CatalogItem[]) {
   return {
     findById: vi.fn().mockResolvedValue(items[0] ?? null),
-    findByUserId: vi.fn().mockResolvedValue(items),
+    findByWorkspaceId: vi.fn().mockResolvedValue(items),
     create: vi.fn().mockImplementation(async (i: CatalogItem) => i),
     update: vi.fn().mockImplementation(async (i: CatalogItem) => i),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -51,7 +51,7 @@ function fakeCatalogRepo(items: CatalogItem[]) {
 function fakeAccountRepo(account: Account | null) {
   return {
     findById: vi.fn().mockResolvedValue(account),
-    findByUserId: vi.fn().mockResolvedValue(account ? [account] : []),
+    findByWorkspaceId: vi.fn().mockResolvedValue(account ? [account] : []),
     create: vi.fn().mockImplementation(async (a: Account) => a),
     update: vi.fn().mockImplementation(async (a: Account) => a),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -62,7 +62,7 @@ function fakeAccountRepo(account: Account | null) {
 function fakeCreditGrantedRepo(credits: CreditGranted[]) {
   return {
     findById: vi.fn().mockResolvedValue(credits[0] ?? null),
-    findByUserId: vi.fn().mockResolvedValue(credits),
+    findByWorkspaceId: vi.fn().mockResolvedValue(credits),
     create: vi.fn().mockImplementation(async (c: CreditGranted) => c),
     update: vi.fn().mockImplementation(async (c: CreditGranted) => c),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -84,7 +84,7 @@ function makeSale(
   return new Sale(
     {
       id: 'sale-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       items: [{ itemId: 'item-1', quantity: 2, unitPrice: new Money(50000, 'COP') }],
       date: DATE,
       paymentMode: 'on-credit',
@@ -100,7 +100,7 @@ function makeSale(
 function makeClient(): Client {
   return new Client({
     id: 'client-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Juan Pérez',
     phone: '',
     email: '',
@@ -112,7 +112,7 @@ function makeClient(): Client {
 function makeCatalogItem(): CatalogItem {
   return new CatalogItem({
     id: 'item-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Perfume A',
     unitPrice: new Money(50000, 'COP'),
     type: 'product',
@@ -124,7 +124,7 @@ function makeCatalogItem(): CatalogItem {
 function makeAccount(): Account {
   return new Account({
     id: 'acc-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Efectivo',
     currency: 'COP',
     isFixed: true,
@@ -139,7 +139,7 @@ function makeLinkedCredit(
   return new CreditGranted(
     {
       id: 'cg-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       counterparty: 'Juan Pérez',
       principal: new Money(80000, 'COP'),
       accountId: 'acc-1',

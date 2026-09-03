@@ -7,15 +7,15 @@ import type { CatalogItemRepository, SaleRepository } from '../../domain/reposit
  * Guard: rejects deletion if any sale references this item.
  */
 export async function deleteCatalogItem(
-  userId: string,
+  workspaceId: string,
   itemId: string,
   catalogRepo: CatalogItemRepository,
   saleRepo: SaleRepository,
 ): Promise<void> {
-  const existing = await catalogRepo.findById(userId, itemId);
+  const existing = await catalogRepo.findById(workspaceId, itemId);
   if (!existing) throw new NotFoundError('Catalog item not found');
 
-  const sales = await saleRepo.findByUserId(userId);
+  const sales = await saleRepo.findByWorkspaceId(workspaceId);
   const referenced = sales.some(sale =>
     sale.items.some(item => item.itemId === itemId),
   );
@@ -23,5 +23,5 @@ export async function deleteCatalogItem(
     throw new ConflictError('Cannot delete catalog item referenced by a sale');
   }
 
-  await catalogRepo.delete(userId, itemId);
+  await catalogRepo.delete(workspaceId, itemId);
 }

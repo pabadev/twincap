@@ -28,8 +28,8 @@ export default async function AccountsPage() {
   const movementRepo = new MongoMovementRepository();
 
   const [accounts, balances] = await Promise.all([
-    listAccounts(user.userId, accountRepo),
-    getUserBalances(user.userId, movementRepo),
+    listAccounts(user.workspaceId!, accountRepo),
+    getUserBalances(user.workspaceId!, movementRepo),
   ]);
 
   return (

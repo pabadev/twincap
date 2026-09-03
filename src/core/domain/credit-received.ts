@@ -30,7 +30,7 @@ export interface CreditAbono {
 
 export interface CreditReceivedInput {
   id: string;
-  userId: string;
+  workspaceId: string;
   /** Lender name. */
   counterparty: string;
   principal: Money;
@@ -54,7 +54,7 @@ export interface CreditReceivedInput {
 
 export class CreditReceived {
   readonly id: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly counterparty: string;
   readonly principal: Money;
   readonly accountId: string;
@@ -93,8 +93,8 @@ export class CreditReceived {
     if (input.id.length === 0) {
       throw new ValidationError("CreditReceived id must not be empty");
     }
-    if (input.userId.length === 0) {
-      throw new ValidationError("CreditReceived userId must not be empty");
+    if (input.workspaceId.length === 0) {
+      throw new ValidationError("CreditReceived workspaceId must not be empty");
     }
     const counterparty = input.counterparty.trim();
     if (counterparty.length === 0) {
@@ -131,7 +131,7 @@ export class CreditReceived {
     }
 
     this.id = input.id;
-    this.userId = input.userId;
+    this.workspaceId = input.workspaceId;
     this.counterparty = counterparty;
     this.principal = input.principal;
     this.accountId = input.accountId;
@@ -147,7 +147,7 @@ export class CreditReceived {
   toJSON() {
     return {
       id: this.id,
-      userId: this.userId,
+      workspaceId: this.workspaceId,
       counterparty: this.counterparty,
       principal: this.principal.toJSON(),
       accountId: this.accountId,

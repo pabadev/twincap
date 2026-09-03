@@ -19,7 +19,7 @@ export interface SaleAbonoDoc {
 
 /** Mongoose document shape for Sale. */
 export interface SaleDoc {
-  userId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   items: SaleLineItemDoc[];
   date: Date;
   paymentMode: "paid-in-full" | "on-credit";
@@ -58,7 +58,7 @@ const SaleAbonoSchema = new Schema<SaleAbonoDoc>(
 
 const SaleSchema = new Schema<SaleDoc>(
   {
-    userId: {
+    workspaceId: {
       type: Schema.Types.ObjectId,
       required: true,
       index: true,

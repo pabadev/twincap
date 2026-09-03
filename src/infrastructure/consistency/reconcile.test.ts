@@ -24,7 +24,7 @@ import type { Sale } from "../../core/domain/sale";
 function fakeTransferRepo(transfers: Transfer[]): TransferRepository {
   return {
     findById: async () => null,
-    findByUserId: async () => transfers,
+    findByWorkspaceId: async () => transfers,
     create: async (t) => t,
     update: async (t) => t,
     delete: async () => {},
@@ -35,7 +35,7 @@ function fakeTransferRepo(transfers: Transfer[]): TransferRepository {
 function fakeMovementRepo(movements: Movement[]): MovementRepository {
   return {
     findById: async () => null,
-    findByUserId: async () => movements,
+    findByWorkspaceId: async () => movements,
     findByAccountId: async () => [],
     create: async (m) => m,
     update: async (m) => m,
@@ -52,7 +52,7 @@ function fakeCreditReceivedRepo(
 ): CreditReceivedRepository {
   return {
     findById: async () => null,
-    findByUserId: async () => credits,
+    findByWorkspaceId: async () => credits,
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
@@ -67,7 +67,7 @@ function fakeCreditGrantedRepo(
 ): CreditGrantedRepository {
   return {
     findById: async () => null,
-    findByUserId: async () => credits,
+    findByWorkspaceId: async () => credits,
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
@@ -81,7 +81,7 @@ function fakeCreditGrantedRepo(
 function fakeSaleRepo(sales: Sale[]): SaleRepository {
   return {
     findById: async () => null,
-    findByUserId: async () => sales,
+    findByWorkspaceId: async () => sales,
     create: async (s) => s,
     update: async (s) => s,
     delete: async () => {},
@@ -96,7 +96,7 @@ function fakeSaleRepo(sales: Sale[]): SaleRepository {
 function makeTransfer(overrides: Partial<Transfer> = {}): Transfer {
   return {
     id: "t1",
-    userId: "u1",
+    workspaceId: "u1",
     sourceAccountId: "acc1",
     destinationAccountId: "acc2",
     sourceAmount: { amount: 10000, currency: "COP" } as Transfer["sourceAmount"],
@@ -115,7 +115,7 @@ function makeTransfer(overrides: Partial<Transfer> = {}): Transfer {
 function makeMovement(overrides: Partial<Movement> = {}): Movement {
   return {
     id: "m1",
-    userId: "u1",
+    workspaceId: "u1",
     accountId: "acc1",
     categoryId: "cat1",
     type: "expense",
@@ -131,7 +131,7 @@ function makeMovement(overrides: Partial<Movement> = {}): Movement {
 function makeSale(overrides: Partial<Sale> = {}): Sale {
   return {
     id: "s1",
-    userId: "u1",
+    workspaceId: "u1",
     items: [
       {
         itemId: "item1",

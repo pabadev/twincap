@@ -25,7 +25,7 @@ function fakeCatalogRepo(
     updated,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (item: CatalogItem) => {
       created.push(item);
       return item;
@@ -54,7 +54,7 @@ function fakeSaleRepo(
     updated,
     deleted,
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue(sales),
+    findByWorkspaceId: vi.fn().mockResolvedValue(sales),
     create: vi.fn().mockImplementation(async (sale: Sale) => {
       created.push(sale);
       return sale;
@@ -79,7 +79,7 @@ function fakeIdGen(): IdGenerator {
 function makeProduct(overrides: Partial<ConstructorParameters<typeof CatalogItem>[0]> = {}): CatalogItem {
   return new CatalogItem({
     id: 'cat-1',
-    userId: 'user-1',
+    workspaceId: 'user-1',
     name: 'Widget',
     unitPrice: new Money(5000, 'COP'),
     type: 'product',
@@ -93,7 +93,7 @@ function makeService(overrides: Partial<ConstructorParameters<typeof CatalogItem
   // Services must not have stock — explicitly exclude it
   return new CatalogItem({
     id: overrides.id ?? 'cat-2',
-    userId: overrides.userId ?? 'user-1',
+    workspaceId: overrides.workspaceId ?? 'user-1',
     name: overrides.name ?? 'Consulting',
     unitPrice: overrides.unitPrice ?? new Money(50000, 'COP'),
     type: 'service',
@@ -321,7 +321,7 @@ describe('deleteCatalogItem', () => {
     // Fake sale that references the catalog item
     const sale = {
       id: 'sale-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       items: [{ itemId: 'cat-1', quantity: 2, unitPrice: new Money(5000, 'COP'), subtotal: 10000 }],
       date: new Date(),
       paymentMode: 'paid-in-full' as const,
@@ -356,7 +356,7 @@ describe('deleteCatalogItem', () => {
     // Sale references a different item
     const sale = {
       id: 'sale-1',
-      userId: 'user-1',
+      workspaceId: 'user-1',
       items: [{ itemId: 'other-item', quantity: 1, unitPrice: new Money(5000, 'COP'), subtotal: 5000 }],
       date: new Date(),
       paymentMode: 'paid-in-full' as const,
@@ -380,7 +380,7 @@ describe('listCatalogItems', () => {
     const product = makeProduct();
     const service = makeService();
     const catalogRepo = fakeCatalogRepo({
-      findByUserId: vi.fn().mockResolvedValue([product, service]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([product, service]),
     });
 
     const items = await listCatalogItems('user-1', catalogRepo);
@@ -392,7 +392,7 @@ describe('listCatalogItems', () => {
 
   it('returns empty array when no items', async () => {
     const catalogRepo = fakeCatalogRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
 
     const items = await listCatalogItems('user-1', catalogRepo);

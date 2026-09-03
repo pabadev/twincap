@@ -8,28 +8,28 @@ import { AccountModel, type AccountDocument } from "../models/account";
 import { toSaleEntity, toSaleDocData } from "../mappers/sale";
 
 export class MongoSaleRepository implements SaleRepository {
-  async findById(userId: string, id: string): Promise<Sale | null> {
+  async findById(workspaceId: string, id: string): Promise<Sale | null> {
     const doc = await SaleModel.findOne({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
-      userId,
+      workspaceId,
       (doc as SaleDocument).accountId.toString(),
     );
     return toSaleEntity(doc as SaleDocument, currency);
   }
 
-  async findByUserId(userId: string): Promise<Sale[]> {
+  async findByWorkspaceId(workspaceId: string): Promise<Sale[]> {
     const docs = await SaleModel.find({
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
     const currencyMap = await this.resolveBulkAccountCurrencies(
-      userId,
+      workspaceId,
       accountIds,
     );
 
@@ -45,14 +45,14 @@ export class MongoSaleRepository implements SaleRepository {
       const docData = toSaleDocData(sale);
       const created = await SaleModel.create({ ...docData, _id: sale.id });
       const currency = await this.resolveAccountCurrency(
-        sale.userId,
+        sale.workspaceId,
         sale.accountId,
       );
       return toSaleEntity(created as SaleDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
-          `Sale for user ${sale.userId} already exists`,
+          `Sale for user ${sale.workspaceId} already exists`,
         );
       }
       throw err;
@@ -64,30 +64,30 @@ export class MongoSaleRepository implements SaleRepository {
     const result = await SaleModel.findOneAndUpdate(
       {
         _id: sale.id,
-        userId: new Types.ObjectId(sale.userId),
+        workspaceId: new Types.ObjectId(sale.workspaceId),
       },
       { $set: docData },
       { new: true },
     ).exec();
     if (!result) {
       throw new NotFoundError(
-        `Sale ${sale.id} not found for user ${sale.userId}`,
+        `Sale ${sale.id} not found for user ${sale.workspaceId}`,
       );
     }
     const currency = await this.resolveAccountCurrency(
-      sale.userId,
+      sale.workspaceId,
       sale.accountId,
     );
     return toSaleEntity(result as SaleDocument, currency);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string): Promise<void> {
     const result = await SaleModel.findOneAndDelete({
       _id: id,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!result) {
-      throw new NotFoundError(`Sale ${id} not found for user ${userId}`);
+      throw new NotFoundError(`Sale ${id} not found for user ${workspaceId}`);
     }
   }
 
@@ -95,7 +95,7 @@ export class MongoSaleRepository implements SaleRepository {
 
   /** Add an abono — idempotent: skips if movementId already present. */
   async addAbono(
-    userId: string,
+    workspaceId: string,
     saleId: string,
     abono: {
       id: string;
@@ -110,7 +110,7 @@ export class MongoSaleRepository implements SaleRepository {
       const result = await SaleModel.updateOne(
         {
           _id: saleId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
@@ -122,7 +122,7 @@ export class MongoSaleRepository implements SaleRepository {
       await SaleModel.updateOne(
         {
           _id: saleId,
-          userId: new Types.ObjectId(userId),
+          workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
       ).exec();
@@ -131,7 +131,7 @@ export class MongoSaleRepository implements SaleRepository {
 
   /** Edit an embedded abono by its id. */
   async editAbono(
-    userId: string,
+    workspaceId: string,
     saleId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
@@ -143,7 +143,7 @@ export class MongoSaleRepository implements SaleRepository {
     await SaleModel.updateOne(
       {
         _id: saleId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
         "abonos.id": abonoId,
       },
       { $set: setFields },
@@ -152,14 +152,14 @@ export class MongoSaleRepository implements SaleRepository {
 
   /** Delete an embedded abono by its id. */
   async deleteAbono(
-    userId: string,
+    workspaceId: string,
     saleId: string,
     abonoId: string,
   ): Promise<void> {
     await SaleModel.updateOne(
       {
         _id: saleId,
-        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
     ).exec();
@@ -168,29 +168,29 @@ export class MongoSaleRepository implements SaleRepository {
   // ─── Private helpers ───────────────────────────────────────────────
 
   private async resolveAccountCurrency(
-    userId: string,
+    workspaceId: string,
     accountId: string,
   ): Promise<Currency> {
     const doc = await AccountModel.findOne({
       _id: accountId,
-      userId: new Types.ObjectId(userId),
+      workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) {
       throw new NotFoundError(
-        `Account ${accountId} not found for user ${userId}`,
+        `Account ${accountId} not found for user ${workspaceId}`,
       );
     }
     return (doc as AccountDocument).currency as Currency;
   }
 
   private async resolveBulkAccountCurrencies(
-    userId: string,
+    workspaceId: string,
     accountIds: string[],
   ): Promise<Map<string, Currency>> {
-    const uid = new Types.ObjectId(userId);
+    const uid = new Types.ObjectId(workspaceId);
     const docs = await AccountModel.find({
       _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      userId: uid,
+      workspaceId: uid,
     }).exec();
 
     const map = new Map<string, Currency>();

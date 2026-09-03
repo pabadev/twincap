@@ -11,17 +11,17 @@ import type { EditCatalogItemInput } from './dto/catalog';
  * Type is immutable — cannot change product ↔ service.
  */
 export async function updateCatalogItem(
-  userId: string,
+  workspaceId: string,
   itemId: string,
   input: EditCatalogItemInput,
   catalogRepo: CatalogItemRepository,
 ): Promise<CatalogItem> {
-  const existing = await catalogRepo.findById(userId, itemId);
+  const existing = await catalogRepo.findById(workspaceId, itemId);
   if (!existing) throw new NotFoundError('Catalog item not found');
 
   const updated = new CatalogItem({
     id: existing.id,
-    userId: existing.userId,
+    workspaceId: existing.workspaceId,
     name: input.name ?? existing.name,
     unitPrice: input.unitPrice != null && input.currency != null
       ? new Money(input.unitPrice, input.currency)

@@ -7,7 +7,7 @@ import type { Movement } from "../domain/movement";
 function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
-    findByUserId: vi.fn().mockResolvedValue([]),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
@@ -22,7 +22,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
 
 function fakeMovement(partial: Partial<Movement> & { id: string; accountId: string; signedAmount: number }): Movement {
   return {
-    userId: "user-1",
+    workspaceId: "user-1",
     categoryId: "cat-1",
     type: "income",
     amount: { amount: partial.signedAmount, currency: "COP" } as never,
@@ -65,7 +65,7 @@ describe("getUserBalances", () => {
     ];
 
     const repo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue(movements),
+      findByWorkspaceId: vi.fn().mockResolvedValue(movements),
     });
 
     const balances = await getUserBalances("user-1", repo);
@@ -77,7 +77,7 @@ describe("getUserBalances", () => {
 
   it("returns empty map when user has no movements", async () => {
     const repo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue([]),
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
 
     const balances = await getUserBalances("user-1", repo);
@@ -92,7 +92,7 @@ describe("getUserBalances", () => {
     ];
 
     const repo = fakeMovementRepo({
-      findByUserId: vi.fn().mockResolvedValue(movements),
+      findByWorkspaceId: vi.fn().mockResolvedValue(movements),
     });
 
     const balances = await getUserBalances("user-1", repo);

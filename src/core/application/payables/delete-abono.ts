@@ -8,13 +8,13 @@ import type { PayableRepository, MovementRepository } from '../../domain/reposit
  * Removes the abono and reverses the linked movement via abono.movementId.
  */
 export async function deleteAbono(
-  userId: string,
+  workspaceId: string,
   payableId: string,
   abonoId: string,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
 ): Promise<Payable> {
-  const payables = await payableRepo.findByUserId(userId);
+  const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
@@ -32,7 +32,7 @@ export async function deleteAbono(
   // Reverse linked movement (tolerant: an already-missing movement is fine)
   if (abono.movementId) {
     try {
-      await movementRepo.delete(userId, abono.movementId);
+      await movementRepo.delete(workspaceId, abono.movementId);
     } catch (err) {
       if (err instanceof NotFoundError) {
         // movement already gone — continue to pull the abono
@@ -43,12 +43,12 @@ export async function deleteAbono(
   }
 
   // Remove abono from embedded array (atomic $pull)
-  await payableRepo.deleteAbono(userId, payableId, abonoId);
+  await payableRepo.deleteAbono(workspaceId, payableId, abonoId);
 
   return new Payable(
     {
       id: payable.id,
-      userId: payable.userId,
+      workspaceId: payable.workspaceId,
       counterparty: payable.counterparty,
       total: payable.total,
       initialPayment: payable.initialPayment,

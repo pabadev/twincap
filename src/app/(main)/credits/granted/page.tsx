@@ -16,8 +16,8 @@ export default async function CreditsGrantedPage() {
   const creditRepo = new MongoCreditGrantedRepository();
 
   const [accounts, credits] = await Promise.all([
-    listAccounts(user.userId, accountRepo),
-    creditRepo.findByUserId(user.userId),
+    listAccounts(user.workspaceId!, accountRepo),
+    creditRepo.findByWorkspaceId(user.workspaceId!),
   ]);
 
   return (
