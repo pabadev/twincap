@@ -1,13 +1,22 @@
 /**
- * Tenant isolation test suite (B1 — Ronda 12).
+ * Tenant isolation test suite (B1 — Ronda 12, reworked for Fase F isolation).
  *
- * Verifies that User A cannot access or mutate entities belonging to User B.
- * Every use case is invoked with userId='user-a' while the fake repos only
- * contain data for userId='user-b'. The expected outcome is NotFoundError
- * (or equivalent) with zero mutation side-effects.
+ * Workspace-centric isolation: a workspace cannot access or mutate entities
+ * belonging to a DIFFERENT workspace. Every use case is invoked with
+ * workspaceId='workspace-a' while the fake repos only contain data for
+ * 'workspace-b'. The expected outcome is NotFoundError (or equivalent) with
+ * zero mutation side-effects.
  *
- * Pattern A repos (findById scoped by userId): findById('user-a', id) → null
- * Pattern B repos (findByWorkspaceId + .find):      findByWorkspaceId('user-a') → []
+ * NOTE: the fake repos contain data ONLY for WORKSPACE_B. Because the use
+ * cases always query with WORKSPACE_A (the caller's workspace scope), that
+ * scope is always empty — proving cross-workspace isolation.
+ *
+ * Data belongs to the WORKSPACE, not the user (Fase F): the `same-workspace
+ * sharing` describe below proves that two DIFFERENT users who share the SAME
+ * workspaceId see and share the same data.
+ *
+ * Pattern A repos (findById scoped by workspaceId): findById('workspace-a', id) → null
+ * Pattern B repos (findByWorkspaceId + .find):      findByWorkspaceId('workspace-a') → []
  *
  * NO database. ALL fakes. NO product files modified.
  */
@@ -16,6 +25,12 @@ import { describe, it, expect, vi } from 'vitest';
 // ── Domain ──────────────────────────────────────────────────────────
 import { Account } from '../domain/account';
 import { NotFoundError } from '../domain/errors';
+import { Client } from '../domain/client';
+import { Movement } from '../domain/movement';
+import { Category } from '../domain/category';
+import { CatalogItem } from '../domain/catalog';
+import { CreditGranted } from '../domain/credit-granted';
+import { Money } from '../domain/money';
 import type {
   AccountRepository,
   MovementRepository,
@@ -78,9 +93,9 @@ import { updateCatalogItem } from './catalog/update-catalog-item';
 import { deleteCatalogItem } from './catalog/delete-catalog-item';
 
 // ── Constants ───────────────────────────────────────────────────────
-const USER_A = 'user-a';
+const WORKSPACE_A = 'workspace-a';
 
-/** IDs belonging exclusively to User B. */
+/** IDs belonging exclusively to workspace B. */
 const ACC_B = 'acc-b-1';
 const MOV_B = 'mov-b-1';
 const TRF_B = 'trf-b-1';
@@ -92,14 +107,29 @@ const CLI_B = 'cli-b-1';
 const CAT_B = 'cat-b-1';
 const CATL_B = 'catl-b-1';
 
-/** ID belonging to User A (for createSale accountId on the on-credit path). */
+/** ID belonging to workspace A (for createSale accountId on the on-credit path). */
 const ACC_A = 'acc-a-1';
+
+/** IDs belonging to workspace A — used by the same-workspace sharing tests. */
+const MOV_A = 'mov-a-1';
+const CLI_A = 'cli-a-1';
+const CAT_A = 'cat-a-1';
+const CATL_A = 'catl-a-1';
+const CRD_G_A = 'crd-g-a-1';
+
+/**
+ * A SECOND user who shares workspace A. Its identity differs from the actor
+ * used in the isolation tests, but — crucially — the workspaceId it passes to
+ * the use cases is still WORKSPACE_A. Proof that data belongs to the
+ * workspace, not the user (Fase F).
+ */
+const WORKSPACE_A2_ACTOR = 'user-2-in-workspace-a';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Account {
   return new Account({
     id: ACC_A,
-    workspaceId: USER_A,
+    workspaceId: WORKSPACE_A,
     name: 'Account A',
     currency: 'COP',
     isFixed: false,
@@ -108,10 +138,87 @@ function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name:
   });
 }
 
+/** A client that lives under WORKSPACE_A — used by the sharing tests. */
+function makeClient(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Client {
+  return new Client({
+    id: CLI_A,
+    workspaceId: WORKSPACE_A,
+    name: 'Client A',
+    phone: '',
+    email: '',
+    note: '',
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+/** A manual (non-system-linked) movement under WORKSPACE_A — used by the sharing tests. */
+function makeMovement(overrides: Partial<{ id: string; workspaceId: string; accountId: string }> = {}): Movement {
+  return new Movement({
+    id: MOV_A,
+    workspaceId: WORKSPACE_A,
+    accountId: ACC_A,
+    category: new Category({
+      id: CAT_A,
+      workspaceId: WORKSPACE_A,
+      name: 'Category A',
+      type: 'income',
+      createdAt: new Date(),
+    }),
+    type: 'income',
+    amount: new Money(10000, 'COP'),
+    date: new Date(),
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+/** A category that lives under WORKSPACE_A — used by the sharing tests. */
+function makeCategory(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Category {
+  return new Category({
+    id: CAT_A,
+    workspaceId: WORKSPACE_A,
+    name: 'Category A',
+    type: 'income',
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+/** A catalog item that lives under WORKSPACE_A — used by the sharing tests. */
+function makeCatalogItem(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): CatalogItem {
+  return new CatalogItem({
+    id: CATL_A,
+    workspaceId: WORKSPACE_A,
+    name: 'Item A',
+    unitPrice: new Money(10000, 'COP'),
+    type: 'product',
+    stock: 5,
+    createdAt: new Date(),
+    ...overrides,
+  });
+}
+
+/** A standalone credit that lives under WORKSPACE_A — used by the sharing tests. */
+function makeCreditGranted(): CreditGranted {
+  return new CreditGranted(
+    {
+      id: CRD_G_A,
+      workspaceId: WORKSPACE_A,
+      counterparty: 'Debtor A',
+      principal: new Money(100000, 'COP'),
+      accountId: ACC_A,
+      date: new Date(),
+      createdAt: new Date(),
+    },
+    [],
+  );
+}
+
 // ── Fake factories ──────────────────────────────────────────────────
 // Every fake returns null / empty for ALL queries. This is equivalent to
-// "repo contains data only for user-b" because the use cases always
-// query with user-a's userId, so user-a's scope is always empty.
+// "repo contains data only for workspace-b" because the use cases always
+// query with workspace-a's scope, so that scope is always empty.
 
 function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRepository {
   return {
@@ -261,7 +368,7 @@ describe('Tenant isolation (B1)', () => {
     it('updateAccount with user-b accountId → NotFoundError', async () => {
       const repo = fakeAccountRepo();
       await expect(
-        updateAccount(USER_A, { accountId: ACC_B }, repo),
+        updateAccount(WORKSPACE_A, { accountId: ACC_B }, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
@@ -270,7 +377,7 @@ describe('Tenant isolation (B1)', () => {
       const accountRepo = fakeAccountRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteAccount(USER_A, ACC_B, accountRepo, movementRepo),
+        deleteAccount(WORKSPACE_A, ACC_B, accountRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(accountRepo.delete).not.toHaveBeenCalled();
       expect(movementRepo.delete).not.toHaveBeenCalled();
@@ -281,7 +388,7 @@ describe('Tenant isolation (B1)', () => {
       const movementRepo = fakeMovementRepo();
       await expect(
         setInitialAccountBalance(
-          USER_A,
+          WORKSPACE_A,
           { accountId: ACC_B, amount: 50000 },
           accountRepo,
           movementRepo,
@@ -300,7 +407,7 @@ describe('Tenant isolation (B1)', () => {
       const categoryRepo = fakeCategoryRepo();
       await expect(
         updateMovement(
-          USER_A,
+          WORKSPACE_A,
           { movementId: MOV_B, amount: 20000 },
           movementRepo,
           categoryRepo,
@@ -312,7 +419,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteMovement with user-b movementId → NotFoundError', async () => {
       const repo = fakeMovementRepo();
       await expect(
-        deleteMovement(USER_A, MOV_B, repo),
+        deleteMovement(WORKSPACE_A, MOV_B, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.delete).not.toHaveBeenCalled();
     });
@@ -324,7 +431,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        updateTransfer(USER_A, TRF_B, {}, transferRepo, movementRepo),
+        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.update).not.toHaveBeenCalled();
     });
@@ -333,7 +440,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteTransfer(USER_A, TRF_B, transferRepo, movementRepo),
+        deleteTransfer(WORKSPACE_A, TRF_B, transferRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.delete).not.toHaveBeenCalled();
     });
@@ -344,7 +451,7 @@ describe('Tenant isolation (B1)', () => {
       const accountRepo = fakeAccountRepo();
       await expect(
         createTransfer(
-          USER_A,
+          WORKSPACE_A,
           {
             sourceAccountId: ACC_B,
             destinationAccountId: 'acc-dest',
@@ -358,7 +465,7 @@ describe('Tenant isolation (B1)', () => {
           accountRepo,
         ),
       ).rejects.toThrow(NotFoundError);
-      expect(accountRepo.findById).toHaveBeenCalledWith(USER_A, ACC_B);
+      expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_B);
       expect(transferRepo.create).not.toHaveBeenCalled();
     });
 
@@ -367,14 +474,14 @@ describe('Tenant isolation (B1)', () => {
       const movementRepo = fakeMovementRepo();
       // Override: source account exists for user-a, but destination does not.
       const accountRepo = fakeAccountRepo({
-        findById: vi.fn().mockImplementation(async (userId: string, id: string) => {
-          if (userId === USER_A && id === ACC_A) return makeAccount();
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === ACC_A) return makeAccount();
           return null;
         }),
       });
       await expect(
         createTransfer(
-          USER_A,
+          WORKSPACE_A,
           {
             sourceAccountId: ACC_A,
             destinationAccountId: ACC_B,
@@ -398,7 +505,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditGranted(USER_A, CRD_G_B, creditRepo, movementRepo),
+        deleteCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
@@ -407,7 +514,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         addAbonoCG(
-          USER_A,
+          WORKSPACE_A,
           CRD_G_B,
           { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
           creditRepo,
@@ -423,7 +530,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         editAbonoCG(
-          USER_A,
+          WORKSPACE_A,
           CRD_G_B,
           'abono-b-1',
           { amount: 3000 },
@@ -438,7 +545,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        deleteAbonoCG(USER_A, CRD_G_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
+        deleteAbonoCG(WORKSPACE_A, CRD_G_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -447,7 +554,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         editPrincipalCG(
-          USER_A,
+          WORKSPACE_A,
           CRD_G_B,
           { principal: 100000, currency: 'COP' },
           creditRepo,
@@ -460,7 +567,7 @@ describe('Tenant isolation (B1)', () => {
     it('writeOffCreditGranted with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        writeOffCreditGranted(USER_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen()),
+        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.markWrittenOff).not.toHaveBeenCalled();
     });
@@ -469,7 +576,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         markAsPaidCG(
-          USER_A,
+          WORKSPACE_A,
           CRD_G_B,
           creditRepo,
           fakeMovementRepo(),
@@ -487,7 +594,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditReceived(USER_A, CRD_R_B, creditRepo, movementRepo),
+        deleteCreditReceived(WORKSPACE_A, CRD_R_B, creditRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
@@ -496,7 +603,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         addAbonoCR(
-          USER_A,
+          WORKSPACE_A,
           CRD_R_B,
           { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
           creditRepo,
@@ -512,7 +619,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         editAbonoCR(
-          USER_A,
+          WORKSPACE_A,
           CRD_R_B,
           'abono-b-1',
           { amount: 3000 },
@@ -526,7 +633,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
-        deleteAbonoCR(USER_A, CRD_R_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
+        deleteAbonoCR(WORKSPACE_A, CRD_R_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -535,7 +642,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         editPrincipalCR(
-          USER_A,
+          WORKSPACE_A,
           CRD_R_B,
           { principal: 100000, currency: 'COP' },
           creditRepo,
@@ -549,7 +656,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         markAsPaidCR(
-          USER_A,
+          WORKSPACE_A,
           CRD_R_B,
           creditRepo,
           fakeMovementRepo(),
@@ -567,7 +674,7 @@ describe('Tenant isolation (B1)', () => {
       const payableRepo = fakePayableRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deletePayable(USER_A, PAY_B, payableRepo, movementRepo),
+        deletePayable(WORKSPACE_A, PAY_B, payableRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.delete).not.toHaveBeenCalled();
     });
@@ -576,7 +683,7 @@ describe('Tenant isolation (B1)', () => {
       const payableRepo = fakePayableRepo();
       await expect(
         addAbonoPay(
-          USER_A,
+          WORKSPACE_A,
           PAY_B,
           { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
           payableRepo,
@@ -592,7 +699,7 @@ describe('Tenant isolation (B1)', () => {
       const payableRepo = fakePayableRepo();
       await expect(
         editAbonoPay(
-          USER_A,
+          WORKSPACE_A,
           PAY_B,
           'abono-b-1',
           { amount: 3000 },
@@ -606,7 +713,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b payableId → NotFoundError', async () => {
       const payableRepo = fakePayableRepo();
       await expect(
-        deleteAbonoPay(USER_A, PAY_B, 'abono-b-1', payableRepo, fakeMovementRepo()),
+        deleteAbonoPay(WORKSPACE_A, PAY_B, 'abono-b-1', payableRepo, fakeMovementRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -615,7 +722,7 @@ describe('Tenant isolation (B1)', () => {
       const payableRepo = fakePayableRepo();
       await expect(
         editTotal(
-          USER_A,
+          WORKSPACE_A,
           PAY_B,
           { total: 200000, currency: 'COP' },
           payableRepo,
@@ -631,7 +738,7 @@ describe('Tenant isolation (B1)', () => {
       const saleRepo = fakeSaleRepo();
       await expect(
         deleteSale(
-          USER_A,
+          WORKSPACE_A,
           SALE_B,
           saleRepo,
           fakeCatalogItemRepo(),
@@ -646,7 +753,7 @@ describe('Tenant isolation (B1)', () => {
       const saleRepo = fakeSaleRepo();
       await expect(
         addSaleAbono(
-          USER_A,
+          WORKSPACE_A,
           SALE_B,
           { amount: 10000, currency: 'COP', accountId: ACC_A, date: new Date() },
           saleRepo,
@@ -661,7 +768,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteSaleAbono with user-b saleId → NotFoundError', async () => {
       const saleRepo = fakeSaleRepo();
       await expect(
-        deleteSaleAbono(USER_A, SALE_B, 'abono-b-1', saleRepo, fakeMovementRepo()),
+        deleteSaleAbono(WORKSPACE_A, SALE_B, 'abono-b-1', saleRepo, fakeMovementRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -671,7 +778,7 @@ describe('Tenant isolation (B1)', () => {
       const accountRepo = fakeAccountRepo(); // all findById → null
       await expect(
         createSale(
-          USER_A,
+          WORKSPACE_A,
           {
             items: [{ itemId: 'item-1', quantity: 1, unitPrice: 10000 }],
             accountId: ACC_B,
@@ -696,14 +803,14 @@ describe('Tenant isolation (B1)', () => {
       const clientRepo = fakeClientRepo(); // findById → null for CLI_B
       // User-a's account must resolve so the code reaches the client check.
       const accountRepo = fakeAccountRepo({
-        findById: vi.fn().mockImplementation(async (userId: string, id: string) => {
-          if (userId === USER_A && id === ACC_A) return makeAccount();
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === ACC_A) return makeAccount();
           return null;
         }),
       });
       await expect(
         createSale(
-          USER_A,
+          WORKSPACE_A,
           {
             items: [{ itemId: 'item-1', quantity: 1, unitPrice: 10000 }],
             accountId: ACC_A,
@@ -721,33 +828,28 @@ describe('Tenant isolation (B1)', () => {
           accountRepo,
         ),
       ).rejects.toThrow(NotFoundError);
-      expect(clientRepo.findById).toHaveBeenCalledWith(USER_A, CLI_B);
+      expect(clientRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, CLI_B);
       expect(saleRepo.create).not.toHaveBeenCalled();
     });
   });
 
   // ─── Clients ────────────────────────────────────────────────────
   describe('clients', () => {
-    /**
-     * FINDING: updateClient throws `new Error("Client not found")` instead of
-     * `new NotFoundError(...)`. The ownership check IS present (findById returns
-     * null), so there is no data leak — but the error type is inconsistent with
-     * every other use case. This is a consistency bug, not a security leak.
-     *
-     * See: src/core/application/clients/update-client.ts:18
-     */
-    it('updateClient with user-b clientId → throws (plain Error, not NotFoundError)', async () => {
+    // NOTE: updateClient throws NotFoundError consistently (same as every other
+    // use case) — no plain-Error inconsistency here. findById still returns null
+    // for a workspace-b clientId, so there is no data leak.
+    it('updateClient with workspace-b clientId → NotFoundError', async () => {
       const repo = fakeClientRepo();
       await expect(
-        updateClient(USER_A, CLI_B, { name: 'Hacked' }, repo),
-      ).rejects.toThrow('Client not found');
+        updateClient(WORKSPACE_A, CLI_B, { name: 'Hacked' }, repo),
+      ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
 
     it('deleteClient with user-b clientId → NotFoundError', async () => {
       const repo = fakeClientRepo();
       await expect(
-        deleteClient(USER_A, CLI_B, repo),
+        deleteClient(WORKSPACE_A, CLI_B, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.delete).not.toHaveBeenCalled();
     });
@@ -758,7 +860,7 @@ describe('Tenant isolation (B1)', () => {
     it('updateCategory with user-b categoryId → NotFoundError', async () => {
       const repo = fakeCategoryRepo();
       await expect(
-        updateCategory(USER_A, { categoryId: CAT_B, name: 'Renamed' }, repo),
+        updateCategory(WORKSPACE_A, { categoryId: CAT_B, name: 'Renamed' }, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
@@ -767,7 +869,7 @@ describe('Tenant isolation (B1)', () => {
       const categoryRepo = fakeCategoryRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCategory(USER_A, CAT_B, categoryRepo, movementRepo),
+        deleteCategory(WORKSPACE_A, CAT_B, categoryRepo, movementRepo),
       ).rejects.toThrow(NotFoundError);
       expect(categoryRepo.delete).not.toHaveBeenCalled();
     });
@@ -778,7 +880,7 @@ describe('Tenant isolation (B1)', () => {
     it('updateCatalogItem with user-b itemId → NotFoundError', async () => {
       const repo = fakeCatalogItemRepo();
       await expect(
-        updateCatalogItem(USER_A, CATL_B, { name: 'Renamed' }, repo),
+        updateCatalogItem(WORKSPACE_A, CATL_B, { name: 'Renamed' }, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
@@ -787,9 +889,134 @@ describe('Tenant isolation (B1)', () => {
       const catalogRepo = fakeCatalogItemRepo();
       const saleRepo = fakeSaleRepo();
       await expect(
-        deleteCatalogItem(USER_A, CATL_B, catalogRepo, saleRepo),
+        deleteCatalogItem(WORKSPACE_A, CATL_B, catalogRepo, saleRepo),
       ).rejects.toThrow(NotFoundError);
       expect(catalogRepo.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── Same-workspace sharing (R13-F) ─────────────────────────────
+  // Fase F moved the isolation boundary from the USER to the WORKSPACE.
+  // These tests prove that two DIFFERENT users who share the SAME workspaceId
+  // see/share the same data. Every fake stores its data ONLY under WORKSPACE_A,
+  // and the use case is invoked with WORKSPACE_A as the tenant scope — even
+  // though the "actor user" is a different, second user (WORKSPACE_A2_ACTOR).
+  // Because the scope is the shared WORKSPACE_A, the data is found/mutated with
+  // no NotFoundError.
+  describe('same-workspace sharing (R13-F)', () => {
+    // A second user acting inside WORKSPACE_A (WORKSPACE_A2_ACTOR). Its own id
+    // differs, but the workspaceId it passes to each use case is still
+    // WORKSPACE_A.
+
+    it('updateAccount succeeds for a second user sharing the same workspace', async () => {
+      const repo = fakeAccountRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === ACC_A) return makeAccount();
+          return null;
+        }),
+        update: vi.fn().mockImplementation(async (a: unknown) => a),
+      });
+      await expect(
+        updateAccount(WORKSPACE_A, { accountId: ACC_A, name: 'Shared' }, repo),
+      ).resolves.toBeDefined();
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_A);
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('updateClient succeeds for a second user sharing the same workspace', async () => {
+      const repo = fakeClientRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === CLI_A) return makeClient();
+          return null;
+        }),
+        update: vi.fn().mockImplementation(async (c: unknown) => c),
+      });
+      await expect(
+        updateClient(WORKSPACE_A, CLI_A, { name: 'Shared' }, repo),
+      ).resolves.toBeDefined();
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CLI_A);
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('deleteMovement succeeds for a second user sharing the same workspace', async () => {
+      const repo = fakeMovementRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === MOV_A) return makeMovement();
+          return null;
+        }),
+        delete: vi.fn().mockResolvedValue(undefined),
+      });
+      await expect(
+        deleteMovement(WORKSPACE_A, MOV_A, repo),
+      ).resolves.toBeUndefined();
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, MOV_A);
+      expect(repo.delete).toHaveBeenCalledWith(WORKSPACE_A, MOV_A);
+    });
+
+    it('updateCategory succeeds for a second user sharing the same workspace', async () => {
+      const repo = fakeCategoryRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === CAT_A) return makeCategory();
+          return null;
+        }),
+        findByNameAndType: vi.fn().mockResolvedValue(null),
+        update: vi.fn().mockImplementation(async (c: unknown) => c),
+      });
+      await expect(
+        updateCategory(WORKSPACE_A, { categoryId: CAT_A, name: 'Renamed' }, repo),
+      ).resolves.toBeDefined();
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CAT_A);
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('updateCatalogItem succeeds for a second user sharing the same workspace', async () => {
+      const repo = fakeCatalogItemRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === CATL_A) return makeCatalogItem();
+          return null;
+        }),
+        update: vi.fn().mockImplementation(async (i: unknown) => i),
+      });
+      await expect(
+        updateCatalogItem(WORKSPACE_A, CATL_A, { name: 'Shared' }, repo),
+      ).resolves.toBeDefined();
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CATL_A);
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('credit abono (multi-repo) succeeds for a second user sharing the same workspace', async () => {
+      // The credit AND the receiving account both live under WORKSPACE_A. The
+      // use case exercises creditRepo + accountRepo + movementRepo together.
+      const creditRepo = fakeCreditGrantedRepo({
+        findByWorkspaceId: vi.fn().mockImplementation(async (workspaceId: string) => {
+          if (workspaceId === WORKSPACE_A) return [makeCreditGranted()];
+          return [];
+        }),
+        addAbono: vi.fn().mockResolvedValue(undefined),
+      });
+      const accountRepo = fakeAccountRepo({
+        findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
+          if (workspaceId === WORKSPACE_A && id === ACC_A) return makeAccount();
+          return null;
+        }),
+      });
+      const movementRepo = fakeMovementRepo();
+
+      await expect(
+        addAbonoCG(
+          WORKSPACE_A,
+          CRD_G_A,
+          { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          creditRepo,
+          movementRepo,
+          fakeIdGen(),
+          accountRepo,
+        ),
+      ).resolves.toBeDefined();
+      expect(creditRepo.findByWorkspaceId).toHaveBeenCalledWith(WORKSPACE_A);
+      expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_A);
+      expect(creditRepo.addAbono).toHaveBeenCalled();
+      expect(movementRepo.create).toHaveBeenCalled();
     });
   });
 });

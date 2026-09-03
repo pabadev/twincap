@@ -10,12 +10,12 @@ export interface UpdateClientInput {
 }
 
 export async function updateClient(
-  userId: string,
+  workspaceId: string,
   clientId: string,
   input: UpdateClientInput,
   clientRepo: ClientRepository,
 ): Promise<Client> {
-  const client = await clientRepo.findById(userId, clientId);
+  const client = await clientRepo.findById(workspaceId, clientId);
   if (!client) throw new NotFoundError("Client not found");
 
   if (input.name !== undefined) client.name = input.name.trim();
