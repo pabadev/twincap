@@ -69,3 +69,62 @@ export interface OperationLogRecord {
 export interface OperationLogger {
   log(record: OperationLogRecord): Promise<void>;
 }
+
+// ─── Transactional email / auth tokens (R13-B) ────────────────────────────
+
+/**
+ * Transactional email sender (R13-B). Implementation lives in infrastructure
+ * and may fall back to console logging when no provider key is configured
+ * (dev mode). The callers (auth use cases) treat sending as best-effort: a
+ * failure to send must never block the underlying operation (register, reset).
+ */
+export interface EmailSender {
+  /** Password reset email with a one-time reset link. */
+  sendPasswordReset(payload: {
+    to: string;
+    token: string;
+    baseUrl: string;
+  }): Promise<void>;
+  /** Email verification with a one-time verify link. */
+  sendEmailVerification(payload: {
+    to: string;
+    token: string;
+    baseUrl: string;
+  }): Promise<void>;
+}
+
+/** Purpose of a one-time auth token. */
+export type AuthTokenPurpose = 'password_reset' | 'email_verify';
+
+/**
+ * Persisted record for a hashed one-time auth token.
+ *
+ * The PLAIN token is never persisted — only `tokenHash` (bcrypt) is stored.
+ * The plain value travels only from the use case to the email sender.
+ */
+export interface AuthTokenRecord {
+  id: string;
+  userId: string;
+  purpose: AuthTokenPurpose;
+  tokenHash: string;
+  expiresAt: Date;
+  used: boolean;
+  createdAt: Date;
+}
+
+/**
+ * Persistence port for hashed one-time auth tokens (password reset + email
+ * verify). One active token per user+purpose; a used token is revoked.
+ */
+export interface AuthTokenStore {
+  create(record: AuthTokenRecord): Promise<AuthTokenRecord>;
+  /** Active (not used, not expired) token hash for a user+purpose, if any. */
+  findActiveByUser(
+    userId: string,
+    purpose: AuthTokenPurpose,
+  ): Promise<AuthTokenRecord | null>;
+  /** Revoke (mark used) the active token for a user+purpose. */
+  markUsed(userId: string, purpose: AuthTokenPurpose): Promise<void>;
+  /** Opportunistic cleanup of expired tokens (TTL index also handles it). */
+  deleteExpired(): Promise<void>;
+}

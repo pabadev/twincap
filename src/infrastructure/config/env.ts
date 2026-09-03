@@ -16,6 +16,13 @@ const envSchema = z.object({
     }, {
       message: "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
     }),
+  // Transactional email (R13-B). Optional in dev: when RESEND_API_KEY is absent
+  // the email sender logs the link to the console instead of sending.
+  RESEND_API_KEY: z.string().optional(),
+  // Optional sender address override for transactional emails.
+  RESEND_FROM: z.string().optional(),
+  // Public base URL used to build reset/verify links (e.g. http://localhost:3000).
+  APP_BASE_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

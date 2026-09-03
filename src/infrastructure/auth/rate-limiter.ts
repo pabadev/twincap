@@ -88,3 +88,13 @@ export const passwordChangeRateLimiter = new MongoRateLimiter({
   maxAttempts: 5,
   windowMs: 15 * 60 * 1000, // 15 minutes
 });
+
+export const forgotPasswordRateLimiter = new MongoRateLimiter({
+  maxAttempts: 3,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+});
+
+export const resendVerificationRateLimiter = new MongoRateLimiter({
+  maxAttempts: 3,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+});
