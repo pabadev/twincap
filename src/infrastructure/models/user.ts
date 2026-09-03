@@ -6,6 +6,7 @@ export interface UserDoc {
   passwordHash: string;
   name?: string;
   locale?: string;
+  emailVerified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,10 @@ const UserSchema = new Schema<UserDoc>(
       type: String,
       required: false,
       enum: ['es', 'en'],
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true },

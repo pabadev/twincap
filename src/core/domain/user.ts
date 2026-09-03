@@ -14,6 +14,8 @@ export interface UserInput {
   createdAt: Date;
   name?: string;
   locale?: string;
+  /** Whether the user has verified ownership of their email (B2). `undefined` === false. */
+  emailVerified?: boolean;
 }
 
 export class User {
@@ -24,6 +26,7 @@ export class User {
   readonly createdAt: Date;
   readonly name?: string;
   readonly locale?: string;
+  readonly emailVerified?: boolean;
 
   constructor(input: UserInput) {
     if (input.id.length === 0) {
@@ -42,6 +45,7 @@ export class User {
     this.createdAt = input.createdAt;
     this.name = input.name?.trim() || undefined;
     this.locale = input.locale || undefined;
+    this.emailVerified = input.emailVerified;
   }
 
   toJSON() {
@@ -51,6 +55,7 @@ export class User {
       name: this.name,
       locale: this.locale,
       createdAt: this.createdAt,
+      emailVerified: this.emailVerified ?? false,
     };
   }
 }

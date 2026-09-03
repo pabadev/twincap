@@ -32,6 +32,7 @@ export async function updateProfileAction(
       createdAt: existing.createdAt,
       name: name ?? existing.name,
       locale: locale ?? existing.locale,
+      emailVerified: existing.emailVerified,
     });
 
     await userRepo.update(updated);

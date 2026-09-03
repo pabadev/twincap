@@ -40,7 +40,7 @@ describe("User", () => {
   });
 
   it("toJSON includes all fields", () => {
-    const user = new User({ ...userInput, name: "Ana", locale: "en" });
+    const user = new User({ ...userInput, name: "Ana", locale: "en", emailVerified: true });
     const json = user.toJSON();
     expect(json).toEqual({
       id: "u1",
@@ -48,6 +48,7 @@ describe("User", () => {
       name: "Ana",
       locale: "en",
       createdAt: DATE,
+      emailVerified: true,
     });
   });
 
@@ -56,6 +57,13 @@ describe("User", () => {
     const json = user.toJSON();
     expect(json.name).toBeUndefined();
     expect(json.locale).toBeUndefined();
+  });
+
+  it("toJSON normalizes emailVerified to boolean (undefined === false)", () => {
+    const json = new User(userInput).toJSON();
+    expect(json.emailVerified).toBe(false);
+    const verified = new User({ ...userInput, emailVerified: true }).toJSON();
+    expect(verified.emailVerified).toBe(true);
   });
 });
 

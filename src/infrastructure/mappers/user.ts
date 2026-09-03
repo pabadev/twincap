@@ -9,6 +9,7 @@ export function toUserEntity(doc: UserDocument): User {
     passwordHash: doc.passwordHash,
     name: doc.name,
     locale: doc.locale,
+    emailVerified: doc.emailVerified,
     createdAt: doc.createdAt,
   });
 }
@@ -20,5 +21,6 @@ export function toUserDocData(entity: User): Record<string, unknown> {
     passwordHash: entity.passwordHash,
     name: entity.name,
     locale: entity.locale,
+    emailVerified: entity.emailVerified ?? false,
   };
 }
