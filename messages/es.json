@@ -95,7 +95,12 @@
     "emailVerifiedSuccess": "¡Tu correo fue verificado correctamente!",
     "goToDashboard": "Ir a tu panel",
     "dashboard": "Panel",
-    "verificationSent": "Te enviamos un correo de verificación."
+    "verificationSent": "Te enviamos un correo de verificación.",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "cookies": "Cookies",
+    "dataPolicy": "Tratamiento de Datos",
+    "legalNavAriaLabel": "Enlaces legales"
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",
@@ -588,7 +593,15 @@
     "duplicateRequest": "Solicitud duplicada. La operación ya fue registrada."
   },
   "Metadata": {
-    "description": "Gestión de finanzas personales y pequeños negocios"
+    "description": "Gestión de finanzas personales y pequeños negocios",
+    "privacyTitle": "Política de Privacidad",
+    "privacyDescription": "Conoce cómo TwinCap trata y protege tus datos personales.",
+    "termsTitle": "Términos y Condiciones",
+    "termsDescription": "Términos y Condiciones de uso del servicio TwinCap.",
+    "cookiesTitle": "Política de Cookies",
+    "cookiesDescription": "Conoce las cookies que usa TwinCap y cómo administrarlas.",
+    "dataPolicyTitle": "Política de Tratamiento de Datos Personales",
+    "dataPolicyDescription": "Política de Tratamiento de Datos Personales de TwinCap conforme a la Ley 1581 de 2012."
   },
   "Landing": {
     "heroTitle": "TwinCap",
@@ -625,6 +638,19 @@
     "ctaButton": "Crea tu cuenta gratis",
     "footerCopyright": "© {year} TwinCap. Todos los derechos reservados.",
     "login": "Iniciar sesión",
-    "register": "Registrarse"
+    "register": "Registrarse",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "cookies": "Cookies",
+    "dataPolicy": "Tratamiento de Datos",
+    "legalNavAriaLabel": "Enlaces legales"
+  },
+  "Legal": {
+    "privacyTitle": "Privacidad",
+    "termsTitle": "Términos",
+    "cookiesTitle": "Cookies",
+    "dataPolicyTitle": "Tratamiento de Datos",
+    "navAriaLabel": "Documentos legales",
+    "backHome": "Volver al inicio de TwinCap"
   }
 }

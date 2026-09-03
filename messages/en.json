@@ -95,7 +95,12 @@
     "emailVerifiedSuccess": "Your email was verified successfully!",
     "goToDashboard": "Go to your dashboard",
     "dashboard": "Dashboard",
-    "verificationSent": "A verification email was sent."
+    "verificationSent": "A verification email was sent.",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "cookies": "Cookies",
+    "dataPolicy": "Data Processing",
+    "legalNavAriaLabel": "Legal links"
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",
@@ -588,7 +593,15 @@
     "duplicateRequest": "Duplicate request. The operation was already recorded."
   },
   "Metadata": {
-    "description": "Personal and small business finance management"
+    "description": "Personal and small business finance management",
+    "privacyTitle": "Privacy Policy",
+    "privacyDescription": "Learn how TwinCap processes and protects your personal data.",
+    "termsTitle": "Terms and Conditions",
+    "termsDescription": "Terms and Conditions for using the TwinCap service.",
+    "cookiesTitle": "Cookie Policy",
+    "cookiesDescription": "Learn about the cookies TwinCap uses and how to manage them.",
+    "dataPolicyTitle": "Personal Data Processing Policy",
+    "dataPolicyDescription": "TwinCap personal data processing policy in accordance with Law 1581 of 2012."
   },
   "Landing": {
     "heroTitle": "TwinCap",
@@ -625,6 +638,19 @@
     "ctaButton": "Create your free account",
     "footerCopyright": "© {year} TwinCap. All rights reserved.",
     "login": "Sign In",
-    "register": "Register"
+    "register": "Register",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "cookies": "Cookies",
+    "dataPolicy": "Data Processing",
+    "legalNavAriaLabel": "Legal links"
+  },
+  "Legal": {
+    "privacyTitle": "Privacy",
+    "termsTitle": "Terms",
+    "cookiesTitle": "Cookies",
+    "dataPolicyTitle": "Data Processing",
+    "navAriaLabel": "Legal documents",
+    "backHome": "Back to TwinCap home"
   }
 }

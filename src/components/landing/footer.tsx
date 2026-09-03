@@ -28,7 +28,36 @@ export function Footer() {
             </Link>
           </nav>
         </div>
-        <div className="mt-8 text-center text-xs text-zinc-500 dark:text-zinc-500">
+        <nav
+          aria-label={t('legalNavAriaLabel')}
+          className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-surface-border pt-6 dark:border-zinc-800"
+        >
+          <Link
+            href="/privacy"
+            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+          >
+            {t('privacy')}
+          </Link>
+          <Link
+            href="/terms"
+            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+          >
+            {t('terms')}
+          </Link>
+          <Link
+            href="/cookies"
+            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+          >
+            {t('cookies')}
+          </Link>
+          <Link
+            href="/data-policy"
+            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+          >
+            {t('dataPolicy')}
+          </Link>
+        </nav>
+        <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
           {t('footerCopyright', { year: String(year) })}
         </div>
       </div>
