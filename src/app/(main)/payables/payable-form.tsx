@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createPayableAction } from './actions';
@@ -24,11 +24,13 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onSuccess?.();

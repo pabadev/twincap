@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
@@ -37,9 +37,11 @@ export function EditMovementModal({
   const tToast = useT('Toast');
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onClose();

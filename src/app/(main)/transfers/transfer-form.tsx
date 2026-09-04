@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createTransferAction, updateTransferAction } from './actions';
@@ -35,6 +35,7 @@ export function TransferForm({
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   const [sourceCurrency, setSourceCurrency] = useState(
     transfer?.sourceCurrency ?? accounts[0]?.currency ?? 'COP',
@@ -53,7 +54,8 @@ export function TransferForm({
   );
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onSuccess?.();

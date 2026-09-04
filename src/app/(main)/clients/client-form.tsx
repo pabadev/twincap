@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { createClientAction, updateClientAction } from './actions';
@@ -39,9 +39,11 @@ export function ClientForm({
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onSuccess?.(state.client);

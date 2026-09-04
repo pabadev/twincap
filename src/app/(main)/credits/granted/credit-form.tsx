@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
 import { createCreditGrantedAction } from './actions';
@@ -26,13 +26,15 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
   const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
   const [installments, setInstallments] = useState<number>(0);
   const [installmentValue, setInstallmentValue] = useState<number>(0);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
       onSuccess?.();

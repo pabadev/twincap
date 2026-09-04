@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState, useEffect } from 'react';
+import { useRef, useState, useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../i18n/client';
 import { updateCategoryAction } from './actions';
@@ -30,12 +30,13 @@ export function RenameCategoryButton({
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
+  const successShownRef = useRef(false);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tToast(state.success), 'success');
       router.refresh();
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar. Refactorizar derivaría el estado en render y no es aplicable aquí.
       setShowForm(false);
     }
   }, [state?.success, addToast, tToast, router]);
