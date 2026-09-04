@@ -514,9 +514,10 @@
     "createItem": "Create item"
   },
   "Export": {
-    "button": "Export CSV",
-    "exporting": "Exporting…",
-    "failed": "Export failed. Try again.",
+"button": "Export CSV",
+  "exporting": "Exporting…",
+  "done": "Export complete.",
+  "failed": "Export failed. Try again.",
     "date": "Date",
     "type": "Type",
     "account": "Account",

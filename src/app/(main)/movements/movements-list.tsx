@@ -146,6 +146,7 @@ export function MovementsList({
       });
       if (res.ok) {
         downloadCsv(res.csv, res.filename);
+        addToast(tExport('done'), 'success');
       } else {
         addToast(tExport('failed'), 'error');
       }

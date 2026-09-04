@@ -514,9 +514,10 @@
     "createItem": "Crear artículo"
   },
   "Export": {
-    "button": "Exportar CSV",
-    "exporting": "Exportando…",
-    "failed": "No se pudo exportar. Intenta de nuevo.",
+"button": "Exportar CSV",
+  "exporting": "Exportando…",
+  "done": "Exportación completada.",
+  "failed": "No se pudo exportar. Intenta de nuevo.",
     "date": "Fecha",
     "type": "Tipo",
     "account": "Cuenta",
