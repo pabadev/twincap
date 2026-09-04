@@ -54,7 +54,7 @@ export function FeedbackWidget() {
       <button
         type="button"
         onClick={() => { setOpen(true); setState({}); }}
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer lg:bottom-8 lg:left-8"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer lg:bottom-8 lg:left-[calc(16rem+2rem)]"
         aria-label={t('fabLabel')}
       >
         <Icon icon={MessageSquare} size="lg" />

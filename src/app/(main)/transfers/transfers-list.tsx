@@ -148,15 +148,18 @@ export function TransfersList({
                       {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
                     </td>
                   ) : (
-                    <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
-                      {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
-                      {' → '}
-                      {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}
-                      {transfer.rate && (
-                        <span className="ml-1 text-xs font-normal text-zinc-400">
-                          ({t('rate')}: {transfer.rate})
-                        </span>
-                      )}
+                    <td className="px-4 py-3 text-right">
+                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                        {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
+                      </div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}
+                        {transfer.rate && (
+                          <span className="ml-1 text-xs font-normal text-zinc-400">
+                            ({t('rate')}: {transfer.rate})
+                          </span>
+                        )}
+                      </div>
                     </td>
                   )}
                   <td className="max-w-[200px] px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">

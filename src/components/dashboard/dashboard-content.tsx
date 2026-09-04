@@ -82,6 +82,23 @@ export function DashboardContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only sync
   }, []);
 
+  // A4: re-sync the snapshot whenever the server pushes a fresh initialSnapshot
+  // prop (after router.refresh() following a create/update/delete via the FAB
+  // or elsewhere). useState keeps the first value forever, so the dashboard
+  // stayed stale until a filter change. Same content-comparison semantics as
+  // R5-B in movements-list: the server reconstructs the aggregate on every
+  // render, so compare by CONTENT — identical content means no real data
+  // change and the client-side snapshot (A2 tz-corrected) is kept.
+  const snapshotRef = useRef<DashboardSnapshot>(initialSnapshot);
+  useEffect(() => {
+    const incoming = JSON.stringify(initialSnapshot);
+    if (incoming === JSON.stringify(snapshotRef.current)) {
+      return;
+    }
+    snapshotRef.current = initialSnapshot;
+    setSnapshot(initialSnapshot);
+  }, [initialSnapshot]);
+
   const accountOptions = useMemo(
     () => accounts.map((a) => ({ value: a.id, label: `${a.name} (${a.currency})` })),
     [accounts],
