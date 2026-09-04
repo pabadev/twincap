@@ -1,17 +1,25 @@
 import { getAnalyticsDashboardAction } from './actions';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { redirect } from 'next/navigation';
+import { DefaultAnalyticsAuthorizer } from '../../../infrastructure/auth/analytics-authorizer';
+import { notFound, redirect } from 'next/navigation';
 
 /**
  * Product analytics dashboard page (R13-G).
  *
- * Displays activation, retention, and usage metrics for the closed beta.
- * No PII is shown — only workspace-scoped aggregate counts and percentages.
- * Accessible to any logged-in user during the beta (small closed group).
+ * Access is gated by the `AnalyticsAuthorizer` policy (founder-only today, via
+ * ANALYTICS_ACCESS_EMAILS; role-based in the future). The page NEVER decides
+ * access itself — it delegates to the policy so the rule is centralized.
+ *
+ * Unauthorized users get a 404 (opaque — the module is hidden, not revealed)
+ * to match "hidden for other users at any level".
  */
 export default async function AnalyticsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  const authorizer = new DefaultAnalyticsAuthorizer();
+  const allowed = await authorizer.canView(user.userId, user.email ?? '');
+  if (!allowed) notFound();
 
   const dashboard = await getAnalyticsDashboardAction();
 

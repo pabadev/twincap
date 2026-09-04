@@ -28,11 +28,28 @@ const NAV_ITEMS = [
   { href: '/clients', key: 'clients', icon: Users, color: 'text-info' },
   { href: '/pos/catalog', key: 'posCatalog', icon: Package, color: 'text-brand-gold' },
   { href: '/pos/sales', key: 'posSales', icon: ShoppingCart, color: 'text-income' },
-  'separator',
-  { href: '/analytics', key: 'analytics', icon: BarChart3, color: 'text-violet-500' },
 ] as const;
 
-export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {
+// R13-G: product analytics nav item is CONDITIONAL — only rendered for users
+// authorized by the AnalyticsAuthorizer policy (founder-only today). Kept
+// separate from NAV_ITEMS so it stays hidden for everyone else.
+const ANALYTICS_NAV_ITEM = {
+  href: '/analytics',
+  key: 'analytics',
+  icon: BarChart3,
+  color: 'text-violet-500',
+} as const;
+
+/**
+ * Builds the full nav item list, conditionally appending the analytics entry
+ * (with its leading separator) only for users authorized to view it.
+ */
+function buildNavItems(canViewAnalytics: boolean | undefined) {
+  if (!canViewAnalytics) return NAV_ITEMS;
+  return [...NAV_ITEMS, 'separator', ANALYTICS_NAV_ITEM] as const;
+}
+
+export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: boolean; email?: string; canViewAnalytics?: boolean }) {
   const [open, setOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const router = useRouter();
@@ -134,7 +151,7 @@ export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: st
               {/* Nav links — authenticated */}
               <nav className="flex-1 overflow-y-auto px-2 py-3 lg:px-2 lg:py-2">
                 <ul className="space-y-0.5 lg:space-y-0">
-                  {NAV_ITEMS.map((item, index) => {
+                  {buildNavItems(canViewAnalytics).map((item, index) => {
                     if (item === 'separator') {
                       return (
                         <li key={`sep-${index}`}>

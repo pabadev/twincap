@@ -231,6 +231,32 @@ export interface AnalyticsReporter {
 }
 
 /**
+ * Authorization policy for the PRODUCT analytics dashboard (R13-G).
+ *
+ * Decides whether a given user may view PRODUCT metrics (the /analytics page
+ * showing aggregates across ALL workspaces). This is deliberately a SEPARATE
+ * concern from the analytics EVENTS themselves: tracking is workspace-scoped,
+ * but product metrics are a business asset visible only to designated people.
+ *
+ * The decision is centralized here — NOT in the page or actions — so the
+ * authorization rule can evolve over time (e.g. adding role-based access for
+ * an analytics team) WITHOUT touching consumers. Consumers only call
+ * `canView(userId)` / `canViewCurrent(user)`.
+ *
+ * Design (R13-G hardening, per founder's decision):
+ * - TODAY: access is restricted to an explicit allowlist of founder emails
+ *   (env `ANALYTICS_ACCESS_EMAILS`). This is the only access path in beta.
+ * - FUTURE: when a distinct analytics role exists (e.g. `analyst` in
+ *   MembershipRole), this port will also authorize users holding that role.
+ *   The policy interface already supports role-based checks so that extension
+ *   requires NO change to the page or consumer code.
+ */
+export interface AnalyticsAuthorizer {
+  /** Whether a user (by id and email) may view product analytics. */
+  canView(userId: string, email: string): Promise<boolean>;
+}
+
+/**
  * Persistence port for hashed one-time auth tokens (password reset + email
  * verify). One active token per user+purpose; a used token is revoked.
  */

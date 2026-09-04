@@ -2,8 +2,9 @@
 
 import { connectDb } from '../../../infrastructure/db/connection';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
+import { DefaultAnalyticsAuthorizer } from '../../../infrastructure/auth/analytics-authorizer';
 import { AnalyticsEventModel } from '../../../infrastructure/models/analytics-event';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 /**
  * Analytics dashboard snapshot (R13-G).
@@ -40,6 +41,13 @@ export interface AnalyticsDashboard {
 export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  // R13-G hardening: the action re-checks the analytics authorization policy —
+  // the page's gate is NOT the only boundary. This keeps metrics private even
+  // if the action is invoked from another surface.
+  const authorizer = new DefaultAnalyticsAuthorizer();
+  const allowed = await authorizer.canView(user.userId, user.email ?? '');
+  if (!allowed) notFound();
 
   await connectDb();
 

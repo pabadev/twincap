@@ -46,6 +46,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  // Comma-separated email allowlist of users who may view the PRODUCT analytics
+  // dashboard (/analytics). Deny-by-default: if absent/empty, nobody has access
+  // except future role-based grants (R13-G hardening, founder-only today).
+  ANALYTICS_ACCESS_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
