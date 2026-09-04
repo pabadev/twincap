@@ -21,12 +21,15 @@ import { connectDb } from '../../../infrastructure/db/connection';
 import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
-import { assertBusinessDateNotFuture } from '../../../lib/date';
+import { assertBusinessDateNotFuture, businessDateToInputValue } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 import { trackAnalytics } from '../../../lib/track-analytics';
+import { getT } from '../../../i18n/server';
+import { buildMovementsCsv, filterMovementsForCsv } from './export-csv';
+import type { MovementCsvFilters } from './export-csv';
 
 const ids = objectIdGenerator;
 
@@ -234,4 +237,58 @@ export async function listMovementsPagedAction(
       ? { date: result.nextCursor.date.toISOString(), createdAt: result.nextCursor.createdAt.toISOString() }
       : null,
   };
+}
+
+/**
+ * R13-H3: full-fetch CSV export of movements honoring the client's current
+ * list filters. The session's workspaceId is the tenant scope — filters come
+ * from the client but data access never leaves the user's workspace.
+ */
+export async function exportMovementsCsvAction(
+  filters: MovementCsvFilters,
+): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: 'error.unauthorized' };
+
+  try {
+    await connectDb();
+    const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
+    const categoryRepo = new MongoCategoryRepository();
+    const [movements, accounts, categories] = await Promise.all([
+      movementRepo.findByWorkspaceId(user.workspaceId!),
+      accountRepo.findByWorkspaceId(user.workspaceId!),
+      categoryRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
+
+    const accountNames: Record<string, string> = {};
+    for (const account of accounts) accountNames[account.id] = account.name;
+    const categoryNames: Record<string, string> = {};
+    for (const category of categories) categoryNames[category.id] = category.name;
+
+    const t = await getT('Export');
+    const labels = {
+      income: t('income'),
+      expense: t('expense'),
+      date: t('date'),
+      type: t('type'),
+      account: t('account'),
+      category: t('category'),
+      amount: t('amount'),
+      currency: t('currency'),
+      note: t('note'),
+      noCategory: t('noCategory'),
+    };
+
+    const filtered = filterMovementsForCsv(serializeEntities(movements), filters);
+    const csv = buildMovementsCsv(
+      filtered,
+      { accountNames, categoryNames },
+      labels,
+    );
+    const date = businessDateToInputValue(new Date());
+    return { ok: true, csv, filename: `movements_${date}.csv` };
+  } catch (error) {
+    return { ok: false, error: handleActionError(error).error };
+  }
 }

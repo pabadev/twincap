@@ -20,12 +20,16 @@ import { MongoCreditGrantedRepository } from '../../../../infrastructure/reposit
 import { connectDb } from '../../../../infrastructure/db/connection';
 import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
-import { assertBusinessDateNotFuture } from '../../../../lib/date';
+import { assertBusinessDateNotFuture, businessDateToInputValue } from '../../../../lib/date';
 import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
 import { withAudit } from '../../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
 import { trackAnalytics } from '../../../../lib/track-analytics';
+import { serializeEntities } from '../../../../lib/serialize';
+import { getT } from '../../../../i18n/server';
+import { buildSalesCsv, filterSalesForCsv } from './export-csv';
+import type { SaleCsvFilters } from './export-csv';
 
 const ids = objectIdGenerator;
 
@@ -279,6 +283,62 @@ export async function getSaleDetailAction(
       creditRepo,
     );
     return { ok: true, sale: snapshot };
+  } catch (error) {
+    return { ok: false, error: handleActionError(error).error };
+  }
+}
+
+/**
+ * R13-H3: full-fetch CSV export of POS sales honoring the client's current
+ * list filters (date range, status, client search). The session's workspaceId
+ * is the tenant scope — filters come from the client but data access never
+ * leaves the user's workspace.
+ */
+export async function exportSalesCsvAction(
+  filters: SaleCsvFilters,
+): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: 'error.unauthorized' };
+
+  try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const clientRepo = new MongoClientRepository();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const [sales, clients, catalogItems] = await Promise.all([
+      saleRepo.findByWorkspaceId(user.workspaceId!),
+      clientRepo.findByWorkspaceId(user.workspaceId!),
+      catalogRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
+
+    const clientNames: Record<string, string> = {};
+    for (const client of clients) clientNames[client.id] = client.name;
+    const itemNames: Record<string, string> = {};
+    for (const item of catalogItems) itemNames[item.id] = item.name;
+
+    const t = await getT('Export');
+    const labels = {
+      date: t('date'),
+      client: t('client'),
+      items: t('items'),
+      total: t('total'),
+      paid: t('paid'),
+      pending: t('pending'),
+      currency: t('currency'),
+      paymentMode: t('paymentMode'),
+      paidInFull: t('paidInFull'),
+      onCredit: t('onCredit'),
+      noClient: t('noClient'),
+    };
+
+    const filtered = filterSalesForCsv(serializeEntities(sales), filters, clientNames);
+    const csv = buildSalesCsv(
+      filtered,
+      { clientNames, itemNames },
+      labels,
+    );
+    const date = businessDateToInputValue(new Date());
+    return { ok: true, csv, filename: `sales_${date}.csv` };
   } catch (error) {
     return { ok: false, error: handleActionError(error).error };
   }

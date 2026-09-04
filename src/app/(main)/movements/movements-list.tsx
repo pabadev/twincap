@@ -14,11 +14,13 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
-import { ArrowLeftRight, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
 import { EditMovementModal } from './edit-movement-modal';
-import { listAccountsAction, listCategoriesAction, listMovementsPagedAction } from './actions';
+import { listAccountsAction, listCategoriesAction, listMovementsPagedAction, exportMovementsCsvAction } from './actions';
 import type { SerializedCursor } from './actions';
+import { downloadCsv } from '../../../lib/download-csv';
+import { useToast } from '../../../lib/hooks/use-toast';
 
 type SortField = 'date' | 'amount' | 'category';
 type SortDirection = 'asc' | 'desc';
@@ -91,10 +93,13 @@ export function MovementsList({
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
   const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const t = useT('Movements');
   const tCommon = useT('Common');
   const tSystemNotes = useT('SystemNotes');
+  const tExport = useT('Export');
   const locale = useLocale();
+  const { addToast } = useToast();
   const { openQuickMovement } = useQuickMovement();
 
   const categoryMap = useMemo(() => {
@@ -127,6 +132,29 @@ export function MovementsList({
       setLoadingMore(false);
     }
   }, [nextCursor, loadingMore]);
+
+  // R13-H3: export the FULL filtered set (server-side query) using the current
+  // client-side filter state, then trigger a browser download.
+  const handleExportCsv = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await exportMovementsCsvAction({
+        accountId: selectedAccountId,
+        scope: selectedScope,
+        type: selectedType,
+      });
+      if (res.ok) {
+        downloadCsv(res.csv, res.filename);
+      } else {
+        addToast(tExport('failed'), 'error');
+      }
+    } catch {
+      addToast(tExport('failed'), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isExporting, selectedAccountId, selectedScope, selectedType, addToast, tExport]);
 
   // D3: scope filter uses Movement.context (the source of truth).
   const allMovements = useMemo(() => {
@@ -173,21 +201,41 @@ export function MovementsList({
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
-        {selectedAccountId && (
+        <div className="flex items-center gap-2">
           <Button
-            variant="primary"
+            variant="secondary"
             size="sm"
-            onClick={() =>
-              openQuickMovement(
-                selectedAccountId === 'all'
-                  ? undefined
-                  : { accountId: selectedAccountId },
-              )
-            }
+            onClick={handleExportCsv}
+            disabled={isExporting}
           >
-            {t('addMovement')}
+            {isExporting ? (
+              <span className="inline-flex items-center gap-2">
+                <Icon icon={Loader2} size="sm" className="animate-spin" />
+                {tExport('exporting')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Icon icon={Download} size="sm" />
+                {tExport('button')}
+              </span>
+            )}
           </Button>
-        )}
+          {selectedAccountId && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() =>
+                openQuickMovement(
+                  selectedAccountId === 'all'
+                    ? undefined
+                    : { accountId: selectedAccountId },
+                )
+              }
+            >
+              {t('addMovement')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Account selector + scope filter + type filter */}

@@ -18,7 +18,10 @@ import { ActionIconButton } from '../../../../components/ui/action-icon-button';
 import { Button } from '../../../../components/ui/button';
 import { BackButton } from '../../../../components/ui/back-button';
 import { Select } from '../../../../components/ui/select';
-import { Eye, ShoppingCart } from 'lucide-react';
+import { Eye, ShoppingCart, Download, Loader2 } from 'lucide-react';
+import { downloadCsv } from '../../../../lib/download-csv';
+import { useToast } from '../../../../lib/hooks/use-toast';
+import { exportSalesCsvAction } from './actions';
 
 interface SaleListProps {
   sales: SerializedSale[];
@@ -39,8 +42,11 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'credit'>('all');
   const [search, setSearch] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const t = useT('Sales');
+  const tExport = useT('Export');
   const locale = useLocale();
+  const { addToast } = useToast();
 
   const clientMap = new Map(clients.map((c) => [c.id, c.name]));
   const catalogMap = new Map(catalogItems.map((ci) => [ci.id, ci.name]));
@@ -59,6 +65,30 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
     return true;
   });
 
+  // R13-H3: export the FULL filtered set (server-side query) using the current
+  // client-side filter state, then trigger a browser download.
+  const handleExportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await exportSalesCsvAction({
+        dateFrom,
+        dateTo,
+        status: statusFilter,
+        search,
+      });
+      if (res.ok) {
+        downloadCsv(res.csv, res.filename);
+      } else {
+        addToast(tExport('failed'), 'error');
+      }
+    } catch {
+      addToast(tExport('failed'), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <BackButton />
@@ -66,9 +96,29 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
-        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
-          {t('newSale')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <span className="inline-flex items-center gap-2">
+                <Icon icon={Loader2} size="sm" className="animate-spin" />
+                {tExport('exporting')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Icon icon={Download} size="sm" />
+                {tExport('button')}
+              </span>
+            )}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+            {t('newSale')}
+          </Button>
+        </div>
       </div>
 
       <Modal

@@ -18,6 +18,7 @@ export type Namespace =
   | 'Payables'
   | 'Catalog'
   | 'Sales'
+  | 'Export'
   | 'Metadata'
   | 'Landing'
   | 'SystemNotes'
