@@ -25,6 +25,7 @@ import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidatePath } from 'next/cache';
 import { withAudit } from '../../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -107,6 +108,8 @@ export async function createSaleAction(
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
+    // R13-G: track sale creation (analytics, best-effort).
+    await trackAnalytics('saleCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createSale');
     return handleActionError(error);

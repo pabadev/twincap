@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
-import { Languages, LogOut, Menu, Moon, Sun, User, X, LayoutDashboard, Tag, List, ArrowLeftRight, CreditCard, Landmark, Receipt, Users, Package, ShoppingCart } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, User, X, LayoutDashboard, Tag, List, ArrowLeftRight, CreditCard, Landmark, Receipt, Users, Package, ShoppingCart, BarChart3 } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
 import { Icon } from '../../components/ui/icon';
@@ -28,6 +28,8 @@ const NAV_ITEMS = [
   { href: '/clients', key: 'clients', icon: Users, color: 'text-info' },
   { href: '/pos/catalog', key: 'posCatalog', icon: Package, color: 'text-brand-gold' },
   { href: '/pos/sales', key: 'posSales', icon: ShoppingCart, color: 'text-income' },
+  'separator',
+  { href: '/analytics', key: 'analytics', icon: BarChart3, color: 'text-violet-500' },
 ] as const;
 
 export function MainNav({ isLoggedIn, email }: { isLoggedIn: boolean; email?: string }) {

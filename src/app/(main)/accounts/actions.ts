@@ -17,6 +17,7 @@ import { revalidatePath } from 'next/cache';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -65,6 +66,8 @@ export async function createAccountAction(
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
+    // R13-G: track account creation (analytics, best-effort).
+    await trackAnalytics('accountCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createAccount');
     return handleActionError(error);

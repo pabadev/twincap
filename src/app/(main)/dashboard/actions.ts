@@ -20,6 +20,7 @@ import type { DashboardSnapshot } from '../../../components/dashboard/dashboard-
 import { makeCategoryLabelResolver } from '../../../lib/resolve-category-label';
 import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
 import { reportUnexpectedErrorAndWait } from '../../../lib/report-unexpected-error';
+import { trackAnalytics } from '../../../lib/track-analytics';
 
 /**
  * Server action that re-aggregates the dashboard snapshot for a given filter
@@ -110,6 +111,9 @@ export async function getDashboardSnapshotAction(
       tSystemNotes,
       tDashboard,
     });
+
+    // R13-G: track dashboard view (analytics, best-effort).
+    await trackAnalytics('dashboardViewed', user.workspaceId!, user.userId);
 
     return buildDashboardSnapshot({
       accounts: accountBalancesWithBalance,

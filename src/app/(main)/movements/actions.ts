@@ -26,6 +26,7 @@ import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -90,6 +91,8 @@ export async function createMovementAction(
     revalidatePath('/movements');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
+    // R13-G: track first movement (deduplicated per workspace — only one doc ever).
+    await trackAnalytics('firstMovement', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
     return handleActionError(error);

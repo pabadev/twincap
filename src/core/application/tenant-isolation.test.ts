@@ -118,12 +118,11 @@ const CATL_A = 'catl-a-1';
 const CRD_G_A = 'crd-g-a-1';
 
 /**
- * A SECOND user who shares workspace A. Its identity differs from the actor
- * used in the isolation tests, but — crucially — the workspaceId it passes to
- * the use cases is still WORKSPACE_A. Proof that data belongs to the
- * workspace, not the user (Fase F).
+ * Sharing tests use a SECOND user whose identity differs from the actor used
+ * in the isolation tests, but — crucially — the workspaceId it passes to the
+ * use cases is still WORKSPACE_A. Proof that data belongs to the workspace,
+ * not the user (Fase F).
  */
-const WORKSPACE_A2_ACTOR = 'user-2-in-workspace-a';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Account {

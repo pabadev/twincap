@@ -28,7 +28,6 @@ const { connectDb } = await import('../db/connection');
 const { MongoMembershipRepository } = await import('../repositories/membership-repository');
 
 const mockedGetSessionCookie = vi.mocked(getSessionCookie);
-const mockedConnectDb = vi.mocked(connectDb);
 const mockedMembershipRepoClass = vi.mocked(MongoMembershipRepository);
 
 function makeActiveMembership(workspaceId: string) {

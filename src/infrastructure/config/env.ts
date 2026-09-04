@@ -40,6 +40,12 @@ const envSchema = z.object({
   // are a silent no-op (dev). No feature flag needed — presence of this
   // address is the gate.
   FEEDBACK_EMAIL: z.string().optional(),
+  // Product analytics (R13-G). OPT-IN: defaults to false so the phase ships
+  // functional but SILENT until the operator explicitly enables it.
+  ANALYTICS_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

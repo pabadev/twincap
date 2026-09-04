@@ -192,6 +192,44 @@ export interface ErrorReporter {
   report(input: ErrorEventInput): Promise<{ isFirst: boolean; occurrenceCount: number }>;
 }
 
+// ─── Product analytics (R13-G) ────────────────────────────────────────────
+
+/**
+ * Product analytics event names for activation/retention/usage tracking (R13-G).
+ *
+ * Events are intentionally minimal — no PII, no payloads, no entity snapshots.
+ * The event name alone, scoped by workspaceId, is sufficient for the metrics
+ * the beta needs.
+ */
+export type AnalyticsEventName =
+  | 'register'
+  | 'firstLogin'
+  | 'accountCreated'
+  | 'firstMovement'
+  | 'dashboardViewed'
+  | 'saleCreated';
+
+/**
+ * Out port for product analytics (R13-G). Deliberately SEPARATE from
+ * `OperationLogger` (audit trail) and `ErrorReporter` (error monitoring).
+ *
+ * Implementations are best-effort: a failure to track must NEVER break the
+ * operation it accompanies. Fire-and-forget semantics.
+ */
+export interface AnalyticsReporter {
+  /**
+   * Records a product analytics event. Must NEVER throw — fail-safe.
+   * For "first" events (firstLogin, firstMovement), the implementation
+   * deduplicates by workspaceId + eventName (one doc per workspace per
+   * "first" event).
+   */
+  track(input: {
+    eventName: AnalyticsEventName;
+    workspaceId: string;
+    userId: string;
+  }): Promise<void>;
+}
+
 /**
  * Persistence port for hashed one-time auth tokens (password reset + email
  * verify). One active token per user+purpose; a used token is revoked.

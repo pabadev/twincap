@@ -26,6 +26,7 @@ import { MongoOperationLogger } from '../../infrastructure/repositories/operatio
 import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
 import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
 import { reportUnexpectedErrorAndWait } from '../../lib/report-unexpected-error';
+import { trackAnalytics } from '../../lib/track-analytics';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
 
 const ids = objectIdGenerator;
@@ -105,6 +106,8 @@ export async function registerAction(
       result: 'success',
       occurredAt: new Date(),
     });
+    // R13-G: track registration event (analytics, best-effort).
+    await trackAnalytics('register', workspaceId, userId);
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
@@ -158,6 +161,10 @@ export async function loginAction(
       result: 'success',
       occurredAt: new Date(),
     });
+    // R13-G: track first login (deduplicated per workspace — only one doc ever).
+    if (workspaceId) {
+      await trackAnalytics('firstLogin', workspaceId, userId);
+    }
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
