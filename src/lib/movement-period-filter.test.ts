@@ -74,4 +74,54 @@ describe('filterMovementsByPeriod', () => {
       expect(result.map((m) => m.date)).toEqual(['2026-06-01']);
     });
   });
+
+  describe('current_month at the UTC-5 civil boundary (A2)', () => {
+    it('keeps the civil-month movements when the UTC instant already rolled over', () => {
+      // 2026-09-01T02:00:00Z = Aug 31 21:00 local in UTC-5 (tzOffsetMinutes
+      // 300): the current month is still August, even though UTC says
+      // September. Without the offset shift this returned only the Sep 1
+      // movement — the A2 bug.
+      const result = filterMovementsByPeriod(
+        [movement('2026-08-31'), movement('2026-09-01')],
+        'current_month',
+        new Date('2026-09-01T02:00:00Z'),
+        300,
+      );
+      expect(result.map((m) => m.date)).toEqual(['2026-08-31']);
+    });
+
+    it('keeps August movements for the spec-literal 2026-08-31T02:00:00Z instant', () => {
+      const result = filterMovementsByPeriod(
+        [movement('2026-08-31'), movement('2026-09-01')],
+        'current_month',
+        new Date('2026-08-31T02:00:00Z'),
+        300,
+      );
+      expect(result.map((m) => m.date)).toEqual(['2026-08-31']);
+    });
+
+    it('keeps the civil-month movements on the Sep 1 boundary morning', () => {
+      // 2026-09-01T03:00:00Z + offset 300 = Aug 31 22:00 local — still August.
+      const result = filterMovementsByPeriod(
+        [movement('2026-08-31'), movement('2026-09-01')],
+        'current_month',
+        new Date('2026-09-01T03:00:00Z'),
+        300,
+      );
+      expect(result.map((m) => m.date)).toEqual(['2026-08-31']);
+    });
+  });
+
+  describe('this_year at the UTC-5 civil boundary (A2)', () => {
+    it('keeps the civil-year movements when the UTC instant already rolled over', () => {
+      // 2027-01-01T02:00:00Z = Dec 31 21:00 local in UTC-5: civil year 2026.
+      const result = filterMovementsByPeriod(
+        [movement('2026-12-31'), movement('2027-01-01')],
+        'this_year',
+        new Date('2027-01-01T02:00:00Z'),
+        300,
+      );
+      expect(result.map((m) => m.date)).toEqual(['2026-12-31']);
+    });
+  });
 });

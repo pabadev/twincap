@@ -31,11 +31,28 @@ export function computeYearlyEvolution(input: {
   movements: Movement[];
   /** Currency scope — amounts in other currencies are ignored. */
   currency: string;
-  /** Year to compute (UTC). Defaults to current UTC year. */
+  /**
+   * Year to compute. When provided explicitly it is used as-is (the user's
+   * chart selection); otherwise it defaults to the civil year of the
+   * reference instant (A2), so December 31 evenings in UTC-5 do not roll
+   * into the next year.
+   */
   year?: number;
+  /** Reference instant for the default year; defaults to the real clock. */
+  now?: Date;
+  /**
+   * `new Date().getTimezoneOffset()` of the requesting client (300 for UTC-5,
+   * -60 for UTC+1). Shifts `now` to the client's civil date before deriving
+   * the default year. Default 0 = UTC (server clock).
+   */
+  tzOffsetMinutes?: number;
 }): YearlyEvolutionResult {
   const { movements, currency } = input;
-  const year = input.year ?? new Date().getUTCFullYear();
+  const now = input.now ?? new Date();
+  const civilNow = new Date(
+    now.getTime() - (input.tzOffsetMinutes ?? 0) * 60_000,
+  );
+  const year = input.year ?? civilNow.getUTCFullYear();
 
   const monthMap = new Map<string, { income: number; expenses: number }>();
 

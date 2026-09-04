@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { DashboardFilterBar } from './dashboard-filters';
 import { SummaryCards } from './summary-cards';
@@ -64,6 +64,24 @@ export function DashboardContent({
   const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
   const [isPending, startTransition] = useTransition();
 
+  // A2 (first paint): the server renders the initial snapshot with its own
+  // UTC clock, so at month-end evenings (e.g. 21:00 UTC-5 = 02:00 UTC next
+  // day) the current-month cards can arrive empty. Rebuild the snapshot on
+  // mount with the client's real civil offset. Filter changes already refetch
+  // via handleFiltersChange, so this only fills the first-paint gap.
+  const mountSyncDone = useRef(false);
+  useEffect(() => {
+    if (mountSyncDone.current) return;
+    mountSyncDone.current = true;
+    getDashboardSnapshotAction(snapshot.filters, new Date().getTimezoneOffset())
+      .then(setSnapshot)
+      .catch(() => {
+        // Keep the server-rendered snapshot on failure; refetch paths above
+        // recover on the next interaction.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only sync
+  }, []);
+
   const accountOptions = useMemo(
     () => accounts.map((a) => ({ value: a.id, label: `${a.name} (${a.currency})` })),
     [accounts],
@@ -77,7 +95,13 @@ export function DashboardContent({
 
   function handleFiltersChange(next: DashboardSnapshot['filters']) {
     startTransition(async () => {
-      const nextSnapshot = await getDashboardSnapshotAction(next);
+      // A2: the server does not know the client's timezone — send the
+      // offset so current-month/current-year derive from the civil date,
+      // not the server's UTC clock.
+      const nextSnapshot = await getDashboardSnapshotAction(
+        next,
+        new Date().getTimezoneOffset(),
+      );
       setSnapshot(nextSnapshot);
     });
   }

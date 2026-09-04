@@ -33,6 +33,13 @@ export interface BuildDashboardSnapshotInput {
   primaryCurrency: string;
   /** Resolves a category id to its display label (real, synthetic, or fallback). */
   resolveCategoryLabel: (categoryId: string) => string;
+  /**
+   * `new Date().getTimezoneOffset()` of the requesting client (300 for UTC-5).
+   * Used to derive ONE canonical civil "now" shared by every current-period
+   * computation (A2) so the dashboard does not roll to the next month/year
+   * early for west-of-UTC timezones. Default 0 = server's UTC clock.
+   */
+  tzOffsetMinutes?: number;
 }
 
 /**
@@ -55,6 +62,12 @@ export function buildDashboardSnapshot(
     primaryCurrency,
     resolveCategoryLabel,
   } = input;
+
+  // A2: ONE canonical "civil now" (the client's calendar date) shared by every
+  // current-period computation below — same shift as isFutureBusinessDate.
+  const civilNow = new Date(
+    Date.now() - (input.tzOffsetMinutes ?? 0) * 60_000,
+  );
 
   // Filtered movements — scope / accountId / categoryId + period
   // (mirrors dashboard-content.tsx :105-125).
@@ -79,7 +92,11 @@ export function buildDashboardSnapshot(
   }
 
   if (filters.period === 'current_month' || filters.period === 'this_year') {
-    filteredMovements = filterMovementsByPeriod(filteredMovements, filters.period);
+    filteredMovements = filterMovementsByPeriod(
+      filteredMovements,
+      filters.period,
+      civilNow,
+    );
   }
 
   // Account balances — narrowed to the selected account when applicable.
@@ -135,7 +152,11 @@ export function buildDashboardSnapshot(
     financingInflow,
     financingOutflow,
     months: monthlyData,
-  } = computeDashboardSummary({ movements: filteredMovements, currency });
+  } = computeDashboardSummary({
+    movements: filteredMovements,
+    currency,
+    now: civilNow,
+  });
 
   const { incomeCategories, expenseCategories, totalIncome, totalExpenses } =
     computeCategorySummary({ movements: filteredMovements, currency });
@@ -153,6 +174,7 @@ export function buildDashboardSnapshot(
   const yearly = computeYearlyEvolution({
     movements: filteredMovements,
     currency,
+    now: civilNow,
   });
 
   const recentMovements = filteredMovements.slice(0, 5).map((m) => ({

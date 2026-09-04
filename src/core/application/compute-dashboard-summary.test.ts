@@ -319,4 +319,39 @@ describe("computeDashboardSummary", () => {
     });
     expect(summary.monthlyIncome).toBe(0);
   });
+
+  it("A2 boundary: UTC already Sep 1 but civil Aug 31 at UTC-5 — window stays on August", () => {
+    // 2026-09-01T02:00:00Z = Aug 31 21:00 local in UTC-5 (tzOffsetMinutes
+    // 300): the current month must stay 2026-08 and the 6-month window must
+    // anchor there, otherwise the dashboard empties at month-end evenings.
+    const aug31 = movement({
+      type: "income",
+      amount: 500_000,
+      date: new Date("2026-08-31"),
+    });
+    const sep1 = movement({
+      type: "expense",
+      amount: 100_000,
+      date: new Date("2026-09-01"),
+    });
+
+    const summary = computeDashboardSummary({
+      movements: [aug31, sep1],
+      currency: "COP",
+      now: new Date("2026-09-01T02:00:00Z"),
+      tzOffsetMinutes: 300,
+    });
+
+    expect(summary.monthlyIncome).toBe(500_000);
+    expect(summary.monthlyExpenses).toBe(0);
+    expect(summary.months.map((b) => b.month)).toEqual([
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+    ]);
+    expect(summary.months[5].income).toBe(500_000);
+  });
 });

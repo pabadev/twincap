@@ -30,6 +30,7 @@ import { trackAnalytics } from '../../../lib/track-analytics';
  */
 export async function getDashboardSnapshotAction(
   filters: DashboardFilters,
+  tzOffsetMinutes = 0,
 ): Promise<DashboardSnapshot> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -123,6 +124,7 @@ export async function getDashboardSnapshotAction(
       locale,
       primaryCurrency,
       resolveCategoryLabel,
+      tzOffsetMinutes,
     });
   } catch (error) {
     // Report the unexpected crash (fail-safe, never re-raises), then preserve

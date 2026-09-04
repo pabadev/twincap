@@ -176,4 +176,42 @@ describe('computeYearlyEvolution', () => {
 
     expect(result.months[5]).toEqual({ month: '2026-06', income: 150_000, expenses: 120_000 });
   });
+
+  it('A2 boundary: default year comes from the civil now, not the UTC now', () => {
+    // 2027-01-01T02:00:00Z = Dec 31 21:00 local in UTC-5 (tzOffsetMinutes
+    // 300): the default year must be 2026, so Dec 31 movements still count.
+    const dec31 = movement({
+      type: 'income',
+      amount: 999,
+      date: new Date('2026-12-31'),
+    });
+
+    const result = computeYearlyEvolution({
+      movements: [dec31],
+      currency: 'COP',
+      now: new Date('2027-01-01T02:00:00Z'),
+      tzOffsetMinutes: 300,
+    });
+
+    expect(result.months[0].month).toBe('2026-01');
+    expect(result.months[11]).toEqual({ month: '2026-12', income: 999, expenses: 0 });
+  });
+
+  it('explicit year input is not affected by tzOffsetMinutes', () => {
+    const dec31 = movement({
+      type: 'income',
+      amount: 999,
+      date: new Date('2026-12-31'),
+    });
+
+    const result = computeYearlyEvolution({
+      movements: [dec31],
+      currency: 'COP',
+      year: 2026,
+      now: new Date('2027-01-01T02:00:00Z'),
+      tzOffsetMinutes: 300,
+    });
+
+    expect(result.months[11]).toEqual({ month: '2026-12', income: 999, expenses: 0 });
+  });
 });

@@ -47,7 +47,10 @@ export interface DashboardMonthlySummary {
  * (received/granted), sale payments, and payable payments still count.
  *
  * Bucketing groups by the UTC year-month of each stored business date,
- * matching the civil-date storage convention (decision D1).
+ * matching the civil-date storage convention (decision D1). The "current
+ * month" and the 6-month window anchor on the client's CIVIL date —
+ * `tzOffsetMinutes` shifts `now` before reading its UTC parts (A2), so the
+ * window does not roll early for west-of-UTC timezones.
  */
 export function computeDashboardSummary(input: {
   movements: Movement[];
@@ -55,10 +58,19 @@ export function computeDashboardSummary(input: {
   currency: string;
   /** Reference instant for the "current month"; defaults to the real clock. */
   now?: Date;
+  /**
+   * `new Date().getTimezoneOffset()` of the requesting client (300 for UTC-5,
+   * -60 for UTC+1). Shifts `now` to the client's civil date before deriving
+   * the current-period keys. Default 0 = UTC (server clock).
+   */
+  tzOffsetMinutes?: number;
 }): DashboardMonthlySummary {
   const { movements, currency } = input;
   const now = input.now ?? new Date();
-  const currentKey = utcMonthKey(now);
+  const civilNow = new Date(
+    now.getTime() - (input.tzOffsetMinutes ?? 0) * 60_000,
+  );
+  const currentKey = utcMonthKey(civilNow);
 
   let monthlyIncome = 0;
   let monthlyExpenses = 0;
@@ -93,7 +105,9 @@ export function computeDashboardSummary(input: {
 
   const months: MonthBucket[] = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(
+      Date.UTC(civilNow.getUTCFullYear(), civilNow.getUTCMonth() - i, 1),
+    );
     const key = utcMonthKey(d);
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
     months.push({ month: key, ...bucket });
