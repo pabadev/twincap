@@ -56,6 +56,10 @@ export function LegalPage({ document }: { document: LegalDocument }) {
                     {section.table.caption}
                   </p>
                 )}
+                {/* Document table (bordered prose table, not a data table):
+                    border-collapse + per-row border-b + px-3 py-2 paddings
+                    don't fit the ui/table (Table/THead/Th/TBody/Td) contract,
+                    so it intentionally stays hand-rolled. */}
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-surface-border dark:border-zinc-700">

@@ -7,6 +7,7 @@ import type { SaleDetailSnapshot } from '../../../../core/application/sales';
 import { DeleteSaleAbonoButton } from './delete-sale-abono-button';
 import { formatAmount, formatDate } from '../../../../lib/format';
 import { Modal } from '../../../../components/ui/modal';
+import { Table } from '../../../../components/ui/table';
 
 interface SaleDetailModalProps {
   saleId: string | null;
@@ -125,7 +126,10 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
               {t('lineItems')}
             </h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              {/* Compact modal table: keeps its bespoke cells (pb-1 / py-1.5,
+                  text-xs header rows) — only the `<table>` element fits the
+                  ui/table contract here. */}
+              <Table className="min-w-full text-sm">
                 <thead>
                             <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     <th className="pb-1 text-left">{t('item')}</th>
@@ -148,7 +152,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </div>
 
@@ -195,7 +199,10 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
               )}
               {snapshot.abonos.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
+                  {/* Compact modal table: keeps its bespoke cells (pb-1 /
+                      py-1.5, text-xs header row) — only the `<table>` element
+                      fits the ui/table contract here. */}
+                  <Table className="min-w-full text-sm">
                     <thead>
                                 <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                         <th className="pb-1 text-left">{tCommon('date')}</th>
@@ -224,7 +231,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               ) : (
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('noAbonos')}</p>

@@ -13,6 +13,7 @@ import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
+import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
 import { ArrowRightLeft, Pencil } from 'lucide-react';
 
 function accountName(accounts: SerializedAccount[], id: string): string {
@@ -111,44 +112,44 @@ export function TransfersList({
             </p>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-            <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
-              <thead className="bg-surface-header dark:bg-zinc-800">
+          <TableShell>
+            <Table className="min-w-[700px]">
+              <THead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  <Th>
                     {tCommon('date')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  </Th>
+                  <Th>
                     {t('fromTo')}
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  </Th>
+                  <Th align="right">
                     {tCommon('amount')}
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  </Th>
+                  <Th align="right">
                     {tCommon('note')}
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  </Th>
+                  <Th align="right">
                     {tCommon('actions')}
-                  </th>
+                  </Th>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              </THead>
+              <TBody>
                 {filtered.map((transfer) => (
                 <tr key={transfer.id}>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+                  <Td className="text-sm whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                     {formatDate(transfer.date, locale)}
-                  </td>
-                  <td className="max-w-[280px] truncate px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                  </Td>
+                  <Td className="max-w-[280px] truncate text-sm text-zinc-600 dark:text-zinc-400">
                     {accountName(accounts, transfer.sourceAccountId)}
                     {' → '}
                     {accountName(accounts, transfer.destinationAccountId)}
-                  </td>
+                  </Td>
                   {transfer.sourceCurrency === transfer.destinationCurrency ? (
-                    <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
+                    <Td align="right" className="text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white">
                       {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
-                    </td>
+                    </Td>
                   ) : (
-                    <td className="px-4 py-3 text-right">
+                    <Td align="right">
                       <div className="text-sm font-medium text-zinc-900 dark:text-white">
                         {formatAmount(transfer.sourceAmount.amount, transfer.sourceAmount.currency, locale)}
                       </div>
@@ -160,12 +161,12 @@ export function TransfersList({
                           </span>
                         )}
                       </div>
-                    </td>
+                    </Td>
                   )}
-                  <td className="max-w-[200px] px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">
+                  <Td align="right" className="max-w-[200px] text-sm text-zinc-600 dark:text-zinc-400">
                     {transfer.note || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </Td>
+                  <Td align="right">
                     <div className="flex items-center justify-end gap-1">
                       <ActionIconButton
                         icon={Pencil}
@@ -175,12 +176,12 @@ export function TransfersList({
                       />
                       <DeleteTransferButton transferId={transfer.id} />
                     </div>
-                  </td>
+                  </Td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-          </div>
+            </TBody>
+            </Table>
+          </TableShell>
         </>
       )}
     </div>

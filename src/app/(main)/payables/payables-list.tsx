@@ -19,6 +19,7 @@ import { ActionIconButton } from '../../../components/ui/action-icon-button';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
 import { Select } from '../../../components/ui/select';
+import { Table } from '../../../components/ui/table';
 import { ChevronDown, ReceiptText, Pencil } from 'lucide-react';
 
 export function PayablesList({
@@ -216,7 +217,10 @@ export function PayablesList({
                         <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
                           {t('abonos')}
                         </h4>
-                        <table className="min-w-full text-sm">
+                        {/* Compact expandable table: keeps its bespoke cells
+                            (pb-1 / py-1, text-xs header row) — only the
+                            `<table>` element fits the ui/table contract here. */}
+                        <Table className="min-w-full text-sm">
                           <thead>
                             <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                               <th className="pb-1 text-left">{tCommon('date')}</th>
@@ -249,7 +253,7 @@ export function PayablesList({
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </Table>
                       </div>
                     )}
 

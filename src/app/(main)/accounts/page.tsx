@@ -14,6 +14,7 @@ import { formatAmount } from '../../../lib/format';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { BackButton } from '../../../components/ui/back-button';
+import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
 import { Wallet } from 'lucide-react';
 
 export default async function AccountsPage() {
@@ -49,27 +50,27 @@ export default async function AccountsPage() {
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-          <table className="w-full min-w-[400px] divide-y divide-zinc-200 dark:divide-zinc-700">
-              <thead className="bg-surface-header dark:bg-zinc-800">
+        <TableShell>
+          <Table className="min-w-[400px]">
+            <THead>
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                <Th>
                   {t('name')}
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                </Th>
+                <Th align="right">
                   {t('balance')}
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                </Th>
+                <Th align="right">
                   {t('actions')}
-                </th>
+                </Th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+            </THead>
+            <TBody>
               {accounts.map((account) => {
                 const balance = balances.get(account.id) ?? 0;
                 return (
                   <tr key={account.id}>
-                    <td className="px-4 py-3">
+                    <Td>
                       <span className="text-sm font-medium text-zinc-900 dark:text-white">
                         {account.name}
                       </span>
@@ -81,8 +82,8 @@ export default async function AccountsPage() {
                       <span className="ml-2 text-xs text-zinc-400">
                         {account.currency}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </Td>
+                    <Td align="right">
                       <span
                         className={`text-sm font-medium ${
                           balance >= 0
@@ -92,8 +93,8 @@ export default async function AccountsPage() {
                       >
                         {formatAmount(balance, account.currency, locale)}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </Td>
+                    <Td align="right">
                       <div className="flex items-center justify-end gap-1">
                         <RenameAccountButton
                           accountId={account.id}
@@ -106,13 +107,13 @@ export default async function AccountsPage() {
                           <DeleteAccountButton accountId={account.id} />
                         )}
                       </div>
-                    </td>
+                    </Td>
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </TBody>
+          </Table>
+        </TableShell>
       )}
     </div>
   );

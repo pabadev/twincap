@@ -10,6 +10,7 @@ import { RenameCategoryButton } from './rename-category-button';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { BackButton } from '../../../components/ui/back-button';
+import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
 import { Tags } from 'lucide-react';
 
 export default async function CategoriesPage() {
@@ -84,27 +85,27 @@ function CategorySection({
       <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">
         {title}
       </h2>
-      <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-        <table className="w-full min-w-[300px] divide-y divide-zinc-200 dark:divide-zinc-700">
-          <thead className="bg-surface-header dark:bg-zinc-800">
+      <TableShell>
+        <Table className="min-w-[300px]">
+          <THead>
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <Th>
                 {nameLabel}
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              </Th>
+              <Th align="right">
                 {actionsLabel}
-              </th>
+              </Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          </THead>
+          <TBody>
             {categories.map((category) => (
               <tr key={category.id}>
-                <td className="px-4 py-3">
+                <Td>
                   <span className="text-sm font-medium text-zinc-900 dark:text-white">
                     {category.name}
                   </span>
-                </td>
-                <td className="px-4 py-3 text-right">
+                </Td>
+                <Td align="right">
                   <div className="flex items-center justify-end gap-1">
                     <RenameCategoryButton
                       categoryId={category.id}
@@ -112,12 +113,12 @@ function CategorySection({
                     />
                     <DeleteCategoryButton categoryId={category.id} />
                   </div>
-                </td>
+                </Td>
               </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableShell>
     </div>
   );
 }

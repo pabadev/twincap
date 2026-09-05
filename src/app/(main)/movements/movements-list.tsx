@@ -14,6 +14,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
 import { BackButton } from '../../../components/ui/back-button';
+import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
 import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
 import { EditMovementModal } from './edit-movement-modal';
@@ -327,43 +328,43 @@ export function MovementsList({
               }
             />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900">
-              <table className="w-full min-w-[700px] divide-y divide-zinc-200 dark:divide-zinc-700">
-                <thead className="bg-surface-header dark:bg-zinc-800">
+            <TableShell>
+              <Table className="min-w-[700px]">
+                <THead>
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    <Th scope="col">
                       <button type="button" onClick={() => toggleSort('date')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
                         {tCommon('date')} <SortIcon active={sortField === 'date'} dir={sortDir} />
                       </button>
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    </Th>
+                    <Th scope="col" align="right">
                       <button type="button" onClick={() => toggleSort('amount')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
                         {tCommon('amount')} <SortIcon active={sortField === 'amount'} dir={sortDir} />
                       </button>
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    </Th>
+                    <Th scope="col">
                       <button type="button" onClick={() => toggleSort('category')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
                         {t('category')} <SortIcon active={sortField === 'category'} dir={sortDir} />
                       </button>
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    </Th>
+                    <Th scope="col">
                       {tCommon('note')}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    </Th>
+                    <Th scope="col">
                       {t('type')}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    </Th>
+                    <Th scope="col" align="right">
                       {tCommon('actions')}
-                    </th>
+                    </Th>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                </THead>
+                <TBody>
                   {sortedMovements.map((movement) => (
                     <tr key={movement.id}>
-                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      <Td className="text-sm text-zinc-600 dark:text-zinc-400">
                         {formatDate(movement.date, locale)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
+                      </Td>
+                      <Td align="right">
                         <span
                           className={`text-sm font-medium ${
                             movement.type === 'income'
@@ -378,16 +379,16 @@ export function MovementsList({
                             locale,
                           )}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      </Td>
+                      <Td className="text-sm text-zinc-600 dark:text-zinc-400">
                         {categoryMap.get(movement.categoryId) ?? syntheticCategoryLabel(movement.categoryId, tSystemNotes) ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
+                      </Td>
+                      <Td className="text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
                         {movement.link
                           ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
                           : (movement.note || '—')}
-                      </td>
-                      <td className="px-4 py-3">
+                      </Td>
+                      <Td>
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                             movement.type === 'income'
@@ -397,8 +398,8 @@ export function MovementsList({
                         >
                           {t(movement.type)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
+                      </Td>
+                      <Td align="right">
                         <div className="flex items-center justify-end gap-1">
                           {!movement.link && (
                             <>
@@ -414,11 +415,11 @@ export function MovementsList({
                             </>
                           )}
                         </div>
-                      </td>
+                      </Td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                </TBody>
+              </Table>
 
               {/* Load more */}
               {nextCursor && (
@@ -440,7 +441,7 @@ export function MovementsList({
                   </Button>
                 </div>
               )}
-            </div>
+            </TableShell>
           )}
         </>
       )}
