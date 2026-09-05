@@ -5,7 +5,7 @@ import { Icon } from '../ui/icon';
 import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, User, Briefcase } from 'lucide-react';
 import { useT } from '../../i18n/client';
 import { formatAmount } from '../../lib/format';
-import type { ContextSummary } from '../../core/application/compute-context-summary';
+import type { ContextSummary, ContextCurrencySummary } from '../../core/application/compute-context-summary';
 
 export interface CurrencyBreakdown {
   currency: string;
@@ -61,6 +61,59 @@ function MultiCurrencyValue({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Personal/Business card body (N1): one entry per currency, COP-first as
+ * computed server-side. Mono-currency keeps the historical compact two-line
+ * layout exactly; multi-currency renders each currency on its own labelled
+ * line with its currency code, so amounts in different currencies cannot be
+ * conflated.
+ */
+function ContextCurrencyRows({
+  items,
+  locale,
+  incomeLabel,
+  expensesLabel,
+}: {
+  items: ContextCurrencySummary[];
+  locale: string;
+  incomeLabel: string;
+  expensesLabel: string;
+}) {
+  if (items.length === 1) {
+    const it = items[0];
+    return (
+      <>
+        <p className="text-[11px] sm:text-xs leading-tight text-income">
+          {incomeLabel}:{' '}
+          <span className="font-semibold">+{formatAmount(it.monthlyIncome, it.currency, locale)}</span>
+        </p>
+        <p className="text-[11px] sm:text-xs leading-tight text-expense">
+          {expensesLabel}:{' '}
+          <span className="font-semibold">−{formatAmount(it.monthlyExpenses, it.currency, locale)}</span>
+        </p>
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="text-[11px] sm:text-xs leading-tight text-zinc-500">{incomeLabel}:</p>
+      {items.map((it) => (
+        <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-income">
+          <span className="font-semibold">+{formatAmount(it.monthlyIncome, it.currency, locale)}</span>{' '}
+          <span className="text-zinc-400">{it.currency}</span>
+        </p>
+      ))}
+      <p className="text-[11px] sm:text-xs leading-tight text-zinc-500">{expensesLabel}:</p>
+      {items.map((it) => (
+        <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-expense">
+          <span className="font-semibold">−{formatAmount(it.monthlyExpenses, it.currency, locale)}</span>{' '}
+          <span className="text-zinc-400">{it.currency}</span>
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -164,8 +217,9 @@ export function SummaryCards({
         </Card>
       </div>
 
-      {/* A6: Personal / Business split of the current-month result — shown only
-          while no context filter is active (scope 'all', server-populated). */}
+      {/* A6/N1: Personal / Business split of the current-month result, per
+          currency — shown only while no context filter is active (scope 'all',
+          server-populated). */}
       {(contextSummary?.personal || contextSummary?.business) && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {contextSummary.personal && (
@@ -176,14 +230,12 @@ export function SummaryCards({
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
                   <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('filterScopePersonal')}</p>
-                  <p className="text-[11px] sm:text-xs leading-tight text-income">
-                    {t('income')}:{' '}
-                    <span className="font-semibold">+{formatAmount(contextSummary.personal.monthlyIncome, currency, locale)}</span>
-                  </p>
-                  <p className="text-[11px] sm:text-xs leading-tight text-expense">
-                    {t('expenses')}:{' '}
-                    <span className="font-semibold">−{formatAmount(contextSummary.personal.monthlyExpenses, currency, locale)}</span>
-                  </p>
+                  <ContextCurrencyRows
+                    items={contextSummary.personal}
+                    locale={locale}
+                    incomeLabel={t('income')}
+                    expensesLabel={t('expenses')}
+                  />
                 </div>
               </div>
             </Card>
@@ -196,14 +248,12 @@ export function SummaryCards({
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
                   <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('filterScopeBusiness')}</p>
-                  <p className="text-[11px] sm:text-xs leading-tight text-income">
-                    {t('income')}:{' '}
-                    <span className="font-semibold">+{formatAmount(contextSummary.business.monthlyIncome, currency, locale)}</span>
-                  </p>
-                  <p className="text-[11px] sm:text-xs leading-tight text-expense">
-                    {t('expenses')}:{' '}
-                    <span className="font-semibold">−{formatAmount(contextSummary.business.monthlyExpenses, currency, locale)}</span>
-                  </p>
+                  <ContextCurrencyRows
+                    items={contextSummary.business}
+                    locale={locale}
+                    incomeLabel={t('income')}
+                    expensesLabel={t('expenses')}
+                  />
                 </div>
               </div>
             </Card>

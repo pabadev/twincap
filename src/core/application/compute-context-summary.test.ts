@@ -56,13 +56,12 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [personal, businessIncome, businessExpense],
-      currency: 'COP',
       now: NOW,
     });
 
     expect(result).toEqual({
-      personal: { monthlyIncome: 1_000_000, monthlyExpenses: 0 },
-      business: { monthlyIncome: 500_000, monthlyExpenses: 200_000 },
+      personal: [{ currency: 'COP', monthlyIncome: 1_000_000, monthlyExpenses: 0 }],
+      business: [{ currency: 'COP', monthlyIncome: 500_000, monthlyExpenses: 200_000 }],
     });
   });
 
@@ -72,12 +71,11 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [legacyIncome, legacyExpense],
-      currency: 'COP',
       now: NOW,
     });
 
     expect(result).toEqual({
-      personal: { monthlyIncome: 800_000, monthlyExpenses: 300_000 },
+      personal: [{ currency: 'COP', monthlyIncome: 800_000, monthlyExpenses: 300_000 }],
     });
     expect(result.business).toBeUndefined();
   });
@@ -99,27 +97,31 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [businessAbono, personalAbono, personalSalary],
-      currency: 'COP',
       now: NOW,
     });
 
     // Business abono IS commercial income; the standalone Personal abono is
     // capital recovery and must NOT inflate the Personal income.
-    expect(result.business).toEqual({ monthlyIncome: 500_000, monthlyExpenses: 0 });
-    expect(result.personal).toEqual({ monthlyIncome: 900_000, monthlyExpenses: 0 });
+    expect(result.business).toEqual([{ currency: 'COP', monthlyIncome: 500_000, monthlyExpenses: 0 }]);
+    expect(result.personal).toEqual([{ currency: 'COP', monthlyIncome: 900_000, monthlyExpenses: 0 }]);
   });
 
-  it('ignores movements in other currencies (single currency scope)', () => {
+  it('aggregates per currency: non-primary currencies appear as their own entries (N1)', () => {
     const cop = movement({ type: 'income', amount: 600_000 });
-    const usd = movement({ type: 'income', amount: 100, currency: 'USD' });
+    const usdIncome = movement({ type: 'income', amount: 100, currency: 'USD' });
+    const usdExpense = movement({ type: 'expense', amount: 40, currency: 'USD' });
 
     const result = computeContextSummary({
-      movements: [cop, usd],
-      currency: 'COP',
+      movements: [cop, usdIncome, usdExpense],
       now: NOW,
     });
 
-    expect(result.personal).toEqual({ monthlyIncome: 600_000, monthlyExpenses: 0 });
+    // The USD movement is no longer dropped — it gets its own currency entry
+    // alongside COP (COP first, then alphabetical).
+    expect(result.personal).toEqual([
+      { currency: 'COP', monthlyIncome: 600_000, monthlyExpenses: 0 },
+      { currency: 'USD', monthlyIncome: 100, monthlyExpenses: 40 },
+    ]);
   });
 
   it('counts only the current calendar month', () => {
@@ -128,11 +130,10 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [lastMonth, thisMonth],
-      currency: 'COP',
       now: NOW,
     });
 
-    expect(result.personal).toEqual({ monthlyIncome: 300_000, monthlyExpenses: 0 });
+    expect(result.personal).toEqual([{ currency: 'COP', monthlyIncome: 300_000, monthlyExpenses: 0 }]);
   });
 
   it('honors the civil date shift (A2): 2026-09-01T02:00Z with offset 300 is still August', () => {
@@ -141,12 +142,11 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [augMovement, sepMovement],
-      currency: 'COP',
       now: new Date('2026-09-01T02:00:00Z'),
       tzOffsetMinutes: 300,
     });
 
-    expect(result.personal).toEqual({ monthlyIncome: 400_000, monthlyExpenses: 0 });
+    expect(result.personal).toEqual([{ currency: 'COP', monthlyIncome: 400_000, monthlyExpenses: 0 }]);
   });
 
   it('omits a context section when it has movements but no economic result', () => {
@@ -155,17 +155,16 @@ describe('computeContextSummary', () => {
 
     const result = computeContextSummary({
       movements: [transfer, businessExpense],
-      currency: 'COP',
       now: NOW,
     });
 
     // Personal has a movement (the transfer) but nothing economic → omitted.
     expect(result.personal).toBeUndefined();
-    expect(result.business).toEqual({ monthlyIncome: 0, monthlyExpenses: 120_000 });
+    expect(result.business).toEqual([{ currency: 'COP', monthlyIncome: 0, monthlyExpenses: 120_000 }]);
   });
 
   it('returns an empty summary with no movements', () => {
-    const result = computeContextSummary({ movements: [], currency: 'COP', now: NOW });
+    const result = computeContextSummary({ movements: [], now: NOW });
     expect(result).toEqual({});
   });
 });

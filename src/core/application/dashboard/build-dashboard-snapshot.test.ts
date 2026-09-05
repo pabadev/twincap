@@ -31,10 +31,6 @@ function inCurrentMonth(day = 10): Date {
 function inLastMonth(day = 15): Date {
   return new Date(Date.UTC(nowYear, nowMonth - 1, day, 12));
 }
-/** A calendar date in the previous UTC year (December). */
-function inLastYear(day = 25): Date {
-  return new Date(Date.UTC(nowYear - 1, 11, day, 12));
-}
 /** A month (0-indexed) of the current year that is guaranteed not to be the
  *  current month, so a "current month" assertion can never be affected by the
  *  real rollover. Prefer March when available; else a month several away. */
@@ -118,7 +114,6 @@ const allFilters: DashboardFilters = {
   scope: 'all',
   accountId: 'all',
   categoryId: 'all',
-  period: 'current_month',
 };
 
 function buildInput(
@@ -172,33 +167,7 @@ describe('buildDashboardSnapshot', () => {
     expect(snapshot.expenseRows).toEqual([{ label: 'Comida', value: 300_000 }]);
   });
 
-  it('period filter this_year includes current-year movements only', () => {
-    const currentYear = movement({
-      type: 'income',
-      amount: 1_000_000,
-      date: inYear(otherMonthIndex()),
-      categoryId: 'cat-income',
-    });
-    const lastYear = movement({
-      type: 'income',
-      amount: 900_000,
-      date: inLastYear(),
-      categoryId: 'cat-income',
-    });
-
-    const snapshot = buildDashboardSnapshot(
-      buildInput([currentYear, lastYear], {
-        ...allFilters,
-        period: 'this_year',
-      }),
-    );
-
-    expect(snapshot.totalIncome).toBe(1_000_000);
-    expect(snapshot.monthlyIncome).toBe(0); // not in the current month
-    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([currentYear.id]);
-  });
-
-  it('period filter current_month only includes the current UTC month', () => {
+  it('fixed window (N2): summary tables and recent movements are scoped to the current civil month', () => {
     const thisMonth = movement({ type: 'income', amount: 1_000_000, categoryId: 'cat-income' });
     const lastMonth = movement({
       type: 'income',
@@ -207,14 +176,12 @@ describe('buildDashboardSnapshot', () => {
       categoryId: 'cat-income',
     });
 
-    const snapshot = buildDashboardSnapshot(
-      buildInput([thisMonth, lastMonth], {
-        ...allFilters,
-        period: 'current_month',
-      }),
-    );
+    const snapshot = buildDashboardSnapshot(buildInput([thisMonth, lastMonth]));
 
+    // The last-month movement must NOT leak into the current-month cards,
+    // even though it is inside the unfiltered set (it still feeds the charts).
     expect(snapshot.totalIncome).toBe(1_000_000);
+    expect(snapshot.monthlyIncome).toBe(1_000_000);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonth.id]);
   });
 
@@ -286,9 +253,8 @@ describe('buildDashboardSnapshot', () => {
 
   it('monthlyData: 6-month window padded, oldest first, current month last', () => {
     const july = movement({ type: 'income', amount: 100_000, date: inLastMonth(), categoryId: 'cat-income' });
-    const snapshot = buildDashboardSnapshot(
-      buildInput([july], { ...allFilters, period: 'this_year' }),
-    );
+
+    const snapshot = buildDashboardSnapshot(buildInput([july]));
 
     expect(snapshot.monthlyData.map((b) => b.month)).toEqual(lastSixMonths());
     // The last-month bucket sits at index 4 in a 6-month window ending at the current month.
@@ -297,9 +263,7 @@ describe('buildDashboardSnapshot', () => {
 
   it('yearlyData: 12-month window for the current year', () => {
     const jan = movement({ type: 'income', amount: 50_000, date: inYear(0), categoryId: 'cat-income' });
-    const snapshot = buildDashboardSnapshot(
-      buildInput([jan], { ...allFilters, period: 'this_year' }),
-    );
+    const snapshot = buildDashboardSnapshot(buildInput([jan]));
 
     expect(snapshot.yearlyData).toHaveLength(12);
     expect(snapshot.yearlyData[0]).toEqual({ month: utcMonthKey(inYear(0)), income: 50_000, expenses: 0 });
@@ -370,7 +334,7 @@ describe('buildDashboardSnapshot', () => {
   });
 });
 
-describe('buildDashboardSnapshot — A6 contextSummary', () => {
+describe('buildDashboardSnapshot — A6/N1 contextSummary', () => {
   it('scope all: splits the current-month result between Personal and Business', () => {
     const personal = movement({ type: 'income', amount: 1_000_000, context: 'Personal' });
     const businessIncome = movement({ type: 'income', amount: 500_000, context: 'Business' });
@@ -381,12 +345,35 @@ describe('buildDashboardSnapshot — A6 contextSummary', () => {
     );
 
     expect(snapshot.contextSummary).toEqual({
-      personal: { monthlyIncome: 1_000_000, monthlyExpenses: 0 },
-      business: { monthlyIncome: 500_000, monthlyExpenses: 200_000 },
+      personal: [{ currency: 'COP', monthlyIncome: 1_000_000, monthlyExpenses: 0 }],
+      business: [{ currency: 'COP', monthlyIncome: 500_000, monthlyExpenses: 200_000 }],
     });
     // Total cards unchanged
     expect(snapshot.monthlyIncome).toBe(1_500_000);
     expect(snapshot.monthlyExpenses).toBe(200_000);
+  });
+
+  it('scope all: splits by context AND currency (N1)', () => {
+    const personalCop = movement({ type: 'income', amount: 1_000_000, context: 'Personal' });
+    const personalUsd = movement({ type: 'income', amount: 200, currency: 'USD', context: 'Personal' });
+    const businessUsd = movement({ type: 'expense', amount: 80, currency: 'USD', context: 'Business' });
+
+    const snapshot = buildDashboardSnapshot(
+      buildInput([personalCop, personalUsd, businessUsd]),
+    );
+
+    // Each context carries one entry PER currency with economic data —
+    // the USD movements are no longer dropped by the COP scope.
+    expect(snapshot.contextSummary).toEqual({
+      personal: [
+        { currency: 'COP', monthlyIncome: 1_000_000, monthlyExpenses: 0 },
+        { currency: 'USD', monthlyIncome: 200, monthlyExpenses: 0 },
+      ],
+      business: [{ currency: 'USD', monthlyIncome: 0, monthlyExpenses: 80 }],
+    });
+    // Total cards keep their own aggregation currency (primary COP).
+    expect(snapshot.monthlyIncome).toBe(1_000_000);
+    expect(snapshot.monthlyExpenses).toBe(0);
   });
 
   it('scope Personal: contextSummary is not populated', () => {
@@ -400,17 +387,25 @@ describe('buildDashboardSnapshot — A6 contextSummary', () => {
     expect(snapshot.contextSummary).toBeUndefined();
   });
 
-  it('respects the period filter: only the current month counts, not the whole filtered set', () => {
-    const janBusiness = movement({ type: 'income', amount: 500_000, date: inYear(0), context: 'Business' });
-    const curBusiness = movement({ type: 'income', amount: 300_000, context: 'Business' });
+  it('fixed window (N2): contextSummary and card totals reflect only the current month, charts carry the full series', () => {
+    const other = otherMonthIndex();
+    const otherMonthBusiness = movement({ type: 'income', amount: 500_000, date: inYear(other), context: 'Business', categoryId: 'cat-income' });
+    const curBusiness = movement({ type: 'income', amount: 300_000, context: 'Business', categoryId: 'cat-income' });
 
     const snapshot = buildDashboardSnapshot(
-      buildInput([janBusiness, curBusiness], { ...allFilters, period: 'this_year' }),
+      buildInput([otherMonthBusiness, curBusiness]),
     );
 
-    // January is inside this_year's filtered set but outside the current month.
-    expect(snapshot.contextSummary?.business).toEqual({ monthlyIncome: 300_000, monthlyExpenses: 0 });
-    expect(snapshot.totalIncome).toBe(800_000);
+    // The other-month movement is inside the unfiltered set but outside the
+    // current month: excluded from the cards AND from contextSummary…
+    expect(snapshot.contextSummary?.business).toEqual([
+      { currency: 'COP', monthlyIncome: 300_000, monthlyExpenses: 0 },
+    ]);
+    expect(snapshot.totalIncome).toBe(300_000);
+    // …but still present with real data in the chart series (the old
+    // "11 empty buckets" asymmetry is gone).
+    const otherKey = utcMonthKey(inYear(other));
+    expect(snapshot.yearlyData[other]).toEqual({ month: otherKey, income: 500_000, expenses: 0 });
   });
 
   it('omits a context section whose movements carry no economic result', () => {
@@ -420,7 +415,9 @@ describe('buildDashboardSnapshot — A6 contextSummary', () => {
     const snapshot = buildDashboardSnapshot(buildInput([transfer, businessInc]));
 
     expect(snapshot.contextSummary?.personal).toBeUndefined();
-    expect(snapshot.contextSummary?.business).toEqual({ monthlyIncome: 100_000, monthlyExpenses: 0 });
+    expect(snapshot.contextSummary?.business).toEqual([
+      { currency: 'COP', monthlyIncome: 100_000, monthlyExpenses: 0 },
+    ]);
   });
 });
 
@@ -461,86 +458,82 @@ describe('buildDashboardSnapshot — A11 chartDataByCurrency', () => {
   });
 });
 
-describe('buildDashboardSnapshot — A3 previous_month and date range', () => {
-  const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
+describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
+  it('movements in the previous AND current month both appear with real data in the 6/12 series', () => {
+    const lastMonthIncome = movement({ type: 'income', amount: 700_000, date: inLastMonth(), categoryId: 'cat-income' });
+    const thisMonthExpense = movement({ type: 'expense', amount: 200_000, categoryId: 'cat-food' });
 
-  it('period previous_month includes only the preceding month', () => {
-    const prev = movement({ type: 'income', amount: 700_000, date: inLastMonth() });
-    const cur = movement({ type: 'income', amount: 300_000 });
+    const snapshot = buildDashboardSnapshot(buildInput([lastMonthIncome, thisMonthExpense]));
 
-    const snapshot = buildDashboardSnapshot(
-      buildInput([prev, cur], { ...allFilters, period: 'previous_month' }),
-    );
+    const lastKey = utcMonthKey(inLastMonth());
+    const curKey = utcMonthKey(inCurrentMonth());
 
-    expect(snapshot.totalIncome).toBe(700_000);
-    expect(snapshot.monthlyIncome).toBe(0); // not the current month
-    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([prev.id]);
-  });
+    // 6-month series: BOTH months carry their real values (previously the
+    // current_month period filter zeroed the past buckets).
+    const monthlyIdx = new Map(snapshot.monthlyData.map((b, i) => [b.month, i]));
+    expect(snapshot.monthlyData[monthlyIdx.get(lastKey)!]).toEqual({ month: lastKey, income: 700_000, expenses: 0 });
+    expect(snapshot.monthlyData[monthlyIdx.get(curKey)!]).toEqual({ month: curKey, income: 0, expenses: 200_000 });
 
-  it('date range from-only: the from date itself is included (midnight inclusive)', () => {
-    const day4 = movement({ type: 'income', amount: 400_000, date: inCurrentMonth(4) });
-    const day5 = movement({ type: 'income', amount: 600_000, date: inCurrentMonth(5) });
+    // 12-month series: same real data for the current civil year. When the
+    // current month is January the previous month belongs to the previous
+    // year, which the current-year series must NOT contain.
+    const yearlyIdx = new Map(snapshot.yearlyData.map((b, i) => [b.month, i]));
+    expect(snapshot.yearlyData[yearlyIdx.get(curKey)!]).toEqual({ month: curKey, income: 0, expenses: 200_000 });
+    if (nowMonth >= 1) {
+      expect(snapshot.yearlyData[yearlyIdx.get(lastKey)!]).toEqual({ month: lastKey, income: 700_000, expenses: 0 });
+    } else {
+      expect(yearlyIdx.has(lastKey)).toBe(false);
+    }
 
-    const snapshot = buildDashboardSnapshot(
-      buildInput([day4, day5], { ...allFilters, dateFrom: isoDate(inCurrentMonth(5)) }),
-    );
-
-    expect(snapshot.totalIncome).toBe(600_000);
-    expect(snapshot.monthlyIncome).toBe(600_000);
-    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([day5.id]);
-  });
-
-  it('date range to-only: the to date is included, later days are not', () => {
-    const day10 = movement({ type: 'income', amount: 100_000, date: inCurrentMonth(10) });
-    const day11 = movement({ type: 'income', amount: 200_000, date: inCurrentMonth(11) });
-
-    const snapshot = buildDashboardSnapshot(
-      buildInput([day10, day11], { ...allFilters, dateTo: isoDate(inCurrentMonth(10)) }),
-    );
-
-    expect(snapshot.totalIncome).toBe(100_000);
-  });
-
-  it('date range end-of-day inclusive: a midnight-UTC movement on the to date is kept', () => {
-    const midnight10 = movement({
-      type: 'income',
-      amount: 150_000,
-      date: new Date(Date.UTC(nowYear, nowMonth, 10)),
-    });
-    const midnight11 = movement({
-      type: 'income',
-      amount: 250_000,
-      date: new Date(Date.UTC(nowYear, nowMonth, 11)),
-    });
-
-    const snapshot = buildDashboardSnapshot(
-      buildInput([midnight10, midnight11], {
-        ...allFilters,
-        dateFrom: isoDate(new Date(Date.UTC(nowYear, nowMonth, 10))),
-        dateTo: isoDate(new Date(Date.UTC(nowYear, nowMonth, 10))),
-      }),
-    );
-
-    expect(snapshot.totalIncome).toBe(150_000);
-  });
-
-  it('date range REPLACES the period filter: a previous-month range wins over period current_month', () => {
-    const prev = movement({ type: 'income', amount: 700_000, date: inLastMonth(15) });
-    const cur = movement({ type: 'income', amount: 300_000, date: inCurrentMonth(10) });
-
-    const snapshot = buildDashboardSnapshot(
-      buildInput([prev, cur], {
-        ...allFilters,
-        period: 'current_month',
-        dateFrom: isoDate(inLastMonth(1)),
-        dateTo: isoDate(inLastMonth(28)),
-      }),
-    );
-
-    // If the period branch had run, `prev` would be dropped (700_000 → 0).
-    // The range only is applied, so the previous-month movement survives and
-    // the current-month one (outside the range) is dropped.
-    expect(snapshot.totalIncome).toBe(700_000);
+    // Cards + recent movements: current civil month ONLY.
     expect(snapshot.monthlyIncome).toBe(0);
+    expect(snapshot.monthlyExpenses).toBe(200_000);
+    expect(snapshot.totalIncome).toBe(0);
+    expect(snapshot.totalExpenses).toBe(200_000);
+    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonthExpense.id]);
+  });
+
+  it('every month of the 6-month window keeps its real data — no zeroed buckets', () => {
+    const movements = lastSixMonths().map((key, i) => {
+      const [y, m] = key.split('-').map(Number);
+      return movement({
+        type: i % 2 === 0 ? 'income' : 'expense',
+        amount: (i + 1) * 100_000,
+        date: new Date(Date.UTC(y, m - 1, 15, 12)),
+        categoryId: i % 2 === 0 ? 'cat-income' : 'cat-food',
+      });
+    });
+
+    const snapshot = buildDashboardSnapshot(buildInput(movements));
+
+    expect(snapshot.monthlyData).toEqual(
+      lastSixMonths().map((key, i) => ({
+        month: key,
+        income: i % 2 === 0 ? (i + 1) * 100_000 : 0,
+        expenses: i % 2 === 0 ? 0 : (i + 1) * 100_000,
+      })),
+    );
+    // Cards still aggregate only the current month's slice (the last bucket,
+    // i=5 → an expense of 600_000).
+    expect(snapshot.monthlyIncome).toBe(0);
+    expect(snapshot.monthlyExpenses).toBe(600_000);
+  });
+
+  it('yearly series: non-current months of the current year carry real data (11 months no longer empty)', () => {
+    const other = otherMonthIndex();
+    const otherMonth = movement({ type: 'income', amount: 250_000, date: inYear(other), categoryId: 'cat-income' });
+    const curMonth = movement({ type: 'expense', amount: 80_000, categoryId: 'cat-food' });
+
+    const snapshot = buildDashboardSnapshot(buildInput([otherMonth, curMonth]));
+
+    expect(snapshot.yearlyData).toHaveLength(12);
+    const otherKey = utcMonthKey(inYear(other));
+    expect(snapshot.yearlyData[other]).toEqual({ month: otherKey, income: 250_000, expenses: 0 });
+    expect(snapshot.yearlyData[nowMonth]).toEqual({ month: utcMonthKey(inCurrentMonth()), income: 0, expenses: 80_000 });
+
+    // The non-current month feeds the chart only — never the cards.
+    expect(snapshot.totalIncome).toBe(0);
+    expect(snapshot.totalExpenses).toBe(80_000);
+    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([curMonth.id]);
   });
 });

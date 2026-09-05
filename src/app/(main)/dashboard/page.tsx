@@ -26,7 +26,6 @@ const DEFAULT_FILTERS: DashboardFilters = {
   scope: 'all',
   accountId: 'all',
   categoryId: 'all',
-  period: 'current_month',
 };
 
 export default async function DashboardPage() {

@@ -8,7 +8,11 @@ import { computeCategorySummary } from '../compute-category-summary';
 import { computeYearlyEvolution } from '../compute-yearly-evolution';
 import { computeContextSummary } from '../compute-context-summary';
 import { countsTowardEconomicResult } from '../economic-result';
-import { filterMovementsByPeriod, filterMovementsByDateRange } from '../../../lib/movement-period-filter';
+
+/** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
+function utcMonthKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
 
 /**
  * Inputs for building the aggregate dashboard snapshot.
@@ -70,8 +74,15 @@ export function buildDashboardSnapshot(
     Date.now() - (input.tzOffsetMinutes ?? 0) * 60_000,
   );
 
-  // Filtered movements — scope / accountId / categoryId + period
-  // (mirrors dashboard-content.tsx :105-125).
+  // Filtered movements — scope / accountId / categoryId only. There is NO
+  // period/date-range filter anymore (N2, Fase 5 pre-beta audit): every
+  // dashboard component uses a FIXED window over this set —
+  //   • cards / category rows / financing / recentMovements / contextSummary
+  //     → the current CIVIL month only (`monthlyMovements` below);
+  //   • the 6-month chart (`monthlyData`) → the full real series ending in
+  //     the current civil month;
+  //   • the 12-month chart (`yearlyData`) → the full real series of the
+  //     current civil year.
   let filteredMovements = movements;
 
   if (filters.scope !== 'all') {
@@ -92,31 +103,15 @@ export function buildDashboardSnapshot(
     );
   }
 
-  // A3: an explicit date range REPLACES the period filter — the range is the
-  // more specific statement of "which dates" and the period Select is disabled
-  // in the UI while a bound is set. Scope/account/category still apply.
-  const hasDateRange = Boolean(filters.dateFrom || filters.dateTo);
-
-  if (
-    !hasDateRange &&
-    (filters.period === 'current_month' ||
-      filters.period === 'previous_month' ||
-      filters.period === 'this_year')
-  ) {
-    filteredMovements = filterMovementsByPeriod(
-      filteredMovements,
-      filters.period,
-      civilNow,
-    );
-  }
-
-  if (hasDateRange) {
-    filteredMovements = filterMovementsByDateRange(
-      filteredMovements,
-      filters.dateFrom,
-      filters.dateTo,
-    );
-  }
+  // N2: clip the scope/account/category-filtered set to the current civil
+  // month for every current-month component. Same civil-date semantics as
+  // `filterMovementsByPeriod('current_month', civilNow)` in
+  // movement-period-filter.ts (Date.UTC keys + tzOffsetMinutes shift) — the
+  // movements page keeps its own period/range filters untouched.
+  const currentMonthKey = utcMonthKey(civilNow);
+  const monthlyMovements = filteredMovements.filter(
+    (m) => utcMonthKey(m.date) === currentMonthKey,
+  );
 
   // Account balances — narrowed to the selected account when applicable.
   const accountBalances =
@@ -124,7 +119,9 @@ export function buildDashboardSnapshot(
       ? accounts.filter((a) => a.id === filters.accountId)
       : accounts;
 
-  // Multi-currency breakdown for SummaryCards (mirrors :135-156).
+  // Multi-currency breakdown for SummaryCards. Balances come from every
+  // account; income/expenses are the CURRENT-MONTH economic flows
+  // (mirrors the cards: "Ingresos este mes" / "Gastos este mes").
   const byCurrency = new Map<
     string,
     { balance: number; income: number; expenses: number }
@@ -140,7 +137,7 @@ export function buildDashboardSnapshot(
     byCurrency.set(a.currency, entry);
   }
 
-  for (const m of filteredMovements) {
+  for (const m of monthlyMovements) {
     if (!countsTowardEconomicResult(m)) continue;
     const cur = m.amount.currency;
     const entry = byCurrency.get(cur) ?? {
@@ -159,23 +156,29 @@ export function buildDashboardSnapshot(
       a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
     );
 
-  // Aggregation currency scope (mirrors :158-164).
+  // Aggregation currency scope: the selected account's currency when one is
+  // active, else the primary (first) account's currency.
   const currency =
     filters.accountId !== 'all'
       ? accounts.find((a) => a.id === filters.accountId)?.currency ?? primaryCurrency
       : primaryCurrency;
 
-  // A6: Personal/Business split — only when no context filter is active, over
-  // the SAME filtered set, civil clock and currency scope as the total cards.
+  // N1: Personal/Business split — only when no context filter is active, over
+  // the CURRENT-MONTH set and the same civil clock as the total cards. The
+  // split is now multi-currency: computeContextSummary aggregates by
+  // context × currency (no single-currency scope).
   const contextSummary =
     filters.scope === 'all'
       ? computeContextSummary({
-          movements: filteredMovements,
-          currency,
+          movements: monthlyMovements,
           now: civilNow,
         })
       : undefined;
 
+  // N2: the aggregators run over the FULL filtered set (charts carry the real
+  // multi-month series); `monthlyIncome`/`monthlyExpenses`/`financing*` only
+  // count the current-civil-month key, so the cards stay current-month even
+  // though the 6-month buckets hold real data for every window month.
   const {
     monthlyIncome,
     monthlyExpenses,
@@ -188,8 +191,9 @@ export function buildDashboardSnapshot(
     now: civilNow,
   });
 
+  // Category rows are current-month fixtures (render alongside the cards).
   const { incomeCategories, expenseCategories, totalIncome, totalExpenses } =
-    computeCategorySummary({ movements: filteredMovements, currency });
+    computeCategorySummary({ movements: monthlyMovements, currency });
 
   const incomeRows = incomeCategories.map((c) => ({
     label: resolveCategoryLabel(c.categoryId),
@@ -241,7 +245,9 @@ export function buildDashboardSnapshot(
     }
   }
 
-  const recentMovements = filteredMovements.slice(0, 5).map((m) => ({
+  // N2: recent movements stay scoped to the current civil month (consistent
+  // with the cards above), NOT the unfiltered set.
+  const recentMovements = monthlyMovements.slice(0, 5).map((m) => ({
     id: m.id,
     type: m.type as 'income' | 'expense',
     amount: m.amount.amount,

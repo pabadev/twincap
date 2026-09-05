@@ -38,9 +38,11 @@ export interface DashboardSnapshot {
   yearlyData: YearMonthBucket[];
   recentMovements: SerializedMovement[];
   /**
-   * Personal/Business split of the current-month economic result (A6).
-   * Only present when `filters.scope === 'all'`; sections with no economic
-   * data are omitted. Never rendered by the total cards.
+   * Personal/Business split of the current-month economic result, per
+   * currency (N1, Fase 5 pre-beta audit): each context carries one entry
+   * per currency with data, sorted COP-first. Only present when
+   * `filters.scope === 'all'`; sections with no economic data are omitted.
+   * Never rendered by the total cards.
    */
   contextSummary?: ContextSummary;
   /**
