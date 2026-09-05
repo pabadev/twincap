@@ -8,7 +8,7 @@ import { MonthlyChart } from './monthly-chart';
 import { RecentMovements } from './recent-movements';
 import { PositionCards } from './position-cards';
 import { DashboardReportsGrid } from './dashboard-reports-grid';
-import { SummaryTable } from './summary-table';
+import { SummaryTable, type SummaryTableRow } from './summary-table';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -17,6 +17,7 @@ import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
 import type { SerializedCategory } from '../../core/domain/category';
+import type { CurrencyTotal } from '../../core/application/compute-category-summary';
 import type { DashboardSnapshot } from './dashboard-snapshot';
 import { getDashboardSnapshotAction } from '../../app/(main)/dashboard/actions';
 import { FeedbackDialog } from '../feedback/feedback-widget';
@@ -46,6 +47,23 @@ interface DashboardContentProps {
   }>;
   /** Aggregate server-side snapshot (initial render); never the raw movements. */
   initialSnapshot: DashboardSnapshot;
+}
+
+/**
+ * Per-currency totals of a row subset (e.g. the Top-3 tables), sorted
+ * COP-first. Never sums across currencies — each currency keeps its own line.
+ */
+function toTotals(rows: SummaryTableRow[]): CurrencyTotal[] {
+  const byCurrency = new Map<string, number>();
+  for (const r of rows) {
+    byCurrency.set(r.currency, (byCurrency.get(r.currency) ?? 0) + r.value);
+  }
+  return Array.from(byCurrency.entries())
+    .map(([currency, value]) => ({ currency, value }))
+    .filter((t) => t.value !== 0)
+    .sort((a, b) =>
+      a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
+    );
 }
 
 export function DashboardContent({
@@ -141,8 +159,8 @@ export function DashboardContent({
     financingOutflow,
     incomeRows,
     expenseRows,
-    totalIncome,
-    totalExpenses,
+    incomeTotals,
+    expenseTotals,
     monthlyData,
     yearlyData,
     recentMovements,
@@ -289,16 +307,14 @@ export function DashboardContent({
           <SummaryTable
             title={t('incomeSummary')}
             rows={incomeRows}
-            total={totalIncome}
-            currency={currency}
+            totals={incomeTotals}
             locale={locale}
             emptyMessage={t('noIncomeData')}
           />
           <SummaryTable
             title={t('expenseSummary')}
             rows={expenseRows}
-            total={totalExpenses}
-            currency={currency}
+            totals={expenseTotals}
             locale={locale}
             emptyMessage={t('noExpenseData')}
           />
@@ -315,8 +331,7 @@ export function DashboardContent({
               <SummaryTable
                 title={t('topIncome')}
                 rows={topIncomeRows}
-                total={topIncomeRows.reduce((s, r) => s + r.value, 0)}
-                currency={currency}
+                totals={toTotals(topIncomeRows)}
                 locale={locale}
                 emptyMessage={t('noIncomeData')}
               />
@@ -325,8 +340,7 @@ export function DashboardContent({
               <SummaryTable
                 title={t('topExpense')}
                 rows={topExpenseRows}
-                total={topExpenseRows.reduce((s, r) => s + r.value, 0)}
-                currency={currency}
+                totals={toTotals(topExpenseRows)}
                 locale={locale}
                 emptyMessage={t('noExpenseData')}
               />

@@ -192,17 +192,20 @@ export function buildDashboardSnapshot(
   });
 
   // Category rows are current-month fixtures (render alongside the cards).
-  const { incomeCategories, expenseCategories, totalIncome, totalExpenses } =
-    computeCategorySummary({ movements: monthlyMovements, currency });
+  // Multi-currency (R4-A2): aggregated per currency, no single-currency scope.
+  const { incomeCategories, expenseCategories, incomeTotals, expenseTotals } =
+    computeCategorySummary({ movements: monthlyMovements });
 
   const incomeRows = incomeCategories.map((c) => ({
     label: resolveCategoryLabel(c.categoryId),
     value: c.amount,
+    currency: c.currency,
   }));
 
   const expenseRows = expenseCategories.map((c) => ({
     label: resolveCategoryLabel(c.categoryId),
     value: c.amount,
+    currency: c.currency,
   }));
 
   const yearly = computeYearlyEvolution({
@@ -270,8 +273,8 @@ export function buildDashboardSnapshot(
     financingOutflow,
     incomeRows,
     expenseRows,
-    totalIncome,
-    totalExpenses,
+    incomeTotals,
+    expenseTotals,
     monthlyData,
     yearlyData: yearly.months,
     recentMovements,

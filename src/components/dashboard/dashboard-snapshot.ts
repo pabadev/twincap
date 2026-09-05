@@ -3,6 +3,7 @@ import type { CurrencyBreakdown } from './summary-cards';
 import type { MonthBucket } from '../../core/application/compute-dashboard-summary';
 import type { YearMonthBucket } from '../../core/application/compute-yearly-evolution';
 import type { ContextSummary } from '../../core/application/compute-context-summary';
+import type { CurrencyTotal } from '../../core/application/compute-category-summary';
 import type { SummaryTableRow } from './summary-table';
 import type { SerializedMovement } from './recent-movements';
 
@@ -32,8 +33,9 @@ export interface DashboardSnapshot {
   financingOutflow: number;
   incomeRows: SummaryTableRow[];
   expenseRows: SummaryTableRow[];
-  totalIncome: number;
-  totalExpenses: number;
+  /** Per-currency totals of the category summary tables, sorted COP-first. */
+  incomeTotals: CurrencyTotal[];
+  expenseTotals: CurrencyTotal[];
   monthlyData: MonthBucket[];
   yearlyData: YearMonthBucket[];
   recentMovements: SerializedMovement[];

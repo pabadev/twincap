@@ -138,8 +138,8 @@ describe('buildDashboardSnapshot', () => {
     expect(snapshot.monthlyExpenses).toBe(0);
     expect(snapshot.financingInflow).toBe(0);
     expect(snapshot.financingOutflow).toBe(0);
-    expect(snapshot.totalIncome).toBe(0);
-    expect(snapshot.totalExpenses).toBe(0);
+    expect(snapshot.incomeTotals).toEqual([]);
+    expect(snapshot.expenseTotals).toEqual([]);
     expect(snapshot.incomeRows).toEqual([]);
     expect(snapshot.expenseRows).toEqual([]);
     expect(snapshot.recentMovements).toEqual([]);
@@ -156,15 +156,17 @@ describe('buildDashboardSnapshot', () => {
 
     expect(snapshot.monthlyIncome).toBe(2_500_000);
     expect(snapshot.monthlyExpenses).toBe(300_000);
-    expect(snapshot.totalIncome).toBe(2_500_000);
-    expect(snapshot.totalExpenses).toBe(300_000);
+    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 2_500_000 }]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 300_000 }]);
 
     // income rows sorted by amount desc, labels resolved to real category names
     expect(snapshot.incomeRows).toEqual([
-      { label: 'Salario in', value: 2_000_000 },
-      { label: 'Freelance', value: 500_000 },
+      { label: 'Salario in', value: 2_000_000, currency: 'COP' },
+      { label: 'Freelance', value: 500_000, currency: 'COP' },
     ]);
-    expect(snapshot.expenseRows).toEqual([{ label: 'Comida', value: 300_000 }]);
+    expect(snapshot.expenseRows).toEqual([
+      { label: 'Comida', value: 300_000, currency: 'COP' },
+    ]);
   });
 
   it('fixed window (N2): summary tables and recent movements are scoped to the current civil month', () => {
@@ -180,7 +182,7 @@ describe('buildDashboardSnapshot', () => {
 
     // The last-month movement must NOT leak into the current-month cards,
     // even though it is inside the unfiltered set (it still feeds the charts).
-    expect(snapshot.totalIncome).toBe(1_000_000);
+    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 1_000_000 }]);
     expect(snapshot.monthlyIncome).toBe(1_000_000);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonth.id]);
   });
@@ -193,7 +195,7 @@ describe('buildDashboardSnapshot', () => {
       buildInput([personal, business], { ...allFilters, scope: 'Personal' }),
     );
 
-    expect(snapshot.totalIncome).toBe(1_000_000);
+    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 1_000_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([personal.id]);
   });
 
@@ -228,8 +230,10 @@ describe('buildDashboardSnapshot', () => {
       buildInput([salary, freelance], { ...allFilters, categoryId: 'cat-freelance' }),
     );
 
-    expect(snapshot.totalIncome).toBe(500_000);
-    expect(snapshot.incomeRows).toEqual([{ label: 'Freelance', value: 500_000 }]);
+    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 500_000 }]);
+    expect(snapshot.incomeRows).toEqual([
+      { label: 'Freelance', value: 500_000, currency: 'COP' },
+    ]);
   });
 
   it('multi-currency: currencyBreakdown aggregates per currency with economic filtering', () => {
@@ -313,7 +317,9 @@ describe('buildDashboardSnapshot', () => {
       resolveCategoryLabel: syntheticResolver,
     });
 
-    expect(snapshot.incomeRows).toEqual([{ label: 'Venta', value: 300_000 }]);
+    expect(snapshot.incomeRows).toEqual([
+      { label: 'Venta', value: 300_000, currency: 'COP' },
+    ]);
     expect(snapshot.recentMovements[0].categoryName).toBe('Venta');
   });
 
@@ -330,7 +336,9 @@ describe('buildDashboardSnapshot', () => {
     const snapshot = buildDashboardSnapshot(
       buildInput([sale], { ...allFilters, categoryId: 'all' }),
     );
-    expect(snapshot.incomeRows).toEqual([{ label: 'Uncategorized', value: 300_000 }]);
+    expect(snapshot.incomeRows).toEqual([
+      { label: 'Uncategorized', value: 300_000, currency: 'COP' },
+    ]);
   });
 });
 
@@ -401,7 +409,7 @@ describe('buildDashboardSnapshot — A6/N1 contextSummary', () => {
     expect(snapshot.contextSummary?.business).toEqual([
       { currency: 'COP', monthlyIncome: 300_000, monthlyExpenses: 0 },
     ]);
-    expect(snapshot.totalIncome).toBe(300_000);
+    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 300_000 }]);
     // …but still present with real data in the chart series (the old
     // "11 empty buckets" asymmetry is gone).
     const otherKey = utcMonthKey(inYear(other));
@@ -488,8 +496,8 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     // Cards + recent movements: current civil month ONLY.
     expect(snapshot.monthlyIncome).toBe(0);
     expect(snapshot.monthlyExpenses).toBe(200_000);
-    expect(snapshot.totalIncome).toBe(0);
-    expect(snapshot.totalExpenses).toBe(200_000);
+    expect(snapshot.incomeTotals).toEqual([]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 200_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonthExpense.id]);
   });
 
@@ -532,8 +540,8 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     expect(snapshot.yearlyData[nowMonth]).toEqual({ month: utcMonthKey(inCurrentMonth()), income: 0, expenses: 80_000 });
 
     // The non-current month feeds the chart only — never the cards.
-    expect(snapshot.totalIncome).toBe(0);
-    expect(snapshot.totalExpenses).toBe(80_000);
+    expect(snapshot.incomeTotals).toEqual([]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 80_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([curMonth.id]);
   });
 });
