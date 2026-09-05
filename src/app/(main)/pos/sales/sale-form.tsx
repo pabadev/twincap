@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../../i18n/client';
+import { useActionError } from '../../../../lib/use-action-error';
 import { createSaleAction } from './actions';
 import { IdempotencyField } from '../../../../components/ui/idempotency-field';
 import { ClientForm } from '../../clients/client-form';
@@ -42,6 +43,8 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const tCatalog = useT('Catalog');
   const tToast = useT('Toast');
   const tError = useT('error');
+  // I8: createSaleAction returns error.* i18n keys — resolve them here.
+  const translateError = useActionError();
   const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
@@ -58,9 +61,9 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('paid-in-full');
@@ -150,7 +153,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-          {tToast(state.error)}
+          {translateError(state.error)}
         </div>
       )}
 

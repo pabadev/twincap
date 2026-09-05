@@ -4,6 +4,11 @@ import mongoose, { Schema, type HydratedDocument } from "mongoose";
 export interface MovementLinkDoc {
   kind: string;
   refId: string;
+  /**
+   * For credit abonos born from a sale (kind creditGrantedAbono with Business
+   * context), the id of the originating sale (I12). Optional by design.
+   */
+  saleId?: string;
   /** Deterministic operation id — idempotent replay marker (design rev.2 §5). */
   opId: string;
 }
@@ -32,6 +37,7 @@ const MovementLinkSchema = new Schema<MovementLinkDoc>(
   {
     kind: { type: String, required: true },
     refId: { type: String, required: true },
+    saleId: { type: String },
     opId: { type: String, required: true },
   },
   { _id: false },

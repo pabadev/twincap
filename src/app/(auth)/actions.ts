@@ -27,7 +27,8 @@ import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
 import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
 import { reportUnexpectedErrorAndWait } from '../../lib/report-unexpected-error';
 import { trackAnalytics } from '../../lib/track-analytics';
-import { ValidationError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
+import { ValidationError, ConflictError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
+import { handleActionError } from '../../lib/handle-action-error';
 
 const ids = objectIdGenerator;
 
@@ -50,7 +51,10 @@ function getRepos() {
 function reportAuthError(error: unknown): void {
   const expected = error instanceof ValidationError
     || error instanceof ForbiddenError
-    || error instanceof NotFoundError;
+    || error instanceof NotFoundError
+    // I8: duplicate-email registration is a normal user outcome (ConflictError),
+    // never an unexpected crash — the same class as the other expected domain errors.
+    || error instanceof ConflictError;
   void reportUnexpectedErrorAndWait(error, { expected });
 }
 
@@ -63,7 +67,7 @@ export async function registerAction(
   const confirmPassword = formData.get('confirmPassword') as string;
 
   if (password !== confirmPassword) {
-    return { error: 'Passwords do not match' };
+    return { error: 'error.passwordMismatch' };
   }
 
   // Connect BEFORE the rate limiter (DB-backed) to avoid Mongoose buffering
@@ -75,7 +79,7 @@ export async function registerAction(
   const rateLimitKey = `register:${ip}`;
   const rateLimit = await registerRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'Too many registration attempts. Please try again later.' };
+    return { error: 'error.tooManyAttempts' };
   }
 
   try {
@@ -111,7 +115,7 @@ export async function registerAction(
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
-    return { error: error instanceof Error ? error.message : 'Registration failed' };
+    return handleActionError(error);
   }
 
   redirect('/');
@@ -136,7 +140,7 @@ export async function loginAction(
   const rateLimitKey = `login:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await loginRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'Too many login attempts. Please try again later.' };
+    return { error: 'error.tooManyAttempts' };
   }
 
   try {
@@ -168,7 +172,7 @@ export async function loginAction(
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
-    return { error: error instanceof Error ? error.message : 'Login failed' };
+    return handleActionError(error);
   }
 
   redirect('/');
@@ -195,7 +199,7 @@ export async function forgotPasswordAction(
   const rateLimitKey = `forgot:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await forgotPasswordRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'Auth.tooManyAttempts' };
+    return { error: 'error.tooManyAttempts' };
   }
 
   try {
@@ -206,7 +210,7 @@ export async function forgotPasswordAction(
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
-    return { error: 'error.operationFailed' };
+    return handleActionError(error);
   }
 
   // Always show success (no account/email enumeration).
@@ -231,7 +235,7 @@ export async function resetPasswordAction(
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
-    return { error: 'Auth.invalidResetToken' };
+    return handleActionError(error);
   }
 
   return { success: true };
@@ -251,7 +255,7 @@ export async function verifyEmailAction(
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);
-    return { error: 'Auth.invalidResetToken' };
+    return handleActionError(error);
   }
 
   return { success: true };

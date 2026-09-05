@@ -29,6 +29,7 @@ function movement(partial: {
   note?: string;
   kind?: string;
   refId?: string;
+  saleId?: string;
   accountId?: string;
 }) {
   return {
@@ -37,7 +38,12 @@ function movement(partial: {
     link:
       partial.kind === undefined
         ? undefined
-        : { kind: partial.kind, refId: partial.refId ?? 'ref-1', opId: 'op-1' },
+        : {
+            kind: partial.kind,
+            refId: partial.refId ?? 'ref-1',
+            saleId: partial.saleId,
+            opId: 'op-1',
+          },
   };
 }
 
@@ -62,6 +68,28 @@ describe('systemNoteTemplateKey', () => {
   it('returns null for unknown kinds', () => {
     expect(systemNoteTemplateKey('futureKind')).toBeNull();
     expect(systemNoteTemplateKey('')).toBeNull();
+  });
+
+  // I12: a creditGrantedAbono with saleId was born from an on-credit sale and
+  // resolves to the sale variant; without saleId it stays the credit variant.
+  it('maps creditGrantedAbono with saleId to the sale variant key', () => {
+    expect(systemNoteTemplateKey('creditGrantedAbono', 'sale-1')).toBe(
+      'creditGrantedAbonoSale',
+    );
+  });
+
+  it('keeps the credit variant key when creditGrantedAbono has no saleId', () => {
+    expect(systemNoteTemplateKey('creditGrantedAbono')).toBe('creditGrantedAbono');
+    expect(systemNoteTemplateKey('creditGrantedAbono', undefined)).toBe(
+      'creditGrantedAbono',
+    );
+  });
+
+  it('only applies the sale variant to creditGrantedAbono', () => {
+    expect(systemNoteTemplateKey('salePayment', 'sale-1')).toBe('salePayment');
+    expect(systemNoteTemplateKey('creditReceivedAbono', 'sale-1')).toBe(
+      'creditReceivedAbono',
+    );
   });
 });
 
@@ -121,6 +149,41 @@ describe('deriveSystemNote', () => {
       expect(deriveSystemNote(m, tEs, { 'ref-1': c.label })).toBe(c.es);
       expect(deriveSystemNote(m, tEn, { 'ref-1': c.label })).toBe(c.en);
     }
+  });
+
+  // I12: sale-born abonos label from the SALES map (link.saleId), not the
+  // credit map (link.refId).
+  it('labels sale-born abonos from the sales map via saleId', () => {
+    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
+    expect(deriveSystemNote(m, tEs, { 'sale-1': 'María' })).toBe(
+      'Abono del crédito otorgado a María (venta)',
+    );
+    expect(deriveSystemNote(m, tEn, { 'sale-1': 'María' })).toBe(
+      'Abono for granted credit of María (sale)',
+    );
+  });
+
+  it('ignores the credit label for sale-born abonos (saleId wins)', () => {
+    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
+    // 'credit-1' is present in refLabels but the sale took place without a
+    // named client — the label must come from sale-1 only.
+    expect(deriveSystemNote(m, tEs, { 'credit-1': 'Juan Pérez' })).toBe(
+      'Abono de crédito otorgado (venta)',
+    );
+  });
+
+  it('falls back to the sale Plain variant for orphan sale-born abonos', () => {
+    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
+    expect(deriveSystemNote(m, tEs)).toBe('Abono de crédito otorgado (venta)');
+    expect(deriveSystemNote(m, tEn)).toBe('Granted credit abono (sale)');
+  });
+
+  it('keeps the credit variant for abonos without saleId (standalone credits)', () => {
+    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1' });
+    expect(deriveSystemNote(m, tEs, { 'credit-1': 'Juan Pérez' })).toBe(
+      'Abono del crédito otorgado a Juan Pérez',
+    );
+    expect(deriveSystemNote(m, tEs)).toBe('Abono de crédito otorgado');
   });
 
   it('falls back to the Plain template when the parent label is missing (orphan)', () => {

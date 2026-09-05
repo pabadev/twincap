@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useT } from '../../../i18n/client';
+import { useActionError } from '../../../lib/use-action-error';
 import { verifyEmailAction } from '../actions';
 
 /**
@@ -11,13 +12,20 @@ import { verifyEmailAction } from '../actions';
  */
 export function VerifyEmailForm({ email, token }: { email: string; token: string }) {
   const t = useT('Auth');
+  const translateError = useActionError();
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  // I8: capture the action's error i18n key (error.invalidToken | error.operationFailed)
+  // and resolve it at render so the failure reason is shown, not a generic message.
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!token || !email) {
-        if (!cancelled) setStatus('error');
+        if (!cancelled) {
+          setStatus('error');
+          setErrorKey(null);
+        }
         return;
       }
       const fd = new FormData();
@@ -26,6 +34,7 @@ export function VerifyEmailForm({ email, token }: { email: string; token: string
       const result = await verifyEmailAction(null, fd);
       if (!cancelled) {
         setStatus(result?.success ? 'success' : 'error');
+        setErrorKey(result?.error ?? null);
       }
     })();
     return () => {
@@ -42,7 +51,11 @@ export function VerifyEmailForm({ email, token }: { email: string; token: string
       {status === 'success' && (
         <p className="text-sm text-success">{t('emailVerifiedSuccess')}</p>
       )}
-      {status === 'error' && <p className="text-sm text-danger">{t('invalidResetToken')}</p>}
+      {status === 'error' && (
+        <p className="text-sm text-danger">
+          {errorKey ? translateError(errorKey, t('invalidResetToken')) : t('invalidResetToken')}
+        </p>
+      )}
       <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
         {t('hasAccount')}{' '}
         <a href="/login" className="font-medium text-primary hover:text-primary-hover dark:text-primary">

@@ -2,12 +2,14 @@
 
 import { useActionState } from 'react';
 import { useT } from '../../../i18n/client';
+import { useActionError } from '../../../lib/use-action-error';
 import { PasswordInput } from '../../../components/ui/password-input';
 import { Button } from '../../../components/ui/button';
 import { resetPasswordAction } from '../actions';
 
 export function ResetPasswordForm({ email, token }: { email: string; token: string }) {
   const t = useT('Auth');
+  const translateError = useActionError();
   const [state, formAction, isPending] = useActionState(resetPasswordAction, null);
 
   return (
@@ -23,7 +25,7 @@ export function ResetPasswordForm({ email, token }: { email: string; token: stri
         )}
         {state?.error && (
           <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-            {t('invalidResetToken')}
+            {translateError(state.error, t('invalidResetToken'))}
           </div>
         )}
         {!state?.success && (

@@ -34,6 +34,9 @@ export function AuthForm({
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
   const t = useT('Auth');
+  // I8: server actions return i18n keys under "error.*"; strip the prefix so
+  // the "error" namespace resolves (same pattern as entity-delete-button).
+  const tError = useT('error');
 
   return (
     <>
@@ -43,7 +46,7 @@ export function AuthForm({
       <form action={formAction} className="mt-8 space-y-5">
         {state?.error && (
           <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-            {state.error}
+            {tError(state.error.replace(/^error\./, ''))}
           </div>
         )}
         <Input

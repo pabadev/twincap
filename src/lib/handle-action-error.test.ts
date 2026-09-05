@@ -56,6 +56,62 @@ describe('handleActionError', () => {
     expect(result).toEqual({ error: 'error.futureDate' });
   });
 
+  // I8: auth-domain messages are mapped to stable i18n keys under "error". The
+  // domain keeps throwing English identifiers (never translated at the domain);
+  // the mapping to localized keys happens exclusively here.
+  it('maps duplicate-email registration to error.emailTaken', () => {
+    const result = handleActionError(new ConflictError('Email already registered'));
+    expect(result).toEqual({ error: 'error.emailTaken' });
+  });
+
+  it('maps bad credentials to error.invalidCredentials', () => {
+    const result = handleActionError(new ValidationError('Invalid email or password'));
+    expect(result).toEqual({ error: 'error.invalidCredentials' });
+  });
+
+  it('maps short passwords to error.passwordTooShort', () => {
+    const result = handleActionError(
+      new ValidationError('Password must be at least 8 characters'),
+    );
+    expect(result).toEqual({ error: 'error.passwordTooShort' });
+  });
+
+  it('maps invalid/expired verification and reset tokens to error.invalidToken', () => {
+    const result = handleActionError(new ValidationError('Invalid or expired token'));
+    expect(result).toEqual({ error: 'error.invalidToken' });
+  });
+
+  it('maps the user-not-found message to error.userNotFound (defensive)', () => {
+    // Live code throws NotFoundError for unknown users → error.notFound. This
+    // case covers ValidationError-throwing variants of the same message.
+    const result = handleActionError(new ValidationError('User not found'));
+    expect(result).toEqual({ error: 'error.userNotFound' });
+  });
+
+  it('maps mismatched passwords to error.passwordMismatch', () => {
+    const result = handleActionError(new ValidationError('Passwords do not match'));
+    expect(result).toEqual({ error: 'error.passwordMismatch' });
+  });
+
+  it.each([
+    'Too many registration attempts. Please try again later.',
+    'Too many login attempts. Please try again later.',
+    'Too many password change attempts. Please try again later.',
+  ])('maps "Too many attempts" variants (rate limit) — "%s"', (message) => {
+    const result = handleActionError(new ValidationError(message));
+    expect(result).toEqual({ error: 'error.tooManyAttempts' });
+  });
+
+  it('maps the Unauthorized marker to error.unauthorized', () => {
+    const result = handleActionError(new Error('Unauthorized'));
+    expect(result).toEqual({ error: 'error.unauthorized' });
+  });
+
+  it('maps ValidationError("Unauthorized") to error.unauthorized too', () => {
+    const result = handleActionError(new ValidationError('Unauthorized'));
+    expect(result).toEqual({ error: 'error.unauthorized' });
+  });
+
   it('falls back to error.conflict for other conflict errors', () => {
     const result = handleActionError(new ConflictError('A resource with that data already exists'));
     expect(result).toEqual({ error: 'error.conflict' });

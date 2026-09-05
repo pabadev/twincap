@@ -41,6 +41,27 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.insufficientFunds' };
       case 'Future dates are not allowed':
         return { error: 'error.futureDate' };
+      // Auth-domain messages (I8): stable English identifiers shared by the
+      // authentication use cases — never translated at the domain, mapped
+      // here to i18n keys under the "error" namespace.
+      case 'Email already registered':
+        return { error: 'error.emailTaken' };
+      case 'Invalid email or password':
+        return { error: 'error.invalidCredentials' };
+      case 'Password must be at least 8 characters':
+        return { error: 'error.passwordTooShort' };
+      case 'Invalid or expired token':
+        return { error: 'error.invalidToken' };
+      case 'User not found':
+        return { error: 'error.userNotFound' };
+      case 'Passwords do not match':
+        return { error: 'error.passwordMismatch' };
+      case 'Too many registration attempts. Please try again later.':
+      case 'Too many login attempts. Please try again later.':
+      case 'Too many password change attempts. Please try again later.':
+        return { error: 'error.tooManyAttempts' };
+      case 'Unauthorized':
+        return { error: 'error.unauthorized' };
       default:
         return error instanceof ConflictError
           ? { error: 'error.conflict' }
@@ -49,6 +70,12 @@ export function handleActionError(error: unknown): { error: string } {
   }
 
   if (error instanceof NotFoundError) return { error: 'error.notFound' };
+
+  // I8: legacy flows throw 'Unauthorized' as a PLAIN Error (not a domain
+  // error); it is a known marker, so map it before the unexpected-crash path.
+  if (error instanceof Error && error.message === 'Unauthorized') {
+    return { error: 'error.unauthorized' };
+  }
 
   // Any other error is UNEXPECTED: report it (non-blocking, fail-safe) and
   // fall back to a generic i18n key so the caller's contract is unchanged.

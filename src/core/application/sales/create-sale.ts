@@ -166,6 +166,7 @@ export async function createSale(
         workspaceId,
         movementId: firstAbono[0].movementId,
         creditId,
+        saleId,
         accountId: sale.accountId,
         amount: initialPayment,
         currency: input.currency,
@@ -216,6 +217,7 @@ function buildInitialPaymentMovement(args: {
   workspaceId: string;
   movementId: string;
   creditId: string;
+  saleId: string;
   accountId: string;
   amount: number;
   currency: CreateSaleInput['currency'];
@@ -233,8 +235,14 @@ function buildInitialPaymentMovement(args: {
     date: args.date,
     // No persisted note: display text derives at render from link.kind.
     context: 'Business',
-    // refId = creditId (NOT saleId) so the credit cascade cleanup finds it.
-    link: { kind: 'creditGrantedAbono', refId: args.creditId, opId: args.ids.generate() },
+    // refId = creditId (NOT saleId) so the credit cascade cleanup finds it;
+    // saleId keeps the ledger traceable to the originating sale (I12).
+    link: {
+      kind: 'creditGrantedAbono',
+      refId: args.creditId,
+      saleId: args.saleId,
+      opId: args.ids.generate(),
+    },
     createdAt: args.now,
   });
 }

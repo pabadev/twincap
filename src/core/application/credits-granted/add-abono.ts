@@ -179,7 +179,14 @@ export async function addAbono(
     // Sale-born credit abono is commercial activity (flows to Business),
     // matching the POS initial payment (D3-bis).
     context: 'Business',
-    link: { kind: 'creditGrantedAbono', refId: creditId, opId: ids.generate() },
+    // saleId (when present) keeps the ledger traceable to the originating
+    // sale (I12); standalone credits never carry it.
+    link: {
+      kind: 'creditGrantedAbono',
+      refId: creditId,
+      saleId: credit.saleId,
+      opId: ids.generate(),
+    },
     createdAt: now,
   });
   await movementRepo.create(movement);

@@ -16,7 +16,7 @@ export async function updateProfileAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'Unauthorized' };
+  if (!authUser) return { error: 'error.unauthorized' };
 
   const name = (formData.get('name') as string) || undefined;
   const locale = (formData.get('locale') as string) || undefined;
@@ -51,7 +51,7 @@ export async function changePasswordAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'Unauthorized' };
+  if (!authUser) return { error: 'error.unauthorized' };
 
   // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
   // timeouts). connectDb() is a cached no-op once up.
@@ -61,7 +61,7 @@ export async function changePasswordAction(
   const rateLimitKey = `password:${authUser.userId}`;
   const rateLimit = await passwordChangeRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'Too many password change attempts. Please try again later.' };
+    return { error: 'error.tooManyAttempts' };
   }
 
   const currentPassword = formData.get('currentPassword') as string;
@@ -117,7 +117,7 @@ export async function changePasswordAction(
 
 export async function resendVerificationAction(): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'Unauthorized' };
+  if (!authUser) return { error: 'error.unauthorized' };
 
   // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
   // timeouts). connectDb() is a cached no-op once up.

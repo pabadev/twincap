@@ -18,15 +18,20 @@ export const SYSTEM_NOTES_NAMESPACE = 'SystemNotes';
 export interface SystemNoteSource {
   note?: string;
   accountId?: string;
-  link?: { kind: string; refId: string };
+  link?: { kind: string; refId: string; saleId?: string };
 }
 
-/** Kinds whose parent operation carries a counterparty/client label. */
-const COUNTERPARTY_KINDS = new Set<MovementLinkKind>([
+/**
+ * Kinds whose parent operation carries a counterparty/client label. Includes
+ * the derived 'creditGrantedAbonoSale' variant: sale-born abonos (I12) label
+ * from the SALES map (link.saleId), not from the credit map (link.refId).
+ */
+const COUNTERPARTY_KINDS = new Set<string>([
   'creditReceivedPrincipal',
   'creditReceivedAbono',
   'creditGrantedPrincipal',
   'creditGrantedAbono',
+  'creditGrantedAbonoSale',
   'salePayment',
   'payableInitialPayment',
   'payableAbono',
@@ -38,10 +43,16 @@ const PLAIN_KINDS = new Set<MovementLinkKind>(['opening', 'transfer']);
 /**
  * i18n template key for a link kind; null when the kind is unknown
  * to this presentation layer (e.g. data written by a newer version).
+ *
+ * 'creditGrantedAbono' resolves to the sale variant ('creditGrantedAbonoSale')
+ * when the link carries saleId — that abono originated in an on-credit sale.
  */
-export function systemNoteTemplateKey(kind: string): string | null {
+export function systemNoteTemplateKey(kind: string, saleId?: string): string | null {
+  if (kind === 'creditGrantedAbono' && saleId !== undefined) {
+    return 'creditGrantedAbonoSale';
+  }
   if (PLAIN_KINDS.has(kind as MovementLinkKind)) return kind;
-  if (COUNTERPARTY_KINDS.has(kind as MovementLinkKind)) return kind;
+  if (COUNTERPARTY_KINDS.has(kind)) return kind;
   return null;
 }
 
@@ -86,11 +97,16 @@ export function deriveSystemNote(
 ): string | undefined {
   if (!source.link || persistedNoteIsUserAuthored(source)) return undefined;
 
-  const templateKey = systemNoteTemplateKey(source.link.kind);
+  const templateKey = systemNoteTemplateKey(source.link.kind, source.link.saleId);
   if (!templateKey) return undefined;
 
-  if (COUNTERPARTY_KINDS.has(templateKey as MovementLinkKind)) {
-    const label = refLabels?.[source.link.refId];
+  if (COUNTERPARTY_KINDS.has(templateKey)) {
+    // Sale-born abonos label from the sales map via link.saleId; all other
+    // counterparty kinds label from the parent operation via link.refId.
+    const labelRefId = templateKey === 'creditGrantedAbonoSale'
+      ? (source.link.saleId ?? source.link.refId)
+      : source.link.refId;
+    const label = refLabels?.[labelRefId];
     if (label && label.trim().length > 0) {
       return t(templateKey, { name: label });
     }

@@ -974,6 +974,8 @@ describe('addAbono — capital/interest split (R9)', () => {
     expect(abono.interestMovementId).toBeUndefined();
     expect(movementRepo.created).toHaveLength(1);
     expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    // I12: sale-born abonos carry the originating sale id on the link.
+    expect(movementRepo.created[0].link?.saleId).toBe('sale-1');
     expect(creditRepo.abonosAdded[0].abono.capitalAmount).toBeUndefined();
   });
 
@@ -999,6 +1001,30 @@ describe('addAbono — capital/interest split (R9)', () => {
     expect(movementRepo.created).toHaveLength(1);
     expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
     expect(movementRepo.created[0].context).toBe('Business');
+  });
+
+  it('standalone (non-sale) credit abonos carry no saleId (I12)', async () => {
+    const credit = makeCredit(); // no saleId → standalone Personal credit
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    await addAbono(
+      'user-1',
+      'cg-1',
+      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+    );
+
+    expect(movementRepo.created).toHaveLength(1);
+    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].link?.saleId).toBeUndefined();
   });
 });
 

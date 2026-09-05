@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '../../../../i18n/client';
+import { useActionError } from '../../../../lib/use-action-error';
 import { addSaleAbonoAction } from './actions';
 import { IdempotencyField } from '../../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../../core/domain/account';
@@ -25,6 +26,8 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
   const t = useT('Sales');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  // I8: addSaleAbonoAction returns error.* i18n keys — resolve them here.
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -42,9 +45,9 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form
@@ -64,7 +67,7 @@ export function AbonoForm({ saleId, accounts, onDone }: AbonoFormProps) {
 
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-          {tToast(state.error)}
+          {translateError(state.error)}
         </div>
       )}
 

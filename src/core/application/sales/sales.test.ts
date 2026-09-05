@@ -588,6 +588,8 @@ describe('createSale', () => {
     expect(movementRepo.created[0].context).toBe('Business');
     expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
     expect(movementRepo.created[0].link?.refId).toBe(creditRepo.created[0].id);
+    // I12: the initial-payment abono stays traceable to the originating sale.
+    expect(movementRepo.created[0].link?.saleId).toBe(sale.id);
     expect(movementRepo.created[0].id).toBe(creditRepo.created[0].abonos[0].movementId);
 
     // The credit owns the FULL debt; the initial payment is its first abono.
@@ -689,6 +691,8 @@ describe('createSale', () => {
     expect(movement.amount.amount).toBe(50000);
     expect(movement.link?.kind).toBe('creditGrantedAbono');
     expect(movement.link?.refId).toBe(creditRepo.created[0].id);
+    // I12: saleId traces the abono to the sale even when it pays the full debt.
+    expect(movement.link?.saleId).toBe(creditRepo.created[0].saleId);
   });
 
   it('allows services without stock decrement (POS-3)', async () => {

@@ -35,6 +35,12 @@ export interface MovementLink {
   kind: MovementLinkKind;
   /** Id of the parent operation (account, transfer, credit, or sale). */
   refId: string;
+  /**
+   * For credit abonos born from a sale (kind creditGrantedAbono with Business
+   * context), the id of the originating sale — keeps the ledger traceable to
+   * the source sale (I12). Absent for standalone granted credits.
+   */
+  saleId?: string;
   /** Deterministic operation id — idempotent replay marker (design rev.2 §5). */
   opId: string;
 }
@@ -124,6 +130,9 @@ export class Movement {
       }
       if (input.link.opId.length === 0) {
         throw new ValidationError("Movement link opId must not be empty");
+      }
+      if (input.link.saleId !== undefined && input.link.saleId.length === 0) {
+        throw new ValidationError("Movement link saleId must not be empty when present");
       }
     }
     this.id = input.id;

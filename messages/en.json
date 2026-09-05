@@ -257,6 +257,8 @@
     "creditGrantedPrincipalPlain": "Credit granted",
     "creditGrantedAbono": "Abono for granted credit of {name}",
     "creditGrantedAbonoPlain": "Granted credit abono",
+    "creditGrantedAbonoSale": "Abono for granted credit of {name} (sale)",
+    "creditGrantedAbonoSalePlain": "Granted credit abono (sale)",
     "salePayment": "Sale payment from {name}",
     "salePaymentPlain": "Sale payment",
     "payableInitialPayment": "Initial payment for purchase from {name}",
@@ -620,7 +622,14 @@
     "futureDate": "The date cannot be in the future",
     "systemMovementDelete": "System-linked movements cannot be deleted directly",
     "insufficientFunds": "Insufficient funds in the source account",
-    "duplicateRequest": "Duplicate request. The operation was already recorded."
+    "duplicateRequest": "Duplicate request. The operation was already recorded.",
+    "emailTaken": "This email is already registered",
+    "invalidCredentials": "Invalid email or password",
+    "invalidToken": "The link is invalid or has already been used. Request a new one.",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "tooManyAttempts": "Too many attempts. Try again later.",
+    "userNotFound": "User not found"
   },
   "Metadata": {
     "description": "Personal and small business finance management",

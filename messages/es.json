@@ -257,6 +257,8 @@
     "creditGrantedPrincipalPlain": "Crédito otorgado",
     "creditGrantedAbono": "Abono del crédito otorgado a {name}",
     "creditGrantedAbonoPlain": "Abono de crédito otorgado",
+    "creditGrantedAbonoSale": "Abono del crédito otorgado a {name} (venta)",
+    "creditGrantedAbonoSalePlain": "Abono de crédito otorgado (venta)",
     "salePayment": "Pago de venta de {name}",
     "salePaymentPlain": "Pago de venta",
     "payableInitialPayment": "Pago inicial de la compra a {name}",
@@ -620,7 +622,14 @@
     "futureDate": "La fecha no puede ser futura",
     "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente",
     "insufficientFunds": "Fondos insuficientes en la cuenta de origen",
-    "duplicateRequest": "Solicitud duplicada. La operación ya fue registrada."
+    "duplicateRequest": "Solicitud duplicada. La operación ya fue registrada.",
+    "emailTaken": "Este correo ya está registrado",
+    "invalidCredentials": "Correo o contraseña incorrectos",
+    "invalidToken": "El enlace no es válido o ya fue utilizado. Solicita uno nuevo.",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+    "tooManyAttempts": "Demasiados intentos. Intenta de nuevo más tarde.",
+    "userNotFound": "No se encontró el usuario"
   },
   "Metadata": {
     "description": "Gestión de finanzas personales y pequeños negocios",

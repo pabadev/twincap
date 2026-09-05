@@ -2,12 +2,14 @@
 
 import { useActionState } from 'react';
 import { useT } from '../../../i18n/client';
+import { useActionError } from '../../../lib/use-action-error';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { forgotPasswordAction } from '../actions';
 
 export function ForgotPasswordForm() {
   const t = useT('Auth');
+  const translateError = useActionError();
   const [state, formAction, isPending] = useActionState(forgotPasswordAction, null);
 
   return (
@@ -23,7 +25,7 @@ export function ForgotPasswordForm() {
         )}
         {state?.error && (
           <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-            {t('errorGeneric')}
+            {translateError(state.error, t('errorGeneric'))}
           </div>
         )}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
