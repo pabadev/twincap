@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../i18n/client';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '../(auth)/actions';
-import { Languages, LogOut, Menu, Moon, Sun, User, X, LayoutDashboard, Tag, List, ArrowLeftRight, CreditCard, Landmark, Receipt, Users, Package, ShoppingCart, BarChart3 } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, User, X, LayoutDashboard, Tag, List, ArrowLeftRight, CreditCard, Landmark, Receipt, Users, Package, ShoppingCart, BarChart3, MessageSquare } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
 import { Icon } from '../../components/ui/icon';
 import { Button } from '../../components/ui/button';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { FeedbackDialog } from '../../components/feedback/feedback-widget';
 
 const NAV_ITEMS = [
   { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard, color: 'text-primary' },
@@ -52,6 +53,7 @@ function buildNavItems(canViewAnalytics: boolean | undefined) {
 export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: boolean; email?: string; canViewAnalytics?: boolean }) {
   const [open, setOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const router = useRouter();
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
@@ -200,6 +202,18 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <User className="h-4 w-4" />
                   <span>{t('profile')}</span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setFeedbackOpen(true);
+                  }}
+                  className="mb-2 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  aria-label={t('feedback')}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>{t('feedback')}</span>
+                </button>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
@@ -284,6 +298,10 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
         description={t('confirmDescription')}
         confirmLabel={t('confirmYes')}
         cancelLabel={tCommon('cancel')}
+      />
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
       />
     </>
   );

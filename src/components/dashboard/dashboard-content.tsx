@@ -12,13 +12,14 @@ import { SummaryTable } from './summary-table';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
-import { Wallet } from 'lucide-react';
+import { Wallet, MessageSquare } from 'lucide-react';
 import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
 import type { SerializedCategory } from '../../core/domain/category';
 import type { DashboardSnapshot } from './dashboard-snapshot';
 import { getDashboardSnapshotAction } from '../../app/(main)/dashboard/actions';
+import { FeedbackDialog } from '../feedback/feedback-widget';
 
 interface DashboardAccount {
   id: string;
@@ -59,9 +60,11 @@ export function DashboardContent({
   initialSnapshot,
 }: DashboardContentProps) {
   const t = useT('Dashboard');
+  const tFeedback = useT('Feedback');
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // A11: chart currency selection — only meaningful when the snapshot ships
   // `chartCurrencies` (multi-currency); mono-currency renders no selector and
   // this stays equal to the snapshot's aggregation currency.
@@ -181,10 +184,18 @@ export function DashboardContent({
 
   return (
     <div className="space-y-8" aria-busy={isPending}>
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {greeting}
         </h1>
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <MessageSquare className="h-4 w-4" />
+          {tFeedback('openFeedback')}
+        </button>
       </div>
 
       {showOnboarding && (
@@ -384,6 +395,11 @@ export function DashboardContent({
       </div>
 
       <PositionCards positions={positionData} locale={locale} />
+
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+      />
     </div>
   );
 }
