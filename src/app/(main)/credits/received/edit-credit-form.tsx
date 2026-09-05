@@ -7,6 +7,7 @@ import { editCreditReceivedAction } from './actions';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { useActionError } from '../../../../lib/use-action-error';
 
 export function EditCreditForm({
   creditId,
@@ -25,6 +26,7 @@ export function EditCreditForm({
   );
   const t = useT('CreditsReceived');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const tCommon = useT('Common');
   const { addToast } = useToast();
   const router = useRouter();
@@ -41,9 +43,9 @@ export function EditCreditForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-4">

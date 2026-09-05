@@ -13,7 +13,7 @@ export async function submitFeedbackAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'Unauthorized' };
+  if (!authUser) return { error: 'error.unauthorized' };
 
   const kind = (formData.get('kind') as string) ?? '';
   const message = ((formData.get('message') as string) ?? '').trim();

@@ -57,7 +57,7 @@ describe('createCatalogItemAction', () => {
 
     const result = await createCatalogItemAction(null, catalogItemFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoCatalogItemRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();

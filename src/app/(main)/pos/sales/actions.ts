@@ -38,7 +38,7 @@ export async function createSaleAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const lineItemsJson = formData.get('lineItems') as string;
   const accountId = formData.get('accountId') as string;
@@ -127,7 +127,7 @@ export async function addSaleAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const saleId = formData.get('saleId') as string;
   const amount = Number(formData.get('amount') || '0');
@@ -188,7 +188,7 @@ export async function deleteSaleAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const saleId = formData.get('saleId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -221,7 +221,7 @@ export async function deleteSaleAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const saleId = formData.get('saleId') as string;
 

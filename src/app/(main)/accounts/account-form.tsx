@@ -10,6 +10,7 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 
 export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
   const [state, formAction, isPending] = useActionState(
@@ -18,6 +19,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
   );
   const t = useT('Accounts');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -33,9 +35,9 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-4">

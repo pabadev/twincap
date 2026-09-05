@@ -26,7 +26,7 @@ export async function createAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const name = formData.get('name') as string;
   const currency = formData.get('currency') as CreateAccountInput['currency'];
@@ -81,7 +81,7 @@ export async function updateAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const accountId = formData.get('accountId') as string;
   const name = formData.get('name') as string;
@@ -106,7 +106,7 @@ export async function deleteAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const accountId = formData.get('accountId') as string;
 
@@ -138,7 +138,7 @@ export async function setInitialBalanceAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const accountId = formData.get('accountId') as string;
   const amount = Number(formData.get('amount') || '0');

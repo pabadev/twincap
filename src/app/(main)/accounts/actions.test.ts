@@ -23,7 +23,7 @@ vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
 
-const { updateAccountAction, deleteAccountAction, setInitialBalanceAction } =
+const { createAccountAction, updateAccountAction, deleteAccountAction, setInitialBalanceAction } =
   await import('./actions');
 
 function formData(accountId = 'acc-1', amount?: number): FormData {
@@ -84,7 +84,7 @@ describe('updateAccountAction', () => {
 
     const result = await updateAccountAction(null, renameFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe('deleteAccountAction', () => {
 
     const result = await deleteAccountAction(null, formData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -164,8 +164,30 @@ describe('setInitialBalanceAction', () => {
 
     const result = await setInitialBalanceAction(null, formData('acc-1', 50000));
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
+  });
+});
+
+describe('createAccountAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(null);
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    const fd = new FormData();
+    fd.append('name', 'Caja diaria');
+    fd.append('currency', 'COP');
+    fd.append('initialBalance', '0');
+
+    const result = await createAccountAction(null, fd);
+
+    expect(result).toEqual({ error: 'error.unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoAccountRepository).not.toHaveBeenCalled();
+    expect(MongoMovementRepository).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

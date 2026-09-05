@@ -21,7 +21,7 @@ export async function createCategoryAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const name = formData.get('name') as string;
   const type = formData.get('type') as CreateCategoryInput['type'];
@@ -49,7 +49,7 @@ export async function updateCategoryAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const categoryId = formData.get('categoryId') as string;
   const name = formData.get('name') as string;
@@ -72,7 +72,7 @@ export async function deleteCategoryAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const categoryId = formData.get('categoryId') as string;
 

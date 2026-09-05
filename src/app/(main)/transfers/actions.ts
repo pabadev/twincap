@@ -26,7 +26,7 @@ export async function createTransferAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const sourceAccountId = formData.get('sourceAccountId') as string;
   const destinationAccountId = formData.get('destinationAccountId') as string;
@@ -102,7 +102,7 @@ export async function updateTransferAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const transferId = formData.get('transferId') as string;
   const sourceAmount = Number(formData.get('sourceAmount') || '0');
@@ -155,7 +155,7 @@ export async function deleteTransferAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const transferId = formData.get('transferId') as string;
 

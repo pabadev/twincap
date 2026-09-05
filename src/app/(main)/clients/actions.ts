@@ -35,7 +35,7 @@ export async function createClientAction(
   formData: FormData,
 ): Promise<ClientActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const parsed = clientSchema.safeParse({
     name: formData.get('name'),
@@ -65,7 +65,7 @@ export async function updateClientAction(
   formData: FormData,
 ): Promise<ClientActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const clientId = formData.get('clientId') as string;
   if (!clientId) return { error: 'Client ID is required' };
@@ -98,7 +98,7 @@ export async function deleteClientAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const clientId = formData.get('clientId') as string;
 

@@ -13,6 +13,7 @@ import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { Modal } from '../../../components/ui/modal';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 import { filterCategoriesByType } from '../../../lib/movement-form';
 import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
 
@@ -35,6 +36,7 @@ export function EditMovementModal({
   const t = useT('Movements');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -50,9 +52,9 @@ export function EditMovementModal({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   const filteredCategories = filterCategoriesByType(categories, selectedType);
   const account = accounts.find((a) => a.id === movement.accountId);

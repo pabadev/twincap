@@ -71,7 +71,7 @@ describe('updateCategoryAction', () => {
 
     const result = await updateCategoryAction(null, renameFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoCategoryRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();

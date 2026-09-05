@@ -81,7 +81,7 @@ describe('createClientAction', () => {
 
     const result = await createClientAction(null, clientFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoClientRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe('updateClientAction', () => {
 
     const result = await updateClientAction(null, clientFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoClientRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();

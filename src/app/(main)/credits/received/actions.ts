@@ -30,7 +30,7 @@ export async function createCreditReceivedAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const counterparty = formData.get('counterparty') as string;
   const principal = Number(formData.get('principal') || '0');
@@ -91,7 +91,7 @@ export async function addAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const amount = Number(formData.get('amount') || '0');
@@ -149,7 +149,7 @@ export async function editAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -190,7 +190,7 @@ export async function editCreditReceivedAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const principal = Number(formData.get('principal') || '0');
@@ -227,7 +227,7 @@ export async function deleteAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -257,7 +257,7 @@ export async function deleteCreditAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
 
@@ -286,7 +286,7 @@ export async function markAsPaidAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
   const idempotencyKey = formData.get('idempotencyKey') as string | null;

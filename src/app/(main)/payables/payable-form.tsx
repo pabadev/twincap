@@ -12,6 +12,7 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 import { toDateInputValue } from '../../../lib/date';
 
 export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
@@ -22,6 +23,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
   const t = useT('Payables');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -39,9 +41,9 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-4">

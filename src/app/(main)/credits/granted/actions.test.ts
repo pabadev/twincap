@@ -26,7 +26,7 @@ vi.mock('../../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
 
-const { writeOffCreditAction } = await import('./actions');
+const { createCreditGrantedAction, writeOffCreditAction } = await import('./actions');
 
 function makeCreditGranted(): CreditGranted {
   return new CreditGranted({
@@ -65,7 +65,7 @@ describe('writeOffCreditAction', () => {
 
     const result = await writeOffCreditAction(null, formData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoCreditGrantedRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -113,6 +113,29 @@ describe('writeOffCreditAction', () => {
     const result = await writeOffCreditAction(null, formData());
 
     expect(result).toEqual({ error: 'error.notFound' });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('createCreditGrantedAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(null);
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    const fd = new FormData();
+    fd.append('counterparty', 'Pedro');
+    fd.append('principal', '100000');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+
+    const result = await createCreditGrantedAction(null, fd);
+
+    expect(result).toEqual({ error: 'error.unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoCreditGrantedRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

@@ -29,7 +29,7 @@ export async function createPayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const counterparty = formData.get('counterparty') as string;
   const total = Number(formData.get('total') || '0');
@@ -90,7 +90,7 @@ export async function addAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const payableId = formData.get('payableId') as string;
   const amount = Number(formData.get('amount') || '0');
@@ -148,7 +148,7 @@ export async function editAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const payableId = formData.get('payableId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -189,7 +189,7 @@ export async function editPayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const payableId = formData.get('payableId') as string;
   const total = Number(formData.get('total') || '0');
@@ -224,7 +224,7 @@ export async function deleteAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const payableId = formData.get('payableId') as string;
   const abonoId = formData.get('abonoId') as string;
@@ -254,7 +254,7 @@ export async function deletePayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const payableId = formData.get('payableId') as string;
 

@@ -30,7 +30,7 @@ export async function createCatalogItemAction(
   formData: FormData,
 ): Promise<CatalogItemActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const name = formData.get('name') as string;
   const unitPrice = Number(formData.get('unitPrice') || '0');
@@ -61,7 +61,7 @@ export async function updateCatalogItemAction(
   formData: FormData,
 ): Promise<CatalogItemActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const itemId = formData.get('itemId') as string;
   const name = formData.get('name') as string;
@@ -92,7 +92,7 @@ export async function deleteCatalogItemAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const itemId = formData.get('itemId') as string;
 

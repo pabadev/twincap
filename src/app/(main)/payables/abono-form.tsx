@@ -11,6 +11,7 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 import { toDateInputValue } from '../../../lib/date';
 
 export function AbonoForm({
@@ -31,6 +32,7 @@ export function AbonoForm({
   const t = useT('Payables');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
@@ -46,9 +48,9 @@ export function AbonoForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-zinc-800">

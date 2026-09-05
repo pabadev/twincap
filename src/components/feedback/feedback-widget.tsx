@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { submitFeedbackAction } from '@/app/(main)/feedback/actions';
+import { useActionError } from '@/lib/use-action-error';
 
 type FeedbackKind = 'comment' | 'bug' | 'suggestion';
 
@@ -30,6 +31,7 @@ export function FeedbackWidget() {
   const pathname = usePathname();
   const t = useT('Feedback');
   const tCommon = useT('Common');
+  const translateError = useActionError();
 
   function handleClose() {
     setOpen(false);
@@ -78,8 +80,8 @@ export function FeedbackWidget() {
               <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
                 {state.error === 'error.validation'
                   ? t('errorValidation')
-                  : state.error === 'error.operationFailed'
-                    ? t('errorFailed')
+                  : state.error === 'error.unauthorized'
+                    ? translateError(state.error)
                     : t('errorFailed')}
               </div>
             )}

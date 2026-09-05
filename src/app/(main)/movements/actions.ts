@@ -38,7 +38,7 @@ export async function createMovementAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const accountId = formData.get('accountId') as string;
   const type = formData.get('type') as CreateMovementInput['type'];
@@ -129,7 +129,7 @@ export async function deleteMovementAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const movementId = formData.get('movementId') as string;
 
@@ -159,7 +159,7 @@ export async function updateMovementAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'Unauthorized' };
+  if (!user) return { error: 'error.unauthorized' };
 
   const movementId = formData.get('movementId') as string;
   const accountId = formData.get('accountId') as string;

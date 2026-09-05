@@ -13,6 +13,7 @@ import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
 import { Button } from '../../../../components/ui/button';
 import { useToast } from '../../../../lib/hooks/use-toast';
+import { useActionError } from '../../../../lib/use-action-error';
 
 interface CatalogFormProps {
   item?: SerializedCatalogItem;
@@ -25,6 +26,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const t = useT('Catalog');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -48,9 +50,9 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <form
@@ -67,7 +69,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
 
       {state?.error && (
         <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-          {tToast(state.error)}
+          {translateError(state.error)}
         </div>
       )}
 

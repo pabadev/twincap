@@ -121,7 +121,7 @@ describe('updateTransferAction', () => {
 
     const result = await updateTransferAction(null, transferFormData());
 
-    expect(result).toEqual({ error: 'Unauthorized' });
+    expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoTransferRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();

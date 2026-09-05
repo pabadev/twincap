@@ -9,6 +9,7 @@ import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { useToast } from '../../../lib/hooks/use-toast';
+import { useActionError } from '../../../lib/use-action-error';
 
 export function InitialBalanceButton({ accountId }: { accountId: string }) {
   const [showForm, setShowForm] = useState(false);
@@ -18,6 +19,7 @@ export function InitialBalanceButton({ accountId }: { accountId: string }) {
   );
   const t = useT('Accounts');
   const tToast = useT('Toast');
+  const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
 
@@ -32,9 +34,9 @@ export function InitialBalanceButton({ accountId }: { accountId: string }) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(tToast(state.error), 'error');
+      addToast(translateError(state.error), 'error');
     }
-  }, [state?.error, addToast, tToast]);
+  }, [state?.error, addToast, translateError]);
 
   return (
     <>
