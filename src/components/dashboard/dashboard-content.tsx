@@ -62,6 +62,10 @@ export function DashboardContent({
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
+  // A11: chart currency selection — only meaningful when the snapshot ships
+  // `chartCurrencies` (multi-currency); mono-currency renders no selector and
+  // this stays equal to the snapshot's aggregation currency.
+  const [chartCurrency, setChartCurrency] = useState<string>(initialSnapshot.currency);
   const [isPending, startTransition] = useTransition();
 
   // A2 (first paint): the server renders the initial snapshot with its own
@@ -141,12 +145,28 @@ export function DashboardContent({
     recentMovements,
   } = snapshot;
 
-  const totalBalance = accountBalances.reduce((sum, a) => sum + a.balance, 0);
+  // A11: the cross-currency `totalBalance` reduce is GONE — SummaryCards now
+  // derives the mono-currency total from `currencyBreakdown` and renders the
+  // per-currency breakdown in multi-currency mode (no cross-currency sum).
   const topIncomeRows = incomeRows.slice(0, 3);
   const topExpenseRows = expenseRows.slice(0, 3);
 
+  // Chart currency: the initially selected currency is the snapshot's
+  // aggregation currency. After a refetch the selection may no longer exist
+  // (filters changed the data) — fall back to the fresh aggregation currency.
+  // Value shown in the selector always follows the actual chart data source.
+  const effectiveChartCurrency = snapshot.chartCurrencies?.includes(chartCurrency)
+    ? chartCurrency
+    : snapshot.currency;
+
   const chartTitle = chartView === 'monthly' ? undefined : t('yearlyTrend');
-  const chartData = chartView === 'monthly' ? monthlyData : yearlyData;
+  const chartData =
+    chartView === 'monthly' ? monthlyData : yearlyData;
+  const chartDataBySelected = snapshot.chartDataByCurrency?.[effectiveChartCurrency];
+  const effectiveChartData =
+    chartView === 'monthly'
+      ? (chartDataBySelected?.monthly ?? chartData)
+      : (chartDataBySelected?.yearly ?? chartData);
 
   const greeting = userName
     ? t('welcomeUser', { name: userName })
@@ -198,7 +218,6 @@ export function DashboardContent({
       />
 
       <SummaryCards
-        totalBalance={totalBalance}
         currency={currency}
         monthlyIncome={monthlyIncome}
         monthlyExpenses={monthlyExpenses}
@@ -206,6 +225,7 @@ export function DashboardContent({
         financingOutflow={financingOutflow}
         locale={locale}
         currencyBreakdown={currencyBreakdown}
+        contextSummary={filters.scope === 'all' ? snapshot.contextSummary : undefined}
       />
 
       <div>
@@ -305,7 +325,7 @@ export function DashboardContent({
       )}
 
       <div>
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
             onClick={() => setChartView('monthly')}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -326,11 +346,33 @@ export function DashboardContent({
           >
             {t('viewYearly')}
           </button>
+          {/* A11: currency selector — only when the server shipped per-currency
+              chart data (multi-currency). Switching swaps the series locally,
+              no server round-trip. */}
+          {snapshot.chartCurrencies && (
+            <label className="ml-auto flex items-center gap-2">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t('chartCurrency')}
+              </span>
+              <select
+                value={effectiveChartCurrency}
+                onChange={(e) => setChartCurrency(e.target.value)}
+                aria-label={t('chartCurrency')}
+                className="h-9 rounded-md border border-surface-border bg-surface-input px-2 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+              >
+                {snapshot.chartCurrencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <MonthlyChart
-            data={chartData}
-            currency={currency}
+            data={effectiveChartData}
+            currency={effectiveChartCurrency}
             locale={locale}
             title={chartTitle}
           />

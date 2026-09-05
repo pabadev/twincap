@@ -6,13 +6,21 @@ import { Badge } from '../ui/badge';
 import { X } from 'lucide-react';
 
 export type ScopeFilter = 'all' | 'Personal' | 'Business';
-export type PeriodFilter = 'current_month' | 'this_year';
+export type PeriodFilter = 'current_month' | 'previous_month' | 'this_year';
 
 export interface DashboardFilters {
   scope: ScopeFilter;
   accountId: string;
   categoryId: string;
   period: PeriodFilter;
+  /**
+   * Optional inclusive date range (ISO 'YYYY-MM-DD', JSON-safe across the
+   * server→client boundary). When either bound is set, it REPLACES the period
+   * filter (A3, Fase 3 pre-beta audit): the period Select is disabled in the
+   * UI and `buildDashboardSnapshot` skips the period branch entirely.
+   */
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 interface FilterOption {
@@ -35,11 +43,14 @@ export function DashboardFilterBar({
 }: DashboardFilterBarProps) {
   const t = useT('Dashboard');
 
+  const hasDateRangeActive = Boolean(filters.dateFrom) || Boolean(filters.dateTo);
+
   const hasActiveFilters =
     filters.scope !== 'all' ||
     filters.accountId !== 'all' ||
     filters.categoryId !== 'all' ||
-    filters.period !== 'current_month';
+    filters.period !== 'current_month' ||
+    hasDateRangeActive;
 
   function updateFilter<K extends keyof DashboardFilters>(
     key: K,
@@ -54,12 +65,14 @@ export function DashboardFilterBar({
       accountId: 'all',
       categoryId: 'all',
       period: 'current_month',
+      dateFrom: undefined,
+      dateTo: undefined,
     });
   }
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Select
           label={t('filterScope')}
           value={filters.scope}
@@ -92,11 +105,35 @@ export function DashboardFilterBar({
           label={t('filterPeriod')}
           value={filters.period}
           onChange={(e) => updateFilter('period', e.target.value as PeriodFilter)}
+          disabled={hasDateRangeActive}
           options={[
             { value: 'current_month', label: t('filterPeriodCurrentMonth') },
+            { value: 'previous_month', label: t('filterPeriodPreviousMonth') },
             { value: 'this_year', label: t('filterPeriodThisYear') },
           ]}
         />
+        <div>
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            {t('filterDateFrom')}
+          </label>
+          <input
+            type="date"
+            value={filters.dateFrom ?? ''}
+            onChange={(e) => updateFilter('dateFrom', e.target.value)}
+            className="h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            {t('filterDateTo')}
+          </label>
+          <input
+            type="date"
+            value={filters.dateTo ?? ''}
+            onChange={(e) => updateFilter('dateTo', e.target.value)}
+            className="h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+          />
+        </div>
       </div>
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
@@ -143,9 +180,35 @@ export function DashboardFilterBar({
           )}
           {filters.period !== 'current_month' && (
             <Badge variant="info">
-              {t('filterPeriodThisYear')}
+              {filters.period === 'previous_month'
+                ? t('filterPeriodPreviousMonth')
+                : t('filterPeriodThisYear')}
               <button
                 onClick={() => updateFilter('period', 'current_month')}
+                className="ml-1 inline-flex items-center"
+                aria-label={t('removeFilter')}
+              >
+                <X size={12} />
+              </button>
+            </Badge>
+          )}
+          {filters.dateFrom && (
+            <Badge variant="info">
+              {t('filterDateFrom')}: {filters.dateFrom}
+              <button
+                onClick={() => updateFilter('dateFrom', undefined)}
+                className="ml-1 inline-flex items-center"
+                aria-label={t('removeFilter')}
+              >
+                <X size={12} />
+              </button>
+            </Badge>
+          )}
+          {filters.dateTo && (
+            <Badge variant="info">
+              {t('filterDateTo')}: {filters.dateTo}
+              <button
+                onClick={() => updateFilter('dateTo', undefined)}
                 className="ml-1 inline-flex items-center"
                 aria-label={t('removeFilter')}
               >

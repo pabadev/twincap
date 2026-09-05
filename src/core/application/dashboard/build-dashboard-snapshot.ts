@@ -6,8 +6,9 @@ import type { Movement } from '../../domain/movement';
 import { computeDashboardSummary } from '../compute-dashboard-summary';
 import { computeCategorySummary } from '../compute-category-summary';
 import { computeYearlyEvolution } from '../compute-yearly-evolution';
+import { computeContextSummary } from '../compute-context-summary';
 import { countsTowardEconomicResult } from '../economic-result';
-import { filterMovementsByPeriod } from '../../../lib/movement-period-filter';
+import { filterMovementsByPeriod, filterMovementsByDateRange } from '../../../lib/movement-period-filter';
 
 /**
  * Inputs for building the aggregate dashboard snapshot.
@@ -91,11 +92,29 @@ export function buildDashboardSnapshot(
     );
   }
 
-  if (filters.period === 'current_month' || filters.period === 'this_year') {
+  // A3: an explicit date range REPLACES the period filter — the range is the
+  // more specific statement of "which dates" and the period Select is disabled
+  // in the UI while a bound is set. Scope/account/category still apply.
+  const hasDateRange = Boolean(filters.dateFrom || filters.dateTo);
+
+  if (
+    !hasDateRange &&
+    (filters.period === 'current_month' ||
+      filters.period === 'previous_month' ||
+      filters.period === 'this_year')
+  ) {
     filteredMovements = filterMovementsByPeriod(
       filteredMovements,
       filters.period,
       civilNow,
+    );
+  }
+
+  if (hasDateRange) {
+    filteredMovements = filterMovementsByDateRange(
+      filteredMovements,
+      filters.dateFrom,
+      filters.dateTo,
     );
   }
 
@@ -146,6 +165,17 @@ export function buildDashboardSnapshot(
       ? accounts.find((a) => a.id === filters.accountId)?.currency ?? primaryCurrency
       : primaryCurrency;
 
+  // A6: Personal/Business split — only when no context filter is active, over
+  // the SAME filtered set, civil clock and currency scope as the total cards.
+  const contextSummary =
+    filters.scope === 'all'
+      ? computeContextSummary({
+          movements: filteredMovements,
+          currency,
+          now: civilNow,
+        })
+      : undefined;
+
   const {
     monthlyIncome,
     monthlyExpenses,
@@ -177,6 +207,40 @@ export function buildDashboardSnapshot(
     now: civilNow,
   });
 
+  // A11: per-currency chart series — ADDITIVE to the single-currency path.
+  // `monthlyData`/`yearlyData` keep today's values; the map is populated only
+  // when more than one currency has economic data so mono-currency snapshots
+  // behave exactly as before. The primary `currency` is always included so the
+  // client's initial selection is always a valid option.
+  const economicCurrencies = new Set<string>([currency]);
+  for (const m of filteredMovements) {
+    if (countsTowardEconomicResult(m)) economicCurrencies.add(m.amount.currency);
+  }
+  const distinctCurrencies = Array.from(economicCurrencies).sort((a, b) =>
+    a === 'COP' ? -1 : b === 'COP' ? 1 : a.localeCompare(b),
+  );
+
+  let chartCurrencies: string[] | undefined;
+  let chartDataByCurrency: DashboardSnapshot['chartDataByCurrency'];
+  if (distinctCurrencies.length > 1) {
+    chartCurrencies = distinctCurrencies;
+    chartDataByCurrency = {};
+    for (const c of distinctCurrencies) {
+      chartDataByCurrency[c] = {
+        monthly: computeDashboardSummary({
+          movements: filteredMovements,
+          currency: c,
+          now: civilNow,
+        }).months,
+        yearly: computeYearlyEvolution({
+          movements: filteredMovements,
+          currency: c,
+          now: civilNow,
+        }).months,
+      };
+    }
+  }
+
   const recentMovements = filteredMovements.slice(0, 5).map((m) => ({
     id: m.id,
     type: m.type as 'income' | 'expense',
@@ -205,5 +269,8 @@ export function buildDashboardSnapshot(
     monthlyData,
     yearlyData: yearly.months,
     recentMovements,
+    contextSummary,
+    chartCurrencies,
+    chartDataByCurrency,
   };
 }
