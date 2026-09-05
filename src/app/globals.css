@@ -2,7 +2,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  color-scheme: light dark;
+  /* Native scrollbars follow the app theme (N4): thumb = border, track = card.
+     color-scheme is fixed per theme so form controls and scrollbars no longer
+     follow the OS. */
+  color-scheme: light;
+  scrollbar-color: var(--tc-surface-border) var(--tc-surface-card);
+  scrollbar-width: thin;
   --background: #ffffff;
   --foreground: #171717;
 
@@ -64,6 +69,8 @@
 }
 
 .dark {
+  /* Per-theme color-scheme: dark form controls/scrollbars in dark mode (N4). */
+  color-scheme: dark;
   --background: #0b0d11;
   --foreground: #ededed;
 
@@ -108,4 +115,22 @@ html.theme-transition *::after {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* WebKit scrollbar fallback (N4) — uses the same tc-* tokens, which already
+   switch in .dark, so Chromium/Safari match the standard scrollbar-color
+   behavior above. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--tc-surface-card);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tc-surface-border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tc-surface-muted);
 }
