@@ -50,6 +50,9 @@ const envSchema = z.object({
   // dashboard (/analytics). Deny-by-default: if absent/empty, nobody has access
   // except future role-based grants (R13-G hardening, founder-only today).
   ANALYTICS_ACCESS_EMAILS: z.string().optional(),
+  // Comma-separated emails whose workspaces are excluded from the global
+  // analytics aggregate. Deny/clean-data by default: absent → no exclusion.
+  ANALYTICS_EXCLUDE_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
