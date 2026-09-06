@@ -10,6 +10,7 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
+import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
@@ -82,6 +83,7 @@ export async function createTransferAction(
           movementRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );

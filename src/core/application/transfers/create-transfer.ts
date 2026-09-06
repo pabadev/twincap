@@ -4,7 +4,7 @@ import { Money } from '../../domain/money';
 import { ValidationError, ConflictError, NotFoundError } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreateTransferInput } from './dto/transfers';
 
 /**
@@ -16,6 +16,9 @@ import type { CreateTransferInput } from './dto/transfers';
  *
  * Movement context: undefined (neutral) — transfers move money between accounts
  * without economic classification.
+ *
+ * The three writes (transfer + 2 movements) run INSIDE a single multi-document
+ * transaction (R14-B): they commit or roll back atomically.
  */
 export async function createTransfer(
   workspaceId: string,
@@ -24,6 +27,7 @@ export async function createTransfer(
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
+  uow: UnitOfWork,
 ): Promise<Transfer> {
   // TRA-1: source ≠ destination
   if (input.sourceAccountId === input.destinationAccountId) {
@@ -98,37 +102,39 @@ export async function createTransfer(
     createdAt: now,
   });
 
-  await transferRepo.create(transfer);
+  return uow.withTransaction(async (tx) => {
+    await transferRepo.create(transfer, tx);
 
-  // Create expense movement (source account)
-  const expenseMovement = new Movement({
-    id: expenseMovementId,
-    workspaceId,
-    accountId: input.sourceAccountId,
-    category: transferCategory('expense'),
-    type: 'expense',
-    amount: sourceAmountMoney,
-    date: input.date,
-    note: input.note,
-    link: { kind: 'transfer', refId: transferId, opId: expenseOpId },
-    createdAt: now,
+    // Create expense movement (source account)
+    const expenseMovement = new Movement({
+      id: expenseMovementId,
+      workspaceId,
+      accountId: input.sourceAccountId,
+      category: transferCategory('expense'),
+      type: 'expense',
+      amount: sourceAmountMoney,
+      date: input.date,
+      note: input.note,
+      link: { kind: 'transfer', refId: transferId, opId: expenseOpId },
+      createdAt: now,
+    });
+    await movementRepo.create(expenseMovement, tx);
+
+    // Create income movement (destination account)
+    const incomeMovement = new Movement({
+      id: incomeMovementId,
+      workspaceId,
+      accountId: input.destinationAccountId,
+      category: transferCategory('income'),
+      type: 'income',
+      amount: new Money(destAmount, destCurrency),
+      date: input.date,
+      note: input.note,
+      link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
+      createdAt: now,
+    });
+    await movementRepo.create(incomeMovement, tx);
+
+    return transfer;
   });
-  await movementRepo.create(expenseMovement);
-
-  // Create income movement (destination account)
-  const incomeMovement = new Movement({
-    id: incomeMovementId,
-    workspaceId,
-    accountId: input.destinationAccountId,
-    category: transferCategory('income'),
-    type: 'income',
-    amount: new Money(destAmount, destCurrency),
-    date: input.date,
-    note: input.note,
-    link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
-    createdAt: now,
-  });
-  await movementRepo.create(incomeMovement);
-
-  return transfer;
 }

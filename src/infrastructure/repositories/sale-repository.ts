@@ -1,11 +1,13 @@
 import { Types } from "mongoose";
 import type { SaleRepository } from "../../core/domain/repositories";
 import type { Sale } from "../../core/domain/sale";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { SaleModel, type SaleDocument } from "../models/sale";
 import { AccountModel, type AccountDocument } from "../models/account";
 import { toSaleEntity, toSaleDocData } from "../mappers/sale";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoSaleRepository implements SaleRepository {
   async findById(workspaceId: string, id: string): Promise<Sale | null> {
@@ -40,15 +42,16 @@ export class MongoSaleRepository implements SaleRepository {
     });
   }
 
-  async create(sale: Sale): Promise<Sale> {
+  async create(sale: Sale, tx?: TransactionHandle): Promise<Sale> {
     try {
+      const session = sessionOf(tx);
       const docData = toSaleDocData(sale);
-      const created = await SaleModel.create({ ...docData, _id: sale.id });
+      const created = await SaleModel.create([{ ...docData, _id: sale.id }], { session });
       const currency = await this.resolveAccountCurrency(
         sale.workspaceId,
         sale.accountId,
       );
-      return toSaleEntity(created as SaleDocument, currency);
+      return toSaleEntity(created[0] as SaleDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(

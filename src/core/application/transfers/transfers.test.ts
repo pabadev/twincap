@@ -9,8 +9,9 @@ import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
+import type { TransactionHandle } from '../../domain/transaction';
 import type { Currency } from '../../domain/currency';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -109,6 +110,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 function makeTransfer(
   overrides: Partial<ConstructorParameters<typeof Transfer>[0]> = {},
 ): Transfer {
@@ -180,6 +189,7 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(transfer.sourceAmount.amount).toBe(50000);
@@ -230,6 +240,7 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movementRepo.created[0].context).toBeUndefined();
@@ -259,6 +270,7 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
   });
@@ -285,6 +297,7 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
   });
@@ -316,6 +329,7 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(transfer.sourceAmount.amount).toBe(100000);
@@ -352,6 +366,7 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
   });
@@ -381,6 +396,7 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -411,8 +427,57 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
+  });
+
+  it('rolls back the whole transfer when a later write fails (R14-B)', async () => {
+    const transferRepo = fakeTransferRepo();
+    // The expense write (1st movement) succeeds; the income write (2nd) throws.
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      create: vi.fn()
+        .mockImplementationOnce(async (movement: Movement) => {
+          movementRepo.created.push(movement);
+          return movement;
+        })
+        .mockImplementationOnce(async () => {
+          throw new Error('boom later (income write fails)');
+        }),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-src',
+          destinationAccountId: 'acc-dst',
+          sourceAmount: 50000,
+          sourceCurrency: 'COP',
+          date: new Date('2025-06-01'),
+        },
+        transferRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow('boom later (income write fails)');
+
+    // The failure happened on the SECOND movement (income): the expense
+    // write ran first (pushed, call #1), the income write threw (call #2),
+    // which stopped the write phase — nothing after ran. The real rollback
+    // (nothing persisted) is proven by the integration test.
+    expect(transferRepo.create).toHaveBeenCalledTimes(1);
+    expect(movementRepo.create).toHaveBeenCalledTimes(2);
+    expect(transferRepo.created).toHaveLength(1);
+    expect(movementRepo.created).toHaveLength(1);
   });
 });
 
@@ -508,6 +573,7 @@ describe('createTransfer currency integrity', () => {
         movementRepo,
         fakeIdGen(),
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(transferRepo.created).toHaveLength(0);
@@ -540,6 +606,7 @@ describe('createTransfer currency integrity', () => {
         movementRepo,
         fakeIdGen(),
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(transferRepo.created).toHaveLength(0);

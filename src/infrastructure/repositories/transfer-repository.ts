@@ -1,9 +1,11 @@
 import { Types } from "mongoose";
 import type { TransferRepository } from "../../core/domain/repositories";
 import type { Transfer } from "../../core/domain/transfer";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { TransferModel, type TransferDocument } from "../models/transfer";
 import { toTransferEntity, toTransferDocData } from "../mappers/transfer";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoTransferRepository implements TransferRepository {
   async findById(workspaceId: string, id: string): Promise<Transfer | null> {
@@ -22,11 +24,12 @@ export class MongoTransferRepository implements TransferRepository {
     return docs.map((doc) => toTransferEntity(doc as TransferDocument));
   }
 
-  async create(transfer: Transfer): Promise<Transfer> {
+  async create(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer> {
     try {
+      const session = sessionOf(tx);
       const docData = toTransferDocData(transfer);
-      const created = await TransferModel.create({ ...docData, _id: transfer.id });
-      return toTransferEntity(created as TransferDocument);
+      const created = await TransferModel.create([{ ...docData, _id: transfer.id }], { session });
+      return toTransferEntity(created[0] as TransferDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(

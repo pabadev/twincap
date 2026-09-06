@@ -26,38 +26,47 @@ layer.
 
 ## Inventory
 
-### `createTransfer` — `src/core/application/transfers/create-transfer.ts`
+### `createTransfer` — `src/core/application/transfers/create-transfer.ts` ✅ FIXED (R14-B)
 
-Writes: `transferRepo.create` (:90), `movementRepo.create` expense (:105),
-`movementRepo.create` income (:120). Parent-first, then the two linked
-movements.
+Writes: `transferRepo.create`, `movementRepo.create` expense,
+`movementRepo.create` income, ALL inside one real multi-document transaction
+(R14-B): `uow.withTransaction` (`MongoUnitOfWork` → `session.withTransaction`)
+threads the opaque `TransactionHandle` into each repo write. A failure at ANY
+point aborts the whole transaction — **no partial state can persist**.
 
 - Invariant: transfer must have an expense + income movement; a movement
   must reference an existing transfer.
-- Failure mode: crash after `transferRepo.create` leaves a transfer with zero
-  or one movement.
-- **Classification**: Raw window, **mitigated in read** by
+- Failure mode (pre-fix): crash after `transferRepo.create` left a transfer
+  with zero or one movement. Post-fix: crash anywhere in the write phase rolls
+  back all three documents atomically.
+- **Classification**: ~~Raw window~~ → **Atomic (real transaction, R14-B)**.
+  Read defense retained as a safety net:
   `findIncompleteTransfers` in `src/infrastructure/consistency/reconcile.ts`
-  (action `complete_parent`, :34–49): it flags transfers whose two movements
-  are not both present so they can be completed or flagged.
-- **Proof**: `transferRepo.create` is written first with the movement IDs
-  captured up front, so recovery knows exactly which movements are expected.
+  (action `complete_parent`): flags transfers whose two movements are not both
+  present so they can be completed or flagged.
+- **Proof**: `session.withTransaction` retries `TransientTransactionError`;
+  integration test against `MongoMemoryReplSet` proves abort-on-partial-failure
+  leaves 0 documents (§25-B).
 
-### `createSale` — `src/core/application/sales/create-sale.ts`
+### `createSale` — `src/core/application/sales/create-sale.ts` ✅ FIXED (R14-B)
 
-Writes (up to six): `catalogRepo.decrementStock` (:94), `saleRepo.create`
-(:112), `movementRepo.create` paid-in-full movement (:116), and for the
-on-credit path `creditRepo.create` (:162) + `movementRepo.create` initial
-payment (:165).
+Writes (up to six): `catalogRepo.decrementStock`, `saleRepo.create`,
+`movementRepo.create` paid-in-full movement, and for the on-credit path
+`creditRepo.create` + `movementRepo.create` initial payment — ALL inside one
+real multi-document transaction (R14-B). The whole write phase
+(stock decrements → sale → movements → credit) runs under
+`uow.withTransaction`; any failure aborts everything.
 
 - Invariant: sale, its movements, and (on credit) the linked credit must stay
   consistent; stock decremented must match what the sale consumed.
-- Failure mode: partial writes can orphan a sale without its credit/movement,
-  or overshoot stock.
-- **Classification**: Raw window, mitigated:
-  - Stock restore handled by `deleteSale` (`incrementStock`, :42) and the
-    reconcile action `restore_stock` (:156).
-  - Orphan sale → `delete_orphan` reconcile action (:128) detects and removes
+- Failure mode (pre-fix): partial writes could orphan a sale without its
+  credit/movement, or overshoot stock. Post-fix: failure anywhere → full
+  rollback (stock included).
+- **Classification**: ~~Raw window~~ → **Atomic (real transaction, R14-B)**.
+  Mitigations retained as safety nets:
+  - Stock restore handled by `deleteSale` (`incrementStock`) and the
+    reconcile action `restore_stock`.
+  - Orphan sale → `delete_orphan` reconcile action detects and removes
     sales whose linked documents are missing.
 - Effect on economic result: movements are the source of truth for the
   dashboard; a stranded sale write that produced no movement does not inflate
@@ -142,12 +151,12 @@ maps it to `error.notFound` instead of the generic `error.operationFailed`.
   metrics derive from `movement` documents; a stranded parent write that
   produced no movement does not affect the dashboard, and reconcile
   detects/removes or flags it.
-- The remaining raw windows (`createTransfer`, `createSale`) are **recoverable
-  in read** and do not violate tenant isolation.
-- The tier does not support multi-document transactions; adopting them would
-  require moving off the free Atlas plan — deliberately out of scope (R12.3).
-- **No new dependencies**, no architectural change, no migration. Only
-  pattern-aligned tolerance fixes with tests.
+- The two raw windows (`createTransfer`, `createSale`) were **closed in
+  R14-B with real multi-document transactions** (verified empirically that
+  Atlas M0 is a replica set and supports them). The reconcile read-defenses
+  above remain as a safety net, not the primary guarantee.
+- **No new dependencies**, no migration. Only the `UnitOfWork` port +
+  `MongoUnitOfWork` adapter + optional `tx?` threading in 5 repo methods.
 
 ## Verification
 

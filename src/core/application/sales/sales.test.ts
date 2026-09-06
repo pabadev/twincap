@@ -20,7 +20,8 @@ import type {
   CreditGrantedRepository,
   AccountRepository,
 } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
+import type { IdGenerator, UnitOfWork } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -145,6 +146,14 @@ function fakeMovementRepo(
 
 function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
+}
+
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
 }
 
 function fakeClientRepo(
@@ -308,6 +317,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(sale.total).toBe(100000);
@@ -352,6 +362,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -387,6 +398,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(sale.paymentMode).toBe('on-credit');
@@ -429,6 +441,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -467,6 +480,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
     expect(saleRepo.created).toHaveLength(0);
@@ -504,6 +518,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ConflictError);
     // Validation happens before any write: no stock decrement either.
@@ -543,6 +558,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(creditRepo.created).toHaveLength(0);
@@ -578,6 +594,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     // Exactly one income movement = initialPayment, linked to the CREDIT.
@@ -637,6 +654,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(creditRepo.created).toHaveLength(1);
@@ -676,6 +694,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(creditRepo.created).toHaveLength(1);
@@ -724,6 +743,7 @@ describe('createSale', () => {
       clientRepo,
       creditRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(catalogRepo.decremented).toHaveLength(0);
@@ -760,6 +780,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ConflictError);
     expect(saleRepo.created).toHaveLength(0);
@@ -794,6 +815,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -830,6 +852,7 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.created).toHaveLength(0);
@@ -864,10 +887,61 @@ describe('createSale', () => {
         clientRepo,
         creditRepo,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
     expect(saleRepo.created).toHaveLength(0);
     expect(catalogRepo.decremented).toHaveLength(0);
+  });
+
+  it('rolls back the whole sale when a later write fails (R14-B)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    // The credit write fails — it comes AFTER stock decrement + sale create
+    // (and BEFORE the initial-payment movement) in the write order.
+    const creditRepo = fakeCreditGrantedRepo({
+      create: vi.fn().mockImplementation(async () => {
+        throw new Error('boom later (credit write fails)');
+      }),
+    });
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          clientId: 'client-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'on-credit',
+          currency: 'COP',
+          initialPayment: 20000,
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow('boom later (credit write fails)');
+
+    // Stock decrement + sale create ran BEFORE the credit failure; the
+    // initial-payment movement (AFTER the credit) never ran. The real
+    // rollback (nothing persisted) is proven by the integration test.
+    expect(catalogRepo.decremented).toHaveLength(1);
+    expect(saleRepo.created).toHaveLength(1);
+    expect(creditRepo.create).toHaveBeenCalledTimes(1);
+    expect(movementRepo.created).toHaveLength(0);
   });
 });
 

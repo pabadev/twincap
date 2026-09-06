@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { CreditGrantedRepository } from "../../core/domain/repositories";
 import type { CreditGranted } from "../../core/domain/credit-granted";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import {
@@ -12,6 +13,7 @@ import {
   toCreditGrantedEntity,
   toCreditGrantedDocData,
 } from "../mappers/credit-granted";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   async findById(workspaceId: string, id: string): Promise<CreditGranted | null> {
@@ -48,15 +50,16 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     });
   }
 
-  async create(credit: CreditGranted): Promise<CreditGranted> {
+  async create(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted> {
     try {
+      const session = sessionOf(tx);
       const docData = toCreditGrantedDocData(credit);
-      const created = await CreditGrantedModel.create({ ...docData, _id: credit.id });
+      const created = await CreditGrantedModel.create([{ ...docData, _id: credit.id }], { session });
       const currency = await this.resolveAccountCurrency(
         credit.workspaceId,
         credit.accountId,
       );
-      return toCreditGrantedEntity(created as CreditGrantedDocument, currency);
+      return toCreditGrantedEntity(created[0] as CreditGrantedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(

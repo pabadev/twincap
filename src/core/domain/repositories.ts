@@ -3,7 +3,8 @@
  *
  * Design rules (rev.2):
  * - workspaceId-first parameter order: every query is scoped to the owning workspace.
- * - NO session/transaction params: Atlas shared tier has no multi-doc tx.
+ * - R14-B: transactional writes accept an OPTIONAL trailing TransactionHandle so
+ *   multi-document use cases commit atomically (real Mongo transactions).
  * - All ids are plain strings (no ObjectId leak).
  * - ConflictError on unique constraint violations.
  * - IdGenerator is a separate port (ports.ts), not part of repositories.
@@ -20,6 +21,7 @@ import type { Movement } from "./movement";
 import type { Payable } from "./payable";
 import type { Sale } from "./sale";
 import type { Transfer } from "./transfer";
+import type { TransactionHandle } from "./transaction";
 import type { User } from "./user";
 import type { Workspace } from "./workspace";
 
@@ -73,7 +75,11 @@ export interface MovementRepository {
     limit: number,
     cursor?: { date: Date; createdAt: Date },
   ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }>;
-  create(movement: Movement): Promise<Movement>;
+  /**
+   * Persist a new movement.
+   * @param tx optional R14-B transaction handle; all writes join the same transaction.
+   */
+  create(movement: Movement, tx?: TransactionHandle): Promise<Movement>;
   update(movement: Movement): Promise<Movement>;
   delete(workspaceId: string, id: string): Promise<void>;
   /** Delete ALL movements that reference a parent id via link.refId (robust
@@ -90,7 +96,11 @@ export interface MovementRepository {
 export interface TransferRepository {
   findById(workspaceId: string, id: string): Promise<Transfer | null>;
   findByWorkspaceId(workspaceId: string): Promise<Transfer[]>;
-  create(transfer: Transfer): Promise<Transfer>;
+  /**
+   * Persist a new transfer.
+   * @param tx optional R14-B transaction handle; all writes join the same transaction.
+   */
+  create(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer>;
   update(transfer: Transfer): Promise<Transfer>;
   delete(workspaceId: string, id: string): Promise<void>;
   /** Find by raw ObjectId without workspaceId scope (for reconcile orphan check). */
@@ -118,7 +128,11 @@ export interface CreditReceivedRepository {
 export interface CreditGrantedRepository {
   findById(workspaceId: string, id: string): Promise<CreditGranted | null>;
   findByWorkspaceId(workspaceId: string): Promise<CreditGranted[]>;
-  create(credit: CreditGranted): Promise<CreditGranted>;
+  /**
+   * Persist a new granted credit.
+   * @param tx optional R14-B transaction handle; all writes join the same transaction.
+   */
+  create(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted>;
   update(credit: CreditGranted): Promise<CreditGranted>;
   delete(workspaceId: string, id: string): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5). */
@@ -168,8 +182,11 @@ export interface CatalogItemRepository {
   create(item: CatalogItem): Promise<CatalogItem>;
   update(item: CatalogItem): Promise<CatalogItem>;
   delete(workspaceId: string, id: string): Promise<void>;
-  /** Atomic stock decrement for products (POS-3). Returns false if insufficient stock. */
-  decrementStock(workspaceId: string, itemId: string, quantity: number): Promise<boolean>;
+  /**
+   * Atomic stock decrement for products (POS-3). Returns false if insufficient stock.
+   * @param tx optional R14-B transaction handle; all writes join the same transaction.
+   */
+  decrementStock(workspaceId: string, itemId: string, quantity: number, tx?: TransactionHandle): Promise<boolean>;
   /** Atomic stock increment for products (stock restore on sale delete). */
   incrementStock(workspaceId: string, itemId: string, quantity: number): Promise<void>;
 }
@@ -179,7 +196,11 @@ export interface CatalogItemRepository {
 export interface SaleRepository {
   findById(workspaceId: string, id: string): Promise<Sale | null>;
   findByWorkspaceId(workspaceId: string): Promise<Sale[]>;
-  create(sale: Sale): Promise<Sale>;
+  /**
+   * Persist a new sale.
+   * @param tx optional R14-B transaction handle; all writes join the same transaction.
+   */
+  create(sale: Sale, tx?: TransactionHandle): Promise<Sale>;
   update(sale: Sale): Promise<Sale>;
   delete(workspaceId: string, id: string): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5). */

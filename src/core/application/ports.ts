@@ -2,10 +2,12 @@
  * Application ports (interfaces) that use cases depend on.
  *
  * Design rules (rev.2):
- * - NO UnitOfWork (removed — no multi-doc transactions on shared Atlas tier).
+ * - UnitOfWork port added (R14-B) — Atlas M0 supports real multi-doc transactions.
  * - Pure TypeScript, no external imports.
  * - Implementation lives in the infrastructure layer (task 2.1).
  */
+
+import type { TransactionHandle } from "../domain/transaction";
 
 /** Password hashing — bcryptjs cost 12 (design §6). */
 export interface PasswordHasher {
@@ -271,4 +273,22 @@ export interface AuthTokenStore {
   markUsed(userId: string, purpose: AuthTokenPurpose): Promise<void>;
   /** Opportunistic cleanup of expired tokens (TTL index also handles it). */
   deleteExpired(): Promise<void>;
+}
+
+// ─── UnitOfWork / multi-document transactions (R14-B) ─────────────────────
+
+/**
+ * Unit of work over MULTIPLE documents (real MongoDB transactions).
+ *
+ * R14-B: createTransfer (transfer + 2 movements) and createSale (stock, sale,
+ * movements, credit) write several documents that must commit or roll back
+ * atomically. The Atlas M0 tier IS a replica set and supports transactions
+ * (verified empirically), so this port is implemented with a real Mongo
+ * session (`session.withTransaction`, transient-error retry included).
+ *
+ * The handle is opaque: use cases thread it into repo writes; the Mongo
+ * adapters extract the native session via `sessionOf` (Infrastructure concern).
+ */
+export interface UnitOfWork {
+  withTransaction<T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T>;
 }

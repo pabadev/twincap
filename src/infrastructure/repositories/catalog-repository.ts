@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { CatalogItemRepository } from "../../core/domain/repositories";
 import type { CatalogItem } from "../../core/domain/catalog";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import {
   CatalogItemModel,
@@ -10,6 +11,7 @@ import {
   toCatalogItemEntity,
   toCatalogItemDocData,
 } from "../mappers/catalog";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCatalogItemRepository implements CatalogItemRepository {
   async findById(workspaceId: string, id: string): Promise<CatalogItem | null> {
@@ -83,7 +85,9 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     workspaceId: string,
     itemId: string,
     quantity: number,
+    tx?: TransactionHandle,
   ): Promise<boolean> {
+    const session = sessionOf(tx);
     const result = await CatalogItemModel.updateOne(
       {
         _id: itemId,
@@ -91,6 +95,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         stock: { $gte: quantity },
       },
       { $inc: { stock: -quantity } },
+      { session },
     ).exec();
     return result.matchedCount > 0;
   }

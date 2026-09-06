@@ -12,7 +12,7 @@ import type {
   CreditGrantedRepository,
   AccountRepository,
 } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreateSaleInput } from './dto/sales';
 import { saleCategory } from './helpers';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
@@ -35,6 +35,10 @@ import { creditGrantedCategory } from '../../domain/synthetic-categories';
  * Movement context: 'Business' for the initial-payment abono — POS sales are
  * economic activity (D3-bis), same as any other sale movement. Standalone
  * credit abonos keep context 'Personal' (credits-granted/add-abono.ts).
+ *
+ * The ENTIRE write phase — stock decrements, sale, movements and credit —
+ * runs INSIDE a single multi-document transaction (R14-B): all writes commit
+ * or roll back atomically. Reads and validations stay outside it.
  */
 export async function createSale(
   workspaceId: string,
@@ -46,6 +50,7 @@ export async function createSale(
   clientRepo: ClientRepository,
   creditRepo: CreditGrantedRepository,
   accountRepo: AccountRepository,
+  uow: UnitOfWork,
 ): Promise<Sale> {
   const saleId = ids.generate();
   const now = new Date();
@@ -109,98 +114,102 @@ export async function createSale(
     resolvedItems.push(catalogItem);
   }
 
-  // POS-3: Decrement stock for physical products (atomic guard)
-  for (let i = 0; i < input.items.length; i++) {
-    const item = input.items[i];
-    const catalogItem = resolvedItems[i];
-    if (catalogItem?.type === 'product') {
-      const success = await catalogRepo.decrementStock(workspaceId, item.itemId, item.quantity);
-      if (!success) {
-        throw new ConflictError(`Insufficient stock for item ${catalogItem.name}`);
+  // R14-B: the whole write phase — stock decrements, sale, movements, credit —
+  // is ONE atomic multi-document transaction. Reads/validations ran above.
+  return uow.withTransaction(async (tx) => {
+    // POS-3: Decrement stock for physical products (atomic guard)
+    for (let i = 0; i < input.items.length; i++) {
+      const item = input.items[i];
+      const catalogItem = resolvedItems[i];
+      if (catalogItem?.type === 'product') {
+        const success = await catalogRepo.decrementStock(workspaceId, item.itemId, item.quantity, tx);
+        if (!success) {
+          throw new ConflictError(`Insufficient stock for item ${catalogItem.name}`);
+        }
       }
     }
-  }
 
-  const sale = new Sale({
-    id: saleId,
-    workspaceId,
-    items: lineItems,
-    date: input.date,
-    paymentMode: input.paymentMode,
-    accountId: input.accountId,
-    clientId: input.clientId,
-    createdAt: now,
-  });
-
-  await saleRepo.create(sale);
-
-  // POS-4: Paid-in-full → one income movement for the total
-  if (input.paymentMode === 'paid-in-full') {
-    await movementRepo.create(buildSalePaymentMovement({
+    const sale = new Sale({
+      id: saleId,
       workspaceId,
-      saleId,
-      accountId: sale.accountId,
-      amount: sale.total,
-      currency: input.currency,
+      items: lineItems,
       date: input.date,
-      now,
-      ids,
-    }));
-  }
+      paymentMode: input.paymentMode,
+      accountId: input.accountId,
+      clientId: input.clientId,
+      createdAt: now,
+    });
 
-  // R5-D0/R5-D0b: On-credit → linked CreditGranted owns the FULL debt
-  // (principal === total; no SALES-side abonos). The initial payment, when
-  // present, is the credit's FIRST abono — never a standalone movement linked
-  // to the sale — so the sale and the credit share ONE ledger.
-  if (input.paymentMode === 'on-credit' && client) {
-    const creditId = ids.generate();
-    const principal = new Money(total, input.currency);
+    await saleRepo.create(sale, tx);
 
-    // The initial-payment abono embeds its movementId up front; the movement
-    // is created right after the credit (same write order as add-abono).
-    const firstAbono =
-      initialPayment > 0
-        ? [{
-            id: ids.generate(),
-            amount: new Money(initialPayment, input.currency),
-            date: sale.date,
-            accountId: sale.accountId,
-            movementId: ids.generate(),
-          }]
-        : [];
-
-    const credit = new CreditGranted(
-      {
-        id: creditId,
+    // POS-4: Paid-in-full → one income movement for the total
+    if (input.paymentMode === 'paid-in-full') {
+      await movementRepo.create(buildSalePaymentMovement({
         workspaceId,
-        counterparty: client.name,
-        principal,
-        accountId: sale.accountId,
-        date: sale.date,
-        saleId,
-        createdAt: now,
-      },
-      firstAbono,
-    );
-    await creditRepo.create(credit);
-
-    if (initialPayment > 0) {
-      await movementRepo.create(buildInitialPaymentMovement({
-        workspaceId,
-        movementId: firstAbono[0].movementId,
-        creditId,
         saleId,
         accountId: sale.accountId,
-        amount: initialPayment,
+        amount: sale.total,
         currency: input.currency,
         date: input.date,
         now,
         ids,
-      }));
+      }), tx);
     }
-  }
 
-  return sale;
+    // R5-D0/R5-D0b: On-credit → linked CreditGranted owns the FULL debt
+    // (principal === total; no SALES-side abonos). The initial payment, when
+    // present, is the credit's FIRST abono — never a standalone movement linked
+    // to the sale — so the sale and the credit share ONE ledger.
+    if (input.paymentMode === 'on-credit' && client) {
+      const creditId = ids.generate();
+      const principal = new Money(total, input.currency);
+
+      // The initial-payment abono embeds its movementId up front; the movement
+      // is created right after the credit (same write order as add-abono).
+      const firstAbono =
+        initialPayment > 0
+          ? [{
+              id: ids.generate(),
+              amount: new Money(initialPayment, input.currency),
+              date: sale.date,
+              accountId: sale.accountId,
+              movementId: ids.generate(),
+            }]
+          : [];
+
+      const credit = new CreditGranted(
+        {
+          id: creditId,
+          workspaceId,
+          counterparty: client.name,
+          principal,
+          accountId: sale.accountId,
+          date: sale.date,
+          saleId,
+          createdAt: now,
+        },
+        firstAbono,
+      );
+      await creditRepo.create(credit, tx);
+
+      if (initialPayment > 0) {
+        await movementRepo.create(buildInitialPaymentMovement({
+          workspaceId,
+          movementId: firstAbono[0].movementId,
+          creditId,
+          saleId,
+          accountId: sale.accountId,
+          amount: initialPayment,
+          currency: input.currency,
+          date: input.date,
+          now,
+          ids,
+        }), tx);
+      }
+    }
+
+    return sale;
+  });
 }
 
 function buildSalePaymentMovement(args: {

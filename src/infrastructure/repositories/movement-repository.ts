@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { MovementRepository } from "../../core/domain/repositories";
 import type { Movement } from "../../core/domain/movement";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Category } from "../../core/domain/category";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
@@ -10,6 +11,7 @@ import { AccountModel, type AccountDocument } from "../models/account";
 import { toCategoryEntity } from "../mappers/category";
 import { toMovementEntity, toMovementDocData } from "../mappers/movement";
 import { resolveSyntheticCategory } from "../../core/domain/synthetic-categories";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoMovementRepository implements MovementRepository {
   async findById(workspaceId: string, id: string): Promise<Movement | null> {
@@ -121,11 +123,12 @@ export class MongoMovementRepository implements MovementRepository {
     });
   }
 
-  async create(movement: Movement): Promise<Movement> {
+  async create(movement: Movement, tx?: TransactionHandle): Promise<Movement> {
     try {
+      const session = sessionOf(tx);
       const docData = toMovementDocData(movement);
-      const created = await MovementModel.create({ ...docData, _id: movement.id });
-      const movementDoc = created as MovementDocument;
+      const created = await MovementModel.create([{ ...docData, _id: movement.id }], { session });
+      const movementDoc = created[0] as MovementDocument;
       const { category, currency } = await this.resolveDependencies(
         movement.workspaceId,
         movementDoc.categoryId.toString(),

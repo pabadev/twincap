@@ -43,7 +43,8 @@ import type {
   CategoryRepository,
   CatalogItemRepository,
 } from '../domain/repositories';
-import type { IdGenerator } from './ports';
+import type { TransactionHandle } from '../domain/transaction';
+import type { IdGenerator, UnitOfWork } from './ports';
 
 // ── Use cases ───────────────────────────────────────────────────────
 import { updateAccount } from './accounts/update-account';
@@ -357,6 +358,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: vi.fn().mockReturnValue('test-id') };
 }
 
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  TEST SUITE
 // ═══════════════════════════════════════════════════════════════════
@@ -463,6 +472,7 @@ describe('Tenant isolation (B1)', () => {
           movementRepo,
           fakeIdGen(),
           accountRepo,
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_B);
@@ -493,6 +503,7 @@ describe('Tenant isolation (B1)', () => {
           movementRepo,
           fakeIdGen(),
           accountRepo,
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.create).not.toHaveBeenCalled();
@@ -793,6 +804,7 @@ describe('Tenant isolation (B1)', () => {
           fakeClientRepo(),
           fakeCreditGrantedRepo(),
           accountRepo,
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.create).not.toHaveBeenCalled();
@@ -826,6 +838,7 @@ describe('Tenant isolation (B1)', () => {
           clientRepo,
           fakeCreditGrantedRepo(),
           accountRepo,
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(clientRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, CLI_B);
