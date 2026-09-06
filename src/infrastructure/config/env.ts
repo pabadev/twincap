@@ -1,59 +1,101 @@
 import { z } from "zod";
 
-const envSchema = z.object({
-  MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
-  AUTH_SECRET: z
-    .string()
-    .min(1, "AUTH_SECRET is required")
-    .refine((secret) => {
-      try {
-        // Must decode to exactly 32 bytes for jose A256GCM
-        const bytes = Uint8Array.from(atob(secret.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-        return bytes.length === 32;
-      } catch {
-        return false;
+const envSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .optional()
+      .default("development"),
+    // Set by Next.js to "phase-production-build" during `next build` (prerender).
+    // Used to skip the production-required validation during the build so a
+    // local `pnpm build` check does not fail for missing email vars that a real
+    // deploy (Vercel) provides at runtime. Runtime production has no NEXT_PHASE.
+    NEXT_PHASE: z.string().optional(),
+    MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
+    AUTH_SECRET: z
+      .string()
+      .min(1, "AUTH_SECRET is required")
+      .refine((secret) => {
+        try {
+          // Must decode to exactly 32 bytes for jose A256GCM
+          const bytes = Uint8Array.from(
+            atob(secret.replace(/-/g, "+").replace(/_/g, "/")),
+            (c) => c.charCodeAt(0),
+          );
+          return bytes.length === 32;
+        } catch {
+          return false;
+        }
+      }, {
+        message:
+          "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
+      }),
+    // Transactional email (R13-B). Optional in dev: when RESEND_API_KEY is absent
+    // the email sender logs the link to the console instead of sending.
+    // REQUIRED in production (R14-E).
+    RESEND_API_KEY: z.string().optional(),
+    // Sender address for transactional emails.
+    // REQUIRED in production (R14-E).
+    RESEND_FROM: z.string().optional(),
+    // Public base URL used to build reset/verify links (e.g. http://localhost:3000).
+    // REQUIRED in production — prevents the localhost fallback in auth-email-deps
+    // that would generate broken links in deployed environments (R14-E).
+    APP_BASE_URL: z.string().optional(),
+    // Error monitoring (R13-D). OPT-IN: defaults to false so the phase ships
+    // functional but SILENT until the operator explicitly enables it (no
+    // surprise for existing installs). Accepts "true"/"false" from the env.
+    ERROR_MONITORING_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
+    // Recipient for error incident alert emails (R13-D). If absent, alerts are
+    // a silent no-op (dev). Requires ERROR_MONITORING_ENABLED=true to activate.
+    ERROR_ALERT_EMAIL: z.string().optional(),
+    // Optional release/git sha recorded on each error event for triage; falls
+    // back to empty when not set. Mirrors 'release' in the error event model.
+    APP_RELEASE: z.string().optional(),
+    // Recipient for user feedback emails (R13-E). If absent, feedback sends
+    // are a silent no-op (dev). No feature flag needed — presence of this
+    // address is the gate.
+    FEEDBACK_EMAIL: z.string().optional(),
+    // Product analytics (R13-G). OPT-IN: defaults to false so the phase ships
+    // functional but SILENT until the operator explicitly enables it.
+    ANALYTICS_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
+    // Comma-separated email allowlist of users who may view the PRODUCT analytics
+    // dashboard (/analytics). Deny-by-default: if absent/empty, nobody has access
+    // except future role-based grants (R13-G hardening, founder-only today).
+    ANALYTICS_ACCESS_EMAILS: z.string().optional(),
+    // Comma-separated emails whose workspaces are excluded from the global
+    // analytics aggregate. Deny/clean-data by default: absent → no exclusion.
+    ANALYTICS_EXCLUDE_EMAILS: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.NODE_ENV !== "production") return;
+    // During `next build` (prerender) some pages touch env at module scope, but
+    // they do not send email. Skip the strict email requirement so a local
+    // production build check (pnpm build) stays green; runtime production
+    // (next start / Vercel server) has no NEXT_PHASE and enforces it.
+    if (data.NEXT_PHASE === "phase-production-build") return;
+
+    const prodRequired: [keyof typeof data, string][] = [
+      ["RESEND_API_KEY", "RESEND_API_KEY is required in production — set RESEND_API_KEY in your environment"],
+      ["RESEND_FROM", "RESEND_FROM is required in production — set RESEND_FROM in your environment"],
+      ["APP_BASE_URL", "APP_BASE_URL is required in production — set APP_BASE_URL to your deployed URL"],
+    ];
+
+    for (const [key, message] of prodRequired) {
+      if (!data[key]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message,
+        });
       }
-    }, {
-      message: "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
-    }),
-  // Transactional email (R13-B). Optional in dev: when RESEND_API_KEY is absent
-  // the email sender logs the link to the console instead of sending.
-  RESEND_API_KEY: z.string().optional(),
-  // Optional sender address override for transactional emails.
-  RESEND_FROM: z.string().optional(),
-  // Public base URL used to build reset/verify links (e.g. http://localhost:3000).
-  APP_BASE_URL: z.string().optional(),
-  // Error monitoring (R13-D). OPT-IN: defaults to false so the phase ships
-  // functional but SILENT until the operator explicitly enables it (no
-  // surprise for existing installs). Accepts "true"/"false" from the env.
-  ERROR_MONITORING_ENABLED: z
-    .enum(['true', 'false'])
-    .optional()
-    .transform((v) => v === 'true'),
-  // Recipient for error incident alert emails (R13-D). If absent, alerts are
-  // a silent no-op (dev). Requires ERROR_MONITORING_ENABLED=true to activate.
-  ERROR_ALERT_EMAIL: z.string().optional(),
-  // Optional release/git sha recorded on each error event for triage; falls
-  // back to empty when not set. Mirrors 'release' in the error event model.
-  APP_RELEASE: z.string().optional(),
-  // Recipient for user feedback emails (R13-E). If absent, feedback sends
-  // are a silent no-op (dev). No feature flag needed — presence of this
-  // address is the gate.
-  FEEDBACK_EMAIL: z.string().optional(),
-  // Product analytics (R13-G). OPT-IN: defaults to false so the phase ships
-  // functional but SILENT until the operator explicitly enables it.
-  ANALYTICS_ENABLED: z
-    .enum(['true', 'false'])
-    .optional()
-    .transform((v) => v === 'true'),
-  // Comma-separated email allowlist of users who may view the PRODUCT analytics
-  // dashboard (/analytics). Deny-by-default: if absent/empty, nobody has access
-  // except future role-based grants (R13-G hardening, founder-only today).
-  ANALYTICS_ACCESS_EMAILS: z.string().optional(),
-  // Comma-separated emails whose workspaces are excluded from the global
-  // analytics aggregate. Deny/clean-data by default: absent → no exclusion.
-  ANALYTICS_EXCLUDE_EMAILS: z.string().optional(),
-});
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 
