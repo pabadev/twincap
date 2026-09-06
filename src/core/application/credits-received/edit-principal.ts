@@ -1,7 +1,7 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { EditPrincipalInput } from './dto/credits-received';
@@ -22,6 +22,11 @@ export async function editPrincipal(
   const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
+
+  // ACC-1: principal currency is immutable.
+  if (input.currency !== credit.principal.currency) {
+    throw new ValidationError(`Credit currency is ${credit.principal.currency}, declared ${input.currency}`);
+  }
 
   // CRED-R-5: pending must remain ≥ 0
   const totalAbonos = credit.abonos.reduce((sum, a) => sum + a.amount.amount, 0);

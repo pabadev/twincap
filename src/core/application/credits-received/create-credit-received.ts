@@ -28,6 +28,11 @@ export async function createCreditReceived(
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
 
+  // ACC-1: the credit's currency must match the account's currency.
+  if (input.currency !== account.currency) {
+    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
+  }
+
   const creditId = ids.generate();
   const principalMoney = new Money(input.principal, input.currency);
   const now = new Date();

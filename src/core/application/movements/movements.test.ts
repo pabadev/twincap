@@ -376,6 +376,7 @@ describe('updateMovement', () => {
       { movementId: 'mov-1', amount: 75000 },
       movementRepo,
       categoryRepo,
+      fakeAccountRepo(),
     );
 
     expect(updated.amount.amount).toBe(75000);
@@ -398,6 +399,7 @@ describe('updateMovement', () => {
       { movementId: 'mov-1', note: 'Updated note' },
       movementRepo,
       categoryRepo,
+      fakeAccountRepo(),
     );
 
     expect(updated.note).toBe('Updated note');
@@ -415,6 +417,7 @@ describe('updateMovement', () => {
         { movementId: 'missing', amount: 50000 },
         movementRepo,
         categoryRepo,
+        fakeAccountRepo(),
       ),
     ).rejects.toThrow(NotFoundError);
   });
@@ -434,6 +437,7 @@ describe('updateMovement', () => {
         { movementId: 'mov-1', amount: 50000 },
         movementRepo,
         categoryRepo,
+        fakeAccountRepo(),
       ),
     ).rejects.toThrow(ValidationError);
   });
@@ -454,8 +458,64 @@ describe('updateMovement', () => {
         { movementId: 'mov-1', categoryId: 'cat-exp' },
         movementRepo,
         categoryRepo,
+        fakeAccountRepo(),
       ),
     ).rejects.toThrow(ValidationError);
+  });
+
+  it('throws ValidationError when moving to an account with a different currency (ACC-1)', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+    const accountRepo = fakeAccountRepo([
+      new Account({
+        id: 'acc-usd',
+        workspaceId: 'user-1',
+        name: 'USD Account',
+        currency: 'USD',
+        isFixed: false,
+        createdAt: new Date(),
+      }),
+    ]);
+
+    await expect(
+      updateMovement(
+        'user-1',
+        { movementId: 'mov-1', accountId: 'acc-usd' },
+        movementRepo,
+        categoryRepo,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
+  it('throws NotFoundError when the new account does not exist (D3)', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+    const accountRepo = fakeAccountRepo([]);
+
+    await expect(
+      updateMovement(
+        'user-1',
+        { movementId: 'mov-1', accountId: 'acc-missing' },
+        movementRepo,
+        categoryRepo,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.updated).toHaveLength(0);
   });
 });
 

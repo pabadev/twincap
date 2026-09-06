@@ -16,6 +16,9 @@ const { MongoTransferRepository } = vi.hoisted(() => ({
 const { MongoMovementRepository } = vi.hoisted(() => ({
   MongoMovementRepository: vi.fn(),
 }));
+const { MongoAccountRepository } = vi.hoisted(() => ({
+  MongoAccountRepository: vi.fn(),
+}));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -25,6 +28,9 @@ vi.mock('../../../infrastructure/repositories/transfer-repository', () => ({
 }));
 vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
+}));
+vi.mock('../../../infrastructure/repositories/account-repository', () => ({
+  MongoAccountRepository,
 }));
 
 const { updateTransferAction } = await import('./actions');
@@ -93,6 +99,14 @@ describe('updateTransferAction', () => {
         return null;
       }),
       update: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockImplementation(async (_ws: string, id: string) => {
+        if (id === 'acc-1' || id === 'acc-2') {
+          return { id, workspaceId: 'user-1', name: id, currency: 'COP', isFixed: false };
+        }
+        return null;
+      }),
     }));
   });
 

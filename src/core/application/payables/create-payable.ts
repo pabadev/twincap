@@ -1,7 +1,7 @@
 import { Payable } from '../../domain/payable';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError } from '../../domain/errors';
+import { NotFoundError, ValidationError } from '../../domain/errors';
 import { payableCategory } from '../../domain/synthetic-categories';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -28,6 +28,11 @@ export async function createPayable(
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
+  // ACC-1: the payable's currency must match the account's currency.
+  if (input.currency !== account.currency) {
+    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
   }
 
   const payableId = ids.generate();

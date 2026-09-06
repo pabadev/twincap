@@ -5,6 +5,8 @@ export interface CatalogItemDoc {
   workspaceId: mongoose.Types.ObjectId;
   name: string;
   unitPrice: number;
+  /** Account currency at creation time — items are currency-immutable (POS-1). */
+  currency: string;
   type: "product" | "service";
   /** Only present for products (POS-1). */
   stock?: number;
@@ -29,6 +31,11 @@ const CatalogItemSchema = new Schema<CatalogItemDoc>(
     unitPrice: {
       type: Number,
       required: true,
+    },
+    currency: {
+      type: String,
+      required: true,
+      enum: ["COP", "USD", "MXN", "EUR"],
     },
     type: {
       type: String,

@@ -10,6 +10,7 @@ import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
+import type { Currency } from '../../domain/currency';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -44,12 +45,13 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
+  currency: Currency = 'COP',
 ): Account {
   return new Account({
     id,
     workspaceId: 'user-1',
     name: `Account ${id}`,
-    currency: 'COP',
+    currency,
     isFixed: false,
     createdAt: new Date(),
   });
@@ -420,6 +422,33 @@ describe('createPayable', () => {
     expect(payableRepo.created).toHaveLength(0);
     expect(movementRepo.created).toHaveLength(0);
   });
+
+  it('throws ValidationError when the payable currency does not match the account currency (ACC-1)', async () => {
+    const payableRepo = fakePayableRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createPayable(
+        'user-1',
+        {
+          counterparty: 'Proveedor SA',
+          total: 100000,
+          currency: 'COP',
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+        },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+
+    expect(payableRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+  });
 });
 
 // ─── Add Abono ─────────────────────────────────────────────────────
@@ -481,6 +510,33 @@ describe('addAbono', () => {
     const movement = movementRepo.created[0];
     expect(movement.accountId).toBe('acc-1');
     expect(movement.context).toBe('Personal');
+  });
+
+  it('throws ValidationError when the payment account currency differs from the abono currency (ACC-1)', async () => {
+    const payable = makePayable(); // payable.total is COP
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo();
+    // Payment account is USD but the abono is COP — the movement would be
+    // re-labeled to USD on read, silently corrupting the ledger.
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'pay-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+
+    expect(payableRepo.addAbono).not.toHaveBeenCalled();
+    expect(movementRepo.created).toHaveLength(0);
   });
 
   it('throws ConflictError on overpayment including initial payment (PAY-R-2)', async () => {
@@ -570,6 +626,29 @@ describe('addAbono', () => {
         accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws ValidationError when the abono currency differs from the payable currency (ACC-1)', async () => {
+    const payable = makePayable({ total: new Money(100000, 'USD') });
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'pay-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(movementRepo.created).toHaveLength(0);
   });
 });
 
@@ -880,6 +959,18 @@ describe('editTotal', () => {
     await expect(
       editTotal('user-1', 'missing', { total: 200000, currency: 'COP' }, payableRepo),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws ValidationError when changing the total currency (ACC-1)', async () => {
+    const payable = makePayable();
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+
+    await expect(
+      editTotal('user-1', 'pay-1', { total: 200000, currency: 'USD' }, payableRepo),
+    ).rejects.toThrow(ValidationError);
+    expect(payableRepo.update).not.toHaveBeenCalled();
   });
 });
 

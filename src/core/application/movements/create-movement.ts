@@ -46,6 +46,11 @@ export async function createMovement(
     throw new NotFoundError('Account not found');
   }
 
+  // ACC-1: the movement's currency must match the account's currency.
+  if (input.currency !== account.currency) {
+    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
+  }
+
   const now = new Date();
   const movement = new Movement({
     id: ids.generate(),

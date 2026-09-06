@@ -1,6 +1,6 @@
 import { Payable } from '../../domain/payable';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { PayableRepository } from '../../domain/repositories';
 import type { EditTotalInput } from './dto/payables';
 
@@ -21,6 +21,11 @@ export async function editTotal(
   const payables = await payableRepo.findByWorkspaceId(workspaceId);
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
+
+  // ACC-1: total currency is immutable.
+  if (input.currency !== payable.total.currency) {
+    throw new ValidationError(`Payable currency is ${payable.total.currency}, declared ${input.currency}`);
+  }
 
   // PAY-R-4: pending must remain >= 0
   const totalAbonos = payable.abonos.reduce((sum, a) => sum + a.amount.amount, 0);

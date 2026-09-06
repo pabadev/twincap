@@ -296,6 +296,23 @@ describe('updateCatalogItem', () => {
 
     expect(updated.type).toBe('product');
   });
+
+  it('currency remains immutable on update (POS-1)', async () => {
+    const existing = makeProduct({ unitPrice: new Money(5000, 'COP') });
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+
+    await expect(
+      updateCatalogItem(
+        'user-1',
+        'cat-1',
+        { unitPrice: 7500, currency: 'USD' },
+        catalogRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(catalogRepo.update).not.toHaveBeenCalled();
+  });
 });
 
 // ─── Delete ────────────────────────────────────────────────────────

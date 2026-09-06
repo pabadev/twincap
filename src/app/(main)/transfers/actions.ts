@@ -130,12 +130,14 @@ export async function updateTransferAction(
       () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
         return updateTransfer(
           user.workspaceId!,
           transferId,
           input,
           transferRepo,
           movementRepo,
+          accountRepo,
         );
       },
     );

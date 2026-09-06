@@ -764,6 +764,111 @@ describe('createSale', () => {
     ).rejects.toThrow(ConflictError);
     expect(saleRepo.created).toHaveLength(0);
   });
+
+  it('rejects when sale currency differs from the collection account (ACC-1)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // COP
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'paid-in-full',
+          currency: 'USD', // declared USD on a COP account
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(creditRepo.created).toHaveLength(0);
+    expect(catalogRepo.decremented).toHaveLength(0);
+  });
+
+  it('rejects when a catalog item currency differs from the collection account (ACC-1)', async () => {
+    const product = makeProduct({ unitPrice: new Money(50000, 'USD') }); // USD item
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // COP
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'paid-in-full',
+          currency: 'COP',
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(catalogRepo.decremented).toHaveLength(0);
+  });
+
+  it('throws NotFoundError when a catalog item does not exist', async () => {
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(null),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-missing', quantity: 1, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'paid-in-full',
+          currency: 'COP',
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        ids,
+        clientRepo,
+        creditRepo,
+        accountRepo,
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(saleRepo.created).toHaveLength(0);
+    expect(catalogRepo.decremented).toHaveLength(0);
+  });
 });
 
 // ─── Add Sale Abono ────────────────────────────────────────────────
@@ -862,9 +967,56 @@ describe('addSaleAbono', () => {
         saleRepo,
         movementRepo,
         ids,
+accountRepo,
+        ),
+      ).rejects.toThrow(NotFoundError);
+  });
+
+  it('rejects abono currency that differs from the sale currency (ACC-1)', async () => {
+    const sale = makeSale(); // sale.accountId = acc-1 (COP)
+    const saleRepo = fakeSaleRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addSaleAbono(
+        'user-1',
+        'sale-1',
+        { amount: 25000, currency: 'USD', accountId: 'acc-1', date: new Date('2025-07-01') },
+        saleRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(saleRepo.addAbono).not.toHaveBeenCalled();
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it('throws NotFoundError when the sale account does not exist (D3)', async () => {
+    const sale = makeSale({ accountId: 'acc-sale' });
+    const saleRepo = fakeSaleRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // acc-sale missing
+    const ids = fakeIdGen();
+
+    await expect(
+      addSaleAbono(
+        'user-1',
+        'sale-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        saleRepo,
+        movementRepo,
+        ids,
         accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
+    expect(saleRepo.addAbono).not.toHaveBeenCalled();
   });
 });
 

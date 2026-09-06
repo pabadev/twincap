@@ -410,6 +410,7 @@ describe('Tenant isolation (B1)', () => {
           { movementId: MOV_B, amount: 20000 },
           movementRepo,
           categoryRepo,
+          fakeAccountRepo(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(movementRepo.update).not.toHaveBeenCalled();
@@ -430,7 +431,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo),
+        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.update).not.toHaveBeenCalled();
     });

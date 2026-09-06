@@ -1,9 +1,9 @@
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError } from '../../domain/errors';
+import { NotFoundError, ValidationError } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
-import type { TransferRepository, MovementRepository } from '../../domain/repositories';
+import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 
 export interface UpdateTransferInput {
   sourceAmount?: number;
@@ -25,9 +25,30 @@ export async function updateTransfer(
   input: UpdateTransferInput,
   transferRepo: TransferRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
 ): Promise<Transfer> {
   const existing = await transferRepo.findById(userId, transferId);
   if (!existing) throw new NotFoundError('Transfer not found');
+
+  // ACC-1 re-check: the transfer's persisted currencies must still match the
+  // accounts' current currencies (accounts are currency-immutable, so a
+  // mismatch means the transfer was recorded against the wrong account).
+  const [sourceAccount, destinationAccount] = await Promise.all([
+    accountRepo.findById(userId, existing.sourceAccountId),
+    accountRepo.findById(userId, existing.destinationAccountId),
+  ]);
+  if (!sourceAccount) {
+    throw new NotFoundError(`Source account ${existing.sourceAccountId} not found`);
+  }
+  if (!destinationAccount) {
+    throw new NotFoundError(`Destination account ${existing.destinationAccountId} not found`);
+  }
+  if (sourceAccount.currency !== existing.sourceCurrency) {
+    throw new ValidationError(`Source account currency is ${sourceAccount.currency}, stored ${existing.sourceCurrency}`);
+  }
+  if (destinationAccount.currency !== existing.destinationCurrency) {
+    throw new ValidationError(`Destination account currency is ${destinationAccount.currency}, stored ${existing.destinationCurrency}`);
+  }
 
   // Build updated transfer values
   const newSourceAmount = input.sourceAmount ?? existing.sourceAmount.amount;

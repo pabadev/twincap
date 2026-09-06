@@ -184,11 +184,13 @@ export async function updateMovementAction(
       () => {
         const movementRepo = new MongoMovementRepository();
         const categoryRepo = new MongoCategoryRepository();
+        const accountRepo = new MongoAccountRepository();
         return updateMovement(
           user.workspaceId!,
           { movementId, amount, accountId, categoryId, date, note, context },
           movementRepo,
           categoryRepo,
+          accountRepo,
         );
       },
     );

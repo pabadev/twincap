@@ -1,7 +1,7 @@
 import { Movement } from '../../domain/movement';
 import type { MovementContext } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import type { MovementRepository, CategoryRepository } from '../../domain/repositories';
+import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
 import type { Category } from '../../domain/category';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 
@@ -20,6 +20,7 @@ export async function updateMovement(
   input: UpdateMovementInput,
   movementRepo: MovementRepository,
   categoryRepo: CategoryRepository,
+  accountRepo: AccountRepository,
 ): Promise<Movement> {
   const existing = await movementRepo.findById(workspaceId, input.movementId);
   if (!existing) throw new NotFoundError('Movement not found');
@@ -45,11 +46,23 @@ export async function updateMovement(
     resolvedCategory = category;
   }
 
+  // ACC-1: if the account changes, the new account's currency must match the
+  // movement's persisted currency (currencies are never rewritten on edit).
+  let accountId = existing.accountId;
+  if (input.accountId && input.accountId !== existing.accountId) {
+    const account = await accountRepo.findById(workspaceId, input.accountId);
+    if (!account) throw new NotFoundError('Account not found');
+    if (account.currency !== existing.amount.currency) {
+      throw new ValidationError(`Account currency is ${account.currency}, declared ${existing.amount.currency}`);
+    }
+    accountId = input.accountId;
+  }
+
   // MOV-4: recalculate signedAmount if amount changes
   const updated = new Movement({
     id: existing.id,
     workspaceId: existing.workspaceId,
-    accountId: input.accountId ?? existing.accountId,
+    accountId,
     category: resolvedCategory,
     type: existing.type,
     amount: input.amount

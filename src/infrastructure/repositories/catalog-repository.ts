@@ -1,13 +1,11 @@
 import { Types } from "mongoose";
 import type { CatalogItemRepository } from "../../core/domain/repositories";
 import type { CatalogItem } from "../../core/domain/catalog";
-import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import {
   CatalogItemModel,
   type CatalogItemDocument,
 } from "../models/catalog";
-import { AccountModel, type AccountDocument } from "../models/account";
 import {
   toCatalogItemEntity,
   toCatalogItemDocData,
@@ -20,8 +18,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
       workspaceId: new Types.ObjectId(workspaceId),
     }).exec();
     if (!doc) return null;
-    const currency = await this.resolveAccountCurrency(workspaceId);
-    return toCatalogItemEntity(doc as CatalogItemDocument, currency);
+    return toCatalogItemEntity(doc as CatalogItemDocument);
   }
 
   async findByWorkspaceId(workspaceId: string): Promise<CatalogItem[]> {
@@ -30,10 +27,8 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     }).sort({ name: 1 }).exec();
     if (docs.length === 0) return [];
 
-    const currency = await this.resolveAccountCurrency(workspaceId);
-
     return docs.map((doc) =>
-      toCatalogItemEntity(doc as CatalogItemDocument, currency),
+      toCatalogItemEntity(doc as CatalogItemDocument),
     );
   }
 
@@ -41,8 +36,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     try {
       const docData = toCatalogItemDocData(item);
       const created = await CatalogItemModel.create(docData);
-      const currency = await this.resolveAccountCurrency(item.workspaceId);
-      return toCatalogItemEntity(created as CatalogItemDocument, currency);
+      return toCatalogItemEntity(created as CatalogItemDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -68,8 +62,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         `CatalogItem ${item.id} not found for user ${item.workspaceId}`,
       );
     }
-    const currency = await this.resolveAccountCurrency(item.workspaceId);
-    return toCatalogItemEntity(result as CatalogItemDocument, currency);
+    return toCatalogItemEntity(result as CatalogItemDocument);
   }
 
   async delete(workspaceId: string, id: string): Promise<void> {
@@ -115,20 +108,6 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
       },
       { $inc: { stock: quantity } },
     ).exec();
-  }
-
-  // ─── Private helpers ───────────────────────────────────────────────
-
-  private async resolveAccountCurrency(workspaceId: string): Promise<Currency> {
-    const doc = await AccountModel.findOne({
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
-    if (!doc) {
-      throw new NotFoundError(
-        `No account found for user ${workspaceId}`,
-      );
-    }
-    return (doc as AccountDocument).currency as Currency;
   }
 }
 

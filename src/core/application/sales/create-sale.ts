@@ -56,6 +56,11 @@ export async function createSale(
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
 
+  // ACC-1: the sale's currency must match the collection account.
+  if (input.currency !== account.currency) {
+    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
+  }
+
   // Build line items and compute total before any write so input validation
   // (initialPayment ≤ total) can fail without side effects.
   const lineItems = input.items.map(item => ({
@@ -87,10 +92,28 @@ export async function createSale(
     throw new ValidationError('Initial payment only applies to on-credit sales');
   }
 
-  // POS-3: Decrement stock for physical products (atomic guard)
+  // ACC-1/POS: validate the three currencies agree — catalog item unit price,
+  // collection account and sale currency. Resolve catalog items up front and
+  // reuse them in the POS-3 stock loop below.
+  const resolvedItems: Array<Awaited<ReturnType<CatalogItemRepository['findById']>>> = [];
   for (const item of input.items) {
     const catalogItem = await catalogRepo.findById(workspaceId, item.itemId);
-    if (catalogItem && catalogItem.type === 'product') {
+    if (!catalogItem) {
+      throw new NotFoundError(`Catalog item ${item.itemId} not found`);
+    }
+    if (catalogItem.unitPrice.currency !== account.currency) {
+      throw new ValidationError(
+        `Catalog item ${catalogItem.name} currency is ${catalogItem.unitPrice.currency}, account is ${account.currency}`,
+      );
+    }
+    resolvedItems.push(catalogItem);
+  }
+
+  // POS-3: Decrement stock for physical products (atomic guard)
+  for (let i = 0; i < input.items.length; i++) {
+    const item = input.items[i];
+    const catalogItem = resolvedItems[i];
+    if (catalogItem?.type === 'product') {
       const success = await catalogRepo.decrementStock(workspaceId, item.itemId, item.quantity);
       if (!success) {
         throw new ConflictError(`Insufficient stock for item ${catalogItem.name}`);

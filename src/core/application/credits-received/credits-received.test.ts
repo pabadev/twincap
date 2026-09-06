@@ -10,7 +10,8 @@ import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import type { Currency } from '../../domain/currency';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { CreditReceivedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { CreditAbono } from '../../domain/credit-received';
@@ -44,12 +45,13 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
+  currency: Currency = 'COP',
 ): Account {
   return new Account({
     id,
     workspaceId: 'user-1',
     name: `Account ${id}`,
-    currency: 'COP',
+    currency,
     isFixed: false,
     createdAt: new Date(),
   });
@@ -290,6 +292,33 @@ describe('createCreditReceived', () => {
     expect(credit.totalToPay).toBe(120000);
     expect(credit.frequency).toBe('monthly');
   });
+
+  it('throws ValidationError when the credit currency does not match the account currency (ACC-1)', async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      createCreditReceived(
+        'user-1',
+        {
+          counterparty: 'Juan',
+          principal: 100000,
+          currency: 'COP',
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+        },
+        creditRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+
+    expect(creditRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+  });
 });
 
 // ─── Add Abono ─────────────────────────────────────────────────────
@@ -349,6 +378,33 @@ describe('addAbono', () => {
     const movement = movementRepo.created[0];
     expect(movement.accountId).toBe('acc-1');
     expect(movement.context).toBe('Personal');
+  });
+
+  it('throws ValidationError when the payment account currency differs from the abono currency (ACC-1)', async () => {
+    const credit = makeCredit(); // credit.principal is COP
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    // Payment account is USD but the abono is COP — the movement would be
+    // re-labeled to USD on read, silently corrupting the ledger.
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'cr-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        creditRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+
+    expect(creditRepo.addAbono).not.toHaveBeenCalled();
+    expect(movementRepo.created).toHaveLength(0);
   });
 
   it('throws ConflictError on overpayment (CRED-R-2)', async () => {
@@ -414,6 +470,29 @@ describe('addAbono', () => {
         accountRepo,
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws ValidationError when the abono currency differs from the credit currency (ACC-1)', async () => {
+    const credit = makeCredit({ principal: new Money(100000, 'USD') });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1', 'USD')]);
+    const ids = fakeIdGen();
+
+    await expect(
+      addAbono(
+        'user-1',
+        'cr-1',
+        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        creditRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(movementRepo.created).toHaveLength(0);
   });
 });
 
@@ -732,6 +811,19 @@ describe('editPrincipal', () => {
     await expect(
       editPrincipal('user-1', 'missing', { principal: 200000, currency: 'COP' }, creditRepo, movementRepo),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws ValidationError when changing the principal currency (ACC-1)', async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      editPrincipal('user-1', 'cr-1', { principal: 200000, currency: 'USD' }, creditRepo, movementRepo),
+    ).rejects.toThrow(ValidationError);
+    expect(creditRepo.update).not.toHaveBeenCalled();
   });
 });
 

@@ -9,6 +9,7 @@ import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
+import type { Currency } from '../../domain/currency';
 import type { IdGenerator } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
@@ -32,12 +33,13 @@ function fakeAccountRepo(
 
 function makeAccount(
   id: string,
+  currency: Currency = 'COP',
 ): Account {
   return new Account({
     id,
     workspaceId: 'user-1',
     name: `Account ${id}`,
-    currency: 'COP',
+    currency,
     isFixed: false,
     createdAt: new Date(),
   });
@@ -294,7 +296,7 @@ describe('createTransfer', () => {
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
-      makeAccount('acc-dst'),
+      makeAccount('acc-dst', 'USD'),
     ]);
     const ids = fakeIdGen();
 
@@ -388,7 +390,7 @@ describe('createTransfer', () => {
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
-      makeAccount('acc-dst'),
+      makeAccount('acc-dst', 'USD'),
     ]);
     const ids = fakeIdGen();
 
@@ -436,6 +438,7 @@ describe('updateTransfer', () => {
         return null;
       }),
     });
+    const accountRepo = fakeAccountRepo([makeAccount('acc-src'), makeAccount('acc-dst')]);
 
     const updated = await updateTransfer(
       'user-1',
@@ -443,6 +446,7 @@ describe('updateTransfer', () => {
       { sourceAmount: 75000, destinationAmount: 75000 },
       transferRepo,
       movementRepo,
+      accountRepo,
     );
 
     expect(updated.sourceAmount.amount).toBe(75000);
@@ -458,8 +462,107 @@ describe('updateTransfer', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo),
+      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo, fakeAccountRepo()),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError when the source account no longer exists (D3)', async () => {
+    const existing = makeTransfer();
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([]); // source + dest both resolve to null
+
+    await expect(
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo),
+    ).rejects.toThrow(NotFoundError);
+    expect(transferRepo.update).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Create: currency integrity (ACC-1) ──────────────────────────────
+
+describe('createTransfer currency integrity', () => {
+  it('rejects when source currency differs from source account (ACC-1)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src', 'COP'),
+      makeAccount('acc-dst', 'COP'),
+    ]);
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-src',
+          destinationAccountId: 'acc-dst',
+          sourceAmount: 50000,
+          sourceCurrency: 'USD', // declared USD on a COP account
+          date: new Date(),
+        },
+        transferRepo,
+        movementRepo,
+        fakeIdGen(),
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(transferRepo.created).toHaveLength(0);
+  });
+
+  it('rejects when destination currency differs from destination account (ACC-1)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src', 'COP'),
+      makeAccount('acc-dst', 'COP'), // COP account
+    ]);
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-src',
+          destinationAccountId: 'acc-dst',
+          sourceAmount: 50000,
+          sourceCurrency: 'COP',
+          destinationCurrency: 'USD', // declared USD on a COP account
+          destinationAmount: 50000,
+          rate: 1,
+          date: new Date(),
+        },
+        transferRepo,
+        movementRepo,
+        fakeIdGen(),
+        accountRepo,
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(transferRepo.created).toHaveLength(0);
+  });
+});
+
+// ─── Update: currency re-check (ACC-1 defense-in-depth) ─────────────
+
+describe('updateTransfer currency re-check', () => {
+  it('rejects when source account currency no longer matches stored currency', async () => {
+    const existing = makeTransfer({ sourceCurrency: 'USD', destinationCurrency: 'USD',
+      sourceAmount: new Money(50000, 'USD'), destinationAmount: new Money(50000, 'USD') });
+    const transferRepo = fakeTransferRepo({ findById: vi.fn().mockResolvedValue(existing) });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src', 'COP'), // changed to COP since transfer was created
+      makeAccount('acc-dst', 'USD'),
+    ]);
+
+    await expect(
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo),
+    ).rejects.toThrow(ValidationError);
+    expect(transferRepo.update).not.toHaveBeenCalled();
   });
 });
 

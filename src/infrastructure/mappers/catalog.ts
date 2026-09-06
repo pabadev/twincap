@@ -4,20 +4,27 @@ import {
   CatalogItem,
   type CatalogItemType,
 } from "../../core/domain/catalog";
-import type { Currency } from "../../core/domain/currency";
-import { Money } from "../../core/domain/money";
+import { isCurrency } from "../../core/domain/currency";
+import { Money, MoneyError } from "../../core/domain/money";
 
 /**
  * Convert a Mongoose CatalogItemDocument to a domain CatalogItem entity.
  *
- * The doc stores unitPrice as a raw number (minor units). The Currency
- * must be provided by the caller (typically the user's default or the
- * sale's account currency).
+ * The doc stores unitPrice as a raw number (minor units) plus the currency
+ * persisted at creation time (items are currency-immutable, POS-1).
  */
-export function toCatalogItemEntity(
-  doc: CatalogItemDocument,
-  currency: Currency,
-): CatalogItem {
+export function toCatalogItemEntity(doc: CatalogItemDocument): CatalogItem {
+  // Legacy pre-R14 docs may lack the currency field even though the schema type
+  // declares it required (Mongoose does not validate on read).
+  const currency = doc.currency as string | undefined;
+  if (currency === undefined || !isCurrency(currency)) {
+    // Legacy pre-R14 items have no persisted currency (the old repo derived it
+    // from an arbitrary account). Failing loudly is safer than silently
+    // relabeling the amount; R14-Fase O owns the backfill that adds currency.
+    throw new MoneyError(
+      `Catalog item ${doc._id.toString()} has no persisted currency; backfill required (R14-Fase O)`,
+    );
+  }
   return new CatalogItem({
     id: doc._id.toString(),
     workspaceId: doc.workspaceId.toString(),
@@ -37,6 +44,7 @@ export function toCatalogItemDocData(
     workspaceId: new Types.ObjectId(entity.workspaceId),
     name: entity.name,
     unitPrice: entity.unitPrice.amount,
+    currency: entity.unitPrice.currency,
     type: entity.type,
     stock: entity.stock,
   };

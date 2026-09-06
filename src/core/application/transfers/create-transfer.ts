@@ -42,16 +42,27 @@ export async function createTransfer(
     throw new NotFoundError(`Destination account ${input.destinationAccountId} not found`);
   }
 
-  // TRA-2/3: same-currency = equal amounts; cross-currency requires rate + destinationAmount
-  const destCurrency = input.destinationCurrency ?? input.sourceCurrency;
-  const isSameCurrency = input.sourceCurrency === destCurrency;
-  const sourceAmountMoney = new Money(input.sourceAmount, input.sourceCurrency);
+  // ACC-1: declared currencies must match the accounts' real currencies.
+  if (input.sourceCurrency !== sourceAccount.currency) {
+    throw new ValidationError(`Source account currency is ${sourceAccount.currency}, declared ${input.sourceCurrency}`);
+  }
+  const declaredDestCurrency = input.destinationCurrency ?? input.sourceCurrency;
+  if (declaredDestCurrency !== destinationAccount.currency) {
+    throw new ValidationError(`Destination account currency is ${destinationAccount.currency}, declared ${declaredDestCurrency}`);
+  }
+
+  // TRA-2/3: same-currency = equal amounts; cross-currency requires rate + destinationAmount.
+  // Currencies come from the accounts, never from declarations.
+  const sourceCurrency = sourceAccount.currency;
+  const destCurrency = destinationAccount.currency;
+  const isSameCurrency = sourceCurrency === destCurrency;
+  const sourceAmountMoney = new Money(input.sourceAmount, sourceCurrency);
   let destAmount: number;
 
   if (isSameCurrency) {
     destAmount = input.sourceAmount;
   } else {
-    if (!input.rate || !input.destinationAmount || !input.destinationCurrency) {
+    if (!input.rate || !input.destinationAmount) {
       throw new ValidationError('Cross-currency transfer requires rate and destination amount');
     }
     destAmount = input.destinationAmount;
@@ -78,7 +89,7 @@ export async function createTransfer(
     destinationAccountId: input.destinationAccountId,
     sourceAmount: sourceAmountMoney,
     destinationAmount: new Money(destAmount, destCurrency),
-    sourceCurrency: input.sourceCurrency,
+    sourceCurrency: sourceCurrency,
     destinationCurrency: destCurrency,
     rate: input.rate,
     date: input.date,

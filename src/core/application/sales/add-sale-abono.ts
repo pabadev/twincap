@@ -1,7 +1,7 @@
 import { Sale } from '../../domain/sale';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { SaleRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
 import type { AddSaleAbonoInput } from './dto/sales';
@@ -32,6 +32,16 @@ export async function addSaleAbono(
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
+  // ACC-1: the abono's currency must match the sale's currency (the debt
+  // currency, fixed at creation from the collection account).
+  const saleAccount = await accountRepo.findById(workspaceId, sale.accountId);
+  if (!saleAccount) {
+    throw new NotFoundError(`Account ${sale.accountId} not found`);
+  }
+  if (input.currency !== saleAccount.currency) {
+    throw new ValidationError(`Sale currency is ${saleAccount.currency}, declared ${input.currency}`);
   }
 
   // POS-5: overpayment check

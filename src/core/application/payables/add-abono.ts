@@ -1,7 +1,7 @@
 import { Payable } from '../../domain/payable';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import { payableCategory } from '../../domain/synthetic-categories';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -28,11 +28,24 @@ export async function addAbono(
   const payable = payables.find(p => p.id === payableId);
   if (!payable) throw new NotFoundError('Payable not found');
 
+  // ACC-1: the abono's currency must match the payable's total currency.
+  if (input.currency !== payable.total.currency) {
+    throw new ValidationError(`Payable currency is ${payable.total.currency}, declared ${input.currency}`);
+  }
+
   // D3: resolve the PAYMENT account (may differ from the payable's account) —
   // validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
+  // ACC-1: the PAYMENT account's currency must match the abono's currency —
+  // otherwise the movement would be re-labeled in the account currency on read.
+  if (account.currency !== input.currency) {
+    throw new ValidationError(
+      `Payment account currency is ${account.currency}, abono is ${input.currency}`,
+    );
   }
 
   // PAY-R-2: pending = total − initialPayment − Σ abonos; overpayment rejected

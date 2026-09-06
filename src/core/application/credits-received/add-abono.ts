@@ -1,7 +1,7 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator } from '../ports';
@@ -28,11 +28,24 @@ export async function addAbono(
   const credit = credits.find(c => c.id === creditId);
   if (!credit) throw new NotFoundError('Credit not found');
 
+  // ACC-1: the abono's currency must match the credit's principal currency.
+  if (input.currency !== credit.principal.currency) {
+    throw new ValidationError(`Credit currency is ${credit.principal.currency}, declared ${input.currency}`);
+  }
+
   // D3: resolve the PAYMENT account (may differ from the credit's account) —
   // validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
+  }
+
+  // ACC-1: the PAYMENT account's currency must match the abono's currency —
+  // otherwise the movement would be re-labeled in the account currency on read.
+  if (account.currency !== input.currency) {
+    throw new ValidationError(
+      `Payment account currency is ${account.currency}, abono is ${input.currency}`,
+    );
   }
 
   // CRED-R-2: pending = totalToPay − Σ abonos; overpayment rejected
