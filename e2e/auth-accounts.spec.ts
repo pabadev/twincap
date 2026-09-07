@@ -112,10 +112,12 @@ test.describe('Slice 1 — Auth + Accounts', () => {
     await page.getByLabel(/^Confirm Password/i).fill('Password123!');
     await page.getByRole('button', { name: /Register/i }).click();
 
+    // The rendered message is the i18n key error.tooManyAttempts.
+    // NOTE: the error text and the "Email*" label render in the SAME text
+    // node ("Too many attempts. Try again later. Email*"), so match by
+    // substring (string form) instead of a regex against the full node.
     await expect(
-      page.getByText(
-        'Too many registration attempts. Please try again later.',
-      ),
+      page.getByText('Too many attempts. Try again later.'),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/register$/);
   });

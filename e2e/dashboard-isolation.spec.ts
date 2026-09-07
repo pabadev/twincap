@@ -135,15 +135,13 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
     await expect(financing.nth(1)).toContainText(/COP\s+0/);
   });
 
-  test('changing the period filter re-fetches the snapshot (aria-busy transition + new values)', async ({
+  test('changing a filter re-fetches the snapshot (aria-busy transition + new values)', async ({
     page,
   }) => {
     await freshUser(page);
-    const dated = yearlyOutOfMonthDate();
     await seedFinancialData(page, {
       monthlyIncome: '100000',
       monthlyExpense: '30000',
-      datedIncome: dated ? { amount: '10000', date: dated } : undefined,
       notePrefix: 'slice4-filter',
     });
 
@@ -151,42 +149,33 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
     const incomeValue = summaryValue(page, 'Income this month');
     await waitForSnapshotValue(page, incomeValue, /\+COP\s+100,000/);
 
-    // Start watching the transition flag, THEN switch the period filter.
+    // Start watching the transition flag, THEN switch a real filter. The
+    // dashboard no longer has a period filter (N2, Fase 5: fixed windows), so
+    // the re-fetch proof uses the Category filter instead: "Comida" is the
+    // seeded expense category, so the income-driven figures re-aggregate to 0.
     const busySeen = observeBusyTransition(page);
-    await page.getByLabel(/^Period$/).selectOption({ label: 'This year' });
+    await page.getByLabel(/^Category$/).selectOption({ label: 'Comida' });
 
     // The container went aria-busy while the server re-aggregated.
     expect(await busySeen).toBe(true);
-    await expect(page.getByLabel(/^Period$/)).toHaveValue('this_year');
 
-    // Summary CARDS are intentionally current-month scoped ("Income this
-    // month" must NOT change with the period filter — computeDashboardSummary
-    // buckets cards by the current UTC year-month). The period-scoped PROOF of
-    // the re-fetch is the "Income Summary" table, derived from the FILTERED
-    // movements: when this_year adds the Jan-2 discriminator seed its Total
-    // grows to COP 110,000 (in January both windows coincide and it stays
-    // COP 100,000).
+    // Category rows are current-month fixtures over the FILTERED movements:
+    // with only "Comida" selected there are no income movements, so the
+    // "Income Summary" table empties (its Total renders "—") and the summary
+    // card proves the re-fetch by dropping from +COP 100,000 to COP 0.
     const incomeSummaryTotal = page
       .getByRole('heading', { name: /Income Summary/i })
       .locator('xpath=../..')
       .getByText('Total', { exact: true })
       .locator('xpath=following-sibling::span');
-    const expectedIncomeTotal = dated ? /COP\s+110,000/ : /COP\s+100,000/;
-    await waitForSnapshotValue(page, incomeSummaryTotal, expectedIncomeTotal);
+    await waitForSnapshotValue(page, incomeSummaryTotal, /—/);
 
-    // The Jan-2 movement is now in the period-filtered recent list (skipped in
-    // January, where the discriminator date does not exist).
-    if (dated) {
-      await expect(page.getByText('Jan 2, 2026')).toBeVisible({
-        timeout: 15_000,
-      });
-    }
-
-    // Current-month cards are unaffected by the period switch — by design.
+    // The re-fetched snapshot re-aggregated the summary cards with the filter
+    // applied (income zeroed; the seeded expense stays).
     await waitForSnapshotValue(
       page,
       summaryValue(page, 'Income this month'),
-      /\+COP\s+100,000/,
+      /COP\s+0/,
     );
     await waitForSnapshotValue(
       page,
@@ -303,12 +292,17 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
       // test directly — the proxy persists it with `secure: true` under
       // `next start`, so manual cookie writes create Secure/non-Secure twin
       // cookies that race nondeterministically on reload.
-      await page
-        .getByRole('button', { name: /Switch to Spanish/i })
-        .click();
+      // Cold-server guard: on a fresh `next start` the first click can land
+      // before React hydration attaches the toggle's onClick (observed as a
+      // flaky first attempt). Retry the click until the locale actually flips.
+      await expect(async () => {
+        await page
+          .getByRole('button', { name: /Switch to Spanish/i })
+          .click();
+        await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+      }).toPass({ timeout: 20_000 });
 
       // GIVEN a logged-in user whose UI is in Spanish.
-      await expect(page.locator('html')).toHaveAttribute('lang', 'es');
       await expect(page.getByText('Ingresos este mes')).toBeVisible();
 
       // Marker survives a soft refresh but would be wiped by a hard reload.

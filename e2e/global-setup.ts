@@ -1,19 +1,37 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
 /**
  * R12-C3 E2E global-setup.
- * Starts a local mongod (wiredTiger, fixed port 37017) for the test DB and
- * drops it before the suite runs. Never touches Atlas: the URI is asserted to
- * resolve to a loopback host and we fail fast otherwise.
+ * Starts a local mongod REPLICA SET (wiredTiger, fixed port 37017) for the
+ * test DB and drops it before the suite runs. A replica set is required since
+ * R14-B: `MongoUnitOfWork.withTransaction` uses `session.withTransaction`,
+ * which MongoDB only supports on replica set members — a standalone mongod
+ * makes every sale/transfer action fail with a generic operation error.
+ * Binary is pinned to MongoDB 7.0.41: the default 8.2.6 build crashes on
+ * Windows (unhandled 0xC000001D in tcmalloc, exit code 14) roughly a minute
+ * into the suite, which kills the DB mid-run and leaves a ghost reference
+ * that `stop()` cannot clean up.
+ * Never touches Atlas: the URI is asserted to resolve to a loopback host and
+ * we fail fast otherwise.
  */
 export default async function globalSetup() {
-  const mongod = await MongoMemoryServer.create({
-    instance: {
-      port: 37017,
-      dbName: 'twincap_e2e',
-      storageEngine: 'wiredTiger',
+  const mongod = await MongoMemoryReplSet.create({
+    binary: {
+      version: '7.0.41',
     },
+    replSet: {
+      count: 1,
+      storageEngine: 'wiredTiger',
+      name: 'rs0',
+      dbName: 'twincap_e2e',
+    },
+    instanceOpts: [
+      {
+        port: 37017,
+        storageEngine: 'wiredTiger',
+      },
+    ],
   });
 
   const uri = mongod.getUri('twincap_e2e');
