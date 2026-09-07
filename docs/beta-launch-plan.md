@@ -123,4 +123,35 @@ Los límites del monitor NO son números arbitrarios — son política de produc
 
 ---
 
-*Documento vivo. Última actualización: 2026-09-07 (checklist P0 índices de monitor — feedback del auditor R14-G).*
+## 8. CI sobre `master` y branch protection (R14-J)
+
+**Qué se corrigió (2026-09-07):** el workflow `.github/workflows/ci.yml` disparaba en push a `main` (rama inexistente — el repo usa `master`), por lo que los checks de CI **nunca corrieron en el deploy de producción**. Fase J: trigger `[master]` + `npx` → `pnpm exec playwright install --with-deps chromium` (regla pnpm-only del proyecto).
+
+**Branch protection requerida en GitHub** (Settings → Branches → `master` — auditoría P1.9). Requisito mínimo antes de abrir la beta:
+
+- **Require status checks to pass before merging** (nuevos PRs) y **require branches to be up to date** — con los checks `quality` y `e2e` del workflow CI.
+- **Block force pushes** y **block deletions**.
+- Require pull request before merging + required approvals **NO aplican**: el fundador es el único mantenedor y el flujo actual es push directo a `master` (dispara el deploy Vercel). Se documenta como decisión explícita para que un futuro mantenedor la revise, no como omisión.
+
+**Nota de orden CI/deploy:** el push a `master` dispara CI y Vercel en paralelo: el deploy puede estar vivo ANTES de que terminen los checks. Por eso el smoke test (§9) corre después del deploy y el criterio de aceptación de cada release es: CI verde **o** smoke test §9 pasado — si CI falla después del deploy, se corrige en caliente o se revierte; un cambio no debe considerarse "liberado" hasta que una de las dos verificaciones confirmó.
+
+---
+
+## 9. Smoke test post-deploy (P0.7 — después de CADA deploy)
+
+La auditoría P0.7 exige smoke test real después de cada deployment, no documental. Al terminar cada deploy de producción, el fundador ejecuta esta checklist (5–10 min) contra `https://app.twincap.app` (**usar una pestaña de incógnito para no heredar sesión**):
+
+- [ ] `/login` responde 200 y renderiza el formulario.
+- [ ] Login real con cuenta de tester funciona y redirige a `/dashboard` sin errores visibles.
+- [ ] Dashboard carga movimientos del workspace de prueba (datos reales, no vacío).
+- [ ] Alta de movimiento (ingreso y gasto) funciona de punta a punta y el dashboard actualiza el balance.
+- [ ] `/help`, `/privacy` y `/terms` responden 200.
+- [ ] Índices en Atlas intactos: `node --env-file=.env.local scripts/verify-dashboard-indexes.mjs` → `CONTRACT OK` y `node --env-file=.env.local scripts/verify-monitor-indexes.mjs` → `CONTRACT OK` (los índices viven en el cluster y no deberían cambiar con un deploy, pero el verificador es la prueba de que el contrato sigue).
+- [ ] `/api/monitor` no reporta errores en Vercel (Logs) tras las acciones anteriores.
+- [ ] `ANALYTICS_ENABLED=true` y `ANALYTICS_EXCLUDE_EMAILS` correctos en Vercel (si aplica a este deploy).
+
+Si cualquier paso falla, el deploy NO está completo: resolver antes de considerar el release cerrado.
+
+---
+
+*Documento vivo. Última actualización: 2026-09-07 (R14-J: branch protection + smoke test P0.7, CI sobre master).*

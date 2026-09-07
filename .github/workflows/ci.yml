@@ -8,7 +8,7 @@
 #   - Job "quality" (rápido, ~1-2 min): typecheck + lint + vitest + build.
 #     Es el gate principal y corre en cada push y PR.
 #   - Job "e2e" (lento, ~15 min serial): la suite crítica de Playwright contra
-#     mongodb-memory-server local. Corre en PR y en push a main, separado del
+#     mongodb-memory-server local. Corre en PR y en push a master, separado del
 #     gate rápido para no hacer esperar los checks básicos a los ~15 min E2E.
 #
 # La suite Vitest (unit/integration) NO requiere Mongo real: los tests de
@@ -20,7 +20,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 concurrency:
@@ -97,7 +97,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright chromium (with system deps)
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E suite
         # El script test:e2e carga .env.e2e (mongod local 37017) y arranca
