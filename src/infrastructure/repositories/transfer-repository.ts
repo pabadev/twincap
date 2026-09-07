@@ -68,8 +68,11 @@ export class MongoTransferRepository implements TransferRepository {
     }
   }
 
-  async findByIdRaw(id: string): Promise<Transfer | null> {
-    const doc = await TransferModel.findById(id).exec();
+  async findByIdRaw(workspaceId: string, id: string): Promise<Transfer | null> {
+    const doc = await TransferModel.findOne({
+      _id: id,
+      workspaceId: new Types.ObjectId(workspaceId),
+    }).exec();
     return doc ? toTransferEntity(doc as TransferDocument) : null;
   }
 }

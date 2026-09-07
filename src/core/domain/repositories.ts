@@ -107,8 +107,12 @@ export interface TransferRepository {
   create(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer>;
   update(transfer: Transfer): Promise<Transfer>;
   delete(workspaceId: string, id: string): Promise<void>;
-  /** Find by raw ObjectId without workspaceId scope (for reconcile orphan check). */
-  findByIdRaw(id: string): Promise<Transfer | null>;
+  /**
+   * Find a transfer by its raw id, scoped to the owning workspace (R14-K §15).
+   * The workspace filter makes the raw read tenant-safe: a caller can never
+   * retrieve a transfer that belongs to another workspace.
+   */
+  findByIdRaw(workspaceId: string, id: string): Promise<Transfer | null>;
 }
 
 // ─── Credit Received ─────────────────────────────────────────────────
