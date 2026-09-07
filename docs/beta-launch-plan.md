@@ -125,7 +125,7 @@ Los límites del monitor NO son números arbitrarios — son política de produc
 
 ## 8. CI sobre `master` y branch protection (R14-J)
 
-**Qué se corrigió (2026-09-07):** el workflow `.github/workflows/ci.yml` disparaba en push a `main` (rama inexistente — el repo usa `master`), por lo que los checks de CI **nunca corrieron en el deploy de producción**. Fase J: trigger `[master]` + `npx` → `pnpm exec playwright install --with-deps chromium` (regla pnpm-only del proyecto).
+**Qué se corrigió (2026-09-07):** el workflow `.github/workflows/ci.yml` disparaba en push a `main` (rama inexistente — el repo usa `master`), por lo que los checks de CI **nunca corrieron en el deploy de producción**. Fase J: trigger `[master]` + `npx` → `pnpm exec playwright install --with-deps chromium` (regla pnpm-only del proyecto). **Segundo fix al correr el CI por primera vez:** los jobs instalaban Node 20, incompatible con pnpm 11.22.0 (requiere Node ≥ 22.13; `node:sqlite` no existe en Node 20) → `node-version: 24` en ambos jobs (coherente con el dev local).
 
 **Branch protection requerida en GitHub** (Settings → Branches → `master` — auditoría P1.9). Requisito mínimo antes de abrir la beta:
 
