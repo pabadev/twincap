@@ -15,6 +15,13 @@ const { MongoCreditGrantedRepository } = vi.hoisted(() => ({
 const { MongoMovementRepository } = vi.hoisted(() => ({
   MongoMovementRepository: vi.fn(),
 }));
+const { MongoAccountRepository } = vi.hoisted(() => ({
+  MongoAccountRepository: vi.fn(),
+}));
+const { trackAnalytics } = vi.hoisted(() => ({ trackAnalytics: vi.fn() }));
+const { MongoOperationLogger } = vi.hoisted(() => ({
+  MongoOperationLogger: vi.fn(),
+}));
 
 vi.mock('../../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -24,6 +31,13 @@ vi.mock('../../../../infrastructure/repositories/credit-granted-repository', () 
 }));
 vi.mock('../../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
+}));
+vi.mock('../../../../infrastructure/repositories/account-repository', () => ({
+  MongoAccountRepository,
+}));
+vi.mock('../../../../lib/track-analytics', () => ({ trackAnalytics }));
+vi.mock('../../../../infrastructure/repositories/operation-log-repository', () => ({
+  MongoOperationLogger,
 }));
 
 const { createCreditGrantedAction, writeOffCreditAction } = await import('./actions');
@@ -137,5 +151,44 @@ describe('createCreditGrantedAction', () => {
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoCreditGrantedRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('emits creditGrantedCreated scoped to the session user after a successful create', async () => {
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    trackAnalytics.mockResolvedValue(undefined);
+    MongoOperationLogger.mockImplementation(() => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue({
+        id: 'acc-1',
+        workspaceId: 'user-1',
+        name: 'Cash',
+        currency: 'COP',
+        isFixed: false,
+      }),
+    }));
+    MongoCreditGrantedRepository.mockImplementation(() => ({
+      create: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoMovementRepository.mockImplementation(() => ({
+      create: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    const fd = new FormData();
+    fd.append('counterparty', 'Pedro');
+    fd.append('principal', '100000');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+
+    const result = await createCreditGrantedAction(null, fd);
+
+    expect(result).toEqual({ success: 'creditCreated' });
+    expect(trackAnalytics).toHaveBeenCalledTimes(1);
+    expect(trackAnalytics).toHaveBeenCalledWith('creditGrantedCreated', 'user-1', 'user-1');
+    expect(revalidatePath).toHaveBeenCalledTimes(4);
   });
 });

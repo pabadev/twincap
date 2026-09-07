@@ -21,6 +21,7 @@ import { handleActionError } from '../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../lib/revalidate';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -77,6 +78,8 @@ export async function createPayableAction(
       },
     );
     revalidateMovementData('/payables');
+    // R13-H: regular payable creation event (APPENDED) for product analytics.
+    await trackAnalytics('payableCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createPayable');
     return handleActionError(error);

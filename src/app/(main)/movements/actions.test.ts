@@ -15,6 +15,10 @@ const { MongoCategoryRepository } = vi.hoisted(() => ({
 const { MongoAccountRepository } = vi.hoisted(() => ({
   MongoAccountRepository: vi.fn(),
 }));
+const { trackAnalytics } = vi.hoisted(() => ({ trackAnalytics: vi.fn() }));
+const { MongoOperationLogger } = vi.hoisted(() => ({
+  MongoOperationLogger: vi.fn(),
+}));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -27,6 +31,10 @@ vi.mock('../../../infrastructure/repositories/category-repository', () => ({
 }));
 vi.mock('../../../infrastructure/repositories/account-repository', () => ({
   MongoAccountRepository,
+}));
+vi.mock('../../../lib/track-analytics', () => ({ trackAnalytics }));
+vi.mock('../../../infrastructure/repositories/operation-log-repository', () => ({
+  MongoOperationLogger,
 }));
 
 const { createMovementAction } = await import('./actions');
@@ -54,5 +62,58 @@ describe('createMovementAction', () => {
     expect(MongoCategoryRepository).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('createMovementAction (analytics emissions)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    trackAnalytics.mockResolvedValue(undefined);
+    MongoOperationLogger.mockImplementation(() => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoCategoryRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue({
+        id: 'cat-1',
+        workspaceId: 'user-1',
+        name: 'Food',
+        type: 'expense',
+      }),
+    }));
+    MongoAccountRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue({
+        id: 'acc-1',
+        workspaceId: 'user-1',
+        name: 'Cash',
+        currency: 'COP',
+        isFixed: false,
+      }),
+    }));
+    MongoMovementRepository.mockImplementation(() => ({
+      create: vi.fn().mockResolvedValue(undefined),
+    }));
+  });
+
+  it('emits firstMovement AND movementCreated scoped to the session user after a successful create', async () => {
+    const fd = new FormData();
+    fd.append('accountId', 'acc-1');
+    fd.append('type', 'expense');
+    fd.append('amount', '5000');
+    fd.append('currency', 'COP');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('categoryId', 'cat-1');
+
+    const result = await createMovementAction(null, fd);
+
+    expect(result).toEqual({ success: 'movementCreated' });
+    // R13-H contract: the deduplicated first event AND the regular appended
+    // event (activation volume) are both emitted with the session scope.
+    expect(trackAnalytics).toHaveBeenCalledTimes(2);
+    expect(trackAnalytics).toHaveBeenNthCalledWith(1, 'firstMovement', 'user-1', 'user-1');
+    expect(trackAnalytics).toHaveBeenNthCalledWith(2, 'movementCreated', 'user-1', 'user-1');
+    expect(revalidatePath).toHaveBeenCalledWith('/movements');
   });
 });

@@ -19,6 +19,7 @@ import { assertBusinessDateNotFuture } from '../../../lib/date';
 import { handleActionError } from '../../../lib/handle-action-error';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -91,6 +92,8 @@ export async function createTransferAction(
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
+    // R13-H: regular transfer creation event (APPENDED) for product analytics.
+    await trackAnalytics('transferCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
     return handleActionError(error);

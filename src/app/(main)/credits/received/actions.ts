@@ -22,6 +22,7 @@ import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../../lib/revalidate';
 import { withAudit } from '../../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -78,6 +79,8 @@ export async function createCreditReceivedAction(
       },
     );
     revalidateMovementData('/credits/received');
+    // R13-H: regular credit-received creation event (APPENDED) for product analytics.
+    await trackAnalytics('creditReceivedCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createCreditReceived');
     return handleActionError(error);

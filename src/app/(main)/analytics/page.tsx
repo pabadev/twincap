@@ -2,6 +2,7 @@ import { getAnalyticsDashboardAction } from './actions';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { DefaultAnalyticsAuthorizer } from '../../../infrastructure/auth/analytics-authorizer';
 import { notFound, redirect } from 'next/navigation';
+import { getT } from '@/i18n/server';
 
 /**
  * Product analytics dashboard page (R13-G).
@@ -22,29 +23,33 @@ export default async function AnalyticsPage() {
   if (!allowed) notFound();
 
   const dashboard = await getAnalyticsDashboardAction();
+  const t = await getT('Analytics');
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-2 text-2xl font-bold">Analytics Dashboard</h1>
-      <p className="mb-8 text-sm text-muted-foreground">
-        Product metrics for the closed beta — no PII tracked.
-      </p>
+      <h1 className="mb-2 text-2xl font-bold">{t('title')}</h1>
+      <p className="mb-8 text-sm text-muted-foreground">{t('subtitle')}</p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard label="Registered" value={dashboard.totalRegistered} />
-        <MetricCard label="Logged In" value={dashboard.totalLoggedIn} />
-        <MetricCard label="Accounts Created" value={dashboard.totalAccountsCreated} />
-        <MetricCard label="First Movements" value={dashboard.totalFirstMovements} />
-        <MetricCard label="Dashboard Views" value={dashboard.totalDashboardViews} />
-        <MetricCard label="Sales Created" value={dashboard.totalSalesCreated} />
+        <MetricCard label={t('registered')} value={dashboard.totalRegistered} />
+        <MetricCard label={t('loggedIn')} value={dashboard.totalLoggedIn} />
+        <MetricCard label={t('accountsCreated')} value={dashboard.totalAccountsCreated} />
+        <MetricCard label={t('firstMovements')} value={dashboard.totalFirstMovements} />
+        <MetricCard label={t('dashboardViews')} value={dashboard.totalDashboardViews} />
+        <MetricCard label={t('salesCreated')} value={dashboard.totalSalesCreated} />
+        <MetricCard label={t('movementsCreated')} value={dashboard.totalMovementsCreated} />
+        <MetricCard label={t('transfersCreated')} value={dashboard.totalTransfersCreated} />
+        <MetricCard label={t('creditsReceivedCreated')} value={dashboard.totalCreditReceivedCreated} />
+        <MetricCard label={t('creditsGrantedCreated')} value={dashboard.totalCreditGrantedCreated} />
+        <MetricCard label={t('payablesCreated')} value={dashboard.totalPayablesCreated} />
       </div>
 
-      <h2 className="mt-8 mb-4 text-lg font-semibold">Derived Metrics</h2>
+      <h2 className="mt-8 mb-4 text-lg font-semibold">{t('derivedMetrics')}</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard label="Activation Rate" value={`${dashboard.activationRate}%`} description="≥3 movements in first 2 days" />
-        <MetricCard label="Retention 7d" value={`${dashboard.retention7d}%`} description="Active in last 7 days" />
-        <MetricCard label="Retention 30d" value={`${dashboard.retention30d}%`} description="Active in last 30 days" />
-        <MetricCard label="Avg Movements/User" value={dashboard.avgMovementsPerUser} description="Per registered workspace" />
+        <MetricCard label={t('activationRate')} value={`${dashboard.activationRate}%`} description={t('activationRateDesc')} />
+        <MetricCard label={t('retention7d')} value={`${dashboard.retention7d}%`} description={t('retention7dDesc')} />
+        <MetricCard label={t('retention30d')} value={`${dashboard.retention30d}%`} description={t('retention30dDesc')} />
+        <MetricCard label={t('avgMovements')} value={dashboard.avgMovementsPerUser} description={t('avgMovementsDesc')} />
       </div>
     </main>
   );

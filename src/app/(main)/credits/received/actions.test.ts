@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Server-action wiring is unit-tested with every infrastructure edge mocked:
-// auth session, mongoose connection, mongo repositories, and next/cache.
+// auth session, mongoose connection, mongo repositories, and next/cache
+// (the action's revalidateMovementData shells out to revalidatePath).
 
 const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }));
 const { connectDb } = vi.hoisted(() => ({ connectDb: vi.fn() }));
 const { revalidatePath } = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
-const { MongoPayableRepository } = vi.hoisted(() => ({
-  MongoPayableRepository: vi.fn(),
+const { MongoCreditReceivedRepository } = vi.hoisted(() => ({
+  MongoCreditReceivedRepository: vi.fn(),
 }));
 const { MongoMovementRepository } = vi.hoisted(() => ({
   MongoMovementRepository: vi.fn(),
@@ -20,26 +21,26 @@ const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
 }));
 
-vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
-vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
+vi.mock('../../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
+vi.mock('../../../../infrastructure/db/connection', () => ({ connectDb }));
 vi.mock('next/cache', () => ({ revalidatePath }));
-vi.mock('../../../infrastructure/repositories/payable-repository', () => ({
-  MongoPayableRepository,
+vi.mock('../../../../infrastructure/repositories/credit-received-repository', () => ({
+  MongoCreditReceivedRepository,
 }));
-vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
+vi.mock('../../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
-vi.mock('../../../infrastructure/repositories/account-repository', () => ({
+vi.mock('../../../../infrastructure/repositories/account-repository', () => ({
   MongoAccountRepository,
 }));
-vi.mock('../../../lib/track-analytics', () => ({ trackAnalytics }));
-vi.mock('../../../infrastructure/repositories/operation-log-repository', () => ({
+vi.mock('../../../../lib/track-analytics', () => ({ trackAnalytics }));
+vi.mock('../../../../infrastructure/repositories/operation-log-repository', () => ({
   MongoOperationLogger,
 }));
 
-const { createPayableAction } = await import('./actions');
+const { createCreditReceivedAction } = await import('./actions');
 
-describe('createPayableAction', () => {
+describe('createCreditReceivedAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue(null);
@@ -47,25 +48,24 @@ describe('createPayableAction', () => {
 
   it('rejects unauthenticated callers before any data access', async () => {
     const fd = new FormData();
-    fd.append('counterparty', 'Proveedor S.A.S.');
-    fd.append('total', '100000');
-    fd.append('initialPayment', '0');
+    fd.append('counterparty', 'Banco XYZ');
+    fd.append('principal', '500000');
     fd.append('currency', 'COP');
     fd.append('accountId', 'acc-1');
     fd.append('date', '2026-09-01');
     fd.append('tzOffset', '300');
 
-    const result = await createPayableAction(null, fd);
+    const result = await createCreditReceivedAction(null, fd);
 
     expect(result).toEqual({ error: 'error.unauthorized' });
     expect(connectDb).not.toHaveBeenCalled();
-    expect(MongoPayableRepository).not.toHaveBeenCalled();
+    expect(MongoCreditReceivedRepository).not.toHaveBeenCalled();
     expect(MongoMovementRepository).not.toHaveBeenCalled();
     expect(MongoAccountRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it('emits payableCreated scoped to the session user after a successful create', async () => {
+  it('emits creditReceivedCreated scoped to the session user after a successful create', async () => {
     getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
     trackAnalytics.mockResolvedValue(undefined);
@@ -81,7 +81,7 @@ describe('createPayableAction', () => {
         isFixed: false,
       }),
     }));
-    MongoPayableRepository.mockImplementation(() => ({
+    MongoCreditReceivedRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),
     }));
     MongoMovementRepository.mockImplementation(() => ({
@@ -89,19 +89,18 @@ describe('createPayableAction', () => {
     }));
 
     const fd = new FormData();
-    fd.append('counterparty', 'Proveedor S.A.S.');
-    fd.append('total', '100000');
-    fd.append('initialPayment', '0');
+    fd.append('counterparty', 'Banco XYZ');
+    fd.append('principal', '500000');
     fd.append('currency', 'COP');
     fd.append('accountId', 'acc-1');
     fd.append('date', '2026-09-01');
     fd.append('tzOffset', '300');
 
-    const result = await createPayableAction(null, fd);
+    const result = await createCreditReceivedAction(null, fd);
 
-    expect(result).toEqual({ success: 'payableCreated' });
+    expect(result).toEqual({ success: 'creditCreated' });
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
-    expect(trackAnalytics).toHaveBeenCalledWith('payableCreated', 'user-1', 'user-1');
+    expect(trackAnalytics).toHaveBeenCalledWith('creditReceivedCreated', 'user-1', 'user-1');
     expect(revalidatePath).toHaveBeenCalledTimes(4);
   });
 });

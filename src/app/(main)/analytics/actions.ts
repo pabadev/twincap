@@ -34,21 +34,31 @@ export interface AnalyticsDashboard {
   totalRegistered: number;
   /** Total unique workspaces that logged in. */
   totalLoggedIn: number;
-  /** Total accounts created. */
+  /** Total accounts created (regular appended events). */
   totalAccountsCreated: number;
-  /** Total workspaces with at least one movement. */
+  /** Total workspaces with at least one movement (deduplicated first-event semantics). */
   totalFirstMovements: number;
-  /** Total dashboard views. */
+  /** Total dashboard views (regular appended events). */
   totalDashboardViews: number;
-  /** Total sales created. */
+  /** Total sales created (regular appended events). */
   totalSalesCreated: number;
-  /** Activation rate: % of registered workspaces with ≥3 movements within 2 days of registration. */
+  /** Total movements created — regular appended events, one per movement (real volume; drives activation). */
+  totalMovementsCreated: number;
+  /** Total transfers created (regular appended events). */
+  totalTransfersCreated: number;
+  /** Total credits received created (regular appended events). */
+  totalCreditReceivedCreated: number;
+  /** Total credits granted created (regular appended events). */
+  totalCreditGrantedCreated: number;
+  /** Total payables created (regular appended events). */
+  totalPayablesCreated: number;
+  /** Activation rate: % of registered workspaces with ≥3 movementCreated events within 2 days of registration. */
   activationRate: number;
   /** Retention 7d: % of registered workspaces active in the last 7 days. */
   retention7d: number;
   /** Retention 30d: % of registered workspaces active in the last 30 days. */
   retention30d: number;
-  /** Average number of movements per active workspace. */
+  /** Average movements created per registered workspace (regular events, not the deduplicated first-event). */
   avgMovementsPerUser: number;
 }
 
@@ -87,8 +97,9 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  // Count events by name (unique workspaces for "first" events).
-  const [registerEvents, loginEvents, accountEvents, movementEvents, dashboardEvents, saleEvents] =
+  // Count events by name (unique workspaces for "first" events; every
+  // occurrence for regular events — the latter reflect real usage volume).
+  const [registerEvents, loginEvents, accountEvents, movementEvents, dashboardEvents, saleEvents, movementCreatedEvents, transferCreatedEvents, creditReceivedCreatedEvents, creditGrantedCreatedEvents, payableCreatedEvents] =
     await Promise.all([
       AnalyticsEventModel.find({
         eventName: 'register',
@@ -114,6 +125,26 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
         eventName: 'saleCreated',
         ...(excluded ? { workspaceId: excluded } : {}),
       }).lean(),
+      AnalyticsEventModel.find({
+        eventName: 'movementCreated',
+        ...(excluded ? { workspaceId: excluded } : {}),
+      }).lean(),
+      AnalyticsEventModel.find({
+        eventName: 'transferCreated',
+        ...(excluded ? { workspaceId: excluded } : {}),
+      }).lean(),
+      AnalyticsEventModel.find({
+        eventName: 'creditReceivedCreated',
+        ...(excluded ? { workspaceId: excluded } : {}),
+      }).lean(),
+      AnalyticsEventModel.find({
+        eventName: 'creditGrantedCreated',
+        ...(excluded ? { workspaceId: excluded } : {}),
+      }).lean(),
+      AnalyticsEventModel.find({
+        eventName: 'payableCreated',
+        ...(excluded ? { workspaceId: excluded } : {}),
+      }).lean(),
     ]);
 
   const totalRegistered = registerEvents.length;
@@ -122,13 +153,21 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
   const totalFirstMovements = movementEvents.length;
   const totalDashboardViews = dashboardEvents.length;
   const totalSalesCreated = saleEvents.length;
+  const totalMovementsCreated = movementCreatedEvents.length;
+  const totalTransfersCreated = transferCreatedEvents.length;
+  const totalCreditReceivedCreated = creditReceivedCreatedEvents.length;
+  const totalCreditGrantedCreated = creditGrantedCreatedEvents.length;
+  const totalPayablesCreated = payableCreatedEvents.length;
 
-  // Activation: % of registered workspaces with ≥3 movements within 2 days of registration.
+  // Activation: % of registered workspaces with ≥3 REAL movements within 2 days
+  // of registration. R14-H: use the regular movementCreated events (one doc per
+  // movement) — the deduplicated firstMovement events can never reach ≥3 per
+  // workspace, which made activation unattainable before.
   let activatedCount = 0;
   for (const reg of registerEvents) {
     const regDate = reg.occurredAt as Date;
     const twoDaysLater = new Date(regDate.getTime() + 2 * 24 * 60 * 60 * 1000);
-    const wsMovements = movementEvents.filter(
+    const wsMovements = movementCreatedEvents.filter(
       (m) =>
         m.workspaceId.toString() === reg.workspaceId.toString() &&
         (m.occurredAt as Date) <= twoDaysLater,
@@ -161,9 +200,11 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
     ? Math.round((active30d.size / totalRegistered) * 100)
     : 0;
 
-  // Usage: average movements per workspace (from firstMovement events — 1 per workspace).
+  // Usage: average movements created per registered workspace. R14-H: based on
+  // the regular movementCreated events (real volume) instead of firstMovement
+  // (which always ≈1 per workspace).
   const avgMovementsPerUser = totalRegistered > 0
-    ? Math.round((totalFirstMovements / totalRegistered) * 10) / 10
+    ? Math.round((totalMovementsCreated / totalRegistered) * 10) / 10
     : 0;
 
   return {
@@ -173,6 +214,11 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
     totalFirstMovements,
     totalDashboardViews,
     totalSalesCreated,
+    totalMovementsCreated,
+    totalTransfersCreated,
+    totalCreditReceivedCreated,
+    totalCreditGrantedCreated,
+    totalPayablesCreated,
     activationRate,
     retention7d,
     retention30d,

@@ -24,6 +24,7 @@ export type Namespace =
   | 'SystemNotes'
   | 'Profile'
   | 'Feedback'
+  | 'Analytics'
   | 'Help'
   | 'Legal';
 

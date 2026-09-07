@@ -96,6 +96,10 @@ export async function createMovementAction(
     revalidatePath('/dashboard');
     // R13-G: track first movement (deduplicated per workspace — only one doc ever).
     await trackAnalytics('firstMovement', user.workspaceId!, user.userId);
+    // R13-H: regular per-movement event (APPENDED, one doc per movement) so
+    // activation can count real movement volume (≥3 in the first 2 days) — the
+    // deduplicated firstMovement above is capped at 1 per workspace forever.
+    await trackAnalytics('movementCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
     return handleActionError(error);

@@ -13,7 +13,7 @@ import mongoose, { Schema, type InferSchemaType } from 'mongoose';
  */
 export const AnalyticsEventSchema = new Schema(
   {
-    /** Event name: 'register' | 'firstLogin' | 'accountCreated' | 'firstMovement' | 'dashboardViewed' | 'saleCreated'. */
+    /** Event name — see AnalyticsEventName in core/application/ports (first events dedup, regular events append). */
     eventName: { type: String, required: true, index: true },
     /** Tenant boundary — the workspace that owns this event. */
     workspaceId: { type: Schema.Types.ObjectId, required: true, index: true },

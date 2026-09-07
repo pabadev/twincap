@@ -23,6 +23,7 @@ import { handleActionError } from '../../../../lib/handle-action-error';
 import { revalidateMovementData } from '../../../../lib/revalidate';
 import { withAudit } from '../../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
+import { trackAnalytics } from '../../../../lib/track-analytics';
 
 const ids = objectIdGenerator;
 
@@ -79,6 +80,8 @@ export async function createCreditGrantedAction(
       },
     );
     revalidateMovementData('/credits/granted');
+    // R13-H: regular credit-granted creation event (APPENDED) for product analytics.
+    await trackAnalytics('creditGrantedCreated', user.workspaceId!, user.userId);
   } catch (error) {
     await releaseIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
     return handleActionError(error);

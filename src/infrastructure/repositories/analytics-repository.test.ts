@@ -65,6 +65,36 @@ describe('MongoAnalyticsRepository', () => {
 
       errorSpy.mockRestore();
     });
+
+    // R13-H: the new per-module creation events are REGULAR — they must APPEND
+    // (one doc per occurrence), never dedupe. Two calls with the same
+    // workspace + eventName must produce two documents, otherwise activation
+    // (≥3 movements) could never be reached.
+    it.each([
+      'movementCreated',
+      'transferCreated',
+      'creditReceivedCreated',
+      'creditGrantedCreated',
+      'payableCreated',
+    ] as const)('appends every occurrence of the regular event %s (2 calls → 2 docs)', async (eventName) => {
+      vi.mocked(AnalyticsEventModel.create).mockResolvedValue([] as never);
+
+      await repo.track({ eventName, workspaceId: WORKSPACE_ID, userId: 'user-1' });
+      await repo.track({ eventName, workspaceId: WORKSPACE_ID, userId: 'user-1' });
+
+      // APPEND semantics: each occurrence goes through create(), never the
+      // dedup upsert path.
+      expect(AnalyticsEventModel.create).toHaveBeenCalledTimes(2);
+      expect(AnalyticsEventModel.findOneAndUpdate).not.toHaveBeenCalled();
+      for (const [doc] of vi.mocked(AnalyticsEventModel.create).mock.calls) {
+        expect(doc).toMatchObject({
+          eventName,
+          workspaceId: new Types.ObjectId(WORKSPACE_ID),
+          userId: 'user-1',
+        });
+        expect(doc.occurredAt).toBeInstanceOf(Date);
+      }
+    });
   });
 
   describe('track (first events — deduplicated)', () => {

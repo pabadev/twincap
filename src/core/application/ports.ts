@@ -206,6 +206,15 @@ export interface ErrorReporter {
 /**
  * Product analytics event names for activation/retention/usage tracking (R13-G).
  *
+ * Two families with DIFFERENT persistence semantics:
+ * - "first" events (firstLogin, firstMovement): DEDUPLICATED — the repository
+ *   records at most ONE document per workspaceId + eventName ("did it at least
+ *   once"). The firstMovement event alone CANNOT drive activation (≥3
+ *   movements), because dedup caps it at 1 per workspace.
+ * - REGULAR events (everything else, including the per-module creation events
+ *   below): APPENDED — every occurrence becomes its own document, so counts
+ *   like "movements created" reflect real usage volume.
+ *
  * Events are intentionally minimal — no PII, no payloads, no entity snapshots.
  * The event name alone, scoped by workspaceId, is sufficient for the metrics
  * the beta needs.
@@ -216,7 +225,12 @@ export type AnalyticsEventName =
   | 'accountCreated'
   | 'firstMovement'
   | 'dashboardViewed'
-  | 'saleCreated';
+  | 'saleCreated'
+  | 'movementCreated'
+  | 'transferCreated'
+  | 'creditReceivedCreated'
+  | 'creditGrantedCreated'
+  | 'payableCreated';
 
 /**
  * Out port for product analytics (R13-G). Deliberately SEPARATE from
@@ -230,7 +244,9 @@ export interface AnalyticsReporter {
    * Records a product analytics event. Must NEVER throw — fail-safe.
    * For "first" events (firstLogin, firstMovement), the implementation
    * deduplicates by workspaceId + eventName (one doc per workspace per
-   * "first" event).
+   * "first" event). Regular events (register, accountCreated, saleCreated,
+   * movementCreated, transferCreated, creditReceivedCreated,
+   * creditGrantedCreated, payableCreated, dashboardViewed) are appended.
    */
   track(input: {
     eventName: AnalyticsEventName;
