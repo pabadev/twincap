@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MongoRateLimiter } from './rate-limiter';
+import { MongoRateLimiter, monitorAlertRateLimiter } from './rate-limiter';
 
 // Mock the RateLimitModel with the atomic API used by check() (R14-C §5):
 // findOneAndUpdate ($inc path), deleteOne (stale cleanup), create (fresh
@@ -144,5 +144,40 @@ describe('MongoRateLimiter', () => {
 
       expect(RateLimitModel.deleteMany).toHaveBeenCalledWith({ key: 'test:key' });
     });
+  });
+});
+
+describe('monitorAlertRateLimiter (R14-G §6)', () => {
+  it('allows the first check and blocks the second within the 30-min window', async () => {
+    const key = 'monitor-alert:err_abc123';
+
+    // First check: no active window → deleteOne + create path → attempts 1.
+    vi.mocked(RateLimitModel.findOneAndUpdate).mockResolvedValueOnce(null);
+    vi.mocked(RateLimitModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 0 });
+    vi.mocked(RateLimitModel.create).mockResolvedValue([] as RateLimitDocument[]);
+
+    const first = await monitorAlertRateLimiter.check(key);
+    expect(first.allowed).toBe(true);
+    expect(first.attempts).toBe(1);
+
+    // Second check: active window with attempts 2 (> maxAttempts 1) → blocked.
+    const activeEntry = {
+      key,
+      attempts: 2,
+      windowStart: new Date(),
+      expiresAt: new Date(Date.now() + 30_000),
+    };
+    vi.mocked(RateLimitModel.findOneAndUpdate).mockResolvedValueOnce(activeEntry as RateLimitDocument);
+
+    const second = await monitorAlertRateLimiter.check(key);
+    expect(second.allowed).toBe(false);
+    expect(second.attempts).toBe(2);
+    // The $inc ran against the SAME key (check-and-consume semantics: the
+    // first call both checks AND marks, no separate has/mark pair).
+    expect(RateLimitModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { key, windowStart: { $gte: expect.any(Date) } },
+      { $inc: { attempts: 1 } },
+      { new: true },
+    );
   });
 });

@@ -106,3 +106,13 @@ export const monitorRateLimiter = new MongoRateLimiter({
   maxAttempts: 120,
   windowMs: 15 * 60 * 1000, // 15 minutes
 });
+
+// Per-fingerprint alert throttle for the error monitor (R14-G §6): at most
+// ONE alert email per error fingerprint per 30 minutes. check() combines the
+// "has it alerted recently?" read with the "mark it alerted" write in ONE
+// atomic call — the first check consumes the single allowed attempt, any
+// further check within the window returns allowed:false (skip the email).
+export const monitorAlertRateLimiter = new MongoRateLimiter({
+  maxAttempts: 1,
+  windowMs: 30 * 60 * 1000, // 30 minutes
+});

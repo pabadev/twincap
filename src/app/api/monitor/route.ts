@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { reportError } from '../../../infrastructure/monitoring/error-monitor';
+import {
+  computeFingerprint,
+  reportError,
+} from '../../../infrastructure/monitoring/error-monitor';
+import { MongoMonitorGuard } from '../../../infrastructure/monitoring/monitor-guard';
 import { sanitizeContext } from '../../../infrastructure/monitoring/sanitize';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { monitorRateLimiter } from '../../../infrastructure/auth/rate-limiter';
@@ -63,6 +67,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ ok: false, reason: 'rate_limited' }, { status: 429 });
     }
 
+    // Anti-spike guard (R14-G §6): while a GLOBAL cooldown is active (too many
+    // NEW fingerprints across all IPs inside a 5-min window) reject BEFORE
+    // parsing — no body work is needed for a throttled client. The guard is
+    // fail-safe by contract: it never throws and never yields a 500.
+    const guard = new MongoMonitorGuard();
+    const cooldown = await guard.checkGlobalCooldown();
+    if (cooldown.inCooldown) {
+      return NextResponse.json({ ok: false, reason: 'global_cooldown' }, { status: 429 });
+    }
+
     const raw = await request
       .json()
       .catch(() => {
@@ -75,6 +89,31 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const body = parsed.data;
+
+    // Compute the fingerprint from the RAW validated fields BEFORE reporting:
+    // the guard needs it now to enforce the per-IP quota, and reportError
+    // recomputes the SAME value internally (computeFingerprint derives solely
+    // from name/message/code/stack, so identical inputs → identical hash; the
+    // reportError input type omits `fingerprint` by design).
+    const fingerprint = computeFingerprint({
+      name: body.name,
+      message: body.message,
+      code: body.code,
+      stack: body.stack,
+    });
+
+    // Per-IP budget: at most 30 DISTINCT fingerprints per IP per 15-min
+    // window. Repeats of known fingerprints pass through without consuming
+    // quota; a fresh fingerprint beyond the budget is rejected.
+    const fpGate = await guard.limitFingerprints(ip, fingerprint);
+    if (!fpGate.allowed) {
+      return NextResponse.json({ ok: false, reason: 'fingerprint_quota' }, { status: 429 });
+    }
+    // Only NEW fingerprints feed the GLOBAL spike counter — repeats of known
+    // fingerprints are legitimate and must never re-arm the global cooldown.
+    if (fpGate.isNew) {
+      await guard.registerGlobalFingerprint();
+    }
 
     // Never trust client severity/defaults: cap at 'error' from unrecognized.
     const severity = body.severity ?? 'error';

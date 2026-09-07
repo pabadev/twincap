@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeAll, afterAll, beforeEach } from 'vitest';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 import {
   computeFingerprint,
   normalizeStack,
@@ -6,6 +8,16 @@ import {
 } from './error-monitor';
 import type { ErrorReporter, ErrorEventInput } from '../../core/application/ports';
 import type { AlertDispatcher } from './error-alerter';
+import { RateLimitModel } from '../models/rate-limit';
+
+/**
+ * Fake alert-cooldown gate injected into tests that exercise the alert path:
+ * always allows, so the case under test is the throttle gate is OPEN. The
+ * alert-throttle behavior itself is covered by dedicated tests below.
+ */
+const allowAlertCooldown = async (): Promise<{ allowed: boolean }> => ({
+  allowed: true,
+});
 
 describe('computeFingerprint', () => {
   it('is deterministic: same inputs → same hash', () => {
@@ -85,6 +97,7 @@ describe('reportError (with injected reporter — bypasses env gate)', () => {
     const result = await reportError(baseInput, {
       reporter,
       alerter: noopAlerter,
+      alertCooldown: allowAlertCooldown,
       environment: 'test',
       release: 'r1',
     });
@@ -101,15 +114,24 @@ describe('reportError (with injected reporter — bypasses env gate)', () => {
     const alerter = vi.fn<AlertDispatcher>(async () => {});
     const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
 
-    await reportError({ ...baseInput, severity: 'error', expected: false }, { reporter, alerter });
+    await reportError(
+      { ...baseInput, severity: 'error', expected: false },
+      { reporter, alerter, alertCooldown: allowAlertCooldown },
+    );
     expect(alerter).toHaveBeenCalledTimes(1);
 
     alerter.mockClear();
-    await reportError({ ...baseInput, severity: 'error', expected: true }, { reporter, alerter });
+    await reportError(
+      { ...baseInput, severity: 'error', expected: true },
+      { reporter, alerter, alertCooldown: allowAlertCooldown },
+    );
     expect(alerter).not.toHaveBeenCalled();
 
     alerter.mockClear();
-    await reportError({ ...baseInput, severity: 'warning', expected: false }, { reporter, alerter });
+    await reportError(
+      { ...baseInput, severity: 'warning', expected: false },
+      { reporter, alerter, alertCooldown: allowAlertCooldown },
+    );
     expect(alerter).not.toHaveBeenCalled();
   });
 
@@ -136,7 +158,11 @@ describe('reportError (with injected reporter — bypasses env gate)', () => {
     // alerter throws (only called on first+unexpected+error) → still resolves.
     const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
     await expect(
-      reportError(baseInput, { reporter, alerter: failingAlerter }),
+      reportError(baseInput, {
+        reporter,
+        alerter: failingAlerter,
+        alertCooldown: allowAlertCooldown,
+      }),
     ).resolves.toEqual({ isFirst: true, occurrenceCount: 1 });
 
     await expect(reportError(baseInput, { reporter: okReporter })).resolves.toBeNull();
@@ -154,3 +180,124 @@ describe('reportError (with injected reporter — bypasses env gate)', () => {
     }
   });
 });
+
+describe('reportError alert throttle (R14-G §6)', () => {
+  it('alerts on the first isFirst but suppresses the second isFirst of the SAME fingerprint', async () => {
+    const alerter = vi.fn<AlertDispatcher>(async () => {});
+    let allow = true;
+    const alertCooldown = async (): Promise<{ allowed: boolean }> => ({
+      allowed: allow,
+    });
+    const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
+
+    // First isFirst of this fingerprint — the throttle gate is open → alert.
+    await reportError(
+      { ...baseInput, message: 'throttled-boom' },
+      { reporter, alerter, alertCooldown },
+    );
+    expect(alerter).toHaveBeenCalledTimes(1);
+
+    // SAME fingerprint, another isFirst, still inside the window → NO alert.
+    allow = false;
+    await reportError(
+      { ...baseInput, message: 'throttled-boom' },
+      { reporter, alerter, alertCooldown },
+    );
+    expect(alerter).toHaveBeenCalledTimes(1);
+
+    // A DIFFERENT fingerprint is a different cooldown key → alert fires again.
+    allow = true;
+    await reportError(
+      { ...baseInput, message: 'throttled-other' },
+      { reporter, alerter, alertCooldown },
+    );
+    expect(alerter).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the persisted result when the alert is throttled', async () => {
+    const alerter = vi.fn<AlertDispatcher>(async () => {});
+    const alertCooldown = async (): Promise<{ allowed: boolean }> => ({
+      allowed: false,
+    });
+    const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 4 }));
+
+    const result = await reportError(
+      { ...baseInput, message: 'quiet-boom' },
+      { reporter, alerter, alertCooldown },
+    );
+
+    // No email, but persistence happened and the reporter result is returned.
+    expect(alerter).not.toHaveBeenCalled();
+    expect(result).toEqual({ isFirst: true, occurrenceCount: 4 });
+    expect(reporter.report).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails OPEN when the cooldown check throws: the alert is still sent', async () => {
+    const alerter = vi.fn<AlertDispatcher>(async () => {});
+    const alertCooldown = async (): Promise<{ allowed: boolean }> => {
+      throw new Error('cooldown backend down');
+    };
+    const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
+
+    await expect(
+      reportError(
+        { ...baseInput, message: 'failopen-boom' },
+        { reporter, alerter, alertCooldown },
+      ),
+    ).resolves.toEqual({ isFirst: true, occurrenceCount: 1 });
+    expect(alerter).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe(
+  'alert throttle integration with the real monitorAlertRateLimiter',
+  () => {
+    let mongod: MongoMemoryServer;
+
+    beforeAll(async () => {
+      mongod = await MongoMemoryServer.create();
+      await mongoose.connect(mongod.getUri('twincap_alert_cooldown'));
+      // Unique index on `key` must exist for the rate limiter's atomic path.
+      await RateLimitModel.init();
+    }, 60_000);
+
+    afterAll(async () => {
+      await mongoose.disconnect();
+      await mongod.stop();
+    }, 60_000);
+
+    beforeEach(async () => {
+      await RateLimitModel.deleteMany({});
+    });
+
+    it('default cooldown allows one alert per fingerprint per 30 min', async () => {
+      const alerter = vi.fn<AlertDispatcher>(async () => {});
+      const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
+
+      // NO alertCooldown injected → production default
+      // (monitorAlertRateLimiter, 30-min window). First check consumes the
+      // single allowed attempt → alert.
+      await reportError(
+        { ...baseInput, message: 'integration-boom' },
+        { reporter, alerter, environment: 'test', release: 'r1' },
+      );
+      expect(alerter).toHaveBeenCalledTimes(1);
+
+      // Same fingerprint, still inside the 30-min window → second check is
+      // blocked → NO alert.
+      await reportError(
+        { ...baseInput, message: 'integration-boom' },
+        { reporter, alerter, environment: 'test', release: 'r1' },
+      );
+      expect(alerter).toHaveBeenCalledTimes(1);
+
+      // Different fingerprint → fresh cooldown key → alert fires again.
+      await reportError(
+        { ...baseInput, message: 'integration-other' },
+        { reporter, alerter, environment: 'test', release: 'r1' },
+      );
+      expect(alerter).toHaveBeenCalledTimes(2);
+    });
+  },
+  60_000,
+);

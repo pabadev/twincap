@@ -6,6 +6,7 @@ import type {
 } from '../../core/application/ports';
 import { connectDb } from '../db/connection';
 import { MongoErrorEventRepository } from '../repositories/error-event-repository';
+import { monitorAlertRateLimiter } from '../auth/rate-limiter';
 import { sanitizeErrorInput } from './sanitize';
 import { alertOnIncident } from './error-alerter';
 import type { AlertDispatcher } from './error-alerter';
@@ -128,7 +129,33 @@ export interface MonitorDeps {
   environment: string;
   /** Release override; defaults to env APP_RELEASE. */
   release: string;
+  /**
+   * Optional per-fingerprint alert throttle (R14-G §6). COMBINED
+   * check-and-consume gate: the FIRST call resolves `{ allowed: true }` (send
+   * the email), and any further call for the same fingerprint inside the
+   * window resolves `{ allowed: false }` (skip). One atomic call instead of a
+   * separate hasAlertedRecently/markAlerted pair avoids the check-then-mark
+   * race. Inject for tests; defaults to a MongoRateLimiter-backed 30-minute
+   * window (`monitorAlertRateLimiter`, no extra model).
+   */
+  alertCooldown?: (fingerprint: string) => Promise<{ allowed: boolean }>;
 }
+
+/**
+ * Production default alert throttle (R14-G §6): at most ONE alert email per
+ * error fingerprint per 30 minutes. Built on the existing rate limiter — the
+ * FIRST check() consumes the single allowed attempt (allowed:true → send),
+ * any further check() within the window returns allowed:false (skip). No new
+ * model or collection is needed.
+ */
+const defaultAlertCooldown: (
+  fingerprint: string,
+) => Promise<{ allowed: boolean }> = async (fingerprint) => {
+  const result = await monitorAlertRateLimiter.check(
+    `monitor-alert:${fingerprint}`,
+  );
+  return { allowed: result.allowed };
+};
 
 /**
  * Report an exception to the error monitoring backend. NEVER throws.
@@ -199,8 +226,22 @@ export async function reportError(
       const sev = (sanitized.severity ?? 'error') as ErrorSeverity;
       if (sev === 'fatal' || sev === 'error') {
         try {
-          const alerter: AlertDispatcher = deps?.alerter ?? alertOnIncident;
-          await alerter({ input: sanitized, isFirst: result.isFirst });
+          // TEMPORAL alert throttle (R14-G §6): do NOT send a second email for
+          // the SAME fingerprint inside the 30-min cooldown window, even when
+          // another isFirst event of the same error arrives. The persisted
+          // result is kept regardless. FAIL-OPEN: if the cooldown check itself
+          // errors, alert exactly as before the throttle existed.
+          const cooldown = deps?.alertCooldown ?? defaultAlertCooldown;
+          let allowAlert = true;
+          try {
+            allowAlert = (await cooldown(fingerprint)).allowed;
+          } catch {
+            // Throttle backend failure → fail-open (alert).
+          }
+          if (allowAlert) {
+            const alerter: AlertDispatcher = deps?.alerter ?? alertOnIncident;
+            await alerter({ input: sanitized, isFirst: result.isFirst });
+          }
         } catch {
           // Fail-safe: an alert failure must not lose the persisted result.
         }
