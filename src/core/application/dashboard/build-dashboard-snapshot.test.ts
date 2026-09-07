@@ -5,7 +5,7 @@ import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
 import type { Currency } from '../../domain/currency';
 import type { SerializedCategory } from '../../domain/category';
-import type { DashboardFilters } from '../../../components/dashboard/dashboard-filters';
+import type { DashboardFilters } from './dashboard-types';
 
 const SEED_DATE = new Date('2020-01-01');
 /** Reference instant = the real clock. `buildDashboardSnapshot` computes

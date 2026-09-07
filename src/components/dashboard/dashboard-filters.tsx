@@ -4,14 +4,10 @@ import { useT } from '../../i18n/client';
 import { Select } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { X } from 'lucide-react';
-
-export type ScopeFilter = 'all' | 'Personal' | 'Business';
-
-export interface DashboardFilters {
-  scope: ScopeFilter;
-  accountId: string;
-  categoryId: string;
-}
+// R14-K §14c: the filter types live in core; re-exported here so the
+// presentation layer keeps its stable import path.
+import type { DashboardFilters, ScopeFilter } from '../../core/application/dashboard/dashboard-types';
+export type { DashboardFilters, ScopeFilter } from '../../core/application/dashboard/dashboard-types';
 
 interface FilterOption {
   value: string;

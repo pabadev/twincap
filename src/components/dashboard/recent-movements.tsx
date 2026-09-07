@@ -3,15 +3,10 @@
 import { Card } from '../ui/card';
 import { useT, useLocale } from '../../i18n/client';
 import { formatAmount, formatDate } from '../../lib/format';
-
-export interface SerializedMovement {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  currency: string;
-  date: string;
-  categoryName: string;
-}
+// R14-K §14c: the movement type lives in core; re-exported here so the
+// presentation layer keeps its stable import path.
+import type { SerializedMovement } from '../../core/application/dashboard/dashboard-types';
+export type { SerializedMovement } from '../../core/application/dashboard/dashboard-types';
 
 interface RecentMovementsProps {
   movements: SerializedMovement[];

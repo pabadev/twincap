@@ -6,13 +6,10 @@ import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, User, Briefcase } fro
 import { useT } from '../../i18n/client';
 import { formatAmount } from '../../lib/format';
 import type { ContextSummary, ContextCurrencySummary } from '../../core/application/compute-context-summary';
-
-export interface CurrencyBreakdown {
-  currency: string;
-  balance: number;
-  income: number;
-  expenses: number;
-}
+// R14-K §14c: the breakdown type lives in core; re-exported here so the
+// presentation layer keeps its stable import path.
+import type { CurrencyBreakdown } from '../../core/application/dashboard/dashboard-types';
+export type { CurrencyBreakdown } from '../../core/application/dashboard/dashboard-types';
 
 interface SummaryCardsProps {
   currency: string;

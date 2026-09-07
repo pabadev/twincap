@@ -3,12 +3,10 @@
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
 import type { CurrencyTotal } from '../../core/application/compute-category-summary';
-
-export interface SummaryTableRow {
-  label: string;
-  value: number;
-  currency: string;
-}
+// R14-K §14c: the row type lives in core; re-exported here so the
+// presentation layer keeps its stable import path.
+import type { SummaryTableRow } from '../../core/application/dashboard/dashboard-types';
+export type { SummaryTableRow } from '../../core/application/dashboard/dashboard-types';
 
 interface SummaryTableProps {
   title: string;

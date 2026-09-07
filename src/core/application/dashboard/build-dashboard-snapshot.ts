@@ -1,6 +1,4 @@
-import type { DashboardSnapshot } from '../../../components/dashboard/dashboard-snapshot';
-import type { DashboardFilters } from '../../../components/dashboard/dashboard-filters';
-import type { CurrencyBreakdown } from '../../../components/dashboard/summary-cards';
+import type { DashboardSnapshot, DashboardFilters, CurrencyBreakdown } from './dashboard-types';
 import type { SerializedCategory } from '../../domain/category';
 import type { Movement } from '../../domain/movement';
 import { computeDashboardSummary } from '../compute-dashboard-summary';
