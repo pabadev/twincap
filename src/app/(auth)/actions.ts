@@ -9,7 +9,7 @@ import { resetPassword } from '../../core/application/auth/reset-password';
 import { verifyEmail } from '../../core/application/auth/verify-email';
 import { bcryptPasswordHasher } from '../../infrastructure/auth/password';
 import { joseSessionManager } from '../../infrastructure/auth/session';
-import { setSessionCookie } from '../../infrastructure/auth/session-cookie';
+import { setSessionCookie, sessionCookieManager } from '../../infrastructure/auth/session-cookie';
 import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
 import { MongoAccountRepository } from '../../infrastructure/repositories/account-repository';
 import { MongoCategoryRepository } from '../../infrastructure/repositories/category-repository';
@@ -183,7 +183,7 @@ export async function loginAction(
 }
 
 export async function logoutAction() {
-  await logout();
+  await logout(sessionCookieManager);
   redirect('/login');
 }
 

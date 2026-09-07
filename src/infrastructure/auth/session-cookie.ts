@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { SessionClaims, SessionManager } from "../../core/application/ports";
+import type { SessionClaims, SessionManager, SessionCookieManager } from "../../core/application/ports";
 
 const COOKIE_NAME = "gm_session";
 
@@ -33,3 +33,14 @@ export async function deleteSessionCookie() {
   const store = await cookies();
   store.delete(COOKIE_NAME);
 }
+
+/**
+ * R14-K §14b: infrastructure adapter for the `SessionCookieManager` port.
+ * Wraps `deleteSessionCookie` so the logout use case (core) depends only on
+ * the port, never on this module.
+ */
+export const sessionCookieManager: SessionCookieManager = {
+  destroy: async () => {
+    await deleteSessionCookie();
+  },
+};

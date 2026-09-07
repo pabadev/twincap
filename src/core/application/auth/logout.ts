@@ -1,5 +1,7 @@
-import { deleteSessionCookie } from '../../../infrastructure/auth/session-cookie';
+import type { SessionCookieManager } from '../ports';
 
-export async function logout(): Promise<void> {
-  await deleteSessionCookie();
+export async function logout(
+  sessionCookieManager: SessionCookieManager,
+): Promise<void> {
+  await sessionCookieManager.destroy();
 }

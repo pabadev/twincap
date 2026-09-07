@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { register } from './register';
 import { login } from './login';
 import { logout } from './logout';
@@ -13,18 +13,24 @@ import type { Membership } from '../../domain/membership';
 
 // ─── Fakes ─────────────────────────────────────────────────────────
 
-vi.mock('../../../infrastructure/auth/session-cookie', () => ({
-  deleteSessionCookie: vi.fn(),
-}));
-
-const { deleteSessionCookie } = await import('../../../infrastructure/auth/session-cookie');
-
 function fakeBootstrapper(): WorkspaceBootstrapper & { boosted: string[] } {
   const boosted: string[] = [];
   return {
     boosted,
     bootstrap: async (workspaceId: string) => {
       boosted.push(workspaceId);
+    },
+  };
+}
+
+function fakeSessionCookieManager(): SessionCookieManager & { destroyed: number } {
+  let destroyed = 0;
+  return {
+    get destroyed() {
+      return destroyed;
+    },
+    destroy: async () => {
+      destroyed += 1;
     },
   };
 }
@@ -288,9 +294,9 @@ describe('login', () => {
 // ─── Logout ────────────────────────────────────────────────────────
 
 describe('logout', () => {
-  it('calls deleteSessionCookie', async () => {
-    vi.mocked(deleteSessionCookie).mockClear();
-    await logout();
-    expect(deleteSessionCookie).toHaveBeenCalledOnce();
+  it('destroys the session cookie', async () => {
+    const sessionCookieManager = fakeSessionCookieManager();
+    await logout(sessionCookieManager);
+    expect(sessionCookieManager.destroyed).toBe(1);
   });
 });
