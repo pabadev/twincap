@@ -139,7 +139,7 @@ Los límites del monitor NO son números arbitrarios — son política de produc
 
 ## 9. Smoke test post-deploy (P0.7 — después de CADA deploy)
 
-La auditoría P0.7 exige smoke test real después de cada deployment, no documental. Al terminar cada deploy de producción, el fundador ejecuta esta checklist (5–10 min) contra `https://app.twincap.app` (**usar una pestaña de incógnito para no heredar sesión**):
+La auditoría P0.7 exige smoke test real después de cada deployment, no documental. Al terminar cada deploy de producción, el fundador ejecuta esta checklist (5–10 min) contra `https://twincap.vercel.app` (dominio actual de producción; **usar una pestaña de incógnito para no heredar sesión**):
 
 - [ ] `/login` responde 200 y renderiza el formulario.
 - [ ] Login real con cuenta de tester funciona y redirige a `/dashboard` sin errores visibles.
