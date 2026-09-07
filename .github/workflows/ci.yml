@@ -82,7 +82,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
+      # El loader `e2e/load-e2e-env.cjs` exige que `.env.e2e` exista. global-setup
+      # arranca mongodb-memory-server local (puerto 37017) y sobreescribe
+      # MONGODB_URI con esa instancia loopback, así que aquí solo se necesita un
+      # placeholder seguro (nunca toca Atlas — el Atlas guard del setup aborta).
+      MONGODB_URI: mongodb://localhost:27017/twincap_e2e
+      AUTH_SECRET: wPdh0ZCXq1krHoLD6Yxz7dVTDSWBYD6xS3pVWAfb8kM
       TZ: America/Bogota
+      NEXT_LOCALE: en
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,6 +112,11 @@ jobs:
 
       - name: Install Playwright chromium (with system deps)
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate .env.e2e
+        run: |
+          printf 'MONGODB_URI=%s\nAUTH_SECRET=%s\nTZ=%s\nNEXT_LOCALE=%s\n' \
+            "$MONGODB_URI" "$AUTH_SECRET" "$TZ" "$NEXT_LOCALE" > .env.e2e
 
       - name: Run E2E suite
         # El script test:e2e carga .env.e2e (mongod local 37017) y arranca
