@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { reportError } from '../../../infrastructure/monitoring/error-monitor';
 import { sanitizeContext } from '../../../infrastructure/monitoring/sanitize';
+import { connectDb } from '../../../infrastructure/db/connection';
+import { monitorRateLimiter } from '../../../infrastructure/auth/rate-limiter';
+import { resolveClientIp } from '../../../infrastructure/auth/client-ip';
 
 /**
  * Route handler for client-side error reporting (R13-D).
@@ -19,7 +22,10 @@ import { sanitizeContext } from '../../../infrastructure/monitoring/sanitize';
  * sanitized with zod + the shared sanitizer before reaching persistence.
  * Any failure is fail-safe (never a 500 from a hostile/broken payload):
  * the route always resolves with 200 (or 400 for shape errors) and logs to
- * stderr instead of leaking.
+ * stderr instead of leaking. Since R14-C the route is rate limited per real
+ * client IP (x-real-ip / x-forwarded-for), with a generous 120 requests per
+ * 15 minutes — legitimate crash reports are never lost, but a single abusive
+ * client cannot flood the monitoring sink.
  */
 
 const MONITOR_BODY = z.object({
@@ -45,6 +51,18 @@ const MONITOR_BODY = z.object({
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
+    // Rate limit BEFORE parsing — the check itself is DB-backed, so connect
+    // first (cached no-op once up) to avoid Mongoose buffering timeouts on
+    // cold serverless starts. Fail-safe: any unexpected error here is caught
+    // by the wrapper below and never surfaces a 500.
+    await connectDb();
+
+    const ip = resolveClientIp(request.headers);
+    const rate = await monitorRateLimiter.check(`monitor:${ip}`);
+    if (!rate.allowed) {
+      return NextResponse.json({ ok: false, reason: 'rate_limited' }, { status: 429 });
+    }
+
     const raw = await request
       .json()
       .catch(() => {

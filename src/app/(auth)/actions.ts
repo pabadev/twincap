@@ -25,6 +25,7 @@ import {
 import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
 import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
 import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
+import { getClientIp } from '../../infrastructure/auth/client-ip';
 import { reportUnexpectedErrorAndWait } from '../../lib/report-unexpected-error';
 import { trackAnalytics } from '../../lib/track-analytics';
 import { ValidationError, ConflictError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
@@ -75,7 +76,7 @@ export async function registerAction(
   await connectDb();
 
   // Rate limiting: 3 registrations per 15 min per IP
-  const ip = formData.get('_ip') as string || 'unknown';
+  const ip = await getClientIp();
   const rateLimitKey = `register:${ip}`;
   const rateLimit = await registerRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
@@ -136,7 +137,7 @@ export async function loginAction(
   await connectDb();
 
   // Rate limiting: 5 attempts per 15 min per email+IP
-  const ip = formData.get('_ip') as string || 'unknown';
+  const ip = await getClientIp();
   const rateLimitKey = `login:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await loginRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
@@ -195,7 +196,7 @@ export async function forgotPasswordAction(
   await connectDb();
 
   // Rate limiting: 3 requests per 15 min per email+IP.
-  const ip = (formData.get('_ip') as string) || 'unknown';
+  const ip = await getClientIp();
   const rateLimitKey = `forgot:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await forgotPasswordRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {

@@ -1,14 +1,16 @@
 import mongoose, { Schema, type InferSchemaType } from 'mongoose';
 
 /**
- * Rate limit entry — sliding window counter per key.
+ * Rate limit entry — fixed window counter per key (R14-C).
  *
- * TTL index auto-expires documents after `expiresAt`.
+ * The unique index on `key` guarantees exactly one document per key, so
+ * concurrent `$inc` writes serialize on the same document (the rate limiter's
+ * atomic path). TTL index auto-expires documents after `expiresAt`.
  * Key format: `<scope>:<identifier>` (e.g. `login:user@example.com:127.0.0.1`).
  */
 const RateLimitSchema = new Schema(
   {
-    key: { type: String, required: true, index: true },
+    key: { type: String, required: true, unique: true },
     attempts: { type: Number, required: true, default: 1 },
     windowStart: { type: Date, required: true },
     expiresAt: { type: Date, required: true },

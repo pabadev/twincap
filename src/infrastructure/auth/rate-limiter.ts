@@ -14,10 +14,13 @@ export interface RateLimitResult {
 }
 
 /**
- * MongoDB-backed sliding window rate limiter.
+ * MongoDB-backed fixed window rate limiter with an atomic increment (R14-C, §5).
  *
  * Each unique key (e.g. `login:email:ip`) gets a counter that resets
- * after the window expires (via TTL index on `expiresAt`).
+ * after the window expires (via TTL index on `expiresAt`). The unique index
+ * on `key` guarantees one document per key, so concurrent `$inc` writes
+ * serialize on the same document — every attempt is counted, with no
+ * find-then-save race.
  */
 export class MongoRateLimiter {
   constructor(private readonly config: RateLimitConfig) {}
@@ -31,38 +34,36 @@ export class MongoRateLimiter {
     const windowStart = new Date(now.getTime() - this.config.windowMs);
     const expiresAt = new Date(now.getTime() + this.config.windowMs);
 
-    // Try to find an existing entry within the current window
-    const existing = await RateLimitModel.findOne({
-      key,
-      windowStart: { $gte: windowStart },
-    });
+    // Atomic $inc on the ACTIVE window document. The unique index on `key`
+    // guarantees one document per key, so concurrent $inc writes serialize on
+    // the same doc — every attempt is counted, no find-then-save race (R14-C §5).
+    const active = await RateLimitModel.findOneAndUpdate(
+      { key, windowStart: { $gte: windowStart } },
+      { $inc: { attempts: 1 } },
+      { new: true },
+    );
 
-    if (existing) {
-      // Increment attempts
-      existing.attempts += 1;
-      existing.expiresAt = expiresAt; // Extend TTL
-      await existing.save();
-
+    if (active) {
       return {
-        allowed: existing.attempts <= this.config.maxAttempts,
-        attempts: existing.attempts,
-        resetAt: existing.expiresAt,
+        allowed: active.attempts <= this.config.maxAttempts,
+        attempts: active.attempts,
+        resetAt: active.expiresAt,
       };
     }
 
-    // No existing entry — create a new one (first attempt)
-    await RateLimitModel.create({
-      key,
-      attempts: 1,
-      windowStart: now,
-      expiresAt,
-    });
+    // No active window (first attempt or lapsed window): clean any STALE entry
+    // for the same key, then create the fresh window. The conditional delete
+    // only removes an expired doc, so a concurrent winner's fresh doc is never
+    // wiped. The unique index makes a concurrent create loser throw E11000 →
+    // retry once, which now hits the active-window $inc path above.
+    await RateLimitModel.deleteOne({ key, windowStart: { $lt: windowStart } });
+    try {
+      await RateLimitModel.create({ key, attempts: 1, windowStart: now, expiresAt });
+    } catch {
+      return this.check(key);
+    }
 
-    return {
-      allowed: true,
-      attempts: 1,
-      resetAt: expiresAt,
-    };
+    return { allowed: true, attempts: 1, resetAt: expiresAt };
   }
 
   /**
@@ -96,5 +97,12 @@ export const forgotPasswordRateLimiter = new MongoRateLimiter({
 
 export const resendVerificationRateLimiter = new MongoRateLimiter({
   maxAttempts: 3,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+});
+
+// Coarse per-IP gate for /api/monitor (R14-C). Generous limit so legitimate
+// crash reports are never lost; Fase G adds fingerprint + cooldown throttling.
+export const monitorRateLimiter = new MongoRateLimiter({
+  maxAttempts: 120,
   windowMs: 15 * 60 * 1000, // 15 minutes
 });
