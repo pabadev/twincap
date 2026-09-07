@@ -59,6 +59,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate route types
+        # `tsc --noEmit` necesita .next/types (LayoutProps etc.), que solo
+        # existen tras un build o `next typegen` (sin build completo).
+        run: pnpm exec next typegen
+
       - name: Typecheck
         run: pnpm exec tsc --noEmit
 
