@@ -5,6 +5,7 @@ import {
   computeFingerprint,
   normalizeStack,
   reportError,
+  withAlertCooldownTimeout,
 } from './error-monitor';
 import type { ErrorReporter, ErrorEventInput } from '../../core/application/ports';
 import type { AlertDispatcher } from './error-alerter';
@@ -232,20 +233,47 @@ describe('reportError alert throttle (R14-G §6)', () => {
     expect(reporter.report).toHaveBeenCalledTimes(1);
   });
 
-  it('fails OPEN when the cooldown check throws: the alert is still sent', async () => {
+  it('fails CLOSED when the cooldown check throws: the alert is suppressed', async () => {
     const alerter = vi.fn<AlertDispatcher>(async () => {});
     const alertCooldown = async (): Promise<{ allowed: boolean }> => {
       throw new Error('cooldown backend down');
     };
     const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await expect(
       reportError(
-        { ...baseInput, message: 'failopen-boom' },
+        { ...baseInput, message: 'failclosed-boom' },
         { reporter, alerter, alertCooldown },
       ),
     ).resolves.toEqual({ isFirst: true, occurrenceCount: 1 });
-    expect(alerter).toHaveBeenCalledTimes(1);
+    // FAIL-CLOSED: cooldown backend down → suppress, do NOT alert.
+    expect(alerter).not.toHaveBeenCalled();
+    // Observability log emitted.
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('monitor_alert_suppressed'),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('suppresses alert when cooldown is slow (timeout path)', async () => {
+    const alerter = vi.fn<AlertDispatcher>(async () => {});
+    const alertCooldown = async (): Promise<{ allowed: boolean }> => {
+      // Simulate a slow DB query — resolves after 200 ms.
+      await new Promise((r) => setTimeout(r, 200));
+      return { allowed: true };
+    };
+    const { reporter } = makeReporter(async () => ({ isFirst: true, occurrenceCount: 1 }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await reportError(
+      { ...baseInput, message: 'slow-cooldown-boom' },
+      { reporter, alerter, alertCooldown, alertCooldownTimeoutMs: 20 },
+    );
+    // The timeout fires first → fail-closed → no alert.
+    expect(alerter).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 });
 
@@ -301,3 +329,48 @@ describe(
   },
   60_000,
 );
+
+describe('withAlertCooldownTimeout', () => {
+  it('resolves the check result when it completes before the timeout', async () => {
+    const check = async (): Promise<{ allowed: boolean }> => ({ allowed: true });
+    const result = await withAlertCooldownTimeout(check, 1000, { allowed: false });
+    expect(result).toEqual({ allowed: true });
+  });
+
+  it('returns fallback when the check rejects (fail-closed)', async () => {
+    const check = async (): Promise<{ allowed: boolean }> => {
+      throw new Error('db down');
+    };
+    const result = await withAlertCooldownTimeout(check, 1000, { allowed: false });
+    expect(result).toEqual({ allowed: false });
+  });
+
+  it('returns fallback when the check takes longer than timeoutMs (fail-closed)', async () => {
+    const check = async (): Promise<{ allowed: boolean }> => {
+      await new Promise((r) => setTimeout(r, 200));
+      return { allowed: true };
+    };
+    const result = await withAlertCooldownTimeout(check, 20, { allowed: false });
+    expect(result).toEqual({ allowed: false });
+  });
+
+  it('does not produce an unhandled rejection when the check rejects after timeout', async () => {
+    const rejections: unknown[] = [];
+    const handler = (reason: unknown) => {
+      rejections.push(reason);
+    };
+    process.on('unhandledRejection', handler);
+
+    const check = async (): Promise<{ allowed: boolean }> => {
+      await new Promise((r) => setTimeout(r, 50));
+      throw new Error('late failure');
+    };
+    const result = await withAlertCooldownTimeout(check, 10, { allowed: false });
+    expect(result).toEqual({ allowed: false });
+
+    // Give the late rejection a tick to propagate.
+    await new Promise((r) => setTimeout(r, 100));
+    expect(rejections).toHaveLength(0);
+    process.removeListener('unhandledRejection', handler);
+  });
+});

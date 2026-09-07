@@ -250,6 +250,33 @@ describe(
           MAX_FINGERPRINTS_PER_IP,
         );
       });
+
+      it('N concurrent requests with the SAME new fingerprint → exactly 1 isNew:true, N-1 isNew:false', async () => {
+        const guard = makeGuard();
+        const sharedFingerprint = 'err_shared_race';
+
+        const results = await Promise.all(
+          Array.from({ length: 10 }, () =>
+            guard.limitFingerprints('198.51.100.30', sharedFingerprint),
+          ),
+        );
+
+        const allowedNew = results.filter((r) => r.allowed && r.isNew);
+        const allowedRepeat = results.filter((r) => r.allowed && !r.isNew);
+
+        // Only the first request that actually adds the fingerprint wins
+        // isNew:true. The rest see $addToSet as a no-op (modifiedCount=0)
+        // and must be classified as isNew:false — NOT inflated.
+        expect(allowedNew).toHaveLength(1);
+        expect(allowedRepeat).toHaveLength(9);
+        expect(results.every((r) => r.allowed)).toBe(true);
+
+        // The document holds exactly ONE copy of the fingerprint.
+        const docs = await MonitorFingerprintModel.find({ ip: '198.51.100.30' });
+        expect(docs).toHaveLength(1);
+        expect(docs[0]?.fingerprints).toContain(sharedFingerprint);
+        expect(docs[0]?.fingerprints.filter((f: string) => f === sharedFingerprint)).toHaveLength(1);
+      });
     });
 
     describe('fail-open contract (never throws)', () => {

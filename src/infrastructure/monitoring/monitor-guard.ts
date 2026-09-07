@@ -122,17 +122,32 @@ export class MongoMonitorGuard {
           key,
           [`fingerprints.${MAX_FINGERPRINTS_PER_IP - 1}`]: { $exists: false },
         };
-        const updated = await this.fingerprintModel.findOneAndUpdate(
+        // Use updateOne + modifiedCount to distinguish a REAL $addToSet
+        // (modifiedCount=1) from a no-op (modifiedCount=0) when two
+        // concurrent requests send the SAME new fingerprint — the second
+        // request matches the doc but $addToSet is a no-op because the
+        // element is already present. modifiedCount is a first-class field
+        // on UpdateResult (no includeResultMetadata / lastErrorObject
+        // gymnastics needed).
+        const updateResult = await this.fingerprintModel.updateOne(
           roomLeft,
           { $addToSet: { fingerprints: fingerprint } },
-          { new: true },
         );
-        if (updated) {
+        if (updateResult.matchedCount === 1 && updateResult.modifiedCount === 1) {
+          // The $addToSet REALLY added this fingerprint — it is genuinely new.
           return { allowed: true, isNew: true };
         }
-        // Lost a race against concurrent adds (array filled between read and
-        // write): re-check membership so a repeat stays allowed and only a
-        // genuinely fresh fingerprint is rejected.
+        if (updateResult.matchedCount === 1 && updateResult.modifiedCount === 0) {
+          // The doc matched but $addToSet was a NO-OP: a concurrent request
+          // added the SAME fingerprint already. This is a legitimate repeat,
+          // NOT a new fingerprint — it must not consume quota NOR count toward
+          // the global cooldown.
+          return { allowed: true, isNew: false };
+        }
+        // Lost a race against concurrent adds (matchedCount=0: filter didn't
+        // match because array filled between the earlier findOne and this
+        // updateOne): re-check membership so a repeat stays allowed and only
+        // a genuinely fresh fingerprint is rejected.
         const recheck = await this.fingerprintModel.findOne({ key });
         const nowSeen =
           Array.isArray(recheck?.fingerprints) &&

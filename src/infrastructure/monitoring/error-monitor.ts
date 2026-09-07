@@ -36,6 +36,42 @@ const PRIMARY_STACK_LINES = 3;
 const FINGERPRINT_PREFIX = 'err';
 
 /**
+ * Maximum time (ms) to wait for the alert-cooldown DB check before
+ * suppressing the alert. When Mongo is down or sluggish, the rate-limiter
+ * query will buffer/hang — this timeout prevents the alert path from
+ * stalling or (worse) spamming emails because the throttle cannot deduplicate.
+ * 1 second is generous for a local/Atlas query; anything slower under normal
+ * load indicates a degraded backend.
+ */
+export const ALERT_COOLDOWN_CHECK_TIMEOUT_MS = 1000;
+
+/**
+ * Wraps the alert-cooldown check with a hard timeout and rejection capture.
+ *
+ * FAIL-CLOSED POLICY: when the cooldown window cannot be verified (DB down,
+ * network partition, or the check is simply too slow), we SUPPRESS the alert.
+ * Losing a single alert by uncertainty is acceptable; sending a hundred
+ * because the throttle backend is unreachable is not — the whole point of
+ * the cooldown is to deduplicate under degraded conditions.
+ *
+ * @param check    - The async cooldown check returning `{ allowed }`.
+ * @param timeoutMs - Max time to wait before falling back.
+ * @param fallback - Value returned when the check times out or rejects.
+ */
+export async function withAlertCooldownTimeout(
+  check: () => Promise<{ allowed: boolean }>,
+  timeoutMs: number,
+  fallback: { allowed: boolean },
+): Promise<{ allowed: boolean }> {
+  return Promise.race([
+    check().catch(() => fallback),
+    new Promise<{ allowed: boolean }>((resolve) => {
+      setTimeout(() => resolve(fallback), timeoutMs);
+    }),
+  ]);
+}
+
+/**
  * Normalizes a stack trace so that line/column numbers and file-pathing
  * differences between identical exceptions collapse to the same form:
  *   - keeps the first `PRIMARY_STACK_LINES` meaningful lines,
@@ -139,6 +175,13 @@ export interface MonitorDeps {
    * window (`monitorAlertRateLimiter`, no extra model).
    */
   alertCooldown?: (fingerprint: string) => Promise<{ allowed: boolean }>;
+  /**
+   * Maximum time (ms) to wait for the alert-cooldown DB check before
+   * suppressing the alert (fail-closed). Defaults to
+   * `ALERT_COOLDOWN_CHECK_TIMEOUT_MS` (1000 ms). Override in tests with a
+   * short value to exercise the timeout path without real delays.
+   */
+  alertCooldownTimeoutMs?: number;
 }
 
 /**
@@ -147,15 +190,23 @@ export interface MonitorDeps {
  * FIRST check() consumes the single allowed attempt (allowed:true → send),
  * any further check() within the window returns allowed:false (skip). No new
  * model or collection is needed.
+ *
+ * The check is wrapped with `withAlertCooldownTimeout` (fail-closed): when
+ * Mongo is down or sluggish the cooldown cannot deduplicate, so we suppress
+ * the alert rather than spam. A single missed alert is acceptable; a hundred
+ * per second from a dead backend is not.
  */
 const defaultAlertCooldown: (
   fingerprint: string,
-) => Promise<{ allowed: boolean }> = async (fingerprint) => {
-  const result = await monitorAlertRateLimiter.check(
-    `monitor-alert:${fingerprint}`,
+) => Promise<{ allowed: boolean }> = (fingerprint) =>
+  withAlertCooldownTimeout(
+    () =>
+      monitorAlertRateLimiter
+        .check(`monitor-alert:${fingerprint}`)
+        .then((result) => ({ allowed: result.allowed })),
+    ALERT_COOLDOWN_CHECK_TIMEOUT_MS,
+    { allowed: false },
   );
-  return { allowed: result.allowed };
-};
 
 /**
  * Report an exception to the error monitoring backend. NEVER throws.
@@ -229,18 +280,35 @@ export async function reportError(
           // TEMPORAL alert throttle (R14-G §6): do NOT send a second email for
           // the SAME fingerprint inside the 30-min cooldown window, even when
           // another isFirst event of the same error arrives. The persisted
-          // result is kept regardless. FAIL-OPEN: if the cooldown check itself
-          // errors, alert exactly as before the throttle existed.
+          // result is kept regardless. FAIL-CLOSED: if the cooldown check
+          // errors or times out, SUPPRESS the alert — when Mongo is down the
+          // throttle cannot deduplicate, so every occurrence would attempt to
+          // alert (email spam). Losing one alert by uncertainty is acceptable;
+          // a hundred per second from a dead backend is not.
           const cooldown = deps?.alertCooldown ?? defaultAlertCooldown;
-          let allowAlert = true;
-          try {
-            allowAlert = (await cooldown(fingerprint)).allowed;
-          } catch {
-            // Throttle backend failure → fail-open (alert).
-          }
+          const timeoutMs =
+            deps?.alertCooldownTimeoutMs ?? ALERT_COOLDOWN_CHECK_TIMEOUT_MS;
+          const allowAlert = await withAlertCooldownTimeout(
+            () => cooldown(fingerprint),
+            timeoutMs,
+            { allowed: false },
+          ).then((r) => r.allowed);
           if (allowAlert) {
             const alerter: AlertDispatcher = deps?.alerter ?? alertOnIncident;
             await alerter({ input: sanitized, isFirst: result.isFirst });
+          } else {
+            // Observability: a suppressed alert is logged so operators can
+            // tell dedup (throttle working) from a backend check failure or
+            // timeout (throttle could not verify, fail-closed suppression).
+            console.error(
+              JSON.stringify({
+                level: 'error',
+                event: 'monitor_alert_suppressed',
+                fingerprint,
+                error:
+                  'alert not sent: cooldown dedup, or cooldown check failed/timed out',
+              }),
+            );
           }
         } catch {
           // Fail-safe: an alert failure must not lose the persisted result.
