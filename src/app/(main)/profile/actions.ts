@@ -10,6 +10,7 @@ import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
 import { resendVerification } from '../../../core/application/auth/resend-verification';
 import { buildAuthEmailDeps } from '../../../infrastructure/auth/auth-email-deps';
+import { deleteSessionCookie } from '../../../infrastructure/auth/session-cookie';
 
 export async function updateProfileAction(
   _prev: { error?: string; success?: string } | null,
@@ -35,6 +36,9 @@ export async function updateProfileAction(
       name: name ?? existing.name,
       locale: locale ?? existing.locale,
       emailVerified: existing.emailVerified,
+      // R14-F §13: profile edits must NOT invalidate sessions — pass the
+      // version through unchanged (a missing value would reset it to 0).
+      sessionVersion: existing.sessionVersion ?? 0,
     });
 
     await userRepo.update(updated);
@@ -101,8 +105,16 @@ export async function changePasswordAction(
           name: existing.name,
           locale: existing.locale,
           emailVerified: existing.emailVerified,
+          // R14-F §13: a password change invalidates ALL sessions, including
+          // the current one (we delete the session cookie right after).
+          sessionVersion: (existing.sessionVersion ?? 0) + 1,
         });
         await userRepo.update(updated);
+        // R14-F §13: force the acting user to log in again with the new
+        // password — the incremented sessionVersion already invalidates their
+        // JWT, and deleting the cookie makes the next navigation redirect to
+        // /login instead of relying on the (main) layout guard.
+        await deleteSessionCookie();
         // Reset rate limit on successful password change
         await passwordChangeRateLimiter.reset(rateLimitKey);
       },

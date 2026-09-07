@@ -139,8 +139,10 @@ describe('register', () => {
 
     expect(result.userId).toBe('test-user-id');
     expect(result.email).toBe('test@example.com');
+    expect(result.sessionVersion).toBe(0);
     expect(userRepo.created).toHaveLength(1);
     expect(userRepo.created[0].email).toBe('test@example.com');
+    expect(userRepo.created[0].sessionVersion).toBe(0);
     expect(seedUser).toHaveBeenCalledWith('test-user-id', accountRepo, categoryRepo);
   });
 
@@ -240,6 +242,7 @@ describe('login', () => {
 
     expect(result.userId).toBe('user-1');
     expect(result.email).toBe('test@example.com');
+    expect(result.sessionVersion).toBe(0);
   });
 
   it('rejects wrong password with generic message', async () => {

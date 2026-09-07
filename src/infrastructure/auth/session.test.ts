@@ -28,6 +28,28 @@ describe("joseSessionManager", () => {
     expect(payload).toEqual({ sub: "user-123" });
   });
 
+  it("round-trips the sessionVersion claim (R14-F §13)", async () => {
+    const token = await joseSessionManager.create({
+      sub: "user-123",
+      sessionVersion: 3,
+    });
+
+    const payload = await joseSessionManager.verify(token);
+    expect(payload).toEqual({ sub: "user-123", sessionVersion: 3 });
+  });
+
+  it("omits sessionVersion entirely when not provided (legacy shape)", async () => {
+    const token = await joseSessionManager.create({ sub: "user-123" });
+
+    // Decrypt the RAW JWT (not via verify, which maps undefined) to prove the
+    // claim is ABSENT, not merely null/undefined — keeps legacy tokens
+    // byte-compatible.
+    const { jwtDecrypt, base64url } = await import("jose");
+    const secret = base64url.decode(process.env.AUTH_SECRET as string);
+    const { payload } = await jwtDecrypt(token, secret);
+    expect("sessionVersion" in payload).toBe(false);
+  });
+
   it("returns null for invalid tokens", async () => {
     const result = await joseSessionManager.verify("invalid.token.here");
     expect(result).toBeNull();

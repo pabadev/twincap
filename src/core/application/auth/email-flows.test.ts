@@ -36,15 +36,15 @@ function makeUser(overrides: Partial<User> = {}): User {
 
 interface TokenRepo extends AuthTokenStore {
   records: AuthTokenRecord[];
-  lastMarked: { userId: string; purpose: string }[];
+  consumed: string[];
 }
 
 function fakeTokenStore(now: () => Date = () => new Date()): TokenRepo {
   const records: AuthTokenRecord[] = [];
-  const lastMarked: TokenRepo['lastMarked'] = [];
+  const consumed: TokenRepo['consumed'] = [];
   return {
     records,
-    lastMarked,
+    consumed,
     create: async (record) => {
       records.push(record);
       return record;
@@ -61,11 +61,14 @@ function fakeTokenStore(now: () => Date = () => new Date()): TokenRepo {
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
       return found ?? null;
     },
-    markUsed: async (userId, purpose) => {
-      lastMarked.push({ userId, purpose });
-      for (const r of records) {
-        if (r.userId === userId && r.purpose === purpose && !r.used) r.used = true;
+    consume: async (tokenId) => {
+      const rec = records.find((r) => r.id === tokenId);
+      if (!rec || rec.used || rec.expiresAt.getTime() <= now().getTime()) {
+        return false;
       }
+      rec.used = true;
+      consumed.push(tokenId);
+      return true;
     },
     deleteExpired: async () => {
       const current = now().getTime();
@@ -211,7 +214,7 @@ describe('resetPassword', () => {
     });
   }
 
-  it('updates the password hash and marks the token used', async () => {
+  it('updates the password hash and atomically consumes the token', async () => {
     const repo = fakeUserRepo();
     const user = makeUser();
     repo.findByEmailResult = user;
@@ -226,11 +229,63 @@ describe('resetPassword', () => {
     expect(result.ok).toBe(true);
     expect(deps.userRepo.updated).toHaveLength(1);
     expect(deps.userRepo.updated[0].passwordHash).toBe('hashed:new-pass-123');
-    // One-time use.
-    expect(deps.tokenStore.lastMarked).toEqual([
-      { userId: 'user-1', purpose: 'password_reset' },
-    ]);
+    // One-time use: the SPECIFIC token id was consumed.
+    expect(deps.tokenStore.consumed).toEqual(['stored-1']);
     expect(deps.tokenStore.records[0].used).toBe(true);
+  });
+
+  it('increments sessionVersion to invalidate all existing sessions (R14-F §13)', async () => {
+    const repo = fakeUserRepo();
+    const user = makeUser({ sessionVersion: 2 });
+    repo.findByEmailResult = user;
+    const deps = fakeDeps(repo);
+    seedActiveResetToken(deps, user, 'reset-token');
+
+    const result = await resetPassword(
+      { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
+      deps,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(deps.userRepo.updated[0].sessionVersion).toBe(
+      (user.sessionVersion ?? 0) + 1,
+    );
+  });
+
+  it('rejects a token that was already consumed (used=true) with the unified message', async () => {
+    const repo = fakeUserRepo();
+    const user = makeUser();
+    repo.findByEmailResult = user;
+    const deps = fakeDeps(repo);
+    seedActiveResetToken(deps, user, 'reset-token');
+    deps.tokenStore.records[0].used = true;
+
+    await expect(
+      resetPassword(
+        { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
+        deps,
+      ),
+    ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
+  });
+
+  it('rejects when the atomic consume loses the race (loser of concurrent requests, R14-F §12)', async () => {
+    const repo = fakeUserRepo();
+    const user = makeUser();
+    repo.findByEmailResult = user;
+    const deps = fakeDeps(repo);
+    seedActiveResetToken(deps, user, 'reset-token');
+    // Simulate another concurrent request consuming the SAME token between
+    // findActiveByUser and consume — the conditional update wins elsewhere.
+    deps.tokenStore.consume = async () => false;
+
+    await expect(
+      resetPassword(
+        { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
+        deps,
+      ),
+    ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
+    // Loser must NOT modify the user record (no password change applied).
+    expect(deps.userRepo.updated).toHaveLength(0);
   });
 
   it('rejects an expired token with the unified message', async () => {
@@ -302,9 +357,9 @@ describe('verifyEmail', () => {
     });
   }
 
-  it('sets emailVerified to true and marks the token used', async () => {
+  it('sets emailVerified to true and atomically consumes the token', async () => {
     const repo = fakeUserRepo();
-    const user = makeUser({ emailVerified: false });
+    const user = makeUser({ emailVerified: false, sessionVersion: 2 });
     repo.findByEmailResult = user;
     const deps = fakeDeps(repo);
     seedActiveVerifyToken(deps, user, 'verify-token');
@@ -314,9 +369,11 @@ describe('verifyEmail', () => {
     expect(result.ok).toBe(true);
     expect(deps.userRepo.updated).toHaveLength(1);
     expect(deps.userRepo.updated[0].emailVerified).toBe(true);
-    expect(deps.tokenStore.lastMarked).toEqual([
-      { userId: 'user-1', purpose: 'email_verify' },
-    ]);
+    // Email verification does NOT invalidate sessions — version passes through.
+    expect(deps.userRepo.updated[0].sessionVersion).toBe(user.sessionVersion ?? 0);
+    // One-time use: the SPECIFIC token id was consumed.
+    expect(deps.tokenStore.consumed).toEqual(['stored-2']);
+    expect(deps.tokenStore.records[0].used).toBe(true);
   });
 
   it('rejects an invalid token', async () => {

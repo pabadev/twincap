@@ -46,8 +46,14 @@ export async function resetPassword(
     throw new ValidationError(INVALID_TOKEN_MESSAGE);
   }
 
-  // One-time use: revoke before applying so reusing the same token fails.
-  await deps.tokenStore.markUsed(user.id, 'password_reset');
+  // One-time use: atomically consume THIS token (per-token-id conditional
+  // update). Exactly one concurrent caller can win; whoever loses the race
+  // gets the unified invalid-token error. Consumption is the proof of use and
+  // happens BEFORE applying the user update.
+  const consumed = await deps.tokenStore.consume(stored.id);
+  if (!consumed) {
+    throw new ValidationError(INVALID_TOKEN_MESSAGE);
+  }
 
   const newHash = await deps.hasher.hash(input.newPassword);
   const updated = new User({
@@ -58,6 +64,8 @@ export async function resetPassword(
     name: user.name,
     locale: user.locale,
     emailVerified: user.emailVerified,
+    // R14-F §13: a password reset invalidates ALL existing sessions.
+    sessionVersion: (user.sessionVersion ?? 0) + 1,
   });
   await deps.userRepo.update(updated);
 

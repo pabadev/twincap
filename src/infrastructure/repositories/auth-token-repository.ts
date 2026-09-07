@@ -53,12 +53,18 @@ export class MongoAuthTokenRepository implements AuthTokenStore {
     return doc ? toRecord(doc as unknown as AuthTokenDocument) : null;
   }
 
-  /** Revoke (mark used) all active tokens for a user+purpose. */
-  async markUsed(userId: string, purpose: AuthTokenPurpose): Promise<void> {
-    await AuthTokenModel.updateMany(
-      { userId, purpose, used: false },
+  /**
+   * Atomically consume — the filter used:false + expiresAt > now makes exactly
+   * one concurrent caller win. Mongoose casts the string tokenId to ObjectId
+   * in the updateOne filter.
+   */
+  async consume(tokenId: string): Promise<boolean> {
+    const now = new Date();
+    const result = await AuthTokenModel.updateOne(
+      { _id: tokenId, used: false, expiresAt: { $gt: now } },
       { $set: { used: true } },
     ).exec();
+    return result.modifiedCount === 1;
   }
 
   /** Opportunistic cleanup of expired tokens (TTL index also handles it). */

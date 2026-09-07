@@ -28,6 +28,13 @@ export interface SessionClaims {
   sub: string;
   email?: string;
   workspaceId?: string;
+  /**
+   * Server-only session invalidation version (R14-F §13). Captured at login
+   * from the user's `sessionVersion`; incremented on password change/reset so
+   * older sessions fail validation. Absent in legacy sessions — consumers
+   * treat `undefined` as version 0.
+   */
+  sessionVersion?: number;
 }
 
 /**
@@ -269,8 +276,8 @@ export interface AuthTokenStore {
     userId: string,
     purpose: AuthTokenPurpose,
   ): Promise<AuthTokenRecord | null>;
-  /** Revoke (mark used) the active token for a user+purpose. */
-  markUsed(userId: string, purpose: AuthTokenPurpose): Promise<void>;
+  /** Atomically consume (mark used) the token ONLY if it is still unused and unexpired. Returns true when THIS caller won (exactly one document updated); false when another caller already consumed it or it expired. */
+  consume(tokenId: string): Promise<boolean>;
   /** Opportunistic cleanup of expired tokens (TTL index also handles it). */
   deleteExpired(): Promise<void>;
 }

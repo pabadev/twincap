@@ -8,7 +8,17 @@ const HEADER = { alg: "dir", enc: "A256GCM" } as const;
 
 export const joseSessionManager: SessionManager = {
   create: async (claims) => {
-    return new EncryptJWT({ sub: claims.sub, email: claims.email, workspaceId: claims.workspaceId })
+    const payload: Record<string, unknown> = {
+      sub: claims.sub,
+      email: claims.email,
+      workspaceId: claims.workspaceId,
+    };
+    // Include sessionVersion ONLY when defined — keeps legacy sessions (and
+    // their { sub, email, workspaceId } shape) unchanged.
+    if (typeof claims.sessionVersion === "number") {
+      payload.sessionVersion = claims.sessionVersion;
+    }
+    return new EncryptJWT(payload)
       .setProtectedHeader(HEADER)
       .setIssuedAt()
       .setExpirationTime("30d")
@@ -21,6 +31,7 @@ export const joseSessionManager: SessionManager = {
         sub: payload.sub as string,
         email: typeof payload.email === "string" ? payload.email : undefined,
         workspaceId: typeof payload.workspaceId === "string" ? payload.workspaceId : undefined,
+        sessionVersion: typeof payload.sessionVersion === "number" ? payload.sessionVersion : undefined,
       };
     } catch {
       return null;

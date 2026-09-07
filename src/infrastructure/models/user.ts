@@ -9,6 +9,7 @@ export interface UserDoc {
   emailVerified?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  sessionVersion: number;
 }
 
 export type UserDocument = HydratedDocument<UserDoc>;
@@ -39,6 +40,10 @@ const UserSchema = new Schema<UserDoc>(
     emailVerified: {
       type: Boolean,
       default: false,
+    },
+    sessionVersion: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true },

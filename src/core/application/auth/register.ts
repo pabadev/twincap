@@ -17,6 +17,8 @@ export interface RegisterOutput {
   email: string;
   /** The newly created personal workspace id. */
   workspaceId: string;
+  /** Session invalidation version (R14-F §13) — minted into the JWT. */
+  sessionVersion: number;
 }
 
 export async function register(
@@ -72,5 +74,10 @@ export async function register(
   // AUTH-4: seed accounts + categories into the workspace
   await seedUser(createdWorkspace.id, accountRepo, categoryRepo);
 
-  return { userId: createdUser.id, email: createdUser.email, workspaceId: createdWorkspace.id };
+  return {
+    userId: createdUser.id,
+    email: createdUser.email,
+    workspaceId: createdWorkspace.id,
+    sessionVersion: createdUser.sessionVersion ?? 0,
+  };
 }

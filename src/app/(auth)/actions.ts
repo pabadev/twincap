@@ -86,7 +86,7 @@ export async function registerAction(
   try {
     await connectDb();
     const { userRepo, accountRepo, categoryRepo, workspaceRepo, membershipRepo } = getRepos();
-    const { userId, email: sessionEmail, workspaceId } = await register(
+    const { userId, email: sessionEmail, workspaceId, sessionVersion } = await register(
       { email, password },
       userRepo,
       accountRepo,
@@ -96,7 +96,7 @@ export async function registerAction(
       workspaceRepo,
       membershipRepo,
     );
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId });
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
     // R13-B2: fire the verification email best-effort (never blocks register).
     // New users have no locale yet; default to 'es' (primary market: LatAm).
     await sendVerificationBestEffort(
@@ -147,7 +147,7 @@ export async function loginAction(
   try {
     await connectDb();
     const { userRepo, membershipRepo } = getRepos();
-    const { userId, email: sessionEmail } = await login(
+    const { userId, email: sessionEmail, sessionVersion } = await login(
       { email, password },
       userRepo,
       bcryptPasswordHasher,
@@ -157,7 +157,7 @@ export async function loginAction(
     const workspaceId = memberships.find((m) => m.status === 'active')?.workspaceId;
     // Reset rate limit on successful login
     await loginRateLimiter.reset(rateLimitKey);
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId });
+    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
     // Audit the successful login (no actor is known before this point).
     await new MongoOperationLogger().log({
       userId,

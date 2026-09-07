@@ -10,6 +10,7 @@ export function toUserEntity(doc: UserDocument): User {
     name: doc.name,
     locale: doc.locale,
     emailVerified: doc.emailVerified,
+    sessionVersion: doc.sessionVersion ?? 0,
     createdAt: doc.createdAt,
   });
 }
@@ -22,5 +23,6 @@ export function toUserDocData(entity: User): Record<string, unknown> {
     name: entity.name,
     locale: entity.locale,
     emailVerified: entity.emailVerified ?? false,
+    sessionVersion: entity.sessionVersion ?? 0,
   };
 }

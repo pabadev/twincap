@@ -16,6 +16,8 @@ export interface UserInput {
   locale?: string;
   /** Whether the user has verified ownership of their email (B2). `undefined` === false. */
   emailVerified?: boolean;
+  /** Server-only session invalidation version (R14-F §13). `undefined` == 0. */
+  sessionVersion?: number;
 }
 
 export class User {
@@ -27,6 +29,7 @@ export class User {
   readonly name?: string;
   readonly locale?: string;
   readonly emailVerified?: boolean;
+  readonly sessionVersion: number;
 
   constructor(input: UserInput) {
     if (input.id.length === 0) {
@@ -46,6 +49,7 @@ export class User {
     this.name = input.name?.trim() || undefined;
     this.locale = input.locale || undefined;
     this.emailVerified = input.emailVerified;
+    this.sessionVersion = input.sessionVersion ?? 0;
   }
 
   toJSON() {

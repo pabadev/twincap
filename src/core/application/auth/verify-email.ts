@@ -39,8 +39,14 @@ export async function verifyEmail(
     throw new ValidationError(INVALID_TOKEN_MESSAGE);
   }
 
-  // One-time use: revoke before applying.
-  await deps.tokenStore.markUsed(user.id, 'email_verify');
+  // One-time use: atomically consume THIS token (per-token-id conditional
+  // update). Exactly one concurrent caller can win; whoever loses the race
+  // gets the unified invalid-token error. Consumption is the proof of use and
+  // happens BEFORE applying the user update.
+  const consumed = await deps.tokenStore.consume(stored.id);
+  if (!consumed) {
+    throw new ValidationError(INVALID_TOKEN_MESSAGE);
+  }
 
   const updated = new User({
     id: user.id,
@@ -50,6 +56,8 @@ export async function verifyEmail(
     name: user.name,
     locale: user.locale,
     emailVerified: true,
+    // VerifyEmail must NOT invalidate sessions — pass through unchanged.
+    sessionVersion: user.sessionVersion ?? 0,
   });
   await deps.userRepo.update(updated);
 
