@@ -315,3 +315,27 @@ export interface AuthTokenStore {
 export interface UnitOfWork {
   withTransaction<T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T>;
 }
+
+// ─── Onboarding / session-cookie ports (R14-K §14) ────────────────────────
+
+/**
+ * Seeds the default content (fixed Cash account + default categories) into a
+ * newly created personal workspace on registration. Implementation lives in
+ * infrastructure (user-bootstrap); the register use case depends only on this
+ * port so core never imports infrastructure (R14-K §14a).
+ */
+export interface WorkspaceBootstrapper {
+  bootstrap(workspaceId: string): Promise<void>;
+}
+
+/**
+ * Browser session COOKIE lifecycle (R14-K §14b). Deliberately separate from
+ * `SessionManager` (the token codec — create/verify the encrypted JWE): this
+ * port owns the HTTP cookie that carries the session token. Implementation
+ * lives in infrastructure (session-cookie); the logout use case depends only
+ * on this port so core never imports infrastructure (R14-K §14b).
+ */
+export interface SessionCookieManager {
+  /** Remove the session cookie from the browser (logout). */
+  destroy(): Promise<void>;
+}

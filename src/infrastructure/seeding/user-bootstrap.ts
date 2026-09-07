@@ -1,5 +1,6 @@
 import type { AccountRepository } from "../../core/domain/repositories";
 import type { CategoryRepository } from "../../core/domain/repositories";
+import type { WorkspaceBootstrapper } from "../../core/application/ports";
 import { Account } from "../../core/domain/account";
 import { Category } from "../../core/domain/category";
 import { objectIdGenerator } from "../config/id-generator";
@@ -57,5 +58,21 @@ export async function seedUser(
       createdAt: now,
     });
     await categoryRepo.create(category);
+  }
+}
+
+/**
+ * R14-K §14a: infrastructure adapter for the `WorkspaceBootstrapper` port.
+ * Wraps `seedUser` so the register use case (core) depends only on the port,
+ * never on this module. Keeps the seeding logic in one place.
+ */
+export class MongoWorkspaceBootstrapper implements WorkspaceBootstrapper {
+  constructor(
+    private readonly accountRepo: AccountRepository,
+    private readonly categoryRepo: CategoryRepository,
+  ) {}
+
+  async bootstrap(workspaceId: string): Promise<void> {
+    await seedUser(workspaceId, this.accountRepo, this.categoryRepo);
   }
 }

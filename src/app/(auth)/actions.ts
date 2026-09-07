@@ -23,6 +23,7 @@ import {
   forgotPasswordRateLimiter,
 } from '../../infrastructure/auth/rate-limiter';
 import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
+import { MongoWorkspaceBootstrapper } from '../../infrastructure/seeding/user-bootstrap';
 import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
 import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
 import { getClientIp } from '../../infrastructure/auth/client-ip';
@@ -95,6 +96,7 @@ export async function registerAction(
       ids,
       workspaceRepo,
       membershipRepo,
+      new MongoWorkspaceBootstrapper(accountRepo, categoryRepo),
     );
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
     // R13-B2: fire the verification email best-effort (never blocks register).

@@ -1,10 +1,9 @@
 import type { UserRepository, AccountRepository, CategoryRepository, WorkspaceRepository, MembershipRepository } from '../../domain/repositories';
-import type { PasswordHasher, IdGenerator } from '../ports';
+import type { PasswordHasher, IdGenerator, WorkspaceBootstrapper } from '../ports';
 import { User } from '../../domain/user';
 import { Workspace } from '../../domain/workspace';
 import { Membership } from '../../domain/membership';
 import { ValidationError, ConflictError } from '../../domain/errors';
-import { seedUser } from '../../../infrastructure/seeding/user-bootstrap';
 
 export interface RegisterInput {
   email: string;
@@ -30,6 +29,7 @@ export async function register(
   ids: IdGenerator,
   workspaceRepo: WorkspaceRepository,
   membershipRepo: MembershipRepository,
+  bootstrapper: WorkspaceBootstrapper,
 ): Promise<RegisterOutput> {
   // AUTH-1: normalized email, min 8 chars password
   const normalizedEmail = input.email.trim().toLowerCase();
@@ -72,7 +72,7 @@ export async function register(
   await membershipRepo.create(membership);
 
   // AUTH-4: seed accounts + categories into the workspace
-  await seedUser(createdWorkspace.id, accountRepo, categoryRepo);
+  await bootstrapper.bootstrap(createdWorkspace.id);
 
   return {
     userId: createdUser.id,

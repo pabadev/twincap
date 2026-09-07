@@ -4,25 +4,30 @@ import { login } from './login';
 import { logout } from './logout';
 import { ValidationError, ConflictError } from '../../domain/errors';
 import type { UserRepository, AccountRepository, CategoryRepository, WorkspaceRepository, MembershipRepository } from '../../domain/repositories';
-import type { PasswordHasher, IdGenerator } from '../ports';
+import type { PasswordHasher, IdGenerator, WorkspaceBootstrapper, SessionCookieManager } from '../ports';
 import type { User } from '../../domain/user';
 import type { Account } from '../../domain/account';
 import type { Category } from '../../domain/category';
 import type { Workspace } from '../../domain/workspace';
 import type { Membership } from '../../domain/membership';
 
-// ─── Mocks ─────────────────────────────────────────────────────────
-
-vi.mock('../../../infrastructure/seeding/user-bootstrap', () => ({
-  seedUser: vi.fn(),
-}));
+// ─── Fakes ─────────────────────────────────────────────────────────
 
 vi.mock('../../../infrastructure/auth/session-cookie', () => ({
   deleteSessionCookie: vi.fn(),
 }));
 
-const { seedUser } = await import('../../../infrastructure/seeding/user-bootstrap');
 const { deleteSessionCookie } = await import('../../../infrastructure/auth/session-cookie');
+
+function fakeBootstrapper(): WorkspaceBootstrapper & { boosted: string[] } {
+  const boosted: string[] = [];
+  return {
+    boosted,
+    bootstrap: async (workspaceId: string) => {
+      boosted.push(workspaceId);
+    },
+  };
+}
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -125,6 +130,7 @@ describe('register', () => {
     const ids = fakeIdGen();
     const workspaceRepo = fakeWorkspaceRepo();
     const membershipRepo = fakeMembershipRepo();
+    const bootstrapper = fakeBootstrapper();
 
     const result = await register(
       { email: 'test@example.com', password: 'password123' },
@@ -135,6 +141,7 @@ describe('register', () => {
       ids,
       workspaceRepo,
       membershipRepo,
+      bootstrapper,
     );
 
     expect(result.userId).toBe('test-user-id');
@@ -143,7 +150,7 @@ describe('register', () => {
     expect(userRepo.created).toHaveLength(1);
     expect(userRepo.created[0].email).toBe('test@example.com');
     expect(userRepo.created[0].sessionVersion).toBe(0);
-    expect(seedUser).toHaveBeenCalledWith('test-user-id', accountRepo, categoryRepo);
+    expect(bootstrapper.boosted).toEqual(['test-user-id']);
   });
 
   it('creates a personal Workspace and owner Membership on registration', async () => {
@@ -154,6 +161,7 @@ describe('register', () => {
     const ids = fakeIdGen();
     const workspaceRepo = fakeWorkspaceRepo();
     const membershipRepo = fakeMembershipRepo();
+    const bootstrapper = fakeBootstrapper();
 
     const result = await register(
       { email: 'test@example.com', password: 'password123' },
@@ -164,6 +172,7 @@ describe('register', () => {
       ids,
       workspaceRepo,
       membershipRepo,
+      bootstrapper,
     );
 
     // Personal workspace: ownerId = new user id
@@ -202,6 +211,7 @@ describe('register', () => {
         fakeIdGen(),
         fakeWorkspaceRepo(),
         fakeMembershipRepo(),
+        fakeBootstrapper(),
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -217,6 +227,7 @@ describe('register', () => {
         fakeIdGen(),
         fakeWorkspaceRepo(),
         fakeMembershipRepo(),
+        fakeBootstrapper(),
       ),
     ).rejects.toThrow(ValidationError);
   });
