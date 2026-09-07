@@ -91,7 +91,7 @@
 - [ ] Primeros 2–3 testers probados manualmente por el fundador antes de abrir al grupo completo.
 - [ ] Plantilla de bienvenida + plantilla de entrevista listas.
 - [ ] Canal de soporte (`/help` + email) probado de punta a punta.
-- [ ] **P0 (R14-G) — Contrato de índices de seguridad del monitor verificado en Atlas** (paso explícito del auditor 2026-09-07; NO es recomendación informal):
+- [x] **P0 (R14-G) — Contrato de índices de seguridad del monitor verificado en Atlas** (paso explícito del auditor 2026-09-07; NO es recomendación informal) — **EJECUTADO 2026-09-07:** `scripts/ensure-monitor-indexes.mjs --apply` (dry-run aprobado previamente por el usuario) materializó `monitorfingerprints` + `monitorcooldowns` y sus 4 índices ANTES de que `/api/monitor` reciba tráfico; `scripts/verify-monitor-indexes.mjs` confirmó `CONTRACT OK` (2 colecciones + 4 índices reales, directo contra Atlas, sin depender de Next.js/Mongoose); re-dry-run idempotente → 4× `[PASS] no-op`. En un deploy futuro, re-ejecutar siempre el verificador:
   ```bash
   node --env-file=.env.local scripts/verify-monitor-indexes.mjs
   ```
