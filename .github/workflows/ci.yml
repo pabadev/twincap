@@ -86,10 +86,16 @@ jobs:
       # arranca mongodb-memory-server local (puerto 37017) y sobreescribe
       # MONGODB_URI con esa instancia loopback, así que aquí solo se necesita un
       # placeholder seguro (nunca toca Atlas — el Atlas guard del setup aborta).
+      # RESEND_*/APP_BASE_URL: `next start` corre con NODE_ENV=production y env.ts
+      # las exige desde R14-E; el E2E nunca envía emails reales (best-effort), por
+      # eso placeholders de prueba pasan la validación.
       MONGODB_URI: mongodb://localhost:27017/twincap_e2e
       AUTH_SECRET: wPdh0ZCXq1krHoLD6Yxz7dVTDSWBYD6xS3pVWAfb8kM
       TZ: America/Bogota
       NEXT_LOCALE: en
+      RESEND_API_KEY: re_e2e_placeholder_key_not_used
+      RESEND_FROM: TwinCap Tests <noreply@test.local>
+      APP_BASE_URL: http://localhost:3000
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,8 +121,8 @@ jobs:
 
       - name: Generate .env.e2e
         run: |
-          printf 'MONGODB_URI=%s\nAUTH_SECRET=%s\nTZ=%s\nNEXT_LOCALE=%s\n' \
-            "$MONGODB_URI" "$AUTH_SECRET" "$TZ" "$NEXT_LOCALE" > .env.e2e
+          printf 'MONGODB_URI=%s\nAUTH_SECRET=%s\nTZ=%s\nNEXT_LOCALE=%s\nRESEND_API_KEY=%s\nRESEND_FROM=%s\nAPP_BASE_URL=%s\n' \
+            "$MONGODB_URI" "$AUTH_SECRET" "$TZ" "$NEXT_LOCALE" "$RESEND_API_KEY" "$RESEND_FROM" "$APP_BASE_URL" > .env.e2e
 
       - name: Run E2E suite
         # El script test:e2e carga .env.e2e (mongod local 37017) y arranca
