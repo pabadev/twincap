@@ -34,6 +34,7 @@ export function toMovementEntity(
       ? {
           kind: doc.link.kind as MovementLinkKind,
           refId: doc.link.refId,
+          saleId: doc.link.saleId,
           opId: doc.link.opId,
         }
       : undefined,
@@ -54,7 +55,12 @@ export function toMovementDocData(entity: Movement): Record<string, unknown> {
     context: entity.context,
     categoryId: new Types.ObjectId(entity.categoryId),
     link: entity.link
-      ? { kind: entity.link.kind, refId: entity.link.refId, opId: entity.link.opId }
+      ? {
+          kind: entity.link.kind,
+          refId: entity.link.refId,
+          saleId: entity.link.saleId,
+          opId: entity.link.opId,
+        }
       : undefined,
   };
 }
