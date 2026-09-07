@@ -99,6 +99,12 @@ MovementSchema.index(
   },
 );
 
+// R14-I: dashboard windowed reads — filter workspace + civil-date range + exact sort
+MovementSchema.index(
+  { workspaceId: 1, date: -1, createdAt: -1 },
+  { name: "workspace_date_createdAt" },
+);
+
 export const MovementModel =
   mongoose.models["Movement"] ||
   mongoose.model<MovementDoc>("Movement", MovementSchema);

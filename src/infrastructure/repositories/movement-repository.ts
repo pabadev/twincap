@@ -208,6 +208,52 @@ export class MongoMovementRepository implements MovementRepository {
     return result.length > 0 ? result[0].total : 0;
   }
 
+  async findByWorkspaceIdAndDateRange(
+    workspaceId: string,
+    from: Date,
+    to: Date,
+  ): Promise<Movement[]> {
+    const docs = await MovementModel.find({
+      workspaceId: new Types.ObjectId(workspaceId),
+      date: { $gte: from, $lt: to },
+    }).sort({ date: -1, createdAt: -1 }).exec();
+    if (docs.length === 0) return [];
+
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
+
+    return docs.flatMap((doc) => {
+      const movementDoc = doc as MovementDocument;
+      const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
+      const category = categoryMap.get(key);
+      const account = accountMap.get(movementDoc.accountId.toString());
+      if (!category || !account) return [];
+      return [toMovementEntity(movementDoc, category, account.currency as Currency)];
+    });
+  }
+
+  async findByWorkspaceIdForBalance(workspaceId: string): Promise<Movement[]> {
+    const docs = await MovementModel.find({
+      workspaceId: new Types.ObjectId(workspaceId),
+    })
+      .select(
+        '_id workspaceId accountId type amount date note context link categoryId createdAt',
+      )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
+    if (docs.length === 0) return [];
+
+    const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
+
+    return docs.flatMap((doc) => {
+      const movementDoc = doc as MovementDocument;
+      const key = `${movementDoc.categoryId.toString()}:${movementDoc.type}`;
+      const category = categoryMap.get(key);
+      const account = accountMap.get(movementDoc.accountId.toString());
+      if (!category || !account) return [];
+      return [toMovementEntity(movementDoc, category, account.currency as Currency)];
+    });
+  }
+
   async countByCategoryId(workspaceId: string, categoryId: string): Promise<number> {
     return MovementModel.countDocuments({
       workspaceId: new Types.ObjectId(workspaceId),

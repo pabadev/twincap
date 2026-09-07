@@ -54,6 +54,8 @@ function fakeMovementRepo(
     aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
+    findByWorkspaceIdAndDateRange: async () => [],
+    findByWorkspaceIdForBalance: async () => [],
     ...overrides,
   };
 }

@@ -64,8 +64,16 @@ function fakeCategoryDoc(overrides: Partial<Record<string, unknown>> = {}) {
 /** Simulate the chained query: find().sort().exec() -> exec returns the array. */
 function execResult(result: unknown[]) {
   return {
-    sort: () => ({ exec: vi.fn().mockResolvedValue(result) }),
+    sort: vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue(result) }),
     exec: vi.fn().mockResolvedValue(result),
+  } as unknown as ReturnType<typeof movementFind>;
+}
+
+/** Simulate the chained query: find().select().sort().exec() -> exec returns the array. */
+function selectExecResult(result: unknown[]) {
+  const sort = vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue(result) });
+  return {
+    select: vi.fn().mockReturnValue({ sort }),
   } as unknown as ReturnType<typeof movementFind>;
 }
 
@@ -181,5 +189,160 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     const result = await repo.findByAccountId(UID, ACCOUNT_ID);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(live._id.toString());
+  });
+});
+
+describe("MongoMovementRepository windowed reads (R14-I)", () => {
+  let repo: MongoMovementRepository;
+  const UID = new Types.ObjectId().toString();
+  const FROM = new Date("2026-01-01T00:00:00.000Z");
+  const TO = new Date("2026-08-01T00:00:00.000Z");
+
+  beforeEach(() => {
+    repo = new MongoMovementRepository();
+    movementFind.mockReset();
+    categoryFind.mockReset();
+    accountFind.mockReset();
+  });
+
+  it("findByWorkspaceIdAndDateRange passes workspaceId + $gte/$lt and the same sort", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const m = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+
+    const chain = execResult([m]);
+    movementFind.mockImplementation(() => chain);
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const result = await repo.findByWorkspaceIdAndDateRange(UID, FROM, TO);
+
+    const [query] = movementFind.mock.calls[0];
+    const q = query as {
+      workspaceId: Types.ObjectId;
+      date: { $gte: Date; $lt: Date };
+    };
+    expect(q.workspaceId.toString()).toBe(UID);
+    expect(q.date.$gte).toBe(FROM);
+    expect(q.date.$lt).toBe(TO);
+
+    // Same sort as findByWorkspaceId ({ date: -1, createdAt: -1 })
+    const sort = chain.sort as ReturnType<typeof vi.fn>;
+    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(m._id.toString());
+  });
+
+  it("findByWorkspaceIdAndDateRange applies the orphan guard (skips unresolved account/category)", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const live = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+    const orphanAccount = fakeMovementDoc({
+      accountId: new Types.ObjectId(), // no matching Account
+      categoryId: category._id,
+    });
+    const orphanCategory = fakeMovementDoc({
+      accountId: account._id,
+      categoryId: new Types.ObjectId(), // no matching Category, not synthetic
+    });
+
+    movementFind.mockImplementation(() => execResult([live, orphanAccount, orphanCategory]));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const result = await repo.findByWorkspaceIdAndDateRange(UID, FROM, TO);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(live._id.toString());
+  });
+
+  it("findByWorkspaceIdAndDateRange reconstructs currency from the live account", async () => {
+    const account = fakeAccountDoc({ currency: "USD" });
+    const category = fakeCategoryDoc();
+    const m = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+
+    movementFind.mockImplementation(() => execResult([m]));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const [result] = await repo.findByWorkspaceIdAndDateRange(UID, FROM, TO);
+    expect(result.amount.currency).toBe("USD");
+    expect(result.amount.amount).toBe(100000);
+  });
+
+  it("findByWorkspaceIdAndDateRange returns [] when the window has no movements", async () => {
+    movementFind.mockImplementation(() => execResult([]));
+    const result = await repo.findByWorkspaceIdAndDateRange(UID, FROM, TO);
+    expect(result).toEqual([]);
+    // Dependency resolution must NOT run for an empty result set.
+    expect(categoryFind).not.toHaveBeenCalled();
+    expect(accountFind).not.toHaveBeenCalled();
+  });
+
+  it("findByWorkspaceIdForBalance applies the minimal projection select and the same sort", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const m = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+
+    const chain = selectExecResult([m]);
+    movementFind.mockImplementation(() => chain);
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const result = await repo.findByWorkspaceIdForBalance(UID);
+
+    // The projection must cover exactly the fields the mapper/entity needs and
+    // deliberately EXCLUDE note-external fields like updatedAt/signedAmount.
+    expect(chain.select).toHaveBeenCalledWith(
+      "_id workspaceId accountId type amount date note context link categoryId createdAt",
+    );
+    const sort = chain.select.mock.results[0].value.sort as ReturnType<typeof vi.fn>;
+    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(m._id.toString());
+    expect(result[0].signedAmount).toBe(100000);
+  });
+
+  it("findByWorkspaceIdForBalance applies the orphan guard (skips unresolved account)", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const live = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+    const orphan = fakeMovementDoc({
+      accountId: new Types.ObjectId(),
+      categoryId: category._id,
+    });
+
+    movementFind.mockImplementation(() => selectExecResult([live, orphan]));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const result = await repo.findByWorkspaceIdForBalance(UID);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(live._id.toString());
+  });
+
+  it("findByWorkspaceIdForBalance returns [] when there are no movements", async () => {
+    movementFind.mockImplementation(() => selectExecResult([]));
+    const result = await repo.findByWorkspaceIdForBalance(UID);
+    expect(result).toEqual([]);
+    expect(categoryFind).not.toHaveBeenCalled();
+    expect(accountFind).not.toHaveBeenCalled();
+  });
+
+  it("findByWorkspaceId (unchanged) still passes its historical tests — no behavioral drift", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const m1 = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+    const m2 = fakeMovementDoc({ accountId: account._id, categoryId: category._id });
+
+    movementFind.mockImplementation(() => execResult([m1, m2]));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const result = await repo.findByWorkspaceId(UID);
+    const chain = movementFind.mock.results[0].value;
+    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+    expect(result).toHaveLength(2);
   });
 });

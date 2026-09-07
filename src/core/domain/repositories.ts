@@ -85,6 +85,10 @@ export interface MovementRepository {
   /** Delete ALL movements that reference a parent id via link.refId (robust
    *  cascade, format-agnostic — covers ObjectId and legacy UUID refIds). */
   deleteByRefId(workspaceId: string, refId: string): Promise<number>;
+  /** Windowed dashboard read: workspace movements whose civil date is within [from, to) sorted date-desc, createdAt-desc. Same orphan guard + dependency resolution as findByWorkspaceId. */
+  findByWorkspaceIdAndDateRange(workspaceId: string, from: Date, to: Date): Promise<Movement[]>;
+  /** Full-history minimal-projection read for R7-A account balances (live-parent-filtered). Same orphan guard + dependency resolution as findByWorkspaceId. */
+  findByWorkspaceIdForBalance(workspaceId: string): Promise<Movement[]>;
   /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance). */
   aggregateBalance(workspaceId: string, accountId: string): Promise<number>;
   /** CAT-3: count movements referencing a category (deletion guard). */

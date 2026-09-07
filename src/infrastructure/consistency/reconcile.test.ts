@@ -44,6 +44,8 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     aggregateBalance: async () => 0,
     countByCategoryId: async () => 0,
     findPaged: async () => ({ items: [], nextCursor: null }),
+    findByWorkspaceIdAndDateRange: async () => [],
+    findByWorkspaceIdForBalance: async () => [],
   };
 }
 

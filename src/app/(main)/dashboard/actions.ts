@@ -5,6 +5,7 @@ import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
 import { filterMovementsWithLiveParents, accountBalancesFromMovements } from '../../../core/application/movements';
 import { buildDashboardSnapshot } from '../../../core/application/dashboard/build-dashboard-snapshot';
+import { computeDashboardWindow } from '../../../core/application/dashboard/compute-dashboard-window';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
@@ -49,9 +50,15 @@ export async function getDashboardSnapshotAction(
 
     const accounts = await listAccounts(user.workspaceId!, accountRepo);
 
-    const [allMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
+    // R14-I: same civil-clock basis as buildDashboardSnapshot below — the
+    // tzOffsetMinutes the client already sends. Snapshot reads the union
+    // window; balances keep reading FULL history (R7-A, identical numbers).
+    const { from, to } = computeDashboardWindow(new Date(), tzOffsetMinutes);
+
+    const [windowedMovements, balanceMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
       await Promise.all([
-        movementRepo.findByWorkspaceId(user.workspaceId!),
+        movementRepo.findByWorkspaceIdAndDateRange(user.workspaceId!, from, to),
+        movementRepo.findByWorkspaceIdForBalance(user.workspaceId!),
         categoryRepo.findByWorkspaceId(user.workspaceId!),
         creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
         creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
@@ -85,8 +92,11 @@ export async function getDashboardSnapshotAction(
       payables: new Set(payables.map((p) => p.id)),
     };
 
-    const liveMovements = filterMovementsWithLiveParents(allMovements, liveParents);
-    const balanceByAccount = accountBalancesFromMovements(accounts, liveMovements);
+    const liveMovements = filterMovementsWithLiveParents(windowedMovements, liveParents);
+    // R7-A balances derive from the FULL live history (same filter, complete
+    // read) — identical numbers to the pre-windowed dashboard.
+    const liveBalanceMovements = filterMovementsWithLiveParents(balanceMovements, liveParents);
+    const balanceByAccount = accountBalancesFromMovements(accounts, liveBalanceMovements);
 
     const accountBalancesWithBalance = accounts.map((account) => ({
       id: account.id,
