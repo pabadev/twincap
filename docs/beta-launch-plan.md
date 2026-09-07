@@ -91,7 +91,36 @@
 - [ ] Primeros 2–3 testers probados manualmente por el fundador antes de abrir al grupo completo.
 - [ ] Plantilla de bienvenida + plantilla de entrevista listas.
 - [ ] Canal de soporte (`/help` + email) probado de punta a punta.
+- [ ] **P0 (R14-G) — Contrato de índices de seguridad del monitor verificado en Atlas** (paso explícito del auditor 2026-09-07; NO es recomendación informal):
+  ```bash
+  node --env-file=.env.local scripts/verify-monitor-indexes.mjs
+  ```
+  Debe imprimir `CONTRACT OK — security indexes verified on production.` Detalle del contrato esperado:
+
+  | Colección | Índice | Propiedad esperada | Garantía que aporta |
+  |-----------|--------|--------------------|----------------------|
+  | `monitorfingerprints` | `key_1` | unique sobre `{ key: 1 }` | Cupo por IP/window con E11000 → retry: dos requests concurrentes NO crean dos buckets para la misma IP+ventana |
+  | `monitorfingerprints` | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El estado de la ventana de 15 min desaparece solo |
+  | `monitorcooldowns` | `key_1` | unique sobre `{ key: 1 }` | Singleton `monitor:global` no se duplica entre instancias |
+  | `monitorcooldowns` | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El cooldown global se limpia a los 10 min (extendido mientras está activo) |
+
+  Regla: **si el script falla (missing/wrong property), el deploy NO se considera completo** — corregir índices antes de abrir el monitor a tráfico. Los índices viven en el cluster (persisten reinicios e instancias múltiples); una vez presentes, `unique` y TTL son garantías del servidor, no de la app.
+  - [ ] Comportamiento post-reinicio: `monitorfingerprints`/`monitorcooldowns` siguen existiendo con los mismos índices (lo verifica el script en un segundo `--env-file` local o desde otra instancia).
+  - [ ] Race condition concurrente: cubierta en CI por el suite §25-C del guard (40 fingerprints concurrentes → exactamente 30 admitidos; N concurrentes con el mismo fingerprint → exactamente 1 `isNew:true`).
+
+### 7.1 Semántica temporal de `/api/monitor` (política de producto/seguridad, R14-G)
+
+Los límites del monitor NO son números arbitrarios — son política de producto/seguridad a ajustar con datos reales del beta. Documentación de POR QUÉ (auditor 2026-09-07, P1):
+
+| Límite | Valor | Razonamiento |
+|--------|-------|--------------|
+| Cupo por IP | **30 fingerprints únicos / 15 min** | Una app legítima genera pocos fingerprints nuevos por IP en 15 min (el mismo error repetido NO consume cupo — solo fingerprints NUEVOS). 30 da margen generoso a clientes reales y corta a un atacante que falsifica fingerprints para agotar logs/alertas. Multiplica el gate IP 120 req/15 min: un atacante puede llegar a 120 requests, pero solo 30 fingerprints únicos pasan. |
+| Cooldown global | **>30 fingerprints NUEVOS / 5 min** | Detecta un ataque **distribuido** (varias IPs, cada una bajo su cupo): más de 30 fingerprints nunca vistos en todo el producto en 5 min es señal inequívoca de flooding. 5 min es la ventana de observación: suficiente para acumular señal, corta para no reaccionar tarde. |
+| Duración del cooldown | **10 min** | Una vez detectado el flood, se apagan las nuevas fingerprints durante 10 min (2× la ventana de observación): tiempo de sobra para que el atacante se aburra y el operador mire los logs, sin castigar usuarios legítimos (el monitor solo escribe logs de error, no sirve datos de producción). |
+| Throttle de alertas | **1 email / fingerprint / 30 min** | El email es el canal caro: si un error real se repite (p.ej. un endpoint roto que millones de requests golpean), el operador recibe UN email por fingerprint distinto por media hora — suficiente para enterarse, imposible de spamear. Los errores repetidos del MISMO fingerprint no re-alertan (solo `isFirst` al crear el doc). |
+
+**Regla de ajuste:** estos valores se revisan al cierre del beta con datos reales (métricas §4). Si un usuario legítimo toca el límite (falso positivo), se sube `MAX_FINGERPRINTS_PER_IP` o `GLOBAL_COOLDOWN_THRESHOLD`; si un ataque lo esquiva, se baja. Fuente: `src/infrastructure/monitoring/monitor-guard.ts` (constantes exportadas + tests).
 
 ---
 
-*Documento vivo. Última actualización: 2026-09-04.*
+*Documento vivo. Última actualización: 2026-09-07 (checklist P0 índices de monitor — feedback del auditor R14-G).*
