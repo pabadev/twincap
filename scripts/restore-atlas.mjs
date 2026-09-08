@@ -39,6 +39,23 @@ const argValue = (flag) => {
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
 };
 
+/**
+ * JSON reviver paired with backup-atlas.mjs's typePreservingReplacer:
+ * rebuilds ObjectId ({ $oid }) and Date ({ $date }) markers into real BSON
+ * types so restored documents match what the app queries with.
+ */
+function typePreservingReviver(_key, value) {
+  if (value && typeof value === "object") {
+    if (typeof value.$oid === "string") {
+      return new mongoose.Types.ObjectId(value.$oid);
+    }
+    if (typeof value.$date === "string") {
+      return new Date(value.$date);
+    }
+  }
+  return value;
+}
+
 const dir = argValue("--dir");
 if (!dir) {
   console.error("--dir <backupdir> is required (directory containing manifest.json)");
@@ -117,6 +134,7 @@ async function run() {
     for (const { collection, count } of manifest.counts) {
       const docs = JSON.parse(
         await readFile(path.join(dir, `${collection}.json`), "utf8"),
+        typePreservingReviver,
       );
       if (!Array.isArray(docs) || docs.length !== count) {
         throw new Error(

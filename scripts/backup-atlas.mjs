@@ -59,6 +59,46 @@ function timestamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+/**
+ * Recursively converts BSON types into EJSON-lite marker objects:
+ *   ObjectId -> { $oid: "<hex>" }, Date -> { $date: "<ISO>" }.
+ * Plain values (strings, numbers, booleans, null) pass through unchanged.
+ *
+ * NOTE: this must run BEFORE JSON.stringify — JSON.stringify calls each
+ * value's toJSON() first, and bson ObjectId/Date already convert themselves
+ * to strings there, so a JSON replacer would never see the original type.
+ */
+function toEjsonValue(value) {
+  if (value instanceof mongoose.Types.ObjectId) {
+    return { $oid: value.toHexString() };
+  }
+  if (value instanceof Date) {
+    return { $date: value.toISOString() };
+  }
+  if (Array.isArray(value)) {
+    return value.map(toEjsonValue);
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = toEjsonValue(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * JSON replacer that preserves BSON types as EJSON-lite markers:
+ *   ObjectId -> { $oid: "<hex>" }, Date -> { $date: "<ISO>" }.
+ * Plain strings/numbers/booleans stay untouched. The paired reviver in
+ * restore-atlas.mjs rebuilds the original types on read-back.
+ *
+ * NOTE: kept for reference/documentation; the active serialization path uses
+ * toEjsonValue() BEFORE stringify (see writeFile below), because stringify's
+ * toJSON() pass would degrade the types before this replacer ever saw them.
+ */
+
 const outDir = argValue("--out") ?? path.join("backups", timestamp());
 
 console.log(`Backing up database '${sourceDb}' (host: ${host}) -> ${outDir}`);
@@ -85,7 +125,14 @@ try {
 
   for (const name of collections) {
     const docs = await db.collection(name).find({}).toArray();
-    await writeFile(path.join(outDir, `${name}.json`), JSON.stringify(docs, null, 2));
+    // Type-preserving serialization (EJSON-lite): ObjectId -> {$oid}, Date -> {$date}.
+    // toEjsonValue runs BEFORE JSON.stringify because stringify calls each value's
+    // toJSON() first (bson ObjectId/Date already stringify themselves there), which
+    // would defeat a JSON replacer. Restored queries then match real ObjectId/Date.
+    await writeFile(
+      path.join(outDir, `${name}.json`),
+      JSON.stringify(toEjsonValue(docs), null, 2),
+    );
     counts.push({ collection: name, count: docs.length });
     total += docs.length;
     console.log(`  ${name}: ${docs.length} doc(s)`);
