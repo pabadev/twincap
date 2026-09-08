@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 import type { PayableRepository } from "../../core/domain/repositories";
 import type { Payable } from "../../core/domain/payable";
 import type { TransactionHandle } from "../../core/domain/transaction";
@@ -13,23 +13,45 @@ import {
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoPayableRepository implements PayableRepository {
-  async findById(workspaceId: string, id: string): Promise<Payable | null> {
-    const doc = await PayableModel.findOne({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findById(
+    workspaceId: string,
+    id: string,
+    tx?: TransactionHandle,
+  ): Promise<Payable | null> {
+    const session = sessionOf(tx);
+    const doc = await PayableModel.findOne(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       workspaceId,
       (doc as PayableDocument).accountId.toString(),
+      session,
     );
     return toPayableEntity(doc as PayableDocument, currency);
   }
 
-  async findByWorkspaceId(workspaceId: string): Promise<Payable[]> {
-    const docs = await PayableModel.find({
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).sort({ date: -1, createdAt: -1 }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findByWorkspaceId(
+    workspaceId: string,
+    tx?: TransactionHandle,
+  ): Promise<Payable[]> {
+    const session = sessionOf(tx);
+    const docs = await PayableModel.find(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [
@@ -38,6 +60,7 @@ export class MongoPayableRepository implements PayableRepository {
     const currencyMap = await this.resolveBulkAccountCurrencies(
       workspaceId,
       accountIds,
+      session,
     );
 
     return docs.map((doc) => {
@@ -196,11 +219,16 @@ export class MongoPayableRepository implements PayableRepository {
   private async resolveAccountCurrency(
     workspaceId: string,
     accountId: string,
+    session?: ClientSession,
   ): Promise<Currency> {
-    const doc = await AccountModel.findOne({
-      _id: accountId,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+    const doc = await AccountModel.findOne(
+      {
+        _id: accountId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) {
       throw new NotFoundError(
         `Account ${accountId} not found for user ${workspaceId}`,
@@ -212,12 +240,17 @@ export class MongoPayableRepository implements PayableRepository {
   private async resolveBulkAccountCurrencies(
     workspaceId: string,
     accountIds: string[],
+    session?: ClientSession,
   ): Promise<Map<string, Currency>> {
     const uid = new Types.ObjectId(workspaceId);
-    const docs = await AccountModel.find({
-      _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      workspaceId: uid,
-    }).exec();
+    const docs = await AccountModel.find(
+      {
+        _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
+        workspaceId: uid,
+      },
+      null,
+      { session },
+    ).exec();
 
     const map = new Map<string, Currency>();
     for (const doc of docs) {

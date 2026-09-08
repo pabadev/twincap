@@ -140,8 +140,12 @@ export interface TransferRepository {
 // ─── Credit Received ─────────────────────────────────────────────────
 
 export interface CreditReceivedRepository {
-  findById(workspaceId: string, id: string): Promise<CreditReceived | null>;
-  findByWorkspaceId(workspaceId: string): Promise<CreditReceived[]>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<CreditReceived | null>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<CreditReceived[]>;
   /**
    * Persist a new received credit.
    * @param tx optional transaction handle (R15); joins the caller's transaction
@@ -169,8 +173,12 @@ export interface CreditReceivedRepository {
 // ─── Credit Granted ──────────────────────────────────────────────────
 
 export interface CreditGrantedRepository {
-  findById(workspaceId: string, id: string): Promise<CreditGranted | null>;
-  findByWorkspaceId(workspaceId: string): Promise<CreditGranted[]>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<CreditGranted | null>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<CreditGranted[]>;
   /**
    * Persist a new granted credit.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.
@@ -203,8 +211,12 @@ export interface CreditGrantedRepository {
 // ─── Payable ─────────────────────────────────────────────────────────
 
 export interface PayableRepository {
-  findById(workspaceId: string, id: string): Promise<Payable | null>;
-  findByWorkspaceId(workspaceId: string): Promise<Payable[]>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Payable | null>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Payable[]>;
   /**
    * Persist a new payable.
    * @param tx optional transaction handle (R15); joins the caller's transaction
@@ -262,8 +274,12 @@ export interface CatalogItemRepository {
 // ─── Sale ────────────────────────────────────────────────────────────
 
 export interface SaleRepository {
-  findById(workspaceId: string, id: string): Promise<Sale | null>;
-  findByWorkspaceId(workspaceId: string): Promise<Sale[]>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Sale | null>;
+  /** @param tx optional transaction handle (R15 Fase 3): the read joins the
+   *   caller's transaction session (snapshot-consistent aggregate validation). */
+  findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Sale[]>;
   /**
    * Persist a new sale.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.

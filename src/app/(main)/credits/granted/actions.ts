@@ -138,6 +138,7 @@ export async function addAbonoAction(
           movementRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -181,6 +182,7 @@ export async function editAbonoAction(
           creditRepo,
           movementRepo,
           ids,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -248,7 +250,7 @@ export async function deleteAbonoAction(
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo);
+        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/credits/granted');
@@ -320,7 +322,7 @@ export async function markAsPaidAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return markAsPaid(user.workspaceId!, creditId, creditRepo, movementRepo, ids, accountRepo);
+        return markAsPaid(user.workspaceId!, creditId, creditRepo, movementRepo, ids, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/credits/granted');

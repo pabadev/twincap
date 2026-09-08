@@ -1,7 +1,7 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import { addAbono } from './add-abono';
 
 /**
@@ -10,6 +10,12 @@ import { addAbono } from './add-abono';
  * Creates an abono for the exact remaining pending amount, reusing the regular
  * addAbono flow so the linked movement, account resolution and overpayment
  * guard stay in a single place. Rejected when the credit is already paid.
+ *
+ * R15 Fase 3: the "already paid" pre-read stays OUTSIDE the transaction
+ * (cheap guard), and the unit of work is threaded into addAbono — NO second
+ * transaction: addAbono is the single atomic unit that pushes the abono and
+ * commits the linked movement together. For standalone credits the R9/D9.1
+ * capital/interest split applies exactly as in the regular flow.
  */
 export async function markAsPaid(
   workspaceId: string,
@@ -18,6 +24,7 @@ export async function markAsPaid(
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
+  uow: UnitOfWork,
 ): Promise<CreditGranted> {
   const credits = await creditRepo.findByWorkspaceId(workspaceId);
   const credit = credits.find(c => c.id === creditId);
@@ -40,5 +47,6 @@ export async function markAsPaid(
     movementRepo,
     ids,
     accountRepo,
+    uow,
   );
 }

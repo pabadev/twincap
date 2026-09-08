@@ -170,6 +170,7 @@ export async function addSaleAbonoAction(
           movementRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -204,7 +205,7 @@ export async function deleteSaleAbonoAction(
       () => {
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo);
+        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/pos/sales');

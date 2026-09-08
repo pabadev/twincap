@@ -533,8 +533,7 @@ describe('Tenant isolation (B1)', () => {
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -549,8 +548,7 @@ describe('Tenant isolation (B1)', () => {
           { amount: 3000 },
           creditRepo,
           fakeMovementRepo(),
-          fakeIdGen(),
-        ),
+          fakeIdGen(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.editAbono).not.toHaveBeenCalled();
     });
@@ -558,7 +556,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        deleteAbonoCG(WORKSPACE_A, CRD_G_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
+        deleteAbonoCG(WORKSPACE_A, CRD_G_B, 'abono-b-1', creditRepo, fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -594,8 +592,7 @@ describe('Tenant isolation (B1)', () => {
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -622,8 +619,7 @@ describe('Tenant isolation (B1)', () => {
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -637,8 +633,7 @@ describe('Tenant isolation (B1)', () => {
           'abono-b-1',
           { amount: 3000 },
           creditRepo,
-          fakeMovementRepo(),
-        ),
+          fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.editAbono).not.toHaveBeenCalled();
     });
@@ -646,7 +641,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
-        deleteAbonoCR(WORKSPACE_A, CRD_R_B, 'abono-b-1', creditRepo, fakeMovementRepo()),
+        deleteAbonoCR(WORKSPACE_A, CRD_R_B, 'abono-b-1', creditRepo, fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -674,8 +669,7 @@ describe('Tenant isolation (B1)', () => {
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -702,8 +696,7 @@ describe('Tenant isolation (B1)', () => {
           payableRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -717,8 +710,7 @@ describe('Tenant isolation (B1)', () => {
           'abono-b-1',
           { amount: 3000 },
           payableRepo,
-          fakeMovementRepo(),
-        ),
+          fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.editAbono).not.toHaveBeenCalled();
     });
@@ -726,7 +718,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteAbono with user-b payableId → NotFoundError', async () => {
       const payableRepo = fakePayableRepo();
       await expect(
-        deleteAbonoPay(WORKSPACE_A, PAY_B, 'abono-b-1', payableRepo, fakeMovementRepo()),
+        deleteAbonoPay(WORKSPACE_A, PAY_B, 'abono-b-1', payableRepo, fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -772,8 +764,7 @@ describe('Tenant isolation (B1)', () => {
           saleRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(),
-        ),
+          fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.addAbono).not.toHaveBeenCalled();
     });
@@ -781,7 +772,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteSaleAbono with user-b saleId → NotFoundError', async () => {
       const saleRepo = fakeSaleRepo();
       await expect(
-        deleteSaleAbono(WORKSPACE_A, SALE_B, 'abono-b-1', saleRepo, fakeMovementRepo()),
+        deleteSaleAbono(WORKSPACE_A, SALE_B, 'abono-b-1', saleRepo, fakeMovementRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
     });
@@ -1025,10 +1016,9 @@ describe('Tenant isolation (B1)', () => {
           creditRepo,
           movementRepo,
           fakeIdGen(),
-          accountRepo,
-        ),
+          accountRepo, fakeUow()),
       ).resolves.toBeDefined();
-      expect(creditRepo.findByWorkspaceId).toHaveBeenCalledWith(WORKSPACE_A);
+      expect(creditRepo.findByWorkspaceId).toHaveBeenCalledWith(WORKSPACE_A, expect.anything());
       expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_A);
       expect(creditRepo.addAbono).toHaveBeenCalled();
       expect(movementRepo.create).toHaveBeenCalled();

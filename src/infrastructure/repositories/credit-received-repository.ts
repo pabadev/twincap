@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 import type { CreditReceivedRepository } from "../../core/domain/repositories";
 import type { CreditReceived } from "../../core/domain/credit-received";
 import type { TransactionHandle } from "../../core/domain/transaction";
@@ -16,23 +16,45 @@ import {
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCreditReceivedRepository implements CreditReceivedRepository {
-  async findById(workspaceId: string, id: string): Promise<CreditReceived | null> {
-    const doc = await CreditReceivedModel.findOne({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findById(
+    workspaceId: string,
+    id: string,
+    tx?: TransactionHandle,
+  ): Promise<CreditReceived | null> {
+    const session = sessionOf(tx);
+    const doc = await CreditReceivedModel.findOne(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       workspaceId,
       (doc as CreditReceivedDocument).accountId.toString(),
+      session,
     );
     return toCreditReceivedEntity(doc as CreditReceivedDocument, currency);
   }
 
-  async findByWorkspaceId(workspaceId: string): Promise<CreditReceived[]> {
-    const docs = await CreditReceivedModel.find({
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).sort({ date: -1, createdAt: -1 }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findByWorkspaceId(
+    workspaceId: string,
+    tx?: TransactionHandle,
+  ): Promise<CreditReceived[]> {
+    const session = sessionOf(tx);
+    const docs = await CreditReceivedModel.find(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [
@@ -41,6 +63,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     const currencyMap = await this.resolveBulkAccountCurrencies(
       workspaceId,
       accountIds,
+      session,
     );
 
     return docs.map((doc) => {
@@ -199,11 +222,16 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   private async resolveAccountCurrency(
     workspaceId: string,
     accountId: string,
+    session?: ClientSession,
   ): Promise<Currency> {
-    const doc = await AccountModel.findOne({
-      _id: accountId,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+    const doc = await AccountModel.findOne(
+      {
+        _id: accountId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) {
       throw new NotFoundError(
         `Account ${accountId} not found for user ${workspaceId}`,
@@ -215,12 +243,17 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   private async resolveBulkAccountCurrencies(
     workspaceId: string,
     accountIds: string[],
+    session?: ClientSession,
   ): Promise<Map<string, Currency>> {
     const uid = new Types.ObjectId(workspaceId);
-    const docs = await AccountModel.find({
-      _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      workspaceId: uid,
-    }).exec();
+    const docs = await AccountModel.find(
+      {
+        _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
+        workspaceId: uid,
+      },
+      null,
+      { session },
+    ).exec();
 
     const map = new Map<string, Currency>();
     for (const doc of docs) {

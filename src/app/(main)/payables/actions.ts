@@ -136,6 +136,7 @@ export async function addAbonoAction(
           movementRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -178,6 +179,7 @@ export async function editAbonoAction(
           { amount, date },
           payableRepo,
           movementRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -243,7 +245,7 @@ export async function deleteAbonoAction(
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAbono(user.workspaceId!, payableId, abonoId, payableRepo, movementRepo);
+        return deleteAbono(user.workspaceId!, payableId, abonoId, payableRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/payables');

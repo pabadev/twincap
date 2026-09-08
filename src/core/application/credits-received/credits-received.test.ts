@@ -356,8 +356,7 @@ describe('addAbono', () => {
       creditRepo,
       movementRepo,
       ids,
-      accountRepo,
-    );
+      accountRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(1);
     expect(result.abonos[0].amount.amount).toBe(25000);
@@ -388,8 +387,7 @@ describe('addAbono', () => {
       creditRepo,
       movementRepo,
       ids,
-      accountRepo,
-    );
+      accountRepo, fakeUow());
 
     const movement = movementRepo.created[0];
     expect(movement.accountId).toBe('acc-1');
@@ -415,8 +413,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
 
     expect(creditRepo.addAbono).not.toHaveBeenCalled();
@@ -440,8 +437,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -461,8 +457,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -483,8 +478,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -505,8 +499,7 @@ describe('addAbono', () => {
         creditRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(movementRepo.created).toHaveLength(0);
   });
@@ -534,8 +527,7 @@ describe('editAbono', () => {
       'ab-1',
       { amount: 30000 },
       creditRepo,
-      movementRepo,
-    );
+      movementRepo, fakeUow());
 
     expect(result.abonos[0].amount.amount).toBe(30000);
     expect(result.pending).toBe(70000);
@@ -564,8 +556,7 @@ describe('editAbono', () => {
       'ab-1',
       { amount: 40000 },
       creditRepo,
-      movementRepo,
-    );
+      movementRepo, fakeUow());
 
     // Embedded abono and linked movement must end with the SAME amount
     expect(creditRepo.abonosEdited[0].updates.amount).toBe(40000);
@@ -588,8 +579,7 @@ describe('editAbono', () => {
       'ab-1',
       { amount: 30000 },
       creditRepo,
-      movementRepo,
-    );
+      movementRepo, fakeUow());
 
     expect(result.abonos[0].amount.amount).toBe(30000);
     expect(creditRepo.editAbono).toHaveBeenCalledOnce();
@@ -607,7 +597,7 @@ describe('editAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editAbono('user-1', 'cr-1', 'ab-1', { amount: 200000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'cr-1', 'ab-1', { amount: 200000 }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -618,7 +608,7 @@ describe('editAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'missing', 'ab-1', { amount: 30000 }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -630,7 +620,7 @@ describe('editAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editAbono('user-1', 'cr-1', 'missing-abono', { amount: 30000 }, creditRepo, movementRepo),
+      editAbono('user-1', 'cr-1', 'missing-abono', { amount: 30000 }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -647,7 +637,7 @@ describe('deleteAbono', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo);
+    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
@@ -664,7 +654,7 @@ describe('deleteAbono', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo);
+    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
@@ -683,7 +673,7 @@ describe('deleteAbono', () => {
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
 
-    await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo);
+    await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo, fakeUow());
 
     expect(deleteMovementMock.mock.invocationCallOrder[0])
       .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
@@ -700,7 +690,7 @@ describe('deleteAbono', () => {
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
     });
 
-    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo);
+    const result = await deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(creditRepo.deleteAbono).toHaveBeenCalledOnce();
@@ -719,7 +709,7 @@ describe('deleteAbono', () => {
     });
 
     await expect(
-      deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo),
+      deleteAbono('user-1', 'cr-1', 'ab-1', creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow('db down');
 
     expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
@@ -732,7 +722,7 @@ describe('deleteAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteAbono('user-1', 'missing', 'ab-1', creditRepo, movementRepo),
+      deleteAbono('user-1', 'missing', 'ab-1', creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -744,7 +734,7 @@ describe('deleteAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteAbono('user-1', 'cr-1', 'missing-abono', creditRepo, movementRepo),
+      deleteAbono('user-1', 'cr-1', 'missing-abono', creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

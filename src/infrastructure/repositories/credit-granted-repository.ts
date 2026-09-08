@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 import type { CreditGrantedRepository } from "../../core/domain/repositories";
 import type { CreditGranted } from "../../core/domain/credit-granted";
 import type { TransactionHandle } from "../../core/domain/transaction";
@@ -16,23 +16,45 @@ import {
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCreditGrantedRepository implements CreditGrantedRepository {
-  async findById(workspaceId: string, id: string): Promise<CreditGranted | null> {
-    const doc = await CreditGrantedModel.findOne({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findById(
+    workspaceId: string,
+    id: string,
+    tx?: TransactionHandle,
+  ): Promise<CreditGranted | null> {
+    const session = sessionOf(tx);
+    const doc = await CreditGrantedModel.findOne(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) return null;
     const currency = await this.resolveAccountCurrency(
       workspaceId,
       (doc as CreditGrantedDocument).accountId.toString(),
+      session,
     );
     return toCreditGrantedEntity(doc as CreditGrantedDocument, currency);
   }
 
-  async findByWorkspaceId(workspaceId: string): Promise<CreditGranted[]> {
-    const docs = await CreditGrantedModel.find({
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).sort({ date: -1, createdAt: -1 }).exec();
+  /** @param tx optional R15 Fase 3 handle: the read joins the caller's
+   *  transaction session (snapshot-consistent aggregate validation). */
+  async findByWorkspaceId(
+    workspaceId: string,
+    tx?: TransactionHandle,
+  ): Promise<CreditGranted[]> {
+    const session = sessionOf(tx);
+    const docs = await CreditGrantedModel.find(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).sort({ date: -1, createdAt: -1 }).exec();
     if (docs.length === 0) return [];
 
     const accountIds = [
@@ -41,6 +63,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     const currencyMap = await this.resolveBulkAccountCurrencies(
       workspaceId,
       accountIds,
+      session,
     );
 
     return docs.map((doc) => {
@@ -239,11 +262,16 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   private async resolveAccountCurrency(
     workspaceId: string,
     accountId: string,
+    session?: ClientSession,
   ): Promise<Currency> {
-    const doc = await AccountModel.findOne({
-      _id: accountId,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+    const doc = await AccountModel.findOne(
+      {
+        _id: accountId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
     if (!doc) {
       throw new NotFoundError(
         `Account ${accountId} not found for user ${workspaceId}`,
@@ -255,12 +283,17 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   private async resolveBulkAccountCurrencies(
     workspaceId: string,
     accountIds: string[],
+    session?: ClientSession,
   ): Promise<Map<string, Currency>> {
     const uid = new Types.ObjectId(workspaceId);
-    const docs = await AccountModel.find({
-      _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
-      workspaceId: uid,
-    }).exec();
+    const docs = await AccountModel.find(
+      {
+        _id: { $in: accountIds.map((id) => new Types.ObjectId(id)) },
+        workspaceId: uid,
+      },
+      null,
+      { session },
+    ).exec();
 
     const map = new Map<string, Currency>();
     for (const doc of docs) {

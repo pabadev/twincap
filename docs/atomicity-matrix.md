@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fase 1)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–3)
 
 ## Purpose
 
@@ -29,6 +29,15 @@ phase needs inside a transaction now accepts an optional trailing
 native session (`sessionOf(tx)`) into Mongoose `{ session }` in every Mongo
 adapter. The phases below reference that contract.
 
+Fase 3 delivered the abono family: `addAbono` ×4 (received/granted/payable +
+legacy `addSaleAbono`), `editAbono` ×3 (received/simple, granted/split-sync,
+payable), `deleteAbono` ×4 (incl. legacy `deleteSaleAbono`) and `markAsPaid`
+×2 all run inside `uow.withTransaction`. The aggregate READ
+(`findByWorkspaceId`) and the balance/currency validations that derive from it
+now join the transaction session (snapshot-consistent); the Account
+(static-reference) validations stay outside. Real replica-set rollback coverage
+lives in `src/infrastructure/transactions/use-case-rollback.test.ts`.
+
 ## Decision table
 
 | Operación | Documentos implicados | Estado actual | Decisión |
@@ -38,19 +47,19 @@ adapter. The phases below reference that contract.
 | `createCreditReceived` | CreditReceived + principal Movement (`creditReceivedPrincipal`) | NO | **Transacción** — Fase 2. |
 | `createCreditGranted` | CreditGranted + principal Movement (`creditGrantedPrincipal`) | NO | **Transacción** — Fase 2. |
 | `createPayable` | Payable + initial-payment Movement | NO | **Transacción** — Fase 2. |
-| `addAbono` (CreditReceived) | CreditReceived `$push` abono + Movement create | NO | **Transacción** — Fase 3. Validación de saldo DENTRO del tx; concurrencia (CAS) Fase 4. |
-| `addAbono` (CreditGranted) | CreditGranted `$push` abono + 1–2 Movements (capital/interest split, `creditGrantedAbono`/`creditGrantedAbonoInterest`) | NO | **Transacción** — Fase 3. Validación de saldo DENTRO del tx; concurrencia (CAS) Fase 4. |
-| `addAbono` (Payable) | Payable `$push` abono + Movement create | NO | **Transacción** — Fase 3. Validación de saldo DENTRO del tx; concurrencia (CAS) Fase 4. |
-| `addSaleAbono` (venta a crédito) | Sale `$push` abono + Movement create (`salePayment`) | NO | **Transacción** — Fase 3. Validación de saldo DENTRO del tx; concurrencia (CAS) Fase 4. |
-| `markAsPaid` (received/granted) | Reusa `addAbono` (misma operación) | NO | **Transacción** — Fase 3 (hereda la decisión de `addAbono`). |
-| `editAbono` (CreditReceived) | CreditReceived `$set` abono + Movement update | NO | **Transacción** — Fase 3. |
-| `editAbono` (CreditGranted, split) | CreditGranted `$set` abono + hasta 3 operaciones de Movement (create/update/delete de los campos split) | NO | **Transacción** — Fase 3. |
-| `editAbono` (Payable) | Payable `$set` abono + Movement update | NO | **Transacción** — Fase 3. |
-| `editAbono` (Sale) | Sale `$set` abono + Movement update | NO | **Transacción** — Fase 3. |
-| `deleteAbono` (CreditReceived) | Movement delete + CreditReceived `$pull` abono | NO | **Transacción** — Fase 3. |
-| `deleteAbono` (CreditGranted) | Movement delete ×2 (principal + interest) + CreditGranted `$pull` abono | NO | **Transacción** — Fase 3. |
-| `deleteAbono` (Payable) | Movement delete + Payable `$pull` abono | NO | **Transacción** — Fase 3. |
-| `deleteSaleAbono` | Movement delete + Sale `$pull` abono | NO | **Transacción** — Fase 3. |
+| `addAbono` (CreditReceived) | CreditReceived `$push` abono + Movement create | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): lectura del agregado + validación de saldo DENTRO del tx (snapshot-consistente); cuenta de pago validada FUERA (referencia estática). Concurrencia (CAS) Fase 4. |
+| `addAbono` (CreditGranted) | CreditGranted `$push` abono + 1–2 Movements (capital/interest split, `creditGrantedAbono`/`creditGrantedAbonoInterest`) | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): split R9/D9.1 + saldo validados DENTRO del tx; cuenta receptora validada FUERA. Concurrencia (CAS) Fase 4. |
+| `addAbono` (Payable) | Payable `$push` abono + Movement create | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). Concurrencia (CAS) Fase 4. |
+| `addSaleAbono` (venta a crédito) | Sale `$push` abono + Movement create (`salePayment`) | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). LEGACY FALLBACK desde R5-D0 (la deuda vive en el CreditGranted vinculado; abonos reales → `addAbono` de créditos-granted rama sale-born). Concurrencia (CAS) Fase 4. |
+| `markAsPaid` (received/granted) | Reusa `addAbono` (misma operación) | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): hereda la decisión de `addAbono`; el guard "ya pagado" se lee FUERA del tx y `uow` se enhebra sin transacción anidada. |
+| `editAbono` (CreditReceived) | CreditReceived `$set` abono + Movement update | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). |
+| `editAbono` (CreditGranted, split) | CreditGranted `$set` abono + hasta 3 operaciones de Movement (create/update/delete de los campos split) | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): resincronización R9/D9.3 del split con orden R5-B (delete-interest primero) dentro del tx. |
+| `editAbono` (Payable) | Payable `$set` abono + Movement update | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). |
+| `editAbono` (Sale) | — | N/A | **N/A** — desde R5-D0 las ventas a crédito no acumulan abonos propios: el total queda como principal del CreditGranted vinculado (R5-D0a) y sus abonos se editan en el crédito (rama sale-born). No existe `editAbono` de Sale en el código (la matriz del borrador lo listaba; corregido en Fase 3). |
+| `deleteAbono` (CreditReceived) | Movement delete + CreditReceived `$pull` abono | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): borrado del movimiento ANTES del `$pull` (R5-B) dentro del tx; NotFound tolerante. |
+| `deleteAbono` (CreditGranted) | Movement delete ×2 (principal + interest) + CreditGranted `$pull` abono | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3): R5-B con ambos movimientos dentro del tx; NotFound tolerante. |
+| `deleteAbono` (Payable) | Movement delete + Payable `$pull` abono | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). |
+| `deleteSaleAbono` | Movement delete + Sale `$pull` abono | ✅ **YA transaccional** (R15 F3) | **Transacción** — implementada (Fase 3). LEGACY FALLBACK (ver `addSaleAbono`). |
 | `writeOffCreditGranted` | Movement create (gasto por capital no recuperado) + `markWrittenOff` | NO | **Transacción** — Fase 5. |
 | `editPrincipal` (CreditReceived) | CreditReceived update (full doc) + Movement update (principal) | NO | **Transacción** — Fase 5. |
 | `editPrincipal` (CreditGranted) | CreditGranted update (full doc) + Movement update (principal) | NO | **Transacción** — Fase 5. |
@@ -67,7 +76,7 @@ adapter. The phases below reference that contract.
 | `createAccount` sin opening | 1 Account create | — | **Justificado** — documento único. |
 | `editTotal` (Payable) | 1 Payable update | — | **Justificado** — documento único; sin cascada de movimientos por diseño (`edit-total.ts`: "NO movement cascade"). |
 | `deleteAccount` | Movement deletes + Account delete | NO | **Justificado** — misma justificación que los deletes de débitos (idempotente + orden hijos→padre + `countReferences` como guard de pre-condición). |
-| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — fuera del tx por diseño (R14-B: "validaciones/lecturas quedan FUERA de la transacción"); la protección bajo concurrencia es Fase 4 (CAS). |
+| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — las lecturas del AGREGADO DE DEUDA (findById/findByWorkspaceId con `tx?`) y las validaciones de saldo/moneda que derivan de él corren DENTRO del tx desde Fase 3 (snapshot-consistent); las referencias estáticas de Account (findById de la cuenta de pago/recepción) se resuelven FUERA del tx (AccountRepository sin `tx?`). La protección bajo concurrencia es Fase 4 (CAS). |
 
 ## Notas de diseño
 
@@ -115,3 +124,22 @@ CreditReceived/Payable (justificados como tolerantes en la matriz), y los
 repositorios de entidades no financieras (User, Category, Client, Account,
 Workspace, Membership) — `createAccount` (Fase 6) mantendrá su compensación
 hasta ser reemplazada por transacción y sus writes se resolverán en ese momento.
+
+### Contrato de LECTURA entregado en Fase 3
+
+Los 4 agregados de deuda extienden sus métodos de lectura con `tx?` para que el
+use case pueda leer el agregado DENTRO de la transacción (snapshot-consistente
+con las escrituras posteriores). La resolución de moneda de cuenta que hacen
+internamente (`resolveAccountCurrency` / `resolveBulkAccountCurrencies`) recibe
+el mismo handle (opcional; sin `tx` se comporta idéntico a Fase 1).
+
+| Repositorio | Métodos de lectura con `tx?` |
+|---|---|
+| `CreditReceivedRepository` | `findById`, `findByWorkspaceId` |
+| `CreditGrantedRepository` | `findById`, `findByWorkspaceId` |
+| `PayableRepository` | `findById`, `findByWorkspaceId` |
+| `SaleRepository` | `findById`, `findByWorkspaceId` |
+
+`MovementRepository.findById` siguió SIN `tx?` (solo lectura de fusión de campos
+inalterados dentro de los edit/delete cascades; el movimiento pre-existe y no
+guarda relación con la snapshot del agregado).

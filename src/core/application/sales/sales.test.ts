@@ -966,8 +966,7 @@ describe('addSaleAbono', () => {
       saleRepo,
       movementRepo,
       ids,
-      accountRepo,
-    );
+      accountRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(1);
     expect(result.abonos[0].amount.amount).toBe(25000);
@@ -997,8 +996,7 @@ describe('addSaleAbono', () => {
       saleRepo,
       movementRepo,
       ids,
-      accountRepo,
-    );
+      accountRepo, fakeUow());
 
     const movement = movementRepo.created[0];
     expect(movement.accountId).toBe('acc-biz');
@@ -1022,8 +1020,7 @@ describe('addSaleAbono', () => {
         saleRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -1043,8 +1040,7 @@ describe('addSaleAbono', () => {
         saleRepo,
         movementRepo,
         ids,
-accountRepo,
-        ),
+accountRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
   });
 
@@ -1065,8 +1061,7 @@ accountRepo,
         saleRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.addAbono).not.toHaveBeenCalled();
     expect(movementRepo.created).toHaveLength(0);
@@ -1089,8 +1084,7 @@ accountRepo,
         saleRepo,
         movementRepo,
         ids,
-        accountRepo,
-      ),
+        accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
     expect(saleRepo.addAbono).not.toHaveBeenCalled();
   });
@@ -1108,7 +1102,7 @@ describe('deleteSaleAbono', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo);
+    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
@@ -1128,7 +1122,7 @@ describe('deleteSaleAbono', () => {
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
 
-    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo);
+    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
 
     expect(deleteMovementMock.mock.invocationCallOrder[0])
       .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
@@ -1145,7 +1139,7 @@ describe('deleteSaleAbono', () => {
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
     });
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo);
+    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
@@ -1164,7 +1158,7 @@ describe('deleteSaleAbono', () => {
     });
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo),
+      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow()),
     ).rejects.toThrow('db down');
 
     expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
@@ -1177,7 +1171,7 @@ describe('deleteSaleAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'missing', 'ab-1', saleRepo, movementRepo),
+      deleteSaleAbono('user-1', 'missing', 'ab-1', saleRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -1189,7 +1183,7 @@ describe('deleteSaleAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo),
+      deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });
