@@ -26,7 +26,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 - [x] **Soporte + feedback en producto** (página `/help`, widget de feedback → email).
 - [x] **Analítica de producto** (activation/retention/usage, sin PII, acceso solo founder).
 - [x] **Exportación CSV** (movimientos y ventas).
-- [ ] **Backup + restore probado** (pendiente — ver P0-c abajo). ← **ÚLTIMO REQUISITO TÉCNICO**
+- [x] **Backup + restore probado** (P0-c CERRADO — `docs/BACKUP-RESTORE-RUNBOOK.md` evidencia 2026-09-07, backup `2026-09-07-214359`: 22/22 colecciones, 656 docs, tipos BSON verificados, fundador logueó y accedió a su workspace contra la DB restaurada). ← **ÚLTIMO REQUISITO TÉCNICO — CERRADO**
 - [ ] **Smoke test post-deploy** (pendiente — ver P0-b abajo).
 - [ ] **Prueba manual de aislamiento 2 usuarios** (checklist en `docs/beta-qa-isolation-checklist.md`).
 
@@ -41,7 +41,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 
 | Ref | Pendiente | Dueño | Nota |
 |-----|-----------|-------|------|
-| **P0-c** | Backup + restore probado | Fundador | Atlas M0 no tiene backups automáticos. Probar: backup → restore → app usable. Decidir upgrade M10/M20 o procedimiento manual documentado. |
+| **P0-c** | Backup + restore probado | Fundador | Atlas M0 no tiene backups automáticos. Probar: backup → restore → app usable. Decidir upgrade M10/M20 o procedimiento manual documentado. | ✅ **CERRADO 2026-09-07** — backup `2026-09-07-214359`, restore 22/22 a `globalmoney_restore_test`, tipos BSON verificados, app-check PASS (fundador logueó y vio sus datos). **Pendiente del fundador:** decisión M0 vs M10/M20 (§5 del runbook). |
 | **P0-b** | Separación de entornos (staging vs producción) | Fundador | Vercel ya separa previews; documentar workflow + política de deploy directo a main. |
 | — | Smoke test post-deploy | Fundador | Checklist corto post-deploy (login, dashboard, 1 movimiento) antes de avisar a beta testers. |
 | — | Primer movimiento + encuesta | Fundador | El evento `returned` y la encuesta post-beta quedaron pausados; se habilitan al abrir la beta. |
@@ -69,4 +69,4 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 
 ---
 
-*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-04.*
+*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-07 (P0-c cerrado, backup/restore probado).*
