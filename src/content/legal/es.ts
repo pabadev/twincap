@@ -1,9 +1,10 @@
-import type { LegalContent } from './types';
+import type { LegalContent } from "./types";
+import { LEGAL_IDENTITY } from "./identity";
 
 /**
  * Contenido legal en español neutro (prohibido voseo/regionalismos).
- * La identidad legal usa placeholders literales (ver AGENTS.md / R13 plane):
- * [RAZÓN SOCIAL], [NIT], [DIRECCIÓN], [CORREO DE CONTACTO], [CIUDAD/PAÍS].
+ * Identidad legal centralizada en ./identity (R14-Fase O).
+ * RAZÓN SOCIAL y NIT permanecen como placeholders hasta registro mercantil (R14-O).
  */
 export const legalEs: LegalContent = {
   privacy: {
@@ -16,8 +17,8 @@ export const legalEs: LegalContent = {
       {
         heading: '1. Responsable del tratamiento',
         paragraphs: [
-          'La entidad responsable del tratamiento de tus datos personales es [RAZÓN SOCIAL], con NIT [NIT] y domicilio en [DIRECCIÓN], [CIUDAD/PAÍS] (en adelante, "TwinCap" o "nosotros").',
-          'Para cualquier consulta o ejercicio de tus derechos, puedes contactarnos en [CORREO DE CONTACTO].',
+          `La entidad responsable del tratamiento de tus datos personales es ${LEGAL_IDENTITY.companyName}, con NIT ${LEGAL_IDENTITY.taxId} y domicilio en ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry} (en adelante, "TwinCap" o "nosotros").`,
+          `Para cualquier consulta o ejercicio de tus derechos, puedes contactarnos en ${LEGAL_IDENTITY.contactEmail}.`,
         ],
       },
       {
@@ -82,7 +83,7 @@ export const legalEs: LegalContent = {
         heading: '8. Derechos del titular',
         paragraphs: [
           'Tienes derecho a conocer, actualizar y rectificar tus datos personales; a solicitar prueba de la autorización otorgada; a revocar la autorización y solicitar la supresión de los datos cuando ya no sean necesarios; y a presentar quejas ante la autoridad competente cuando corresponda.',
-          'Actualmente puedes consultar, actualizar y rectificar parte de tus datos desde tu perfil en la aplicación. Para ejercer la supresión o la rectificación de datos que no puedes modificar por tu cuenta, o para solicitar información adicional, escríbenos a [CORREO DE CONTACTO]. La funcionalidad de autoservicio para la eliminación de tu cuenta y la exportación de tus datos se habilitará próximamente.',
+          `Actualmente puedes consultar, actualizar y rectificar parte de tus datos desde tu perfil en la aplicación. Para ejercer la supresión o la rectificación de datos que no puedes modificar por tu cuenta, o para solicitar información adicional, escríbenos a ${LEGAL_IDENTITY.contactEmail}. La funcionalidad de autoservicio para la eliminación de tu cuenta y la exportación de tus datos se habilitará próximamente.`,
         ],
       },
       {
@@ -100,7 +101,7 @@ export const legalEs: LegalContent = {
       {
         heading: '11. Contacto',
         paragraphs: [
-          'Si tienes preguntas sobre esta Política de Privacidad o sobre el tratamiento de tus datos personales, contáctanos en [CORREO DE CONTACTO] o en [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `Si tienes preguntas sobre esta Política de Privacidad o sobre el tratamiento de tus datos personales, contáctanos en ${LEGAL_IDENTITY.contactEmail} o en ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],
@@ -171,14 +172,14 @@ export const legalEs: LegalContent = {
       {
         heading: '6. Propiedad intelectual',
         paragraphs: [
-          'El servicio, su diseño, logos, textos, gráficos y demás elementos de TwinCap son de titularidad de [RAZÓN SOCIAL] o de sus licenciantes y están protegidos por las normas de propiedad intelectual. Te otorgamos una licencia limitada, no exclusiva e intransferible para usar el servicio para tu uso personal o de negocio, de acuerdo con estos términos. Conservas la titularidad de la información que ingresas en el servicio.',
+          `El servicio, su diseño, logos, textos, gráficos y demás elementos de TwinCap son de titularidad de ${LEGAL_IDENTITY.companyName} o de sus licenciantes y están protegidos por las normas de propiedad intelectual. Te otorgamos una licencia limitada, no exclusiva e intransferible para usar el servicio para tu uso personal o de negocio, de acuerdo con estos términos. Conservas la titularidad de la información que ingresas en el servicio.`,
         ],
       },
       {
         heading: '7. Limitación de responsabilidad',
         paragraphs: [
           'TwinCap es una herramienta de registro y control de tu información financiera. No constituye asesoría financiera, contable, tributaria ni legal profesional, y no reemplaza la opinión de profesionales calificados.',
-          'Las decisiones financieras, contables o de cualquier otra índole que tomes con base en la información registrada son de tu exclusiva responsabilidad. Hasta donde lo permita la ley, [RAZÓN SOCIAL] no será responsable por daños directos, indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del servicio.',
+          `Las decisiones financieras, contables o de cualquier otra índole que tomes con base en la información registrada son de tu exclusiva responsabilidad. Hasta donde lo permita la ley, ${LEGAL_IDENTITY.companyName} no será responsable por daños directos, indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del servicio.`,
         ],
       },
       {
@@ -196,13 +197,13 @@ export const legalEs: LegalContent = {
       {
         heading: '10. Ley aplicable',
         paragraphs: [
-          'Estos términos se rigen por las leyes de la República de Colombia, en [CIUDAD/PAÍS]. En caso de controversia, las partes procurarán resolverla de forma directa y, en su defecto, se someterán a la jurisdicción de los tribunales competentes de [CIUDAD/PAÍS].',
+          `Estos términos se rigen por las leyes de la República de Colombia, en ${LEGAL_IDENTITY.cityCountry}. En caso de controversia, las partes procurarán resolverla de forma directa y, en su defecto, se someterán a la jurisdicción de los tribunales competentes de ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
       {
         heading: '11. Contacto',
         paragraphs: [
-          'Para consultas sobre estos Términos y Condiciones, contáctanos en [CORREO DE CONTACTO]. El responsable es [RAZÓN SOCIAL], con NIT [NIT] y domicilio en [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `Para consultas sobre estos Términos y Condiciones, contáctanos en ${LEGAL_IDENTITY.contactEmail}. El responsable es ${LEGAL_IDENTITY.companyName}, con NIT ${LEGAL_IDENTITY.taxId} y domicilio en ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],
@@ -276,12 +277,12 @@ export const legalEs: LegalContent = {
     title: 'Política de Tratamiento de Datos Personales',
     updatedAt: '2026-09-03',
     intro:
-      'De conformidad con la Ley 1581 de 2012 y sus normas reglamentarias de la República de Colombia, esta Política de Tratamiento de Datos Personales informa a los titulares sobre el tratamiento que [RAZÓN SOCIAL] realiza de sus datos personales.',
+      `De conformidad con la Ley 1581 de 2012 y sus normas reglamentarias de la República de Colombia, esta Política de Tratamiento de Datos Personales informa a los titulares sobre el tratamiento que ${LEGAL_IDENTITY.companyName} realiza de sus datos personales.`,
     sections: [
       {
         heading: '1. Responsable del tratamiento',
         paragraphs: [
-          'El responsable del tratamiento de los datos personales es [RAZÓN SOCIAL], con NIT [NIT], domicilio principal en [DIRECCIÓN], [CIUDAD/PAÍS]. Para cualquier asunto relacionado con el tratamiento de datos personales, puedes contactarnos en [CORREO DE CONTACTO].',
+          `El responsable del tratamiento de los datos personales es ${LEGAL_IDENTITY.companyName}, con NIT ${LEGAL_IDENTITY.taxId}, domicilio principal en ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}. Para cualquier asunto relacionado con el tratamiento de datos personales, puedes contactarnos en ${LEGAL_IDENTITY.contactEmail}.`,
         ],
       },
       {
@@ -320,15 +321,15 @@ export const legalEs: LegalContent = {
       {
         heading: '5. Cómo ejercer tus derechos',
         paragraphs: [
-          'Puedes ejercer tus derechos en cualquier momento, de forma gratuita, contactando al responsable en [CORREO DE CONTACTO]. Te atenderemos en los términos previstos por la ley. La funcionalidad de autoservicio para la eliminación de tu cuenta y la consulta de tus datos se habilitará próximamente.',
+          `Puedes ejercer tus derechos en cualquier momento, de forma gratuita, contactando al responsable en ${LEGAL_IDENTITY.contactEmail}. Te atenderemos en los términos previstos por la ley. La funcionalidad de autoservicio para la eliminación de tu cuenta y la consulta de tus datos se habilitará próximamente.`,
         ],
       },
       {
         heading: '6. Canales de atención',
         paragraphs: ['Para el ejercicio de tus derechos y consultas, puedes usar los siguientes canales:'],
         list: [
-          'Correo electrónico: [CORREO DE CONTACTO].',
-          'Dirección física: [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `Correo electrónico: ${LEGAL_IDENTITY.contactEmail}.`,
+          `Dirección física: ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
       {
@@ -368,7 +369,7 @@ export const legalEs: LegalContent = {
       {
         heading: '12. Modificaciones y contacto',
         paragraphs: [
-          'Para actualizar, rectificar o solicitar información sobre esta Política de Tratamiento de Datos Personales, contáctanos en [CORREO DE CONTACTO] o en [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `Para actualizar, rectificar o solicitar información sobre esta Política de Tratamiento de Datos Personales, contáctanos en ${LEGAL_IDENTITY.contactEmail} o en ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],

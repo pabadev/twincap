@@ -1,9 +1,10 @@
-import type { LegalContent } from './types';
+import type { LegalContent } from "./types";
+import { LEGAL_IDENTITY } from "./identity";
 
 /**
  * Legal content in English (professional). Same structure and factual map
- * as the Spanish version. Legal identity uses literal placeholders:
- * [RAZÓN SOCIAL], [NIT], [DIRECCIÓN], [CORREO DE CONTACTO], [CIUDAD/PAÍS].
+ * as the Spanish version. Legal identity is centralized in ./identity (R14-Fase O).
+ * RAZÓN SOCIAL and NIT remain placeholders until mercantile registration (R14-O).
  */
 export const legalEn: LegalContent = {
   privacy: {
@@ -16,8 +17,8 @@ export const legalEn: LegalContent = {
       {
         heading: '1. Data controller',
         paragraphs: [
-          'The entity responsible for processing your personal data is [RAZÓN SOCIAL], with tax ID (NIT) [NIT] and registered office at [DIRECCIÓN], [CIUDAD/PAÍS] (hereinafter "TwinCap" or "we").',
-          'For any inquiry or to exercise your rights, you can contact us at [CORREO DE CONTACTO].',
+          `The entity responsible for processing your personal data is ${LEGAL_IDENTITY.companyName}, with tax ID (NIT) ${LEGAL_IDENTITY.taxId} and registered office at ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry} (hereinafter "TwinCap" or "we").`,
+          `For any inquiry or to exercise your rights, you can contact us at ${LEGAL_IDENTITY.contactEmail}.`,
         ],
       },
       {
@@ -78,7 +79,7 @@ export const legalEn: LegalContent = {
         heading: '8. Data subject rights',
         paragraphs: [
           'You have the right to know, update, and rectify your personal data; to request proof of the authorization granted; to revoke your authorization and request the deletion of data that is no longer necessary; and to file complaints with the competent authority where applicable.',
-          'You can currently view, update, and rectify part of your data from your profile in the application. To request deletion or rectification of data you cannot change yourself, or to request additional information, write to us at [CORREO DE CONTACTO]. Self-service functionality to delete your account and export your data will be enabled soon.',
+          `You can currently view, update, and rectify part of your data from your profile in the application. To request deletion or rectification of data you cannot change yourself, or to request additional information, write to us at ${LEGAL_IDENTITY.contactEmail}. Self-service functionality to delete your account and export your data will be enabled soon.`,
         ],
       },
       {
@@ -96,7 +97,7 @@ export const legalEn: LegalContent = {
       {
         heading: '11. Contact',
         paragraphs: [
-          'If you have questions about this Privacy Policy or about the processing of your personal data, contact us at [CORREO DE CONTACTO] or at [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `If you have questions about this Privacy Policy or about the processing of your personal data, contact us at ${LEGAL_IDENTITY.contactEmail} or at ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],
@@ -165,14 +166,14 @@ export const legalEn: LegalContent = {
       {
         heading: '6. Intellectual property',
         paragraphs: [
-          'The service, its design, logos, texts, graphics, and other TwinCap elements are owned by [RAZÓN SOCIAL] or its licensors and are protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable license to use the service for your personal or business use, in accordance with these terms. You retain ownership of the information you enter into the service.',
+          `The service, its design, logos, texts, graphics, and other TwinCap elements are owned by ${LEGAL_IDENTITY.companyName} or its licensors and are protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable license to use the service for your personal or business use, in accordance with these terms. You retain ownership of the information you enter into the service.`,
         ],
       },
       {
         heading: '7. Limitation of liability',
         paragraphs: [
           'TwinCap is a tool for recording and controlling your financial information. It does not constitute financial, accounting, tax, or legal professional advice, and it does not replace qualified professionals.',
-          'Financial, accounting, or any other decisions you make based on the recorded information are your sole responsibility. To the extent permitted by law, [RAZÓN SOCIAL] shall not be liable for direct, indirect, incidental, or consequential damages arising from the use or inability to use the service.',
+          `Financial, accounting, or any other decisions you make based on the recorded information are your sole responsibility. To the extent permitted by law, ${LEGAL_IDENTITY.companyName} shall not be liable for direct, indirect, incidental, or consequential damages arising from the use or inability to use the service.`,
         ],
       },
       {
@@ -190,13 +191,13 @@ export const legalEn: LegalContent = {
       {
         heading: '10. Governing law',
         paragraphs: [
-          'These terms are governed by the laws of the Republic of Colombia, in [CIUDAD/PAÍS]. In the event of a dispute, the parties will seek to resolve it directly and, failing that, will submit to the competent courts of [CIUDAD/PAÍS].',
+          `These terms are governed by the laws of the Republic of Colombia, in ${LEGAL_IDENTITY.cityCountry}. In the event of a dispute, the parties will seek to resolve it directly and, failing that, will submit to the competent courts of ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
       {
         heading: '11. Contact',
         paragraphs: [
-          'For questions about these Terms and Conditions, contact us at [CORREO DE CONTACTO]. The controller is [RAZÓN SOCIAL], with tax ID (NIT) [NIT] and registered office at [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `For questions about these Terms and Conditions, contact us at ${LEGAL_IDENTITY.contactEmail}. The controller is ${LEGAL_IDENTITY.companyName}, with tax ID (NIT) ${LEGAL_IDENTITY.taxId} and registered office at ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],
@@ -270,12 +271,12 @@ export const legalEn: LegalContent = {
     title: 'Personal Data Processing Policy',
     updatedAt: '2026-09-03',
     intro:
-      'In accordance with Law 1581 of 2012 and its implementing regulations of the Republic of Colombia, this Personal Data Processing Policy informs data subjects about the processing that [RAZÓN SOCIAL] carries out on their personal data.',
+      `In accordance with Law 1581 of 2012 and its implementing regulations of the Republic of Colombia, this Personal Data Processing Policy informs data subjects about the processing that ${LEGAL_IDENTITY.companyName} carries out on their personal data.`,
     sections: [
       {
         heading: '1. Data controller',
         paragraphs: [
-          'The data controller of personal data is [RAZÓN SOCIAL], with tax ID (NIT) [NIT], principal place of business at [DIRECCIÓN], [CIUDAD/PAÍS]. For any matter related to personal data processing, you can contact us at [CORREO DE CONTACTO].',
+          `The data controller of personal data is ${LEGAL_IDENTITY.companyName}, with tax ID (NIT) ${LEGAL_IDENTITY.taxId}, principal place of business at ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}. For any matter related to personal data processing, you can contact us at ${LEGAL_IDENTITY.contactEmail}.`,
         ],
       },
       {
@@ -312,15 +313,15 @@ export const legalEn: LegalContent = {
       {
         heading: '5. How to exercise your rights',
         paragraphs: [
-          'You may exercise your rights at any time, free of charge, by contacting the controller at [CORREO DE CONTACTO]. We will assist you within the terms provided by law. Self-service functionality to delete your account and query your data will be enabled soon.',
+          `You may exercise your rights at any time, free of charge, by contacting the controller at ${LEGAL_IDENTITY.contactEmail}. We will assist you within the terms provided by law. Self-service functionality to delete your account and query your data will be enabled soon.`,
         ],
       },
       {
         heading: '6. Service channels',
         paragraphs: ['To exercise your rights and for inquiries, you may use the following channels:'],
         list: [
-          'Email: [CORREO DE CONTACTO].',
-          'Physical address: [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `Email: ${LEGAL_IDENTITY.contactEmail}.`,
+          `Physical address: ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
       {
@@ -358,7 +359,7 @@ export const legalEn: LegalContent = {
       {
         heading: '12. Modifications and contact',
         paragraphs: [
-          'To update, rectify, or request information about this Personal Data Processing Policy, contact us at [CORREO DE CONTACTO] or at [DIRECCIÓN], [CIUDAD/PAÍS].',
+          `To update, rectify, or request information about this Personal Data Processing Policy, contact us at ${LEGAL_IDENTITY.contactEmail} or at ${LEGAL_IDENTITY.address}, ${LEGAL_IDENTITY.cityCountry}.`,
         ],
       },
     ],
