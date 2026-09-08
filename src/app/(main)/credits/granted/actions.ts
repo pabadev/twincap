@@ -16,6 +16,7 @@ import { MongoCreditGrantedRepository } from '../../../../infrastructure/reposit
 import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
 import { connectDb } from '../../../../infrastructure/db/connection';
+import { MongoUnitOfWork } from '../../../../infrastructure/transactions/mongo-unit-of-work';
 import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
 import { assertBusinessDateNotFuture } from '../../../../lib/date';
@@ -76,6 +77,7 @@ export async function createCreditGrantedAction(
           movementRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );

@@ -20,6 +20,7 @@ const { trackAnalytics } = vi.hoisted(() => ({ trackAnalytics: vi.fn() }));
 const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
 }));
+const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
 
 vi.mock('../../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -36,6 +37,9 @@ vi.mock('../../../../infrastructure/repositories/account-repository', () => ({
 vi.mock('../../../../lib/track-analytics', () => ({ trackAnalytics }));
 vi.mock('../../../../infrastructure/repositories/operation-log-repository', () => ({
   MongoOperationLogger,
+}));
+vi.mock('../../../../infrastructure/transactions/mongo-unit-of-work', () => ({
+  MongoUnitOfWork,
 }));
 
 const { createCreditReceivedAction } = await import('./actions');
@@ -71,6 +75,9 @@ describe('createCreditReceivedAction', () => {
     trackAnalytics.mockResolvedValue(undefined);
     MongoOperationLogger.mockImplementation(() => ({
       log: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoUnitOfWork.mockImplementation(() => ({
+      withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
     }));
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({

@@ -15,6 +15,10 @@ import { MongoUnitOfWork, sessionOf } from "./mongo-unit-of-work";
  * and never issues `replSetInitiate`; only `MongoMemoryReplSet` runs the
  * initiate command and waits for a primary. So the repl-set class is the
  * only shape that actually produces a transaction-ready cluster.
+ *
+ * BINARY PIN: 7.0.41 (regla permanente en Windows — la LATEST 8.2.6
+ * crashea ~1 min tras arrancar: exit 14, 0xC000001D en tcmalloc, ghost
+ * reference que `stop()` no limpia). Heredado de R14-J `global-setup`.
  */
 describe("MongoUnitOfWork", () => {
   let mongod: MongoMemoryReplSet;
@@ -32,6 +36,7 @@ describe("MongoUnitOfWork", () => {
 
   beforeAll(async () => {
     mongod = await MongoMemoryReplSet.create({
+      binary: { version: "7.0.41" },
       replSet: { count: 1, name: "rs0" },
     });
     await mongoose.connect(mongod.getUri("twincap_tx"));

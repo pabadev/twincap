@@ -4,7 +4,7 @@ import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 import { payableCategory } from '../../domain/synthetic-categories';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreatePayableInput } from './dto/payables';
 
 /**
@@ -15,6 +15,10 @@ import type { CreatePayableInput } from './dto/payables';
  * created when an initial payment accompanies the acquisition
  * (kind 'payableInitialPayment', refId = payable id).
  * D3: that movement inherits the payment account's scope.
+ *
+ * R15 Fase 2: the payable and its optional initial-payment movement are ONE
+ * atomic unit — both write INSIDE a single multi-document transaction, so a
+ * failure on the movement rolls back the payable too.
  */
 export async function createPayable(
   workspaceId: string,
@@ -23,6 +27,7 @@ export async function createPayable(
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
+  uow: UnitOfWork,
 ): Promise<Payable> {
   // D3: resolve the payment account — validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
@@ -54,30 +59,29 @@ export async function createPayable(
     createdAt: now,
   });
 
-  await payableRepo.create(payable);
+  // R15 Fase 2: payable + optional initial-payment movement are ONE atomic
+  // unit — a failure on the movement rolls back the payable too.
+  return uow.withTransaction(async (tx) => {
+    await payableRepo.create(payable, tx);
 
-  if (payable.initialPayment > 0) {
-    // Atomicity note: payable + linked movement are two separate writes inside
-    // this single use-case invocation. Full transactionality would require the
-    // repository ports to accept a Mongoose ClientSession (signature change
-    // across every port/implementation) plus a replica-set connection — an
-    // infrastructure change deliberately out of scope here.
-    const movementId = ids.generate();
-    const movement = new Movement({
-      id: movementId,
-      workspaceId,
-      accountId: input.accountId,
-      category: payableCategory('expense'),
-      type: 'expense',
-      amount: new Money(payable.initialPayment, input.currency),
-      date: input.date,
-      // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
-      link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
-      createdAt: now,
-    });
-    await movementRepo.create(movement);
-  }
+    if (payable.initialPayment > 0) {
+      const movementId = ids.generate();
+      const movement = new Movement({
+        id: movementId,
+        workspaceId,
+        accountId: input.accountId,
+        category: payableCategory('expense'),
+        type: 'expense',
+        amount: new Money(payable.initialPayment, input.currency),
+        date: input.date,
+        // No persisted note: display text derives at render from link.kind.
+        context: 'Personal',
+        link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
+        createdAt: now,
+      });
+      await movementRepo.create(movement, tx);
+    }
 
-  return payable;
+    return payable;
+  });
 }

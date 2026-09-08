@@ -20,7 +20,8 @@ import { Money, MoneyError } from '../../domain/money';
 import type { Currency } from '../../domain/currency';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreditAbono } from '../../domain/credit-granted';
 
 // ─── Fake factories ────────────────────────────────────────────────
@@ -152,6 +153,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
+/** R15 Fase 2: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 function makeCredit(
   overrides: Partial<ConstructorParameters<typeof CreditGranted>[0]> = {},
   abonos: CreditAbono[] = [],
@@ -215,6 +224,7 @@ describe('createCreditGranted', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(credit.counterparty).toBe('Pedro');
@@ -251,6 +261,7 @@ describe('createCreditGranted', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movementRepo.created[0].context).toBe('Personal');
@@ -278,6 +289,7 @@ describe('createCreditGranted', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(credit.installments).toBe(12);
@@ -308,6 +320,7 @@ describe('createCreditGranted', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(MoneyError);
     expect(creditRepo.created).toHaveLength(0);
@@ -334,6 +347,7 @@ describe('createCreditGranted', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
 

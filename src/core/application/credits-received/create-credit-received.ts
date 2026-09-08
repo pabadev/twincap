@@ -4,7 +4,7 @@ import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreateCreditReceivedInput } from './dto/credits-received';
 
 /**
@@ -13,6 +13,9 @@ import type { CreateCreditReceivedInput } from './dto/credits-received';
  * Produces a credit record and one linked income movement on the receiving account.
  * The movement is system-linked (MOV-5) and not directly editable by the user.
  * Movement context: always 'Personal' — credits received are personal financing.
+ *
+ * The two writes (credit + principal movement) run INSIDE a single multi-document
+ * transaction (R15 Fase 2): they commit or roll back atomically.
  */
 export async function createCreditReceived(
   workspaceId: string,
@@ -21,6 +24,7 @@ export async function createCreditReceived(
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
+  uow: UnitOfWork,
 ): Promise<CreditReceived> {
   // D3: resolve the receiving account — validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
@@ -65,25 +69,28 @@ export async function createCreditReceived(
     createdAt: now,
   });
 
-  await creditRepo.create(credit);
+  // R15 Fase 2: credit + principal movement commit or roll back atomically.
+  return uow.withTransaction(async (tx) => {
+    await creditRepo.create(credit, tx);
 
-  // Create principal movement (income on receiving account)
-  const movementId = ids.generate();
-  const opId = ids.generate();
-  const movement = new Movement({
-    id: movementId,
-    workspaceId,
-    accountId: input.accountId,
-    category: creditCategory('income'),
-    type: 'income',
-    amount: principalMoney,
-    date: input.date,
-    // No persisted note: display text derives at render from link.kind.
-    context: 'Personal',
-    link: { kind: 'creditReceivedPrincipal', refId: creditId, opId },
-    createdAt: now,
+    // Create principal movement (income on receiving account)
+    const movementId = ids.generate();
+    const opId = ids.generate();
+    const movement = new Movement({
+      id: movementId,
+      workspaceId,
+      accountId: input.accountId,
+      category: creditCategory('income'),
+      type: 'income',
+      amount: principalMoney,
+      date: input.date,
+      // No persisted note: display text derives at render from link.kind.
+      context: 'Personal',
+      link: { kind: 'creditReceivedPrincipal', refId: creditId, opId },
+      createdAt: now,
+    });
+    await movementRepo.create(movement, tx);
+
+    return credit;
   });
-  await movementRepo.create(movement);
-
-  return credit;
 }

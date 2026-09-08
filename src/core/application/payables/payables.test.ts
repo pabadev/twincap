@@ -13,7 +13,8 @@ import { Money } from '../../domain/money';
 import type { Currency } from '../../domain/currency';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
+import type { IdGenerator, UnitOfWork } from '../ports';
 import type { PayableAbono } from '../../domain/payable';
 
 // ─── Fake factories ────────────────────────────────────────────────
@@ -137,6 +138,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
+/** R15 Fase 2: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 function makePayable(
   overrides: Partial<ConstructorParameters<typeof Payable>[0]> = {},
   abonos: PayableAbono[] = [],
@@ -201,6 +210,7 @@ describe('createPayable', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(payable.counterparty).toBe('Proveedor SA');
@@ -233,6 +243,7 @@ describe('createPayable', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(payable.initialPayment).toBe(30000);
@@ -268,6 +279,7 @@ describe('createPayable', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(payable.pending).toBe(0);
@@ -295,6 +307,7 @@ describe('createPayable', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movementRepo.created[0].context).toBe('Personal');
@@ -320,6 +333,7 @@ describe('createPayable', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
   });
@@ -337,15 +351,16 @@ describe('createPayable', () => {
         counterparty: 'Proveedor SA',
         total: 100000,
         currency: 'COP',
-        accountId: 'acc-1',
-        date: new Date('2025-06-01'),
-        dueDate,
-        note: 'Compra de perfume',
-      },
-      payableRepo,
-      movementRepo,
-      ids,
-      accountRepo,
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          dueDate,
+          note: 'Compra de perfume',
+        },
+        payableRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+        fakeUow(),
     );
 
     expect(payable.dueDate).toEqual(dueDate);
@@ -373,6 +388,7 @@ describe('createPayable', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     // Nothing written when validation fails
@@ -401,6 +417,7 @@ describe('createPayable', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
 
@@ -418,6 +435,7 @@ describe('createPayable', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
 
@@ -445,6 +463,7 @@ describe('createPayable', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
 
