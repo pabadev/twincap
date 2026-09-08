@@ -32,7 +32,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 
 ### Grupo C — Legal (Documentación registral)
 - [x] Política de privacidad, términos y condiciones, cookies, política de datos (Ley 1581/2012).
-- [ ] **Reemplazar placeholders legales** `[RAZÓN SOCIAL]`, `[NIT]`, `[DIRECCIÓN]`, `[CORREO]`, `[CIUDAD/PAÍS]` (decisión del fundador pendiente).
+- [ ] **Reemplazar placeholders legales** `[RAZÓN SOCIAL]`, `[NIT]`, `[DIRECCIÓN]`, `[CORREO]`, `[CIUDAD/PAÍS]` — **PENDIENTE pero DOCUMENTADO (2026-09-08):** el fundador aún no registra TwinCap en la Cámara de Comercio; la identidad real de contacto ya está centralizada en `src/content/legal/identity.ts`; se resuelve en cuanto exista la razón social registrada.
 - [ ] **Revisión con abogado** antes de promocionar la beta comercialmente.
 
 ---
@@ -45,7 +45,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 | **P0-b** | Separación de entornos (staging vs producción) | Fundador | Vercel ya separa previews; documentar workflow + política de deploy directo a main. |
 | — | Smoke test post-deploy | Fundador | Checklist corto post-deploy (login, dashboard, 1 movimiento) antes de avisar a beta testers. | ✅ **CERRADO 2026-09-08** — §9 de `docs/beta-launch-plan.md` ejecutado contra producción `dccca1d`: pasos 1–5 OK, verificadores de índices CONTRACT OK, logs Vercel sin 5xx (checklist 8/8 ✅). |
 | — | Primer movimiento + encuesta | Fundador | El evento `returned` y la encuesta post-beta quedaron pausados; se habilitan al abrir la beta. |
-| — | Legal placeholders | Fundador | Depende de la identidad legal real de TwinCap. |
+| — | Legal placeholders | Fundador | **DOCUMENTADO (2026-09-08):** fundador aún no registra TwinCap en Cámara de Comercio; identidad real en `identity.ts`; se resuelve cuando exista la razón social registrada. |
 | — | Onboarding orientado a activación (P1-b) | Post-beta | Opcional; se decide según métricas de activation reales. |
 
 ---
@@ -69,4 +69,4 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 
 ---
 
-*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-08 (P0-c cerrado, isolation cerrada, smoke test P0.7 cerrado — pendientes solo legales + P0-b).*
+*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-08 (P0-c cerrado, isolation cerrada, smoke test P0.7 cerrado, ANALYTICS_ENABLED activado — pendientes solo legales del Grupo C, documentados: placeholders por registro en Cámara de Comercio + revisión de abogado).*
