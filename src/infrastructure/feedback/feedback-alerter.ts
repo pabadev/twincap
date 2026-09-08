@@ -1,9 +1,13 @@
 /**
- * Feedback email dispatcher (R13-E).
+ * Feedback email dispatcher (R13-E, R14-L §11).
  *
  * Sends user feedback (comments, bugs, suggestions) to a configured
  * recipient. Same fail-safe pattern as error-alerter.ts: never throws,
  * silent no-op when env is missing, structured stderr on failure.
+ *
+ * R14-L: the dispatch result now distinguishes REAL delivery from failure
+ * (`FeedbackDispatchResult`), so the submit action can persist the honest
+ * outcome and report success only when the email was actually delivered.
  *
  * DEV MODE GATE: if RESEND_API_KEY or FEEDBACK_EMAIL is not configured,
  * this is a SILENT NO-OP — dev installs are never spammed.
@@ -61,19 +65,32 @@ export type FeedbackSendFn = (args: {
 }) => Promise<void>;
 
 /**
+ * Honest outcome of a feedback dispatch (R14-L §11).
+ *
+ * `{ delivered: true }` — the transport resolved, the email WAS sent.
+ * `{ delivered: false, reason: 'not_configured' }` — env missing (dev gate),
+ * nothing attempted.
+ * `{ delivered: false, reason: 'transport_error' }` — the transport threw;
+ * the email was NOT sent.
+ */
+export type FeedbackDispatchResult =
+  | { delivered: true }
+  | { delivered: false; reason: 'not_configured' | 'transport_error' };
+
+/**
  * Factory for a fail-safe feedback dispatcher with an injectable `send`
  * transport (so tests can substitute a mock without touching Resend).
  */
 export function makeFeedbackDispatcher(send: FeedbackSendFn) {
-  return async (args: FeedbackSendArgs): Promise<void> => {
+  return async (args: FeedbackSendArgs): Promise<FeedbackDispatchResult> => {
     const apiKey = process.env.RESEND_API_KEY;
     const recipient = process.env.FEEDBACK_EMAIL;
     const from = process.env.RESEND_FROM;
 
     // No provider key → silent no-op (dev).
-    if (!apiKey) return;
+    if (!apiKey) return { delivered: false, reason: 'not_configured' };
     // No recipient configured → silent no-op.
-    if (!recipient) return;
+    if (!recipient) return { delivered: false, reason: 'not_configured' };
 
     try {
       await send({
@@ -81,6 +98,7 @@ export function makeFeedbackDispatcher(send: FeedbackSendFn) {
         from: from ?? 'TwinCap <no-reply@twincap.app>',
         to: recipient,
       });
+      return { delivered: true };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(
@@ -91,6 +109,7 @@ export function makeFeedbackDispatcher(send: FeedbackSendFn) {
           error: message,
         }),
       );
+      return { delivered: false, reason: 'transport_error' };
     }
   };
 }
@@ -109,6 +128,9 @@ const resendSend: FeedbackSendFn = async ({ input, from, to }) => {
   });
 };
 
-/** Production default dispatcher backed by Resend. Fail-safe; never throws. */
-export const sendFeedback: (args: FeedbackSendArgs) => Promise<void> =
+/**
+ * Production default dispatcher backed by Resend. Fail-safe; never throws.
+ * The result reports whether the feedback email was REALLY delivered.
+ */
+export const sendFeedback: (args: FeedbackSendArgs) => Promise<FeedbackDispatchResult> =
   makeFeedbackDispatcher(resendSend);

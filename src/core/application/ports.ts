@@ -339,3 +339,37 @@ export interface SessionCookieManager {
   /** Remove the session cookie from the browser (logout). */
   destroy(): Promise<void>;
 }
+
+// ─── Feedback persistence (R14-L §11) ──────────────────────────────────────
+
+/**
+ * Persistent record of a user feedback submission (R14-L).
+ *
+ * Resolves the §11 defect: feedback used to report "sent" even when the email
+ * transport failed, and nothing was persisted. The record stores the REAL
+ * delivery outcome (`delivered` | `failed`) so the action returns an honest
+ * result and feedback is never lost.
+ *
+ * Deliberately an infrastructure-level out port (NOT a domain entity, same as
+ * `OperationLog`): this is a support artifact, not a financial/business
+ * entity. Unlike `OperationLog` it MAY carry contact info (`email`) because
+ * support needs to follow up with the author.
+ */
+export interface FeedbackRecord {
+  kind: 'comment' | 'bug' | 'suggestion';
+  message: string;
+  userId: string;
+  email?: string;
+  locale: string;
+  page?: string;
+  result: 'delivered' | 'failed';
+  attemptedAt: Date;
+}
+
+export interface FeedbackStore {
+  /**
+   * Records a feedback submission with its real delivery outcome. Must NEVER
+   * throw — best-effort (a persistence failure must not break the submit flow).
+   */
+  record(record: FeedbackRecord): Promise<void>;
+}
