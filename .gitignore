@@ -58,3 +58,6 @@ pwa_pack/
 *.zip
 logo_concept*.png
 isotipo_*.png
+
+# Atlas backup artifacts (local only)
+backups/
