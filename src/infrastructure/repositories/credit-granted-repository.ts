@@ -70,7 +70,8 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     }
   }
 
-  async update(credit: CreditGranted): Promise<CreditGranted> {
+  async update(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted> {
+    const session = sessionOf(tx);
     const docData = toCreditGrantedDocData(credit);
     const result = await CreditGrantedModel.findOneAndUpdate(
       {
@@ -78,7 +79,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
         workspaceId: new Types.ObjectId(credit.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -92,11 +93,15 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     return toCreditGrantedEntity(result as CreditGrantedDocument, currency);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
-    const result = await CreditGrantedModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
+    const result = await CreditGrantedModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session },
+    ).exec();
     if (!result) {
       throw new NotFoundError(
         `CreditGranted ${id} not found for user ${workspaceId}`,
@@ -120,7 +125,9 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       interestAmount?: number;
       interestMovementId?: string;
     },
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     if (abono.movementId) {
       const result = await CreditGrantedModel.updateOne(
         {
@@ -129,6 +136,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
+        { session },
       ).exec();
       if (result.matchedCount === 0) {
         return;
@@ -140,6 +148,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
           workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
+        { session },
       ).exec();
     }
   }
@@ -160,7 +169,9 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       interestAmount: number;
       interestMovementId: string;
     }>,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const setFields: Record<string, unknown> = {};
     const unsetFields: Record<string, string> = {};
     for (const [key, value] of Object.entries(updates)) {
@@ -183,6 +194,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
         "abonos.id": abonoId,
       },
       update,
+      { session },
     ).exec();
   }
 
@@ -191,13 +203,16 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     workspaceId: string,
     creditId: string,
     abonoId: string,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
+      { session },
     ).exec();
   }
 
@@ -206,13 +221,16 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     workspaceId: string,
     creditId: string,
     writtenOff: { date: Date; movementId: string },
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await CreditGrantedModel.updateOne(
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $set: { writtenOff } },
+      { session },
     ).exec();
   }
 

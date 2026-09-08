@@ -40,7 +40,8 @@ export class MongoTransferRepository implements TransferRepository {
     }
   }
 
-  async update(transfer: Transfer): Promise<Transfer> {
+  async update(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer> {
+    const session = sessionOf(tx);
     const docData = toTransferDocData(transfer);
     const result = await TransferModel.findOneAndUpdate(
       {
@@ -48,7 +49,7 @@ export class MongoTransferRepository implements TransferRepository {
         workspaceId: new Types.ObjectId(transfer.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -58,11 +59,15 @@ export class MongoTransferRepository implements TransferRepository {
     return toTransferEntity(result as TransferDocument);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
-    const result = await TransferModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
+    const result = await TransferModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session },
+    ).exec();
     if (!result) {
       throw new NotFoundError(`Transfer ${id} not found for user ${workspaceId}`);
     }

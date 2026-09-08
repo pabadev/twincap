@@ -62,7 +62,8 @@ export class MongoSaleRepository implements SaleRepository {
     }
   }
 
-  async update(sale: Sale): Promise<Sale> {
+  async update(sale: Sale, tx?: TransactionHandle): Promise<Sale> {
+    const session = sessionOf(tx);
     const docData = toSaleDocData(sale);
     const result = await SaleModel.findOneAndUpdate(
       {
@@ -70,7 +71,7 @@ export class MongoSaleRepository implements SaleRepository {
         workspaceId: new Types.ObjectId(sale.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -84,11 +85,15 @@ export class MongoSaleRepository implements SaleRepository {
     return toSaleEntity(result as SaleDocument, currency);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
-    const result = await SaleModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
+    const result = await SaleModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session },
+    ).exec();
     if (!result) {
       throw new NotFoundError(`Sale ${id} not found for user ${workspaceId}`);
     }
@@ -107,7 +112,9 @@ export class MongoSaleRepository implements SaleRepository {
       accountId: string;
       movementId?: string;
     },
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const docAbono = { ...abono, accountId: new Types.ObjectId(abono.accountId) };
     if (abono.movementId) {
       const result = await SaleModel.updateOne(
@@ -117,6 +124,7 @@ export class MongoSaleRepository implements SaleRepository {
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
       if (result.matchedCount === 0) {
         return;
@@ -128,6 +136,7 @@ export class MongoSaleRepository implements SaleRepository {
           workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
     }
   }
@@ -138,7 +147,9 @@ export class MongoSaleRepository implements SaleRepository {
     saleId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const setFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updates)) {
       setFields[`abonos.$.${key}`] = value;
@@ -150,6 +161,7 @@ export class MongoSaleRepository implements SaleRepository {
         "abonos.id": abonoId,
       },
       { $set: setFields },
+      { session },
     ).exec();
   }
 
@@ -158,13 +170,16 @@ export class MongoSaleRepository implements SaleRepository {
     workspaceId: string,
     saleId: string,
     abonoId: string,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await SaleModel.updateOne(
       {
         _id: saleId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
+      { session },
     ).exec();
   }
 

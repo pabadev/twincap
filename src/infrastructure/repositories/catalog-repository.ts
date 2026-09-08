@@ -105,13 +105,16 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     workspaceId: string,
     itemId: string,
     quantity: number,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await CatalogItemModel.updateOne(
       {
         _id: itemId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $inc: { stock: quantity } },
+      { session },
     ).exec();
   }
 }

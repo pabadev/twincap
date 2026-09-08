@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { PayableRepository } from "../../core/domain/repositories";
 import type { Payable } from "../../core/domain/payable";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { PayableModel, type PayableDocument } from "../models/payable";
@@ -9,6 +10,7 @@ import {
   toPayableEntity,
   toPayableDocData,
 } from "../mappers/payable";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoPayableRepository implements PayableRepository {
   async findById(workspaceId: string, id: string): Promise<Payable | null> {
@@ -45,15 +47,19 @@ export class MongoPayableRepository implements PayableRepository {
     });
   }
 
-  async create(payable: Payable): Promise<Payable> {
+  async create(payable: Payable, tx?: TransactionHandle): Promise<Payable> {
     try {
+      const session = sessionOf(tx);
       const docData = toPayableDocData(payable);
-      const created = await PayableModel.create({ ...docData, _id: payable.id });
+      const created = await PayableModel.create(
+        [{ ...docData, _id: payable.id }],
+        { session },
+      );
       const currency = await this.resolveAccountCurrency(
         payable.workspaceId,
         payable.accountId,
       );
-      return toPayableEntity(created as PayableDocument, currency);
+      return toPayableEntity(created[0] as PayableDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -64,7 +70,8 @@ export class MongoPayableRepository implements PayableRepository {
     }
   }
 
-  async update(payable: Payable): Promise<Payable> {
+  async update(payable: Payable, tx?: TransactionHandle): Promise<Payable> {
+    const session = sessionOf(tx);
     const docData = toPayableDocData(payable);
     const result = await PayableModel.findOneAndUpdate(
       {
@@ -72,7 +79,7 @@ export class MongoPayableRepository implements PayableRepository {
         workspaceId: new Types.ObjectId(payable.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -111,7 +118,9 @@ export class MongoPayableRepository implements PayableRepository {
       accountId: string;
       movementId?: string;
     },
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const docAbono = { ...abono, accountId: new Types.ObjectId(abono.accountId) };
     if (abono.movementId) {
       // Idempotent: skip if movementId already exists
@@ -122,6 +131,7 @@ export class MongoPayableRepository implements PayableRepository {
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
       if (result.matchedCount === 0) {
         // Either payable not found or abono already applied — both fine
@@ -134,6 +144,7 @@ export class MongoPayableRepository implements PayableRepository {
           workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
     }
   }
@@ -144,7 +155,9 @@ export class MongoPayableRepository implements PayableRepository {
     payableId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const setFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updates)) {
       setFields[`abonos.$.${key}`] = value;
@@ -156,6 +169,7 @@ export class MongoPayableRepository implements PayableRepository {
         "abonos.id": abonoId,
       },
       { $set: setFields },
+      { session },
     ).exec();
   }
 
@@ -164,13 +178,16 @@ export class MongoPayableRepository implements PayableRepository {
     workspaceId: string,
     payableId: string,
     abonoId: string,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await PayableModel.updateOne(
       {
         _id: payableId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
+      { session },
     ).exec();
   }
 

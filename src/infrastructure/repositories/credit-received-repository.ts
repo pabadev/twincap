@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { CreditReceivedRepository } from "../../core/domain/repositories";
 import type { CreditReceived } from "../../core/domain/credit-received";
+import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import {
@@ -12,6 +13,7 @@ import {
   toCreditReceivedEntity,
   toCreditReceivedDocData,
 } from "../mappers/credit-received";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCreditReceivedRepository implements CreditReceivedRepository {
   async findById(workspaceId: string, id: string): Promise<CreditReceived | null> {
@@ -48,15 +50,19 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     });
   }
 
-  async create(credit: CreditReceived): Promise<CreditReceived> {
+  async create(credit: CreditReceived, tx?: TransactionHandle): Promise<CreditReceived> {
     try {
+      const session = sessionOf(tx);
       const docData = toCreditReceivedDocData(credit);
-      const created = await CreditReceivedModel.create({ ...docData, _id: credit.id });
+      const created = await CreditReceivedModel.create(
+        [{ ...docData, _id: credit.id }],
+        { session },
+      );
       const currency = await this.resolveAccountCurrency(
         credit.workspaceId,
         credit.accountId,
       );
-      return toCreditReceivedEntity(created as CreditReceivedDocument, currency);
+      return toCreditReceivedEntity(created[0] as CreditReceivedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -67,7 +73,8 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     }
   }
 
-  async update(credit: CreditReceived): Promise<CreditReceived> {
+  async update(credit: CreditReceived, tx?: TransactionHandle): Promise<CreditReceived> {
+    const session = sessionOf(tx);
     const docData = toCreditReceivedDocData(credit);
     const result = await CreditReceivedModel.findOneAndUpdate(
       {
@@ -75,7 +82,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
         workspaceId: new Types.ObjectId(credit.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -114,7 +121,9 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
       accountId: string;
       movementId?: string;
     },
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const docAbono = { ...abono, accountId: new Types.ObjectId(abono.accountId) };
     if (abono.movementId) {
       // Idempotent: skip if movementId already exists
@@ -125,6 +134,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
           "abonos.movementId": { $ne: abono.movementId },
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
       if (result.matchedCount === 0) {
         // Either credit not found or abono already applied — both fine
@@ -137,6 +147,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
           workspaceId: new Types.ObjectId(workspaceId),
         },
         { $push: { abonos: docAbono } },
+        { session },
       ).exec();
     }
   }
@@ -147,7 +158,9 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     creditId: string,
     abonoId: string,
     updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     const setFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updates)) {
       setFields[`abonos.$.${key}`] = value;
@@ -159,6 +172,7 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
         "abonos.id": abonoId,
       },
       { $set: setFields },
+      { session },
     ).exec();
   }
 
@@ -167,13 +181,16 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     workspaceId: string,
     creditId: string,
     abonoId: string,
+    tx?: TransactionHandle,
   ): Promise<void> {
+    const session = sessionOf(tx);
     await CreditReceivedModel.updateOne(
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
+      { session },
     ).exec();
   }
 

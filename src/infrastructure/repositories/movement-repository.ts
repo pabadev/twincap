@@ -146,7 +146,8 @@ export class MongoMovementRepository implements MovementRepository {
     }
   }
 
-  async update(movement: Movement): Promise<Movement> {
+  async update(movement: Movement, tx?: TransactionHandle): Promise<Movement> {
+    const session = sessionOf(tx);
     const docData = toMovementDocData(movement);
     const result = await MovementModel.findOneAndUpdate(
       {
@@ -154,7 +155,7 @@ export class MongoMovementRepository implements MovementRepository {
         workspaceId: new Types.ObjectId(movement.workspaceId),
       },
       { $set: docData },
-      { new: true },
+      { new: true, session },
     ).exec();
     if (!result) {
       throw new NotFoundError(
@@ -171,21 +172,29 @@ export class MongoMovementRepository implements MovementRepository {
     return toMovementEntity(movementDoc, category, currency);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
-    const result = await MovementModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
+    const result = await MovementModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session },
+    ).exec();
     if (!result) {
       throw new NotFoundError(`Movement ${id} not found for user ${workspaceId}`);
     }
   }
 
-  async deleteByRefId(workspaceId: string, refId: string): Promise<number> {
-    const result = await MovementModel.deleteMany({
-      workspaceId: new Types.ObjectId(workspaceId),
-      'link.refId': refId,
-    }).exec();
+  async deleteByRefId(workspaceId: string, refId: string, tx?: TransactionHandle): Promise<number> {
+    const session = sessionOf(tx);
+    const result = await MovementModel.deleteMany(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+        'link.refId': refId,
+      },
+      { session },
+    ).exec();
     return result.deletedCount ?? 0;
   }
 
