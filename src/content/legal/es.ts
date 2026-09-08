@@ -230,7 +230,7 @@ export const legalEs: LegalContent = {
           headers: ['Cookie', 'Finalidad', 'Necesaria', 'Características'],
           rows: [
             [
-              'gm_session',
+              'twincap_session',
               'Mantener tu sesión iniciada (identidad autenticada).',
               'Sí, estrictamente necesaria',
               'Cifrada (JWT A256GCM), httpOnly, sameSite lax, path /, secure en producción. Expira a los 30 días.',
@@ -259,7 +259,7 @@ export const legalEs: LegalContent = {
       {
         heading: '5. Cómo administrar las cookies',
         paragraphs: [
-          'Puedes controlar y eliminar las cookies desde la configuración de tu navegador. Puedes bloquearlas o borrarlas, aunque ten en cuenta que la cookie de sesión (gm_session) es estrictamente necesaria: sin ella no podrás iniciar sesión ni usar el servicio.',
+          'Puedes controlar y eliminar las cookies desde la configuración de tu navegador. Puedes bloquearlas o borrarlas, aunque ten en cuenta que la cookie de sesión (twincap_session) es estrictamente necesaria: sin ella no podrás iniciar sesión ni usar el servicio.',
           'También puedes borrar el dato de tema almacenado en tu navegador; el servicio volverá a tu tema por defecto (según tu preferencia del sistema).',
         ],
       },

@@ -224,7 +224,7 @@ export const legalEn: LegalContent = {
           headers: ['Cookie', 'Purpose', 'Necessary', 'Characteristics'],
           rows: [
             [
-              'gm_session',
+              'twincap_session',
               'Keep you signed in (authenticated identity).',
               'Yes, strictly necessary',
               'Encrypted (A256GCM JWT), httpOnly, sameSite lax, path /, secure in production. Expires after 30 days.',
@@ -253,7 +253,7 @@ export const legalEn: LegalContent = {
       {
         heading: '5. How to manage cookies',
         paragraphs: [
-          'You can control and delete cookies from your browser settings. You can block or delete them, but note that the session cookie (gm_session) is strictly necessary: without it you will not be able to sign in or use the service.',
+          'You can control and delete cookies from your browser settings. You can block or delete them, but note that the session cookie (twincap_session) is strictly necessary: without it you will not be able to sign in or use the service.',
           'You can also delete the theme data stored in your browser; the service will return to your default theme (according to your system preference).',
         ],
       },

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import type { SessionClaims, SessionManager, SessionCookieManager } from "../../core/application/ports";
 
-const COOKIE_NAME = "gm_session";
+const COOKIE_NAME = "twincap_session";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,

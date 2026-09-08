@@ -196,7 +196,7 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
 
     // Session cookie exists while authenticated.
     const sessionBefore = (await page.context().cookies()).filter(
-      (c) => c.name === 'gm_session',
+      (c) => c.name === 'twincap_session',
     );
     expect(sessionBefore).toHaveLength(1);
 
@@ -205,7 +205,7 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
 
     // Confirmed logout: the session cookie is gone.
     const sessionAfter = (await page.context().cookies()).filter(
-      (c) => c.name === 'gm_session',
+      (c) => c.name === 'twincap_session',
     );
     expect(sessionAfter).toHaveLength(0);
   });
@@ -225,10 +225,10 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
 
       // Distinct sessions for distinct tenants.
       const cookieA = (await contextA.cookies()).find(
-        (c) => c.name === 'gm_session',
+        (c) => c.name === 'twincap_session',
       );
       const cookieB = (await contextB.cookies()).find(
-        (c) => c.name === 'gm_session',
+        (c) => c.name === 'twincap_session',
       );
       expect(cookieA).toBeDefined();
       expect(cookieB).toBeDefined();
