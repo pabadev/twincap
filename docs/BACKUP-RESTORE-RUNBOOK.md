@@ -86,8 +86,7 @@ Fill one row per backup/restore cycle. This table (or a copy) is the P0-c eviden
 
 | Fecha | Backup dir | Collections (n) | Total docs | Restore PASS/FAIL | App-check PASS/FAIL | Run by | Notes |
 |-------|------------|-----------------|------------|-------------------|---------------------|--------|-------|
-|       |            |                 |            |                   |                     |        |       |
-|       |            |                 |            |                   |                     |        |       |
+| 2026-09-07 | `backups/2026-09-07-210056` | 22 | 656 | ✅ PASS (22/22, 656/656) | ✅ workspace-scoped data query (3 cuentas / 23 movimientos / 8 ventas / 1 transferencia / 9 categorías / 2 clientes del ws `6a83e3b3...`) — login UI pendiente (fundador) | MCP orchestrator + scripts | DB real `globalmoney` (host `cluster0.06amtxd`); restore a `globalmoney_restore_test`; commit probado: `3772105` |
 
 Additional evidence to attach: the printed verification table of the restore run, and the
 app version/commit tested (`git rev-parse --short HEAD` or Vercel deploy id).
