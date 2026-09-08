@@ -141,14 +141,14 @@ Los límites del monitor NO son números arbitrarios — son política de produc
 
 La auditoría P0.7 exige smoke test real después de cada deployment, no documental. Al terminar cada deploy de producción, el fundador ejecuta esta checklist (5–10 min) contra `https://twincap.vercel.app` (dominio actual de producción; **usar una pestaña de incógnito para no heredar sesión**):
 
-- [ ] `/login` responde 200 y renderiza el formulario.
-- [ ] Login real con cuenta de tester funciona y redirige a `/dashboard` sin errores visibles.
-- [ ] Dashboard carga movimientos del workspace de prueba (datos reales, no vacío).
-- [ ] Alta de movimiento (ingreso y gasto) funciona de punta a punta y el dashboard actualiza el balance.
-- [ ] `/help`, `/privacy` y `/terms` responden 200.
-- [ ] Índices en Atlas intactos: `node --env-file=.env.local scripts/verify-dashboard-indexes.mjs` → `CONTRACT OK` y `node --env-file=.env.local scripts/verify-monitor-indexes.mjs` → `CONTRACT OK` (los índices viven en el cluster y no deberían cambiar con un deploy, pero el verificador es la prueba de que el contrato sigue).
-- [ ] `/api/monitor` no reporta errores en Vercel (Logs) tras las acciones anteriores.
-- [ ] `ANALYTICS_ENABLED=true` y `ANALYTICS_EXCLUDE_EMAILS` correctos en Vercel (si aplica a este deploy).
+- [x] `/login` responde 200 y renderiza el formulario. ✅ (2026-09-08, incógnito, log GET 200)
+- [x] Login real con cuenta de tester funciona y redirige a `/dashboard` sin errores visibles. ✅ (POST /dashboard 200, 02:05:30 UTC−5)
+- [x] Dashboard carga movimientos del workspace de prueba (datos reales, no vacío). ✅
+- [x] Alta de movimiento (ingreso y gasto) funciona de punta a punta y el dashboard actualiza el balance. ✅ (verificado por el fundador)
+- [x] `/help`, `/privacy` y `/terms` responden 200. ✅ (logs GET 200 para privacy/terms; help 200)
+- [x] Índices en Atlas intactos: `node --env-file=.env.local scripts/verify-dashboard-indexes.mjs` → `CONTRACT OK` y `node --env-file=.env.local scripts/verify-monitor-indexes.mjs` → `CONTRACT OK` (los índices viven en el cluster y no deberían cambiar con un deploy, pero el verificador es la prueba de que el contrato sigue). ✅ (2026-09-08: dashboard 1/1, monitor 2+2 con TTL)
+- [x] `/api/monitor` no reporta errores en Vercel (Logs) tras las acciones anteriores. ✅ (Logs 02:04–02:07: 0 × 5xx, 0 errores)
+- [x] `ANALYTICS_ENABLED=true` y `ANALYTICS_EXCLUDE_EMAILS` correctos en Vercel (si aplica a este deploy). ✅ (configuración de producción de R14-E vigente; sin cambios en este deploy)
 
 Si cualquier paso falla, el deploy NO está completo: resolver antes de considerar el release cerrado.
 

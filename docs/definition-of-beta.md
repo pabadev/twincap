@@ -26,9 +26,9 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 - [x] **Soporte + feedback en producto** (página `/help`, widget de feedback → email).
 - [x] **Analítica de producto** (activation/retention/usage, sin PII, acceso solo founder).
 - [x] **Exportación CSV** (movimientos y ventas).
-- [x] **Backup + restore probado** (P0-c CERRADO — `docs/BACKUP-RESTORE-RUNBOOK.md` evidencia 2026-09-07, backup `2026-09-07-214359`: 22/22 colecciones, 656 docs, tipos BSON verificados, fundador logueó y accedió a su workspace contra la DB restaurada). ← **ÚLTIMO REQUISITO TÉCNICO — CERRADO**
-- [ ] **Smoke test post-deploy** (pendiente — ver P0-b abajo).
-- [ ] **Prueba manual de aislamiento 2 usuarios** (checklist en `docs/beta-qa-isolation-checklist.md`).
+- [x] **Backup + restore probado** (P0-c CERRADO — `docs/BACKUP-RESTORE-RUNBOOK.md` evidencia 2026-09-07, backup `2026-09-07-214359`: 22/22 colecciones, 656 docs, tipos BSON verificados, fundador logueó y accedió a su workspace contra la DB restaurada).
+- [x] **Smoke test post-deploy** (P0.7 CERRADO — `docs/beta-launch-plan.md` §9 ejecutado por el fundador contra producción `dccca1d` el 2026-09-08: pasos 1–5 OK + verificadores de índices `CONTRACT OK` + logs Vercel 0×5xx; checklist §9 8/8 ✅).
+- [x] **Prueba manual de aislamiento 2 usuarios** — ✅ **CERRADA 2026-09-08** — checklist `docs/beta-qa-isolation-checklist.md` ejecutado completo por el fundador contra producción (`dccca1d`): pasos 1–5 + matriz 4.4 **10/10 PASS** (sondeo por URL + mutaciones cross-user inyectadas con ids reales de B: todas rechazadas con `error.notFound`, DB verificada server-side sin cambios; única incidencia = edición legítima desde la ventana de B durante la búsqueda de "Edit and Resend", descartada como fallo). ← **ÚLTIMO REQUISITO TÉCNICO CERRADO**
 
 ### Grupo C — Legal (Documentación registral)
 - [x] Política de privacidad, términos y condiciones, cookies, política de datos (Ley 1581/2012).
@@ -43,7 +43,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 |-----|-----------|-------|------|
 | **P0-c** | Backup + restore probado | Fundador | Atlas M0 no tiene backups automáticos. Probar: backup → restore → app usable. Decidir upgrade M10/M20 o procedimiento manual documentado. | ✅ **CERRADO 2026-09-07** — backup `2026-09-07-214359`, restore 22/22 a `globalmoney_restore_test`, tipos BSON verificados, app-check PASS (fundador logueó y vio sus datos). **Decisión fundador (2026-09-07): M0 + runbook manual** (§5); `globalmoney_restore_test` se conserva para futuras pruebas. |
 | **P0-b** | Separación de entornos (staging vs producción) | Fundador | Vercel ya separa previews; documentar workflow + política de deploy directo a main. |
-| — | Smoke test post-deploy | Fundador | Checklist corto post-deploy (login, dashboard, 1 movimiento) antes de avisar a beta testers. |
+| — | Smoke test post-deploy | Fundador | Checklist corto post-deploy (login, dashboard, 1 movimiento) antes de avisar a beta testers. | ✅ **CERRADO 2026-09-08** — §9 de `docs/beta-launch-plan.md` ejecutado contra producción `dccca1d`: pasos 1–5 OK, verificadores de índices CONTRACT OK, logs Vercel sin 5xx (checklist 8/8 ✅). |
 | — | Primer movimiento + encuesta | Fundador | El evento `returned` y la encuesta post-beta quedaron pausados; se habilitan al abrir la beta. |
 | — | Legal placeholders | Fundador | Depende de la identidad legal real de TwinCap. |
 | — | Onboarding orientado a activación (P1-b) | Post-beta | Opcional; se decide según métricas de activation reales. |
@@ -62,11 +62,11 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 ## 4. Cómo se abre la beta (resumen operativo)
 
 1. Ejecutar y aprobar el checklist H1 (aislamiento 2 usuarios).
-2. Resolver P0-c (backup/restore) y documentar P0-b + smoke test.
+2. CERRADO: P0-c (backup/restore) + smoke test post-deploy (P0.7) ✅ 2026-09-08; P0-b (separación de entornos) queda documentado como policy operativa.
 3. Reemplazar placeholders legales + (si aplica) revisión de abogado.
 4. Avisar a los 10–20 beta testers con el plan de lanzamiento (`docs/beta-launch-plan.md`).
 5. Activar `ANALYTICS_ENABLED=true` (si no está) y empezar a medir desde el día 1.
 
 ---
 
-*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-07 (P0-c cerrado, backup/restore probado).*
+*Documento vivo: se actualiza con cada decisión del fundador. Última actualización: 2026-09-08 (P0-c cerrado, isolation cerrada, smoke test P0.7 cerrado — pendientes solo legales + P0-b).*

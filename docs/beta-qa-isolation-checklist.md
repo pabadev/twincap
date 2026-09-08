@@ -74,16 +74,16 @@
 
 | Entidad | Ruta con id de B (URL directa) | Resultado esperado | Resultado real | OK? |
 |---|---|---|---|---|
-| Cuentas | `/accounts` | Carga vacía o solo datos propios de A; sin datos de B; sin mensaje que revele existencia | | ☐ |
-| Movimientos | `/movements` | ídem | | ☐ |
-| Transferencias | `/transfers` | ídem | | ☐ |
-| Créditos recibidos | `/credits/received` | ídem | | ☐ |
-| Créditos otorgados | `/credits/granted` | ídem | | ☐ |
-| Payables | `/payables` | ídem | | ☐ |
-| Ventas POS | `/pos/sales` | ídem | | ☐ |
-| Clientes | `/clients` | ídem | | ☐ |
-| Categorías | `/categories` | ídem | | ☐ |
-| Ítems de catálogo | `/pos/catalog` | ídem | | ☐ |
+| Cuentas | `/accounts` | Carga vacía o solo datos propios de A; sin datos de B; sin mensaje que revele existencia | ✅ PASS (2026-09-08): mutación inyectada con accountId de B (`6a9f85fb...` TEST-B Banco B) desde sesión de A → envelope `error.notFound` en respuesta + Atlas verificado sin cambios en cuentas de B. | ☑ |
+| Movimientos | `/movements` | ídem | ✅ PASS (2026-09-08): `updateMovementAction` inyectado con movementId de B (`6a9f86a4...`) desde sesión de A → envelope `error.notFound` en respuesta. | ☑ |
+| Transferencias | `/transfers` | ídem | ✅ PASS (2026-09-08): sondeo de URL con A → solo datos propios, server actions 200 OK, sin payloads de B (B no tiene transferencias). | ☑ |
+| Créditos recibidos | `/credits/received` | ídem | ✅ PASS (2026-09-08): sondeo de URL con A → solo datos propios, server actions 200 OK (B sin créditos recibidos). | ☑ |
+| Créditos otorgados | `/credits/granted` | ídem | ✅ PASS (2026-09-08): sondeo de URL con A → solo datos propios, server actions 200 OK (B sin créditos otorgados). | ☑ |
+| Payables | `/payables` | ídem | ✅ PASS (2026-09-08): sondeo de URL con A → solo datos propios, server actions 200 OK (B sin payables). | ☑ |
+| Ventas POS | `/pos/sales` | ídem | ✅ PASS (2026-09-08): `getSaleDetailAction` inyectado con saleId de B (`6a9f86a4...`) desde sesión de A → `{"ok":false,"error":"error.notFound"}` — detalle rechazado sin fuga. | ☑ |
+| Clientes | `/clients` | ídem | ✅ PASS (2026-09-08): fetch inyectado con clientId de B (`6a9f8672...`) desde sesión de A → STATUS 200 con error-toast, SIN mutar B (el name en DB siguió siendo el editado legítimamente desde ventana de B: "TEST-B Cliente B edit", no el "TEST Cliente edit 5" del payload). Verificado server-side en Atlas. | ☑ |
+| Categorías | `/categories` | ídem | ✅ PASS (2026-09-08): `updateCategoryAction` inyectado con categoryId de B (`6a9921ba30...`) desde sesión de A → envelope `error.notFound`. | ☑ |
+| Ítems de catálogo | `/pos/catalog` | ídem | ✅ PASS (2026-09-08): `updateCatalogItemAction` inyectado con itemId de B (`6a9f869d5d...`) desde sesión de A → envelope `error.notFound`. | ☑ |
 
 > Registrar para cada fila: lo visible en pantalla, el status de cada server action (200/302 vs 404/error) y si algún payload contenía datos de B.
 
@@ -91,16 +91,17 @@
 
 ## Paso 5 — Cierre
 
-- [ ] Cerrar sesión de A y B, volver a entrar: ambas sesiones siguen intactas y cada uno ve solo sus datos.
-- [ ] Registrar la **versión/commit probado** (recomendado: `git rev-parse --short HEAD` o el deploy id de Vercel) y anotarlo en el Resultado.
-- [ ] Si alguna verificación **falló**: anotar el paso exacto, captura de pantalla y el navegador/contexto; reportarlo como bug (no continuar).
+- [x] Cerrar sesión de A y B, volver a entrar: ambas sesiones siguen intactas y cada uno ve solo sus datos. ✅ (2026-09-08, verificado por el fundador)
+- [x] Registrar la **versión/commit probado** (recomendado: `git rev-parse --short HEAD` o el deploy id de Vercel) y anotarlo en el Resultado.
+- [x] Si alguna verificación **falló**: anotar el paso exacto, captura de pantalla y el navegador/contexto; reportarlo como bug (no continuar). — Ninguna falló.
 
 ## Resultado
 
-- **Fecha de ejecución:** ________________
-- **Versión/commit probado:** ________________ (`git rev-parse --short HEAD` o deploy id de Vercel)
-- **Usuarios usados:** A = ______________, B = ______________
-- **Pass/Fail:** ☐ PASS completo ☐ FAIL (pasos con ×: ______________)
+- **Fecha de ejecución:** 2026-09-08 (inicio 2026-09-07, retomado y completado 2026-09-08)
+- **Versión/commit probado:** `dccca1d` (fix analytics opaque 404; deploy Vercel twincap.vercel.app)
+- **Usuarios usados:** A = cuenta principal del fundador (workspace `6a8922639bc1a626829342b7`, Brave), B = cuenta de prueba TEST-B (workspace `6a9921ba308259ec809b8b07`, Edge/incógnito)
+- **Pass/Fail:** ☑ PASS completo (10/10 en matriz 4.4; notas: 4.3 /analytics requería fix previo `dccca1d` que quedó verificado con 404 opaco sin sidebar)
+  - Incidencia menor registrada (no fallo de seguridad): durante 4.4 Clientes hubo datos de B editados legítimamente desde la ventana de B mientras se buscaba "Edit and Resend" en Brave; se verificó server-side que el fetch inyectado desde A con clientId de B NO mutó B (payload `TEST Cliente edit 5` nunca apareció en DB de B) → PASS confirmado.
 
 ---
 
