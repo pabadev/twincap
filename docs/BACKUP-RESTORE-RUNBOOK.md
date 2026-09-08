@@ -50,7 +50,7 @@ Restores a backup into a **temporary database** on the same cluster (default nam
 `<sourceDb>_restore_test`) and verifies per-collection counts against the manifest:
 
 ```bash
-node --env-file=.env.local scripts/restore-atlas.mjs --dir backups/2026-09-07-143022
+node --env-file=.env.local scripts/restore-atlas.mjs --dir backups/2026-09-07-214359
 ```
 
 - Refuses (non-zero exit) if the target database already exists, unless `--drop` is passed
@@ -86,7 +86,9 @@ Fill one row per backup/restore cycle. This table (or a copy) is the P0-c eviden
 
 | Fecha | Backup dir | Collections (n) | Total docs | Restore PASS/FAIL | App-check PASS/FAIL | Run by | Notes |
 |-------|------------|-----------------|------------|-------------------|---------------------|--------|-------|
-| 2026-09-07 | `backups/2026-09-07-210056` | 22 | 656 | ✅ PASS (22/22, 656/656) | ✅ workspace-scoped data query (3 cuentas / 23 movimientos / 8 ventas / 1 transferencia / 9 categorías / 2 clientes del ws `6a83e3b3...`) — login UI pendiente (fundador) | MCP orchestrator + scripts | DB real `globalmoney` (host `cluster0.06amtxd`); restore a `globalmoney_restore_test`; commit probado: `3772105` |
+| 2026-09-07 | `backups/2026-09-07-214359` | 22 | 656 | ✅ PASS (22/22, 656/656) | ✅ workspace-scoped data query (3 cuentas / 23 movimientos / 8 ventas / 1 transferencia / 9 categorías / 2 clientes del ws `6a83e3b3...`) — **login UI pendiente (fundador)** | MCP orchestrator + scripts | DB real `globalmoney` (host `cluster0.06amtxd`); restore a `globalmoney_restore_test`; commit probado: `bea2262`; **tipos BSON verificados idénticos a producción (ObjectId/Date)** |
+
+**⚠️ Corrección de tipos BSON (commit `bea2262`):** los backups anteriores a `214359` (`210056`, `213717`) quedaron **invalidados y borrados** — `JSON.stringify` degradaba `ObjectId`→string y `Date`→string (vía `toJSON()` antes del replacer), por lo que las queries de la app (que castean a `ObjectId`/`Date`) no matcheaban nada: el login "completaba" pero la sesión quedaba sin workspace. El backup actual serializa marcadores EJSON-lite `{$oid}`/`{$date}` ANTES de `stringify` (`toEjsonValue`) y el restore los revive con `JSON.parse` reviver. **Siempre re-verificar tipos tras un restore:** `scripts/_tmp-verify-types.mjs` (patrón, se borra tras usar).
 
 Additional evidence to attach: the printed verification table of the restore run, and the
 app version/commit tested (`git rev-parse --short HEAD` or Vercel deploy id).
