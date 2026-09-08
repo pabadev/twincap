@@ -41,7 +41,7 @@ La beta privada está **lista para abrir** cuando se cumplen TODOS estos grupos:
 
 | Ref | Pendiente | Dueño | Nota |
 |-----|-----------|-------|------|
-| **P0-c** | Backup + restore probado | Fundador | Atlas M0 no tiene backups automáticos. Probar: backup → restore → app usable. Decidir upgrade M10/M20 o procedimiento manual documentado. | ✅ **CERRADO 2026-09-07** — backup `2026-09-07-214359`, restore 22/22 a `globalmoney_restore_test`, tipos BSON verificados, app-check PASS (fundador logueó y vio sus datos). **Pendiente del fundador:** decisión M0 vs M10/M20 (§5 del runbook). |
+| **P0-c** | Backup + restore probado | Fundador | Atlas M0 no tiene backups automáticos. Probar: backup → restore → app usable. Decidir upgrade M10/M20 o procedimiento manual documentado. | ✅ **CERRADO 2026-09-07** — backup `2026-09-07-214359`, restore 22/22 a `globalmoney_restore_test`, tipos BSON verificados, app-check PASS (fundador logueó y vio sus datos). **Decisión fundador (2026-09-07): M0 + runbook manual** (§5); `globalmoney_restore_test` se conserva para futuras pruebas. |
 | **P0-b** | Separación de entornos (staging vs producción) | Fundador | Vercel ya separa previews; documentar workflow + política de deploy directo a main. |
 | — | Smoke test post-deploy | Fundador | Checklist corto post-deploy (login, dashboard, 1 movimiento) antes de avisar a beta testers. |
 | — | Primer movimiento + encuesta | Fundador | El evento `returned` y la encuesta post-beta quedaron pausados; se habilitan al abrir la beta. |

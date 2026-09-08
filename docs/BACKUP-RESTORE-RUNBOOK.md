@@ -100,4 +100,8 @@ app version/commit tested (`git rev-parse --short HEAD` or Vercel deploy id).
 | **A. Stay on M0 + this runbook** | Free | Manual only | Discipline-dependent; acceptable for beta with few real users |
 | **B. Upgrade M10/M20** | Paid (monthly) | Automated continuous backups (PITR on M10+) | Recommended before production-scale real data |
 
-**Decision:** ________________ (founder) &nbsp;&nbsp; **Date:** ________________
+**Decision:** ✅ **A. Stay on M0 + this runbook** (2026-09-07, founder). Manual weekly backups + explicit pre-migration backups are the accepted procedure for a closed beta with few real users. Revisit before production-scale real data.
+&nbsp;
+
+> **Temp DB policy (founder, 2026-09-07):** `globalmoney_restore_test` stays alive on the cluster for future restore-test cycles. Reuse it with `--drop` when running a fresh P0-c proof; do not point `.env.local` at it. Drop command if ever needed:
+> `node --env-file=.env.local scripts/restore-atlas.mjs --dir "backups/2026-09-07-214359" --target-db globalmoney_restore_test --drop --skip-restore`
