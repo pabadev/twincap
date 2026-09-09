@@ -11,7 +11,8 @@ import { Money } from '../../domain/money';
 import { openingCategory } from '../../domain/synthetic-categories';
 import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
 import type { AccountRepository, MovementRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { IdGenerator, UnitOfWork } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -68,6 +69,14 @@ function fakeIdGen(): IdGenerator {
   };
 }
 
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 function makeAccount(overrides: Partial<ConstructorParameters<typeof Account>[0]> = {}): Account {
   return new Account({
     id: 'acc-1',
@@ -120,6 +129,7 @@ describe('createAccount', () => {
       accountRepo,
       movementRepo,
       ids,
+      fakeUow(),
     );
 
     expect(account.name).toBe('Ahorros');
@@ -140,6 +150,7 @@ describe('createAccount', () => {
       accountRepo,
       movementRepo,
       ids,
+      fakeUow(),
     );
 
     expect(accountRepo.created).toHaveLength(1);
@@ -162,12 +173,13 @@ describe('createAccount', () => {
       accountRepo,
       movementRepo,
       ids,
+      fakeUow(),
     );
 
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('compensates: deletes the just-created account when the opening movement fails (R8)', async () => {
+  it('propagates the opening-movement failure — real rollback replaces the R8 manual compensation (R15-F6)', async () => {
     const accountRepo = fakeAccountRepo();
     const movementRepo = fakeMovementRepo({
       create: vi.fn().mockRejectedValue(new Error('db down')),
@@ -181,13 +193,16 @@ describe('createAccount', () => {
         accountRepo,
         movementRepo,
         ids,
+        fakeUow(),
       ),
     ).rejects.toThrow('db down');
 
-    // Account was created, then rolled back (deleted) — no orphan leftovers.
-    expect(accountRepo.created).toHaveLength(1);
-    const createdAccount = accountRepo.created[0]!;
-    expect(accountRepo.deleted).toEqual([createdAccount.id]);
+    // R15-F6 removes the manual compensation (accountRepo.delete). The write
+    // phase is now a transaction; the createAccount use case NO LONGER calls
+    // accountRepo.delete on failure — rollback is the responsibility of
+    // uow.withTransaction (verified with real repos in the integration suite).
+    expect(movementRepo.create).toHaveBeenCalledTimes(1);
+    expect(accountRepo.delete).not.toHaveBeenCalled();
   });
 });
 

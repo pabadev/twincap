@@ -4,7 +4,8 @@ import { login } from './login';
 import { logout } from './logout';
 import { ValidationError, ConflictError } from '../../domain/errors';
 import type { UserRepository, AccountRepository, CategoryRepository, WorkspaceRepository, MembershipRepository } from '../../domain/repositories';
-import type { PasswordHasher, IdGenerator, WorkspaceBootstrapper, SessionCookieManager } from '../ports';
+import type { PasswordHasher, IdGenerator, WorkspaceBootstrapper, SessionCookieManager, UnitOfWork } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
 import type { User } from '../../domain/user';
 import type { Account } from '../../domain/account';
 import type { Category } from '../../domain/category';
@@ -20,6 +21,14 @@ function fakeBootstrapper(): WorkspaceBootstrapper & { boosted: string[] } {
     bootstrap: async (workspaceId: string) => {
       boosted.push(workspaceId);
     },
+  };
+}
+
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
   };
 }
 
@@ -149,6 +158,7 @@ describe('register', () => {
       workspaceRepo,
       membershipRepo,
       bootstrapper,
+      fakeUow(),
     );
 
     expect(result.userId).toBe('test-user-id');
@@ -180,6 +190,7 @@ describe('register', () => {
       workspaceRepo,
       membershipRepo,
       bootstrapper,
+      fakeUow(),
     );
 
     // Personal workspace: ownerId = new user id
@@ -219,6 +230,7 @@ describe('register', () => {
         fakeWorkspaceRepo(),
         fakeMembershipRepo(),
         fakeBootstrapper(),
+        fakeUow(),
       ),
     ).rejects.toThrow(ConflictError);
   });
@@ -235,6 +247,7 @@ describe('register', () => {
         fakeWorkspaceRepo(),
         fakeMembershipRepo(),
         fakeBootstrapper(),
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
   });

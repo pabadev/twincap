@@ -4,6 +4,7 @@ import type { WorkspaceBootstrapper } from "../../core/application/ports";
 import { Account } from "../../core/domain/account";
 import { Category } from "../../core/domain/category";
 import { objectIdGenerator } from "../config/id-generator";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 // R5-D4/R5-D5: only the fixed Cash account is seeded. Legacy Nequi accounts
 // (removed from the seed) stay in place for existing users but stop being
@@ -29,11 +30,16 @@ const DEFAULT_CATEGORIES: Array<{ name: string; type: "income" | "expense" }> = 
  * Idempotent seeding on registration (design §7).
  * Creates the single fixed Cash account (R5-D5) and eight default categories
  * for a new user. Unique indexes make re-runs safe.
+ *
+ * R15-F6: an optional trailing `tx?` lets the seed join the register
+ * transaction (account + category creates become atomic with the user, the
+ * workspace and the membership). When `tx` is absent the behavior is unchanged.
  */
 export async function seedUser(
   workspaceId: string,
   accountRepo: AccountRepository,
   categoryRepo: CategoryRepository,
+  tx?: TransactionHandle,
 ): Promise<void> {
   const now = new Date();
 
@@ -46,7 +52,7 @@ export async function seedUser(
       isFixed: acct.isFixed,
       createdAt: now,
     });
-    await accountRepo.create(account);
+    await accountRepo.create(account, tx);
   }
 
   for (const cat of DEFAULT_CATEGORIES) {
@@ -57,7 +63,7 @@ export async function seedUser(
       type: cat.type,
       createdAt: now,
     });
-    await categoryRepo.create(category);
+    await categoryRepo.create(category, tx);
   }
 }
 
@@ -72,7 +78,7 @@ export class MongoWorkspaceBootstrapper implements WorkspaceBootstrapper {
     private readonly categoryRepo: CategoryRepository,
   ) {}
 
-  async bootstrap(workspaceId: string): Promise<void> {
-    await seedUser(workspaceId, this.accountRepo, this.categoryRepo);
+  async bootstrap(workspaceId: string, tx?: TransactionHandle): Promise<void> {
+    await seedUser(workspaceId, this.accountRepo, this.categoryRepo, tx);
   }
 }

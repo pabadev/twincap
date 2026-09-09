@@ -40,7 +40,9 @@ import type { Workspace } from "./workspace";
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  create(user: User): Promise<User>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (register onboarding). */
+  create(user: User, tx?: TransactionHandle): Promise<User>;
   update(user: User): Promise<User>;
   delete(id: string): Promise<void>;
 }
@@ -53,9 +55,13 @@ export interface AccountRepository {
    *   for transfer origins/destinations). */
   findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Account | null>;
   findByWorkspaceId(workspaceId: string): Promise<Account[]>;
-  create(account: Account): Promise<Account>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (createAccount and register seed). */
+  create(account: Account, tx?: TransactionHandle): Promise<Account>;
   update(account: Account): Promise<Account>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (createAccount rollback path). */
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** ACC-4: count references across all collections (movements, transfers, credits, sales). */
   countReferences(workspaceId: string, accountId: string): Promise<number>;
   /**
@@ -84,7 +90,9 @@ export interface CategoryRepository {
   findByWorkspaceId(workspaceId: string): Promise<Category[]>;
   /** For uniqueness check: name + type scoped to workspace (CAT-2). */
   findByNameAndType(workspaceId: string, name: string, type: string): Promise<Category | null>;
-  create(category: Category): Promise<Category>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (register seed). */
+  create(category: Category, tx?: TransactionHandle): Promise<Category>;
   update(category: Category): Promise<Category>;
   delete(workspaceId: string, id: string): Promise<void>;
 }
@@ -286,7 +294,10 @@ export interface ClientRepository {
 // ─── Catalog Item ────────────────────────────────────────────────────
 
 export interface CatalogItemRepository {
-  findById(workspaceId: string, id: string): Promise<CatalogItem | null>;
+  /** @param tx optional transaction handle (R15-F6): the read joins the
+   *   caller's transaction (deleteSale reads the item INSIDE the tx so the
+   *   stock restore is snapshot-consistent). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<CatalogItem | null>;
   findByWorkspaceId(workspaceId: string): Promise<CatalogItem[]>;
   create(item: CatalogItem): Promise<CatalogItem>;
   update(item: CatalogItem): Promise<CatalogItem>;
@@ -338,7 +349,9 @@ export interface SaleRepository {
 
 export interface WorkspaceRepository {
   findById(id: string): Promise<Workspace | null>;
-  create(workspace: Workspace): Promise<Workspace>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (register onboarding). */
+  create(workspace: Workspace, tx?: TransactionHandle): Promise<Workspace>;
   update(workspace: Workspace): Promise<Workspace>;
   delete(id: string): Promise<void>;
 }
@@ -350,7 +363,9 @@ export interface MembershipRepository {
   /** Active membership for a user+workspace, if any. */
   findActiveByUserAndWorkspace(userId: string, workspaceId: string): Promise<Membership | null>;
   findByUserId(userId: string): Promise<Membership[]>;
-  create(membership: Membership): Promise<Membership>;
+  /** @param tx optional transaction handle (R15-F6): the write joins the
+   *   caller's transaction (register onboarding). */
+  create(membership: Membership, tx?: TransactionHandle): Promise<Membership>;
   update(membership: Membership): Promise<Membership>;
   delete(id: string): Promise<void>;
 }

@@ -756,6 +756,7 @@ describe('Tenant isolation (B1)', () => {
           fakeCatalogItemRepo(),
           fakeMovementRepo(),
           fakeCreditGrantedRepo(),
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.delete).not.toHaveBeenCalled();

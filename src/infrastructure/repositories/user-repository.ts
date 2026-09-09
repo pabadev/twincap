@@ -3,6 +3,8 @@ import type { User } from "../../core/domain/user";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { UserModel, type UserDocument } from "../models/user";
 import { toUserEntity, toUserDocData } from "../mappers/user";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
@@ -15,11 +17,13 @@ export class MongoUserRepository implements UserRepository {
     return doc ? toUserEntity(doc as UserDocument) : null;
   }
 
-  async create(user: User): Promise<User> {
+  async create(user: User, tx?: TransactionHandle): Promise<User> {
     try {
       const docData = toUserDocData(user);
-      const created = await UserModel.create(docData);
-      return toUserEntity(created as UserDocument);
+      // R15-F6: optional session — the register use case creates the user inside
+      // the onboarding transaction when a handle is provided.
+      const created = await UserModel.create([docData], { session: sessionOf(tx) });
+      return toUserEntity(created[0] as UserDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(`User with email "${user.email}" already exists`);

@@ -239,7 +239,7 @@ export async function deleteSaleAction(
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
         const creditRepo = new MongoCreditGrantedRepository();
-        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo);
+        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/pos/sales');

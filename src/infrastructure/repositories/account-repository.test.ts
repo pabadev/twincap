@@ -31,14 +31,15 @@ describe("MongoAccountRepository.create (R8 root-cause)", () => {
 
   it("persists _id: account.id so movement refIds match the stored account _id", async () => {
     const account = makeAccount();
-    // Mongoose create returns a doc whose _id echoes what was passed in.
-    accountCreate.mockResolvedValue({ ...account.toJSON(), _id: account.id });
+    // Array-form create (R15-F6, session-capable): Mongoose returns [doc]
+    // whose _id echoes what was passed in.
+    accountCreate.mockResolvedValue([{ ...account.toJSON(), _id: account.id }]);
 
     await repo.create(account);
 
     expect(accountCreate).toHaveBeenCalledTimes(1);
-    const docData = (accountCreate as unknown as { mock: { calls: unknown[][] } }).mock
-      .calls[0][0];
+    const docData = ((accountCreate as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0][0] as unknown[])[0];
     expect((docData as { _id: unknown })._id).toBe(account.id);
     expect((docData as Record<string, unknown>).name).toBe(account.name);
     expect((docData as Record<string, unknown>).isFixed).toBe(false);
@@ -46,11 +47,13 @@ describe("MongoAccountRepository.create (R8 root-cause)", () => {
 
   it("maps the stored _id back to the returned entity id", async () => {
     const account = makeAccount();
-    accountCreate.mockResolvedValue({
-      ...account.toJSON(),
-      _id: account.id,
-      _doc: undefined,
-    });
+    accountCreate.mockResolvedValue([
+      {
+        ...account.toJSON(),
+        _id: account.id,
+        _doc: undefined,
+      },
+    ]);
 
     const created = await repo.create(account);
     expect(created.id).toBe(account.id);

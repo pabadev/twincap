@@ -3,6 +3,8 @@ import type { Workspace } from "../../core/domain/workspace";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { WorkspaceModel, type WorkspaceDocument } from "../models/workspace";
 import { toWorkspaceEntity, toWorkspaceDocData } from "../mappers/workspace";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoWorkspaceRepository implements WorkspaceRepository {
   async findById(id: string): Promise<Workspace | null> {
@@ -11,11 +13,16 @@ export class MongoWorkspaceRepository implements WorkspaceRepository {
     return toWorkspaceEntity(doc as WorkspaceDocument);
   }
 
-  async create(workspace: Workspace): Promise<Workspace> {
+  async create(workspace: Workspace, tx?: TransactionHandle): Promise<Workspace> {
     try {
       const docData = toWorkspaceDocData(workspace);
-      const created = await WorkspaceModel.create({ ...docData, _id: workspace.id });
-      return toWorkspaceEntity(created as WorkspaceDocument);
+      // R15-F6: optional session — the register use case creates the workspace
+      // inside the onboarding transaction when a handle is provided.
+      const created = await WorkspaceModel.create(
+        [{ ...docData, _id: workspace.id }],
+        { session: sessionOf(tx) },
+      );
+      return toWorkspaceEntity(created[0] as WorkspaceDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(`Workspace "${workspace.name}" already exists`);

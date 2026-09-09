@@ -14,11 +14,17 @@ import {
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 
 export class MongoCatalogItemRepository implements CatalogItemRepository {
-  async findById(workspaceId: string, id: string): Promise<CatalogItem | null> {
-    const doc = await CatalogItemModel.findOne({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<CatalogItem | null> {
+    // R15-F6: optional session — deleteSale reads the item INSIDE the transaction
+    // so the stock restore is snapshot-consistent with the sale snapshot.
+    const doc = await CatalogItemModel.findOne(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session: sessionOf(tx) },
+    ).exec();
     if (!doc) return null;
     return toCatalogItemEntity(doc as CatalogItemDocument);
   }

@@ -39,7 +39,7 @@ export class MongoAccountRepository implements AccountRepository {
     return docs.map((doc) => toAccountEntity(doc as AccountDocument));
   }
 
-  async create(account: Account): Promise<Account> {
+  async create(account: Account, tx?: TransactionHandle): Promise<Account> {
     try {
       const docData = toAccountDocData(account);
       // R8 (root-cause): persist the entity-generated id as the real `_id`, same as
@@ -47,8 +47,13 @@ export class MongoAccountRepository implements AccountRepository {
       // and `account.id` (used by movements' accountId/link.refId) no longer matches
       // the stored `_id` → orphan movements that crash reads. Account was the one
       // Group-A repo R7-B left intact; closing that gap.
-      const created = await AccountModel.create({ ...docData, _id: account.id });
-      return toAccountEntity(created as AccountDocument);
+      // R15-F6: optional session — createAccount (opening) and register (seed) join
+      // the caller's transaction when a handle is provided.
+      const created = await AccountModel.create(
+        [{ ...docData, _id: account.id }],
+        { session: sessionOf(tx) },
+      );
+      return toAccountEntity(created[0] as AccountDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(
@@ -77,11 +82,18 @@ export class MongoAccountRepository implements AccountRepository {
     return toAccountEntity(result as AccountDocument);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
-    const result = await AccountModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    // R15-F6: optional session — the createAccount rollback path joins the caller's
+    // transaction. Note: with real transactions the compensating delete is no longer
+    // used by createAccount (rollback replaces it), but the method keeps accepting a
+    // session for consistency and for any future transactional delete.
+    const result = await AccountModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session: sessionOf(tx) },
+    ).exec();
     if (!result) {
       throw new NotFoundError(`Account ${id} not found for user ${workspaceId}`);
     }

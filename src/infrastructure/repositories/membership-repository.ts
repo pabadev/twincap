@@ -4,6 +4,8 @@ import type { Membership } from "../../core/domain/membership";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { MembershipModel, type MembershipDocument } from "../models/membership";
 import { toMembershipEntity, toMembershipDocData } from "../mappers/membership";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoMembershipRepository implements MembershipRepository {
   async findById(id: string): Promise<Membership | null> {
@@ -29,11 +31,16 @@ export class MongoMembershipRepository implements MembershipRepository {
     return docs.map((doc) => toMembershipEntity(doc as MembershipDocument));
   }
 
-  async create(membership: Membership): Promise<Membership> {
+  async create(membership: Membership, tx?: TransactionHandle): Promise<Membership> {
     try {
       const docData = toMembershipDocData(membership);
-      const created = await MembershipModel.create({ ...docData, _id: membership.id });
-      return toMembershipEntity(created as MembershipDocument);
+      // R15-F6: optional session — the register use case creates the membership
+      // inside the onboarding transaction when a handle is provided.
+      const created = await MembershipModel.create(
+        [{ ...docData, _id: membership.id }],
+        { session: sessionOf(tx) },
+      );
+      return toMembershipEntity(created[0] as MembershipDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(

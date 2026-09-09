@@ -4,6 +4,8 @@ import type { Category } from "../../core/domain/category";
 import { NotFoundError, ConflictError } from "../../core/domain/errors";
 import { CategoryModel, type CategoryDocument } from "../models/category";
 import { toCategoryEntity, toCategoryDocData } from "../mappers/category";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoCategoryRepository implements CategoryRepository {
   async findById(workspaceId: string, id: string): Promise<Category | null> {
@@ -35,15 +37,20 @@ export class MongoCategoryRepository implements CategoryRepository {
     return doc ? toCategoryEntity(doc as CategoryDocument) : null;
   }
 
-  async create(category: Category): Promise<Category> {
+  async create(category: Category, tx?: TransactionHandle): Promise<Category> {
     try {
       const docData = toCategoryDocData(category);
       // Group-A gap (R8): persist the entity-generated id as the real `_id`,
       // same as Account did in R8 and the Group-B repos did in R7-B. Without
       // it, `category.id` (used by movements' categoryId) no longer matches
       // the stored `_id` — movements would resolve to a missing category.
-      const created = await CategoryModel.create({ ...docData, _id: category.id });
-      return toCategoryEntity(created as CategoryDocument);
+      // R15-F6: optional session — the register seed joins the onboarding
+      // transaction when a handle is provided.
+      const created = await CategoryModel.create(
+        [{ ...docData, _id: category.id }],
+        { session: sessionOf(tx) },
+      );
+      return toCategoryEntity(created[0] as CategoryDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
         throw new ConflictError(

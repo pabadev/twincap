@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 import type { MovementRepository } from "../../core/domain/repositories";
 import type { Movement } from "../../core/domain/movement";
 import type { TransactionHandle } from "../../core/domain/transaction";
@@ -134,6 +134,7 @@ export class MongoMovementRepository implements MovementRepository {
         movementDoc.categoryId.toString(),
         movementDoc.accountId.toString(),
         movementDoc.type,
+        session,
       );
       return toMovementEntity(movementDoc, category, currency);
     } catch (err: unknown) {
@@ -168,6 +169,7 @@ export class MongoMovementRepository implements MovementRepository {
       movementDoc.categoryId.toString(),
       movementDoc.accountId.toString(),
       movementDoc.type,
+      session,
     );
     return toMovementEntity(movementDoc, category, currency);
   }
@@ -276,22 +278,31 @@ export class MongoMovementRepository implements MovementRepository {
 
   // ─── Private helpers ───────────────────────────────────────────────
 
-  /** Resolve Category + Currency for a single movement. */
+  /** Resolve Category + Currency for a single movement.
+   *  R15-F6: session-aware — inside a transaction (createAccount opening /
+   *  register-adjacent flows) the account/category may have been created in
+   *  the SAME uncommitted transaction, so the reads MUST join the session or
+   *  they can't see it (NotFoundError on the just-created account). */
   private async resolveDependencies(
     workspaceId: string,
     categoryId: string,
     accountId: string,
     movementType?: string,
+    session?: ClientSession,
   ): Promise<{ category: Category; currency: Currency }> {
     const [catDoc, accDoc] = await Promise.all([
       CategoryModel.findOne({
         _id: categoryId,
         workspaceId: new Types.ObjectId(workspaceId),
-      }).exec(),
+      })
+        .session(session ?? null)
+        .exec(),
       AccountModel.findOne({
         _id: accountId,
         workspaceId: new Types.ObjectId(workspaceId),
-      }).exec(),
+      })
+        .session(session ?? null)
+        .exec(),
     ]);
 
     // If not found in DB, try resolving as synthetic category

@@ -47,13 +47,16 @@ describe("MongoMembershipRepository", () => {
 
   it("create persists _id: membership.id", async () => {
     const membership = makeMembership();
-    membershipCreate.mockResolvedValue({ ...membership.toJSON(), _id: membership.id });
+    // Array-form create (R15-F6, session-capable): Mongoose returns [doc].
+    membershipCreate.mockResolvedValue([
+      { ...membership.toJSON(), _id: membership.id },
+    ]);
 
     await repo.create(membership);
 
     expect(membershipCreate).toHaveBeenCalledTimes(1);
-    const docData = (membershipCreate as unknown as { mock: { calls: unknown[][] } }).mock
-      .calls[0][0];
+    const docData = ((membershipCreate as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0][0] as unknown[])[0];
     expect((docData as { _id: unknown })._id).toBe(membership.id);
     expect((docData as unknown as { userId: unknown }).userId).toBeInstanceOf(Types.ObjectId);
     expect((docData as unknown as { workspaceId: unknown }).workspaceId).toBeInstanceOf(

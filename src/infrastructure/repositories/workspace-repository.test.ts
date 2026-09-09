@@ -46,13 +46,14 @@ describe("MongoWorkspaceRepository", () => {
 
   it("create persists _id: workspace.id", async () => {
     const workspace = makeWorkspace();
-    workspaceCreate.mockResolvedValue({ ...workspace.toJSON(), _id: workspace.id });
+    // Array-form create (R15-F6, session-capable): Mongoose returns [doc].
+    workspaceCreate.mockResolvedValue([{ ...workspace.toJSON(), _id: workspace.id }]);
 
     await repo.create(workspace);
 
     expect(workspaceCreate).toHaveBeenCalledTimes(1);
-    const docData = (workspaceCreate as unknown as { mock: { calls: unknown[][] } }).mock
-      .calls[0][0];
+    const docData = ((workspaceCreate as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0][0] as unknown[])[0];
     expect((docData as { _id: unknown })._id).toBe(workspace.id);
     expect((docData as Record<string, unknown>).name).toBe(workspace.name);
     expect((docData as Record<string, unknown>).ownerId).toBeInstanceOf(Types.ObjectId);

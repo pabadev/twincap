@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–5)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–6)
 
 ## Purpose
 
@@ -64,6 +64,28 @@ guards + `credit.update` con `expectedVersion` + cascada de movements, todo
 dentro del tx) son totalmente transaccionales. Cobertura real (replSet pin
 7.0.41): `src/infrastructure/transactions/concurrency-transfers.test.ts`.
 
+Fase 6 cerró los tres flujos que quedaban sin atomicidad real: `deleteSale`
+(§9) — toda la cascada (lectura de la venta, stock restores ×N, `deleteMany`
+de movements por refId de venta y crédito vinculado, delete del crédito y delete
+final de la venta) corre en `uow.withTransaction`, y la idempotencia ante
+requests duplicados/concurrentes se apoya en la re-lectura dentro del tx + el
+`NotFoundError` del `saleRepo.delete` final: el perdedor aborta sin tocar stock
+(restaurado EXACTAMENTE una vez). `createAccount` con opening (§11) reemplaza la
+compensación manual R8 (`try/catch` → `accountRepo.delete`) por rollback real —
+cuando el movement de apertura falla, la cuenta creada en el mismo tx se aborta.
+`register` (§12) envuelve User + Workspace + Membership + seed
+(`WorkspaceBootstrapper`: 1 cuenta fija + 8 categorías) en una sola transacción:
+cualquier fallo (incluido el seed) deja CERO documentos parciales. Para que
+`createAccount` funcionara dentro del tx se corrigió un defecto en
+`MongoMovementRepository.resolveDependencies`: las lecturas de Account/Category
+ahora aceptan y usan la sesión (sin ella, la cuenta recién creada en el mismo tx
+era invisible → `NotFoundError`). Cobertura real (replSet pin 7.0.41):
+`src/infrastructure/transactions/use-case-rollback-fase6.test.ts` — deleteSale
+SUCCESS / FAIL_STEP_LAST (rollback del stock ya restaurado) / retry duplicado /
+N=10/25/50 concurrentes (1 gana, stock restaurado una vez); createAccount
+SUCCESS / FAIL / retry; register SUCCESS / FAIL_SEED (0 documentos parciales) /
+retry (sin duplicados por índices únicos).
+
 ## Decision table
 
 | Operación | Documentos implicados | Estado actual | Decisión |
@@ -91,9 +113,9 @@ dentro del tx) son totalmente transaccionales. Cobertura real (replSet pin
 | `editPrincipal` (CreditGranted) | CreditGranted update (full doc) + Movement update (principal) | ✅ **YA transaccional + CAS** (R15 F5) | **Transacción** — implementada (Fase 5): idem; conserva el `saleId` en el snapshot del CreditGranted. |
 | `updateTransfer` | Transfer update + 1–2 Movement updates (expense/income) | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): reads de cuenta con tx; writes de transfer + movements con tx dentro de `uow.withTransaction`. |
 | `deleteTransfer` | Movement delete ×2 + Transfer delete | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): deletes de movements con tx (NotFound tolerante, orden expense→income) + `transferRepo.delete(..., tx)` dentro de `uow.withTransaction`. |
-| `deleteSale` | stock increments ×N + Movement `deleteMany` (sale refId) + Movement `deleteMany` (credit refId) + CreditGranted delete + Sale delete | NO | **Transacción** — Fase 6, idempotente (stock restaurado 1 sola vez, §9). |
-| `createAccount` con opening | Account create + Movement create (`opening`) | NO — hoy **compensación** manual `try/catch` → `accountRepo.delete` (comentario obsoleto de R8) | **Transacción** — Fase 6: reemplaza la compensación por rollback real (criterio R15.5.3). |
-| `register` / onboarding | User + Workspace + Membership + seed (`WorkspaceBootstrapper`: cuenta fija + categorías) | NO | **Transacción** — Fase 6 (§12). El fallo parcial hoy deja un usuario sin workspace usable; el retry manual del registro converge, pero la transacción lo garantiza. |
+| `deleteSale` | stock increments ×N + Movement `deleteMany` (sale refId) + Movement `deleteMany` (credit refId) + CreditGranted delete + Sale delete | ✅ **YA transaccional + idempotente** (R15 F6) | **Transacción** — implementada (Fase 6, §9): toda la cascada (lectura de la venta y del ítem, stock restores, deletes de movements por refId, delete del crédito vinculado, delete final de la venta) dentro de `uow.withTransaction` con todas las lecturas/escrituras en la sesión. Idempotencia: la re-lectura en tx + `NotFoundError` del `saleRepo.delete` final hace que un request duplicado/concurrente aborte SIN volver a restaurar stock — restaurado exactamente 1 vez (verificado N=10/25/50). |
+| `createAccount` con opening | Account create + Movement create (`opening`) | ✅ **YA transaccional** (R15 F6) | **Transacción** — implementada (Fase 6, §11): Account + opening movement en `uow.withTransaction`; la compensación manual R8 (`try/catch` → `accountRepo.delete`) fue ELIMINADA — el rollback real aborta la cuenta si el movement falla. Fix de causa raíz necesario: `MongoMovementRepository.resolveDependencies` ahora lee Account/Category con la sesión del tx (sin sesión la cuenta recién creada era invisible). |
+| `register` / onboarding | User + Workspace + Membership + seed (`WorkspaceBootstrapper`: cuenta fija + categorías) | ✅ **YA transaccional** (R15 F6) | **Transacción** — implementada (Fase 6, §12): User + Workspace + Membership + seed (1 cuenta + 8 categorías) en UNA `uow.withTransaction`; `hasher.hash` y el pre-check de email duplicado quedan FUERA del tx; ids acuñados DENTRO del callback. Un fallo en cualquier paso (incluido el seed) deja CERO documentos parciales; el retry manual del registro converge sin duplicados (índices únicos de email y userId+workspaceId lo verifican). |
 | `deleteCreditReceived` | Movement deletes (tolerantes, `NotFound → continue`) + CreditReceived delete | NO | **Justificado** — cascada idempotente ordenada hijos→padre con borrado tolerante (R5-B); un fallo parcial deja movimientos huérfanos que la defensa de lectura (`filter-live-linked-movements`) oculta y `reconcile.ts` detecta/limpia; no rompe ningún invariante financiero entre dos deletes independientes. R14-B declaró deliberadamente los deletes NO-transaccionales. Candidata a transaccionalizar en una ronda futura si el reconcile reporta huérfanos. |
 | `deletePayable` | Movement deletes (tolerantes) + Payable delete | NO | **Justificado** — misma justificación que `deleteCreditReceived`. |
 | `deleteCreditGranted` (standalone) | Movement deletes (tolerantes) + CreditGranted delete | NO | **Justificado** — misma justificación; los créditos sale-born NO se borran por esta vía (ConflictError R5-D0c) sino por `deleteSale` (Fase 6 transaccional). |
@@ -102,7 +124,7 @@ dentro del tx) son totalmente transaccionales. Cobertura real (replSet pin
 | `createAccount` sin opening | 1 Account create | — | **Justificado** — documento único. |
 | `editTotal` (Payable) | 1 Payable update | — | **Justificado** — documento único; sin cascada de movimientos por diseño (`edit-total.ts`: "NO movement cascade"). |
 | `deleteAccount` | Movement deletes + Account delete | NO | **Justificado** — misma justificación que los deletes de débitos (idempotente + orden hijos→padre + `countReferences` como guard de pre-condición). |
-| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — las lecturas del AGREGADO DE DEUDA (findById/findByWorkspaceId con `tx?`) y las validaciones de saldo/moneda que derivan de él corren DENTRO del tx desde Fase 3 (snapshot-consistent); las referencias estáticas de Account (findById de la cuenta de pago/recepción) se resuelven FUERA del tx (AccountRepository sin `tx?`). La protección bajo concurrencia es CAS sobre `__v` (Fase 4, implementada). |
+| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — las lecturas del AGREGADO DE DEUDA (findById/findByWorkspaceId con `tx?`) y las validaciones de saldo/moneda que derivan de él corren DENTRO del tx desde Fase 3 (snapshot-consistent); `AccountRepository.findById(tx?)` (F5) y `MovementRepository.aggregateBalance(tx?)` participan del tx cuando el agregado validado es una cuenta (transfers), y `MovementRepository.resolveDependencies` es session-aware desde F6 (el opening de `createAccount` lee la cuenta recién creada con la sesión). La protección bajo concurrencia es CAS sobre `__v` (Fase 4, implementada; Fase 5 para Account). |
 
 ## Notas de diseño
 
@@ -131,7 +153,8 @@ dentro del tx) son totalmente transaccionales. Cobertura real (replSet pin
     (CAS sobre `__v` de la cuenta origen, verificado con N=10/50/100 transfers
     paralelos en `concurrency-transfers.test.ts`).
 5. **Criterio R15.5.2** ("todas las operaciones financieras críticas con
-    atomicidad real") se cumple al cerrar las Fases 2–6 (Fases 2–5 cerradas); las filas
+    atomicidad real") se cumple al cerrar las Fases 2–6 (las 5 fases cerradas — la
+    Fase 6 cerró `deleteSale`, `createAccount` con opening y `register`); las filas
    "justificado" de esta matriz son operaciones tolerantes por diseño, no
    deuda pendiente.
 
@@ -149,16 +172,21 @@ Repositorios cuyos métodos de escritura aceptan `tx?: TransactionHandle`
 | `CreditGrantedRepository` | `create` (R14-B), `update`, `delete`, `addAbono`, `editAbono`, `deleteAbono`, `markWrittenOff` |
 | `PayableRepository` | `create`, `update`, `addAbono`, `editAbono`, `deleteAbono` |
 | `SaleRepository` | `create` (R14-B), `update`, `delete`, `addAbono`, `editAbono`, `deleteAbono` |
-| `CatalogItemRepository` | `decrementStock` (R14-B), `incrementStock` |
+| `CatalogItemRepository` | `decrementStock` (R14-B), `incrementStock`, `findById` (Fase 6, lectura del ítem dentro del tx de `deleteSale`) |
+| `AccountRepository` | `create` (Fase 6: opening de `createAccount` + cuenta fija del seed de `register`), `delete` (Fase 6), `findById` (F5), `bumpVersion` (F5) |
+| `UserRepository` | `create` (Fase 6: onboarding de `register`) |
+| `WorkspaceRepository` | `create` (Fase 6: onboarding de `register`) |
+| `MembershipRepository` | `create` (Fase 6: onboarding de `register`) |
+| `CategoryRepository` | `create` (Fase 6: seed de `register`) |
 
-No recibieron `tx?` (fuera del alcance de Fase 2/3/5/6): los deletes de
-CreditReceived/Payable (justificados como tolerantes en la matriz), y los
-repositorios de entidades no financieras (User, Category, Client, Workspace,
-Membership) — `createAccount` (Fase 6) mantendrá su compensación hasta ser
-reemplazada por transacción y sus writes se resolverán en ese momento.
-`AccountRepository` es la excepción de Fase 5: `findById(tx?)` y `bumpVersion`
-(ver contrato F5 abajo); `createAccount`/`updateAccount`/`deleteAccount` siguen
-sin `tx?`.
+No recibieron `tx?`: los deletes de CreditReceived/Payable (justificados como
+tolerantes en la matriz), `deleteCreditGranted` standalone y `deleteAccount`
+(justificados, ver matriz) y los deletes de User/Workspace/Membership/Category
+(no transaccionales por diseño — solo la creación participa del onboarding). El
+`WorkspaceBootstrapper.bootstrap(workspaceId, tx?)` y `seedUser(..., tx?)`
+(autorizados en Fase 6) enhebran el tx a los creates de Account y Category del
+seed. `MovementRepository.resolveDependencies` es session-aware desde Fase 6
+(defecto corrigido: sin sesión, la cuenta creada en el mismo tx era invisible).
 
 ### Contrato de LECTURA entregado en Fase 3
 

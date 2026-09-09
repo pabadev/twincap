@@ -1207,7 +1207,7 @@ describe('deleteSale', () => {
     const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo();
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow());
 
     expect(catalogRepo.incremented).toHaveLength(1);
     expect(catalogRepo.incremented[0].quantity).toBe(2); // restore 2 units
@@ -1250,7 +1250,7 @@ describe('deleteSale', () => {
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo);
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow());
 
     // deleteByRefId covers the sale (legacy salePayment) AND the credit
     // (initial payment + credit abonos) — both refIds.
@@ -1293,11 +1293,11 @@ describe('deleteSale', () => {
     });
 
     await expect(
-      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo),
+      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow()),
     ).resolves.toBeUndefined();
 
-    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'sale-1');
-    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'cg-1');
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'sale-1', expect.anything());
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'cg-1', expect.anything());
     expect(creditRepo.deleted).toContain('cg-1');
     expect(saleRepo.deleted).toContain('sale-1');
     expect(catalogRepo.incremented).toHaveLength(1);
@@ -1312,7 +1312,7 @@ describe('deleteSale', () => {
     const creditRepo = fakeCreditGrantedRepo();
 
     await expect(
-      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo),
+      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

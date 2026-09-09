@@ -325,7 +325,13 @@ export interface UnitOfWork {
  * port so core never imports infrastructure (R14-K §14a).
  */
 export interface WorkspaceBootstrapper {
-  bootstrap(workspaceId: string): Promise<void>;
+  /**
+   * Seeds the default content into a workspace.
+   * @param tx optional transaction handle (R15-F6): when present, the seed's
+   *   account/category writes join the caller's transaction (register runs the
+   *   full onboarding atomically). When absent, behaves exactly as before.
+   */
+  bootstrap(workspaceId: string, tx?: TransactionHandle): Promise<void>;
 }
 
 /**

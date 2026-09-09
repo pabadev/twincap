@@ -10,6 +10,7 @@ import type { CreateAccountInput } from '../../../core/application/accounts';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
@@ -60,6 +61,7 @@ export async function createAccountAction(
           accountRepo,
           movementRepo,
           ids,
+          new MongoUnitOfWork(),
         );
       },
     );
