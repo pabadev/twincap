@@ -29,6 +29,7 @@ function fakeAccountRepo(
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
     countReferences: vi.fn().mockResolvedValue(0),
+    bumpVersion: vi.fn().mockResolvedValue(true),
   };
 }
 
@@ -200,6 +201,18 @@ describe('createTransfer', () => {
     expect(transfer.destinationCurrency).toBe('COP');
     expect(transferRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(2);
+
+    // F5: the source account version was CAS-bumped as the LAST write,
+    // after both movements (source version 0 → 1 in this fake).
+    expect(accountRepo.bumpVersion).toHaveBeenCalledWith(
+      'user-1',
+      'acc-src',
+      0,
+      expect.anything(),
+    );
+    const bumpOrder = (accountRepo.bumpVersion as ReturnType<typeof vi.fn>).mock.invocationCallOrder;
+    const movementOrder = (movementRepo.create as ReturnType<typeof vi.fn>).mock.invocationCallOrder;
+    expect(Math.max(...movementOrder)).toBeLessThan(Math.min(...bumpOrder));
 
     // Expense movement
     const expense = movementRepo.created[0];
@@ -481,6 +494,39 @@ describe('createTransfer', () => {
     expect(transferRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(1);
   });
+
+  it('aborts with ConflictError(DEBT_MODIFIED_MSG) when the CAS bump fails (F5)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(100000),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    // Simulate a concurrent mutation of the source account between the read
+    // and the write phase: the bump cannot apply → the transfer must abort.
+    (accountRepo.bumpVersion as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    const ids = fakeIdGen();
+
+    await expect(
+      createTransfer(
+        'user-1',
+        {
+          sourceAccountId: 'acc-src',
+          destinationAccountId: 'acc-dst',
+          sourceAmount: 50000,
+          sourceCurrency: 'COP',
+          date: new Date('2025-06-01'),
+        },
+        transferRepo,
+        movementRepo,
+        ids,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow('Debt was modified by another operation');
+  });
 });
 
 // ─── Update ────────────────────────────────────────────────────────
@@ -514,6 +560,7 @@ describe('updateTransfer', () => {
       transferRepo,
       movementRepo,
       accountRepo,
+      fakeUow(),
     );
 
     expect(updated.sourceAmount.amount).toBe(75000);
@@ -529,7 +576,7 @@ describe('updateTransfer', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo, fakeAccountRepo()),
+      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -542,7 +589,7 @@ describe('updateTransfer', () => {
     const accountRepo = fakeAccountRepo([]); // source + dest both resolve to null
 
     await expect(
-      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo),
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
     expect(transferRepo.update).not.toHaveBeenCalled();
   });
@@ -629,7 +676,7 @@ describe('updateTransfer currency re-check', () => {
     ]);
 
     await expect(
-      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo),
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(transferRepo.update).not.toHaveBeenCalled();
   });
@@ -645,7 +692,7 @@ describe('deleteTransfer', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo);
+    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, fakeUow());
 
     expect(movementRepo.deleted).toContain('mov-exp');
     expect(movementRepo.deleted).toContain('mov-inc');
@@ -665,7 +712,7 @@ describe('deleteTransfer', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteTransfer('user-1', 'missing', transferRepo, movementRepo),
+      deleteTransfer('user-1', 'missing', transferRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -676,7 +723,7 @@ describe('deleteTransfer', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo);
+    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, fakeUow());
 
     expect(movementRepo.deleted).toHaveLength(0);
     expect(transferRepo.deleted).toContain('tr-1');

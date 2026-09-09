@@ -218,6 +218,7 @@ export async function editCreditReceivedAction(
           { principal, currency },
           creditRepo,
           movementRepo,
+          new MongoUnitOfWork(),
         );
       },
     );

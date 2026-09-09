@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–4)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–5)
 
 ## Purpose
 
@@ -49,11 +49,26 @@ the direct non-transactional path with a stale version. Default version is 0
 for every existing document (retro-compatible). Real concurrency coverage lives
 in `src/infrastructure/transactions/concurrency-abonos.test.ts`.
 
+Fase 5 (transfers + editPrincipal + CAS sobre Account) delivered la familia de
+transfers y el editPrincipal restante: `createTransfer` ahora lee AMBAS cuentas
+y valida el saldo de origen DENTRO de `uow.withTransaction` (snapshot-consistente
+vía `AccountRepository.findById(tx?)` + `MovementRepository.aggregateBalance(tx?)`),
+escribe Transfer + 2 Movements con el tx y cierra con un CAS bump (helper F4
+`runVersionedUpdate`: `$inc: { __v: 1 }`) SOLO sobre la cuenta de ORIGEN
+(`AccountRepository.bumpVersion`); si el bump falla lanza
+`ConflictError(DEBT_MODIFIED_MSG)` y aborta el tx — bajo transfers concurrentes
+del mismo origen gana EXACTAMENTE uno y el resto falla por re-validación, de modo
+que `sourceBalance` jamás puede quedar negativo. `updateTransfer`, `deleteTransfer`
+y `editPrincipal` ×2 (received/granted, patrón de la fase anterior: reads +
+guards + `credit.update` con `expectedVersion` + cascada de movements, todo
+dentro del tx) son totalmente transaccionales. Cobertura real (replSet pin
+7.0.41): `src/infrastructure/transactions/concurrency-transfers.test.ts`.
+
 ## Decision table
 
 | Operación | Documentos implicados | Estado actual | Decisión |
 |---|---|---|---|
-| `createTransfer` | Transfer + 2 Movements (expense/income) | ✅ **YA transaccional** (R14-B) | **Transacción** — implementada (R14-B). Saldo validado FUERA del tx hoy; la protección bajo concurrencia (CAS sobre `Account`) es Fase 5. |
+| `createTransfer` | Transfer + 2 Movements (expense/income) | ✅ **YA transaccional + CAS sobre Account** (R15 F5) | **Transacción** — implementada (R14-B + Fase 5): lecturas de ambas cuentas, validación de saldo y moneda, ids, 3 writes y CAS bump al final (`bumpVersion` de la cuenta origen) DENTRO del tx; bump fallido → `ConflictError(DEBT_MODIFIED_MSG)` + abort. Bajo N transfers concurrentes del mismo origen gana exactamente 1; los perdedores fallan por re-validación (fondos insuficientes tras el retry), nunca saldo negativo. |
 | `createSale` | stock decrements ×N + Sale + Movements (paid-in-full o initial payment) + CreditGranted (on-credit) | ✅ **YA transaccional** (R14-B) | **Transacción** — implementada (R14-B). |
 | `createCreditReceived` | CreditReceived + principal Movement (`creditReceivedPrincipal`) | NO | **Transacción** — Fase 2. |
 | `createCreditGranted` | CreditGranted + principal Movement (`creditGrantedPrincipal`) | NO | **Transacción** — Fase 2. |
@@ -72,10 +87,10 @@ in `src/infrastructure/transactions/concurrency-abonos.test.ts`.
 | `deleteAbono` (Payable) | Movement delete + Payable `$pull` abono | ✅ **YA transaccional + CAS** (R15 F4) | **Transacción** — implementada (Fase 3). Concurrencia: CAS (Fase 4). |
 | `deleteSaleAbono` | Movement delete + Sale `$pull` abono | ✅ **YA transaccional + CAS** (R15 F4) | **Transacción** — implementada (Fase 3). LEGACY FALLBACK (ver `addSaleAbono`). Concurrencia: CAS (Fase 4). |
 | `writeOffCreditGranted` | Movement create (gasto por capital no recuperado) + `markWrittenOff` | ✅ **YA transaccional + CAS** (R15 F4) | **Transacción + CAS** — implementada (Fase 4): todo el flujo (reads, guards R5-D0c/ya-bajada/ya-pagada/capital-pendiente, expense movement + `markWrittenOff` con `expectedVersion`) corre dentro de `uow.withTransaction`; el guard `writtenOff` en `addAbono` (grants) la complementa para que write-off vs abono final converja a exactamente un ganador tras el retry. |
-| `editPrincipal` (CreditReceived) | CreditReceived update (full doc) + Movement update (principal) | NO | **Transacción** — Fase 5. |
-| `editPrincipal` (CreditGranted) | CreditGranted update (full doc) + Movement update (principal) | NO | **Transacción** — Fase 5. |
-| `updateTransfer` | Transfer update + 1–2 Movement updates (expense/income) | NO | **Transacción** — Fase 5. |
-| `deleteTransfer` | Movement delete ×2 + Transfer delete | NO | **Transacción** — Fase 5. |
+| `editPrincipal` (CreditReceived) | CreditReceived update (full doc) + Movement update (principal) | ✅ **YA transaccional + CAS** (R15 F5) | **Transacción** — implementada (Fase 5): mismo patrón que `writeOffCreditGranted` (reads + guards + `update` con `expectedVersion` + cascada de movement dentro de `uow.withTransaction`). |
+| `editPrincipal` (CreditGranted) | CreditGranted update (full doc) + Movement update (principal) | ✅ **YA transaccional + CAS** (R15 F5) | **Transacción** — implementada (Fase 5): idem; conserva el `saleId` en el snapshot del CreditGranted. |
+| `updateTransfer` | Transfer update + 1–2 Movement updates (expense/income) | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): reads de cuenta con tx; writes de transfer + movements con tx dentro de `uow.withTransaction`. |
+| `deleteTransfer` | Movement delete ×2 + Transfer delete | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): deletes de movements con tx (NotFound tolerante, orden expense→income) + `transferRepo.delete(..., tx)` dentro de `uow.withTransaction`. |
 | `deleteSale` | stock increments ×N + Movement `deleteMany` (sale refId) + Movement `deleteMany` (credit refId) + CreditGranted delete + Sale delete | NO | **Transacción** — Fase 6, idempotente (stock restaurado 1 sola vez, §9). |
 | `createAccount` con opening | Account create + Movement create (`opening`) | NO — hoy **compensación** manual `try/catch` → `accountRepo.delete` (comentario obsoleto de R8) | **Transacción** — Fase 6: reemplaza la compensación por rollback real (criterio R15.5.3). |
 | `register` / onboarding | User + Workspace + Membership + seed (`WorkspaceBootstrapper`: cuenta fija + categorías) | NO | **Transacción** — Fase 6 (§12). El fallo parcial hoy deja un usuario sin workspace usable; el retry manual del registro converge, pero la transacción lo garantiza. |
@@ -109,12 +124,14 @@ in `src/infrastructure/transactions/concurrency-abonos.test.ts`.
    versión del agregado (`__v`), entregado en Fase 4 para los 4 agregados de
    deuda: `expectedVersion?: number` + `$inc: { __v: 1 }` explícito (helper
    `runVersionedUpdate` en `src/infrastructure/transactions/versioned-update.ts`),
-   `ConflictError(DEBT_MODIFIED_MSG)` en el path directo, y retry→re-validación
-   dentro de `uow.withTransaction` (los perdedores fallan por guard de negocio
-   re-lecto contra estado fresco, no por CAS). El CAS sobre `Account.version`
-   para transfers queda en Fase 5 (§10 Opción A).
+`ConflictError(DEBT_MODIFIED_MSG)` en el path directo, y retry→re-validación
+    dentro de `uow.withTransaction` (los perdedores fallan por guard de negocio
+    re-lecto contra estado fresco, no por CAS). En Fase 5 el mismo mecanismo se
+    extendió a `Account` para `createTransfer`: `AccountRepository.bumpVersion`
+    (CAS sobre `__v` de la cuenta origen, verificado con N=10/50/100 transfers
+    paralelos en `concurrency-transfers.test.ts`).
 5. **Criterio R15.5.2** ("todas las operaciones financieras críticas con
-   atomicidad real") se cumple al cerrar las Fases 2–6 (Fases 2–4 cerradas); las filas
+    atomicidad real") se cumple al cerrar las Fases 2–6 (Fases 2–5 cerradas); las filas
    "justificado" de esta matriz son operaciones tolerantes por diseño, no
    deuda pendiente.
 
@@ -136,9 +153,12 @@ Repositorios cuyos métodos de escritura aceptan `tx?: TransactionHandle`
 
 No recibieron `tx?` (fuera del alcance de Fase 2/3/5/6): los deletes de
 CreditReceived/Payable (justificados como tolerantes en la matriz), y los
-repositorios de entidades no financieras (User, Category, Client, Account,
-Workspace, Membership) — `createAccount` (Fase 6) mantendrá su compensación
-hasta ser reemplazada por transacción y sus writes se resolverán en ese momento.
+repositorios de entidades no financieras (User, Category, Client, Workspace,
+Membership) — `createAccount` (Fase 6) mantendrá su compensación hasta ser
+reemplazada por transacción y sus writes se resolverán en ese momento.
+`AccountRepository` es la excepción de Fase 5: `findById(tx?)` y `bumpVersion`
+(ver contrato F5 abajo); `createAccount`/`updateAccount`/`deleteAccount` siguen
+sin `tx?`.
 
 ### Contrato de LECTURA entregado en Fase 3
 
@@ -190,3 +210,28 @@ con `version + 1`; `writeOffCreditGranted` quedó íntegro en `uow.withTransacti
 sobre un crédito de 100_000 COP (exactamente 3 ganan; `__v == 3`; `pending ==
 10_000`; perdedores por re-validación) y write-off vs abono final (exactamente
 un ganador; guard `writtenOff`/`paid`).
+
+### Contrato de Fase 5 (Account con CAS + lecturas del tx para transfers)
+
+`AccountRepository` recibe la versión de `Account` (`version: doc.__v ?? 0` en el
+mapper, default 0) y dos métodos nuevos:
+
+| Repositorio | Métodos |
+|---|---|
+| `AccountRepository` | `findById(workspaceId, id, tx?)` (lectura con sesión), `bumpVersion(workspaceId, accountId, expectedVersion, tx?): Promise<boolean>` |
+| `MovementRepository` | `aggregateBalance(workspaceId, accountId, tx?)` (agregación del saldo vivo con sesión) |
+
+Semántica: `bumpVersion` ejecuta `runVersionedUpdate(AccountModel, {_id,
+workspaceId}, {}, expectedVersion, session)` — update `{}` + `$inc: { __v: 1 }`
++ timestamps — y devuelve `matchedCount > 0` SIN traducir el fallo (el caller
+mapea `false` → `ConflictError(DEBT_MODIFIED_MSG)` dentro del tx, abortando).
+`aggregateBalance` replica la lógica existente de balance vivo (excluye
+`link.kind === 'transfer'` y movimientos cancelados) pero ejecutada con la
+sesión del tx (snapshot-consistente con las escrituras previas del mismo tx).
+`updateTransfer`/`deleteTransfer` reutilizan `findById(tx?)` para las lecturas de
+cuenta dentro de la transacción. Verificación real:
+`src/infrastructure/transactions/concurrency-transfers.test.ts` — N=10/50/100
+transfers paralelos del mismo origen (exactamente 1 gana; `__v` origen == 1;
+saldos finales correctos; perdedores por re-validación de fondos), rollback de
+create/update/deleteTransfer y de editPrincipal ×2 con cascada fallida (crédito
+intacto y `__v` sin mover).

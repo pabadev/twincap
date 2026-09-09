@@ -34,6 +34,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
       deleted.push(id);
     }),
     countReferences: vi.fn().mockResolvedValue(0),
+    bumpVersion: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }

@@ -8,6 +8,12 @@ export interface AccountInput {
   currency: Currency;
   isFixed: boolean;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (F5). Mirrors the persisted `__v` so the
+   * application layer can CAS-bump it inside a transaction (balance protection
+   * for transfer origins). Defaults to 0 for hand-built accounts in tests.
+   */
+  version?: number;
 }
 
 export class Account {
@@ -19,6 +25,8 @@ export class Account {
   /** Fixed accounts (Efectivo/Nequi) cannot be deleted (ACC-1). */
   readonly isFixed: boolean;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version; mirrors the persisted `__v` (F5). */
+  readonly version: number;
   // NOTE: deliberately NO stored balance field — balance is DERIVED from the
   // sum of the account's movement signedAmounts (design rev.2 §2). Do not
   // re-add a stored balance: it would drift from the movements.
@@ -40,6 +48,7 @@ export class Account {
     this.currency = input.currency;
     this.isFixed = input.isFixed;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
   }
 
   /** Serializable snapshot for Next.js server→client boundary. */
@@ -51,6 +60,7 @@ export class Account {
       currency: this.currency,
       isFixed: this.isFixed,
       createdAt: this.createdAt,
+      version: this.version,
     };
   }
 }

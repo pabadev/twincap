@@ -10,13 +10,24 @@ import { CreditGrantedModel } from "../models/credit-granted";
 import { SaleModel } from "../models/sale";
 import { PayableModel } from "../models/payable";
 import { toAccountEntity, toAccountDocData } from "../mappers/account";
+import { sessionOf } from "../transactions/mongo-unit-of-work";
+import { runVersionedUpdate } from "../transactions/versioned-update";
+import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoAccountRepository implements AccountRepository {
-  async findById(workspaceId: string, id: string): Promise<Account | null> {
-    const doc = await AccountModel.findOne({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+  async findById(
+    workspaceId: string,
+    id: string,
+    tx?: TransactionHandle,
+  ): Promise<Account | null> {
+    const doc = await AccountModel.findOne(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session: sessionOf(tx) },
+    ).exec();
     if (!doc) return null;
     return toAccountEntity(doc as AccountDocument);
   }
@@ -116,6 +127,38 @@ export class MongoAccountRepository implements AccountRepository {
       sales +
       payables
     );
+  }
+
+  /**
+   * R15-F5 — optimistic-concurrency bump of the account `__v`.
+   *
+   * Uses the same versionKey mechanics as the F4 debt CAS: the filter is
+   * extended with `__v: expectedVersion` and a matched write moves the version
+   * to `expectedVersion + 1` via `$inc: { __v: 1 }`. Accounts keep Mongoose's
+   * default versioning (no `versionKey: false`), so `__v` exists on disk from
+   * creation (0) and needs no backfill.
+   *
+   * @returns true when the bump applied; false when the account was modified
+   *   concurrently or does not exist (matchedCount 0). The caller maps false
+   *   to ConflictError(DEBT_MODIFIED_MSG) for transfer-origin protection.
+   */
+  async bumpVersion(
+    workspaceId: string,
+    accountId: string,
+    expectedVersion: number,
+    tx?: TransactionHandle,
+  ): Promise<boolean> {
+    const matched = await runVersionedUpdate(
+      AccountModel,
+      {
+        _id: accountId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      {},
+      expectedVersion,
+      sessionOf(tx),
+    );
+    return matched > 0;
   }
 }
 

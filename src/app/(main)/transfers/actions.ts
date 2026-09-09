@@ -143,6 +143,7 @@ export async function updateTransferAction(
           transferRepo,
           movementRepo,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
@@ -175,7 +176,13 @@ export async function deleteTransferAction(
       () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteTransfer(user.workspaceId!, transferId, transferRepo, movementRepo);
+        return deleteTransfer(
+          user.workspaceId!,
+          transferId,
+          transferRepo,
+          movementRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
     revalidatePath('/transfers');

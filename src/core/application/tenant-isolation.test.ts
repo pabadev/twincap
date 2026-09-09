@@ -228,6 +228,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
     update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
     countReferences: vi.fn().mockResolvedValue(0),
+    bumpVersion: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -442,7 +443,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo()),
+        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.update).not.toHaveBeenCalled();
     });
@@ -451,7 +452,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteTransfer(WORKSPACE_A, TRF_B, transferRepo, movementRepo),
+        deleteTransfer(WORKSPACE_A, TRF_B, transferRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.delete).not.toHaveBeenCalled();
     });
@@ -477,7 +478,11 @@ describe('Tenant isolation (B1)', () => {
           fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
-      expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_B);
+      expect(accountRepo.findById).toHaveBeenCalledWith(
+        WORKSPACE_A,
+        ACC_B,
+        expect.anything(),
+      );
       expect(transferRepo.create).not.toHaveBeenCalled();
     });
 
@@ -570,6 +575,7 @@ describe('Tenant isolation (B1)', () => {
           { principal: 100000, currency: 'COP' },
           creditRepo,
           fakeMovementRepo(),
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.update).not.toHaveBeenCalled();
@@ -655,6 +661,7 @@ describe('Tenant isolation (B1)', () => {
           { principal: 100000, currency: 'COP' },
           creditRepo,
           fakeMovementRepo(),
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.update).not.toHaveBeenCalled();

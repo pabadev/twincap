@@ -51,6 +51,7 @@ function fakeAccountRepo(
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
     countReferences: vi.fn().mockResolvedValue(0),
+    bumpVersion: vi.fn().mockResolvedValue(true),
   };
 }
 
@@ -775,10 +776,14 @@ describe('editPrincipal', () => {
       { principal: 200000, currency: 'COP' },
       creditRepo,
       movementRepo,
+      fakeUow(),
     );
 
     expect(result.principal.amount).toBe(200000);
+    expect(result.version).toBe(1);
+    // F5: the credit write is CAS-guarded on the version read inside the tx.
     expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(creditRepo.update).toHaveBeenCalledWith(expect.anything(), expect.anything(), 0);
     expect(movementRepo.updated).toHaveLength(1);
     expect(movementRepo.updated[0].amount.amount).toBe(200000);
   });
@@ -798,6 +803,7 @@ describe('editPrincipal', () => {
       { principal: 200000, currency: 'COP' },
       creditRepo,
       movementRepo,
+      fakeUow(),
     );
 
     expect(result.principal.amount).toBe(200000);
@@ -815,7 +821,7 @@ describe('editPrincipal', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editPrincipal('user-1', 'cg-1', { principal: 30000, currency: 'COP' }, creditRepo, movementRepo),
+      editPrincipal('user-1', 'cg-1', { principal: 30000, currency: 'COP' }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -826,7 +832,7 @@ describe('editPrincipal', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editPrincipal('user-1', 'missing', { principal: 200000, currency: 'COP' }, creditRepo, movementRepo),
+      editPrincipal('user-1', 'missing', { principal: 200000, currency: 'COP' }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -838,7 +844,7 @@ describe('editPrincipal', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      editPrincipal('user-1', 'cg-1', { principal: 200000, currency: 'USD' }, creditRepo, movementRepo),
+      editPrincipal('user-1', 'cg-1', { principal: 200000, currency: 'USD' }, creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(creditRepo.update).not.toHaveBeenCalled();
   });

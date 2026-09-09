@@ -12,6 +12,9 @@ export function toAccountEntity(doc: AccountDocument): Account {
     currency: doc.currency as Currency,
     isFixed: doc.isFixed,
     createdAt: doc.createdAt,
+    // The account model keeps Mongoose optimistic-concurrency (`__v=0` from
+    // creation); expose it so the application layer can CAS-bump (F5).
+    version: doc.__v ?? 0,
   });
 }
 

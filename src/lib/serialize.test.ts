@@ -52,6 +52,7 @@ describe("serializeEntity", () => {
       currency: "COP",
       isFixed: true,
       createdAt: date,
+      version: 0,
     });
   });
 

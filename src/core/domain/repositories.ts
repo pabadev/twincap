@@ -11,6 +11,10 @@
  *   `expectedVersion?: number` (CAS on `__v`). When provided, the write aborts
  *   with ConflictError(DEBT_MODIFIED_MSG) if the document was modified
  *   concurrently; when absent, behavior is unchanged.
+ * - R15-F5: account concurrency — `AccountRepository.findById` accepts an
+ *   OPTIONAL trailing TransactionHandle (snapshot-consistent balance reads
+ *   inside a transaction) and `AccountRepository.bumpVersion` provides a CAS
+ *   bump of the account `__v` (transfer-origin balance protection).
  * - All ids are plain strings (no ObjectId leak).
  * - ConflictError on unique constraint violations.
  * - IdGenerator is a separate port (ports.ts), not part of repositories.
@@ -44,13 +48,33 @@ export interface UserRepository {
 // ─── Account ─────────────────────────────────────────────────────────
 
 export interface AccountRepository {
-  findById(workspaceId: string, id: string): Promise<Account | null>;
+  /** @param tx optional transaction handle (R15 F5): the read joins the
+   *   caller's transaction session (snapshot-consistent balance validation
+   *   for transfer origins/destinations). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Account | null>;
   findByWorkspaceId(workspaceId: string): Promise<Account[]>;
   create(account: Account): Promise<Account>;
   update(account: Account): Promise<Account>;
   delete(workspaceId: string, id: string): Promise<void>;
   /** ACC-4: count references across all collections (movements, transfers, credits, sales). */
   countReferences(workspaceId: string, accountId: string): Promise<number>;
+  /**
+   * R15-F5: optimistic-concurrency bump of the account `__v`.
+   * `$inc __v` only when the persisted version still equals `expectedVersion`.
+   *
+   * @returns true when the bump applied (and the version moved to
+   *   `expectedVersion + 1`), false when the document was modified
+   *   concurrently (or does not exist). The caller decides the failure
+   *   semantics: `ConflictError(DEBT_MODIFIED_MSG)` for balance protection.
+   * @param tx optional transaction handle; joins the caller's transaction
+   *   (used by createTransfer: the CAS is the last write of the transaction).
+   */
+  bumpVersion(
+    workspaceId: string,
+    accountId: string,
+    expectedVersion: number,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
 }
 
 // ─── Category ────────────────────────────────────────────────────────
@@ -105,8 +129,11 @@ export interface MovementRepository {
   findByWorkspaceIdAndDateRange(workspaceId: string, from: Date, to: Date): Promise<Movement[]>;
   /** Full-history minimal-projection read for R7-A account balances (live-parent-filtered). Same orphan guard + dependency resolution as findByWorkspaceId. */
   findByWorkspaceIdForBalance(workspaceId: string): Promise<Movement[]>;
-  /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance). */
-  aggregateBalance(workspaceId: string, accountId: string): Promise<number>;
+  /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance).
+   *  @param tx optional transaction handle (R15 F5): the read joins the
+   *   caller's transaction session (snapshot-consistent balance validation
+   *   for transfer origins/destinations). */
+  aggregateBalance(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<number>;
   /** CAT-3: count movements referencing a category (deletion guard). */
   countByCategoryId(workspaceId: string, categoryId: string): Promise<number>;
 }

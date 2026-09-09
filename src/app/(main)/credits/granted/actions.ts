@@ -220,6 +220,7 @@ export async function editCreditGrantedAction(
           { principal, currency },
           creditRepo,
           movementRepo,
+          new MongoUnitOfWork(),
         );
       },
     );

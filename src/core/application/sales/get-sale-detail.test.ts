@@ -56,6 +56,7 @@ function fakeAccountRepo(account: Account | null) {
     update: vi.fn().mockImplementation(async (a: Account) => a),
     delete: vi.fn().mockResolvedValue(undefined),
     countReferences: vi.fn().mockResolvedValue(0),
+    bumpVersion: vi.fn().mockResolvedValue(true),
   };
 }
 

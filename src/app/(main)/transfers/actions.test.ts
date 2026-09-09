@@ -120,6 +120,9 @@ describe('updateTransferAction', () => {
         return null;
       }),
     }));
+    MongoUnitOfWork.mockImplementation(() => ({
+      withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+    }));
   });
 
   it('updates the transfer via the use case and returns the success toast key', async () => {
@@ -180,6 +183,7 @@ describe('createTransferAction (analytics emission)', () => {
         }
         return null;
       }),
+      bumpVersion: vi.fn().mockResolvedValue(true),
     }));
   });
 

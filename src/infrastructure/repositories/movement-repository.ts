@@ -198,7 +198,11 @@ export class MongoMovementRepository implements MovementRepository {
     return result.deletedCount ?? 0;
   }
 
-  async aggregateBalance(workspaceId: string, accountId: string): Promise<number> {
+  async aggregateBalance(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<number> {
     const result = await MovementModel.aggregate([
       {
         $match: {
@@ -212,7 +216,7 @@ export class MongoMovementRepository implements MovementRepository {
           total: { $sum: "$signedAmount" },
         },
       },
-    ]).exec();
+    ]).session(sessionOf(tx) ?? null).exec();
 
     return result.length > 0 ? result[0].total : 0;
   }
