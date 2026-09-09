@@ -52,13 +52,16 @@ export async function createTransfer(
   return uow.withTransaction(async (tx) => {
     // D3: resolve both accounts inside the transaction session —
     // snapshot-consistent existence/ownership + version for the CAS.
-    const [sourceAccount, destinationAccount] = await Promise.all([
-      accountRepo.findById(workspaceId, input.sourceAccountId, tx),
-      accountRepo.findById(workspaceId, input.destinationAccountId, tx),
-    ]);
+    // NOTE: serial reads are REQUIRED. The MongoDB driver forbids concurrent
+    // use of a ClientSession: parallel ops on the same session desync the
+    // internal txnNumber, the server rejects them with MongoServerError 251
+    // (NoSuchTransaction → TransientTransactionError), and withTransaction
+    // replays the callback in an infinite retry loop that hangs the request.
+    const sourceAccount = await accountRepo.findById(workspaceId, input.sourceAccountId, tx);
     if (!sourceAccount) {
       throw new NotFoundError(`Source account ${input.sourceAccountId} not found`);
     }
+    const destinationAccount = await accountRepo.findById(workspaceId, input.destinationAccountId, tx);
     if (!destinationAccount) {
       throw new NotFoundError(`Destination account ${input.destinationAccountId} not found`);
     }
