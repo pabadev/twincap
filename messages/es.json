@@ -618,6 +618,7 @@
     "futureDate": "La fecha no puede ser futura",
     "systemMovementDelete": "Los movimientos del sistema no pueden eliminarse directamente",
     "insufficientFunds": "Fondos insuficientes en la cuenta de origen",
+    "debtModified": "La deuda fue modificada por otra operación. Intenta nuevamente.",
     "duplicateRequest": "Solicitud duplicada. La operación ya fue registrada.",
     "emailTaken": "Este correo ya está registrado",
     "invalidCredentials": "Correo o contraseña incorrectos",

@@ -41,6 +41,7 @@ function sale(overrides: Partial<SerializedSale> = {}): SerializedSale {
     deletedAt: undefined,
     stockRestored: false,
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
+    version: 0,
     pending: 0,
     abonos: [],
     ...overrides,

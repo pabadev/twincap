@@ -73,7 +73,7 @@ export async function addAbono(
       date: input.date,
       accountId: input.accountId,
       movementId,
-    }, tx);
+    }, tx, payable.version);
 
     // Create expense movement (abono = payment from account)
     const movement = new Movement({
@@ -111,6 +111,7 @@ export async function addAbono(
         dueDate: payable.dueDate,
         note: payable.note,
         createdAt: payable.createdAt,
+        version: payable.version + 1,
       },
       [...payable.abonos, abono],
     );

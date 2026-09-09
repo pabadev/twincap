@@ -371,6 +371,7 @@ export async function writeOffCreditAction(
           creditRepo,
           movementRepo,
           ids,
+          new MongoUnitOfWork(),
         );
       },
     );

@@ -48,7 +48,7 @@ export async function deleteAbono(
     }
 
     // Remove abono from embedded array (atomic $pull)
-    await payableRepo.deleteAbono(workspaceId, payableId, abonoId, tx);
+    await payableRepo.deleteAbono(workspaceId, payableId, abonoId, tx, payable.version);
 
     return new Payable(
       {
@@ -62,6 +62,7 @@ export async function deleteAbono(
         dueDate: payable.dueDate,
         note: payable.note,
         createdAt: payable.createdAt,
+        version: payable.version + 1,
       },
       payable.abonos.filter(a => a.id !== abonoId),
     );

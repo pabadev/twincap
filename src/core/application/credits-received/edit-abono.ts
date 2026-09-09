@@ -54,7 +54,7 @@ export async function editAbono(
     await creditRepo.editAbono(workspaceId, creditId, abonoId, {
       amount: input.amount,
       date: input.date,
-    }, tx);
+    }, tx, credit.version);
 
     // Update linked movement
     if (abono.movementId) {
@@ -89,6 +89,7 @@ export async function editAbono(
         installmentValue: credit.installmentValue,
         frequency: credit.frequency,
         createdAt: credit.createdAt,
+        version: credit.version + 1,
       },
       credit.abonos.map(a =>
         a.id === abonoId

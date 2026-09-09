@@ -73,7 +73,7 @@ export async function addAbono(
       date: input.date,
       accountId: input.accountId,
       movementId,
-    }, tx);
+    }, tx, credit.version);
 
     // Create expense movement (abono = payment from account)
     const movement = new Movement({
@@ -111,6 +111,7 @@ export async function addAbono(
         installmentValue: credit.installmentValue,
         frequency: credit.frequency,
         createdAt: credit.createdAt,
+        version: credit.version + 1,
       },
       [...credit.abonos, abono],
     );

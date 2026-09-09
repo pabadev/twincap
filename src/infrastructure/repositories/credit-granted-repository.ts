@@ -3,7 +3,7 @@ import type { CreditGrantedRepository } from "../../core/domain/repositories";
 import type { CreditGranted } from "../../core/domain/credit-granted";
 import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
-import { NotFoundError, ConflictError } from "../../core/domain/errors";
+import { NotFoundError, ConflictError, DEBT_MODIFIED_MSG } from "../../core/domain/errors";
 import {
   CreditGrantedModel,
   type CreditGrantedDocument,
@@ -14,6 +14,7 @@ import {
   toCreditGrantedDocData,
 } from "../mappers/credit-granted";
 import { sessionOf } from "../transactions/mongo-unit-of-work";
+import { runVersionedUpdate } from "../transactions/versioned-update";
 
 export class MongoCreditGrantedRepository implements CreditGrantedRepository {
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
@@ -93,18 +94,54 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     }
   }
 
-  async update(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted> {
+  async update(
+    credit: CreditGranted,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<CreditGranted> {
     const session = sessionOf(tx);
     const docData = toCreditGrantedDocData(credit);
-    const result = await CreditGrantedModel.findOneAndUpdate(
-      {
-        _id: credit.id,
-        workspaceId: new Types.ObjectId(credit.workspaceId),
-      },
+    const filter = {
+      _id: credit.id,
+      workspaceId: new Types.ObjectId(credit.workspaceId),
+    };
+    if (expectedVersion === undefined) {
+      // Unchanged single-document path (R15-F3): findOneAndUpdate returns the new doc.
+      const result = await CreditGrantedModel.findOneAndUpdate(
+        filter,
+        { $set: docData },
+        { new: true, session },
+      ).exec();
+      if (!result) {
+        throw new NotFoundError(
+          `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
+        );
+      }
+      const currency = await this.resolveAccountCurrency(
+        credit.workspaceId,
+        credit.accountId,
+      );
+      return toCreditGrantedEntity(result as CreditGrantedDocument, currency);
+    }
+    // R15-F4 CAS path: bump `__v` and reject on concurrent modification.
+    const matched = await runVersionedUpdate(
+      CreditGrantedModel,
+      filter,
       { $set: docData },
-      { new: true, session },
-    ).exec();
-    if (!result) {
+      expectedVersion,
+      session,
+    );
+    if (matched === 0) {
+      const current = await CreditGrantedModel.findOne(filter, null, { session }).exec();
+      if (!current) {
+        throw new NotFoundError(
+          `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
+        );
+      }
+      throw new ConflictError(DEBT_MODIFIED_MSG);
+    }
+    const updated = await CreditGrantedModel.findOne(filter, null, { session }).exec();
+    if (!updated) {
       throw new NotFoundError(
         `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
       );
@@ -113,7 +150,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       credit.workspaceId,
       credit.accountId,
     );
-    return toCreditGrantedEntity(result as CreditGrantedDocument, currency);
+    return toCreditGrantedEntity(updated as CreditGrantedDocument, currency);
   }
 
   async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
@@ -149,31 +186,57 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       interestMovementId?: string;
     },
     tx?: TransactionHandle,
+    expectedVersion?: number,
   ): Promise<void> {
     const session = sessionOf(tx);
+    const filter: Record<string, unknown> = {
+      _id: creditId,
+      workspaceId: new Types.ObjectId(workspaceId),
+    };
     if (abono.movementId) {
-      const result = await CreditGrantedModel.updateOne(
-        {
-          _id: creditId,
-          workspaceId: new Types.ObjectId(workspaceId),
-          "abonos.movementId": { $ne: abono.movementId },
-        },
-        { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
-        { session },
-      ).exec();
-      if (result.matchedCount === 0) {
-        return;
-      }
-    } else {
-      await CreditGrantedModel.updateOne(
-        {
-          _id: creditId,
-          workspaceId: new Types.ObjectId(workspaceId),
-        },
-        { $push: { abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) } } },
-        { session },
-      ).exec();
+      // Idempotency guard: skip when this movement was already applied.
+      filter["abonos.movementId"] = { $ne: abono.movementId };
     }
+    const matched = await runVersionedUpdate(
+      CreditGrantedModel,
+      filter,
+      {
+        $push: {
+          abonos: { ...abono, accountId: new Types.ObjectId(abono.accountId) },
+        },
+      },
+      expectedVersion,
+      session,
+    );
+    if (matched > 0 || expectedVersion === undefined) return;
+    // CAS miss: distinguish concurrent modification from idempotent retry.
+    const current = await CreditGrantedModel.findOne(
+      {
+        _id: creditId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
+      { session },
+    ).exec();
+    if (!current) {
+      throw new NotFoundError(
+        `CreditGranted ${creditId} not found for user ${workspaceId}`,
+      );
+    }
+    const currentDoc = current as CreditGrantedDocument;
+    if (currentDoc.__v !== expectedVersion) {
+      throw new ConflictError(DEBT_MODIFIED_MSG);
+    }
+    if (
+      abono.movementId &&
+      currentDoc.abonos.some((a) => a.movementId === abono.movementId)
+    ) {
+      // Idempotent retry of an already-applied movement: silent, no bump.
+      return;
+    }
+    // Unreachable: the doc exists at the expected version and (when present)
+    // the movementId guard passed — matchedCount would have been 1.
+    throw new ConflictError(DEBT_MODIFIED_MSG);
   }
 
   /** Edit an embedded abono by its id.
@@ -193,6 +256,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       interestMovementId: string;
     }>,
     tx?: TransactionHandle,
+    expectedVersion?: number,
   ): Promise<void> {
     const session = sessionOf(tx);
     const setFields: Record<string, unknown> = {};
@@ -210,15 +274,41 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     const update: Record<string, Record<string, unknown>> = {};
     if (Object.keys(setFields).length > 0) update.$set = setFields;
     if (Object.keys(unsetFields).length > 0) update.$unset = unsetFields;
-    await CreditGrantedModel.updateOne(
+    const matched = await runVersionedUpdate(
+      CreditGrantedModel,
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
         "abonos.id": abonoId,
       },
       update,
+      expectedVersion,
+      session,
+    );
+    if (matched > 0 || expectedVersion === undefined) return;
+    const current = await CreditGrantedModel.findOne(
+      {
+        _id: creditId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
       { session },
     ).exec();
+    if (!current) {
+      throw new NotFoundError(
+        `CreditGranted ${creditId} not found for user ${workspaceId}`,
+      );
+    }
+    const currentDoc = current as CreditGrantedDocument;
+    if (currentDoc.__v !== expectedVersion) {
+      throw new ConflictError(DEBT_MODIFIED_MSG);
+    }
+    if (!currentDoc.abonos.some((a) => a.id === abonoId)) {
+      throw new NotFoundError(`Abono ${abonoId} not found in credit ${creditId}`);
+    }
+    // Unreachable: the doc exists at the expected version with the abono
+    // present — matchedCount would have been 1.
+    throw new ConflictError(DEBT_MODIFIED_MSG);
   }
 
   /** Delete an embedded abono by its id. */
@@ -227,16 +317,43 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     creditId: string,
     abonoId: string,
     tx?: TransactionHandle,
+    expectedVersion?: number,
   ): Promise<void> {
     const session = sessionOf(tx);
-    await CreditGrantedModel.updateOne(
+    const matched = await runVersionedUpdate(
+      CreditGrantedModel,
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $pull: { abonos: { id: abonoId } } },
+      expectedVersion,
+      session,
+    );
+    if (matched > 0 || expectedVersion === undefined) return;
+    const current = await CreditGrantedModel.findOne(
+      {
+        _id: creditId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
       { session },
     ).exec();
+    if (!current) {
+      throw new NotFoundError(
+        `CreditGranted ${creditId} not found for user ${workspaceId}`,
+      );
+    }
+    const currentDoc = current as CreditGrantedDocument;
+    if (currentDoc.__v !== expectedVersion) {
+      throw new ConflictError(DEBT_MODIFIED_MSG);
+    }
+    if (!currentDoc.abonos.some((a) => a.id === abonoId)) {
+      // Defensive: the CAS filter has no abono guard, so this is unreachable
+      // via normal flows; mirror editAbono semantics for uniformity.
+      throw new NotFoundError(`Abono ${abonoId} not found in credit ${creditId}`);
+    }
+    throw new ConflictError(DEBT_MODIFIED_MSG);
   }
 
   /** Mark the credit as written off (R9/D9.4) — `$set` on the write-off marker. */
@@ -245,16 +362,40 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     creditId: string,
     writtenOff: { date: Date; movementId: string },
     tx?: TransactionHandle,
+    expectedVersion?: number,
   ): Promise<void> {
     const session = sessionOf(tx);
-    await CreditGrantedModel.updateOne(
+    const matched = await runVersionedUpdate(
+      CreditGrantedModel,
       {
         _id: creditId,
         workspaceId: new Types.ObjectId(workspaceId),
       },
       { $set: { writtenOff } },
+      expectedVersion,
+      session,
+    );
+    if (matched > 0 || expectedVersion === undefined) return;
+    const current = await CreditGrantedModel.findOne(
+      {
+        _id: creditId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      null,
       { session },
     ).exec();
+    if (!current) {
+      throw new NotFoundError(
+        `CreditGranted ${creditId} not found for user ${workspaceId}`,
+      );
+    }
+    const currentDoc = current as CreditGrantedDocument;
+    if (currentDoc.__v !== expectedVersion) {
+      throw new ConflictError(DEBT_MODIFIED_MSG);
+    }
+    // Unreachable: the filter has only _id + workspaceId — a matching doc at
+    // the expected version always matches the update.
+    throw new ConflictError(DEBT_MODIFIED_MSG);
   }
 
   // ─── Private helpers ───────────────────────────────────────────────

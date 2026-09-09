@@ -40,6 +40,7 @@ export function toCreditReceivedEntity(
           : undefined,
       frequency: doc.frequency,
       createdAt: doc.createdAt,
+      version: doc.__v ?? 0,
     },
     abonos,
   );

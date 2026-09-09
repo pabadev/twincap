@@ -200,7 +200,7 @@ export async function editAbono(
         capitalAmount: split.capitalAmount > 0 ? split.capitalAmount : undefined,
         interestAmount: split.interestAmount > 0 ? split.interestAmount : undefined,
         interestMovementId,
-      }, tx);
+      }, tx, credit.version);
 
       return new CreditGranted(
         {
@@ -216,6 +216,7 @@ export async function editAbono(
           saleId: credit.saleId,
           writtenOff: credit.writtenOff,
           createdAt: credit.createdAt,
+          version: credit.version + 1,
         },
         credit.abonos.map(a =>
           a.id === abonoId
@@ -246,7 +247,7 @@ export async function editAbono(
     await creditRepo.editAbono(workspaceId, creditId, abonoId, {
       amount: updatedAmount.amount,
       date: updatedDate,
-    }, tx);
+    }, tx, credit.version);
 
     // Update linked movement (income type for abonos)
     if (abono.movementId) {
@@ -287,6 +288,7 @@ export async function editAbono(
         saleId: credit.saleId,
         writtenOff: credit.writtenOff,
         createdAt: credit.createdAt,
+        version: credit.version + 1,
       },
       credit.abonos.map(a =>
         a.id === abonoId

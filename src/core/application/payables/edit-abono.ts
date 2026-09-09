@@ -55,7 +55,7 @@ export async function editAbono(
     await payableRepo.editAbono(workspaceId, payableId, abonoId, {
       amount: input.amount,
       date: input.date,
-    }, tx);
+    }, tx, payable.version);
 
     // Update linked movement (cascade via abono.movementId)
     if (abono.movementId) {
@@ -90,6 +90,7 @@ export async function editAbono(
         dueDate: payable.dueDate,
         note: payable.note,
         createdAt: payable.createdAt,
+        version: payable.version + 1,
       },
       payable.abonos.map(a =>
         a.id === abonoId

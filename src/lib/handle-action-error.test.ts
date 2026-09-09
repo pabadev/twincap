@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NotFoundError, ConflictError, ValidationError } from '../core/domain/errors';
+import { NotFoundError, ConflictError, ValidationError, DEBT_MODIFIED_MSG } from '../core/domain/errors';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
 import { handleActionError } from './handle-action-error';
 
@@ -47,6 +47,11 @@ describe('handleActionError', () => {
       new ConflictError('Insufficient funds in source account'),
     );
     expect(result).toEqual({ error: 'error.insufficientFunds' });
+  });
+
+  it('maps a concurrently-modified debt to error.debtModified', () => {
+    const result = handleActionError(new ConflictError(DEBT_MODIFIED_MSG));
+    expect(result).toEqual({ error: 'error.debtModified' });
   });
 
   it('maps future business dates to a descriptive key', () => {

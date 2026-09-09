@@ -48,7 +48,7 @@ export async function deleteAbono(
     }
 
     // Remove abono from embedded array (atomic $pull)
-    await creditRepo.deleteAbono(workspaceId, creditId, abonoId, tx);
+    await creditRepo.deleteAbono(workspaceId, creditId, abonoId, tx, credit.version);
 
     return new CreditReceived(
       {
@@ -62,6 +62,7 @@ export async function deleteAbono(
         installmentValue: credit.installmentValue,
         frequency: credit.frequency,
         createdAt: credit.createdAt,
+        version: credit.version + 1,
       },
       credit.abonos.filter(a => a.id !== abonoId),
     );

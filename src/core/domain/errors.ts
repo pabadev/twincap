@@ -26,3 +26,14 @@ export class ValidationError extends DomainError {}
 
 /** The operation conflicts with the current state (e.g. duplicate unique key). */
 export class ConflictError extends DomainError {}
+
+/**
+ * Canonical message for optimistic-concurrency failures on debt entities.
+ *
+ * When a versioned write (CAS via `__v`) does not match, repositories re-read the
+ * entity and, if the document still exists but its version changed, throw a
+ * ConflictError with this message. UI layers map it to a user-facing i18n string
+ * (`error.debtModified`). Kept internal (English) so domain logic never carries
+ * presentation language.
+ */
+export const DEBT_MODIFIED_MSG = 'Debt was modified by another operation';

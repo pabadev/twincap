@@ -44,6 +44,7 @@ export function toSaleEntity(
       deletedAt: doc.deletedAt,
       stockRestored: doc.stockRestored,
       createdAt: doc.createdAt,
+      version: doc.__v ?? 0,
     },
     abonos,
   );

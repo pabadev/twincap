@@ -40,6 +40,11 @@ export interface CreditGrantedInput {
    */
   writtenOff?: { date: Date; movementId: string };
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (mirrors the document's `__v`, default 0).
+   * Applied via CAS on versioned writes and bumped on each successful write.
+   */
+  version?: number;
 }
 
 export class CreditGranted {
@@ -58,6 +63,8 @@ export class CreditGranted {
   /** Write-off marker when the credit was written off as uncollectible (R9/D9.4). */
   readonly writtenOff?: { date: Date; movementId: string };
   readonly createdAt: Date;
+  /** Optimistic-concurrency version (`__v`), default 0. */
+  readonly version: number;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
 
@@ -141,6 +148,7 @@ export class CreditGranted {
     this.saleId = input.saleId;
     this.writtenOff = input.writtenOff;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
     this._abonos = abonos;
   }
 
@@ -160,6 +168,7 @@ export class CreditGranted {
       saleId: this.saleId,
       writtenOff: this.writtenOff,
       createdAt: this.createdAt,
+      version: this.version,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({
         ...a,

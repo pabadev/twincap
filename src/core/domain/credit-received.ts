@@ -50,6 +50,11 @@ export interface CreditReceivedInput {
    */
   installmentValue?: Money;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (mirrors the document's `__v`, default 0).
+   * Applied via CAS on versioned writes and bumped on each successful write.
+   */
+  version?: number;
 }
 
 export class CreditReceived {
@@ -64,6 +69,8 @@ export class CreditReceived {
   /** Value of each installment; only present when installments > 0 (R5-C). */
   readonly installmentValue?: Money;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version (`__v`), default 0. */
+  readonly version: number;
 
   private readonly _abonos: ReadonlyArray<CreditAbono>;
 
@@ -140,6 +147,7 @@ export class CreditReceived {
     this.frequency = input.frequency;
     this.installmentValue = input.installmentValue;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
     this._abonos = abonos;
   }
 
@@ -157,6 +165,7 @@ export class CreditReceived {
       installmentValue: this.installmentValue?.toJSON(),
       totalToPay: this.totalToPay,
       createdAt: this.createdAt,
+      version: this.version,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
     };

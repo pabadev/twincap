@@ -26,6 +26,11 @@ export interface PayableInput {
   dueDate?: Date;
   note?: string;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (mirrors the document's `__v`, default 0).
+   * Applied via CAS on versioned writes and bumped on each successful write.
+   */
+  version?: number;
 }
 
 /**
@@ -46,6 +51,8 @@ export class Payable {
   readonly   dueDate?: Date;
   readonly note?: string;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version (`__v`), default 0. */
+  readonly version: number;
 
   private readonly _abonos: ReadonlyArray<PayableAbono>;
 
@@ -112,6 +119,7 @@ export class Payable {
     this.dueDate = input.dueDate;
     this.note = input.note;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
     this._abonos = abonos;
   }
 
@@ -128,6 +136,7 @@ export class Payable {
       dueDate: this.dueDate,
       note: this.note,
       createdAt: this.createdAt,
+      version: this.version,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
     };

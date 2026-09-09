@@ -47,6 +47,7 @@ export function toCreditGrantedEntity(
         ? { date: doc.writtenOff.date, movementId: doc.writtenOff.movementId }
         : undefined,
       createdAt: doc.createdAt,
+      version: doc.__v ?? 0,
     },
     abonos,
   );

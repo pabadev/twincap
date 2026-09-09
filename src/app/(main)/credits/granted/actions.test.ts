@@ -69,6 +69,9 @@ describe('writeOffCreditAction', () => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
+    MongoUnitOfWork.mockImplementation(() => ({
+      withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+    }));
     MongoCreditGrantedRepository.mockImplementation(() => ({
       findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
       markWrittenOff: vi.fn().mockResolvedValue(undefined),

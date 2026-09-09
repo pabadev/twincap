@@ -51,6 +51,11 @@ export interface SaleInput {
   /** Whether stock was restored after soft-delete. */
   stockRestored?: boolean;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (mirrors the document's `__v`, default 0).
+   * Applied via CAS on versioned writes and bumped on each successful write.
+   */
+  version?: number;
 }
 
 /** Input for a line item — subtotal is computed, not provided. */
@@ -81,6 +86,8 @@ export class Sale {
   readonly deletedAt?: Date;
   readonly stockRestored: boolean;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version (`__v`), default 0. */
+  readonly version: number;
 
   /** Embedded abonos (POS-5/6). */
   private readonly _abonos: ReadonlyArray<SaleAbonoInput>;
@@ -160,6 +167,7 @@ export class Sale {
     this.deletedAt = input.deletedAt;
     this.stockRestored = input.stockRestored ?? false;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
     this._abonos = abonos;
   }
 
@@ -180,6 +188,7 @@ export class Sale {
       deletedAt: this.deletedAt,
       stockRestored: this.stockRestored,
       createdAt: this.createdAt,
+      version: this.version,
       pending: this.pending,
       abonos: this._abonos.map((a) => ({ ...a, amount: a.amount.toJSON() })),
     };

@@ -578,7 +578,7 @@ describe('Tenant isolation (B1)', () => {
     it('writeOffCreditGranted with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen()),
+        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.markWrittenOff).not.toHaveBeenCalled();
     });

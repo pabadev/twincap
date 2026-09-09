@@ -7,6 +7,7 @@ import type { CreditGrantedRepository, MovementRepository, AccountRepository } f
 import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreditAbono } from '../../domain/credit-granted';
 import { splitAbonoCapitalInterest } from './split-abono';
+import { WRITE_OFF_ALREADY_MSG } from './write-off-credit-granted';
 import type { AddAbonoInput } from './dto/credits-granted';
 
 /**
@@ -83,6 +84,14 @@ export async function addAbono(
       throw new ConflictError('Abono exceeds pending amount');
     }
 
+    // R15-F4 (audit §6): a written-off credit must never accept new abonos.
+    // Checked on the fresh read inside the tx, so a retry after a concurrent
+    // write-off re-reads the marker and aborts instead of revalidating against
+    // stale state.
+    if (credit.writtenOff) {
+      throw new ConflictError(WRITE_OFF_ALREADY_MSG);
+    }
+
     const abonoId = ids.generate();
     const now = new Date();
 
@@ -123,7 +132,7 @@ export async function addAbono(
         capitalAmount: abono.capitalAmount?.amount,
         interestAmount: abono.interestAmount?.amount,
         interestMovementId: abono.interestMovementId,
-      }, tx);
+      }, tx, credit.version);
 
       if (capitalPortion > 0) {
         await movementRepo.create(
@@ -175,6 +184,7 @@ export async function addAbono(
           saleId: credit.saleId,
           writtenOff: credit.writtenOff,
           createdAt: credit.createdAt,
+          version: credit.version + 1,
         },
         [...credit.abonos, abono],
       );
@@ -189,7 +199,7 @@ export async function addAbono(
       date: input.date,
       accountId: input.accountId,
       movementId,
-    }, tx);
+    }, tx, credit.version);
 
     // Create income movement (abono = debtor pays back → income on receiving account)
     const movement = new Movement({
@@ -238,6 +248,7 @@ export async function addAbono(
         saleId: credit.saleId,
         writtenOff: credit.writtenOff,
         createdAt: credit.createdAt,
+        version: credit.version + 1,
       },
       [...credit.abonos, abono],
     );

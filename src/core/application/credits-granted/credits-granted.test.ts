@@ -1379,7 +1379,7 @@ describe('writeOffCreditGranted', () => {
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
-    const result = await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids);
+    const result = await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow());
 
     expect(movementRepo.created).toHaveLength(1);
     const movement = movementRepo.created[0];
@@ -1406,7 +1406,7 @@ describe('writeOffCreditGranted', () => {
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
-    await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids);
+    await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow());
 
     expect(movementRepo.created[0].amount.amount).toBe(45000);
   });
@@ -1420,7 +1420,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
     ).rejects.toThrow(ConflictError);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1436,7 +1436,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
     ).rejects.toThrow(WRITE_OFF_ALREADY_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1453,7 +1453,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
     ).rejects.toThrow(WRITE_OFF_PAID_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1471,7 +1471,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
     ).rejects.toThrow(WRITE_OFF_NO_LOSS_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1486,7 +1486,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'missing', creditRepo, movementRepo, ids),
+      writeOffCreditGranted('user-1', 'missing', creditRepo, movementRepo, ids, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

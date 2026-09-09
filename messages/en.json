@@ -618,6 +618,7 @@
     "futureDate": "The date cannot be in the future",
     "systemMovementDelete": "System-linked movements cannot be deleted directly",
     "insufficientFunds": "Insufficient funds in the source account",
+    "debtModified": "The debt was modified by another operation. Try again.",
     "duplicateRequest": "Duplicate request. The operation was already recorded.",
     "emailTaken": "This email is already registered",
     "invalidCredentials": "Invalid email or password",

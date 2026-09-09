@@ -36,6 +36,7 @@ export function toPayableEntity(
       dueDate: doc.dueDate,
       note: doc.note,
       createdAt: doc.createdAt,
+      version: doc.__v ?? 0,
     },
     abonos,
   );

@@ -80,7 +80,7 @@ export async function addSaleAbono(
       date: input.date,
       accountId: input.accountId,
       movementId,
-    }, tx);
+    }, tx, sale.version);
 
     // POS-4: each abono creates an income movement
     const movement = new Movement({
@@ -118,6 +118,7 @@ export async function addSaleAbono(
         deletedAt: sale.deletedAt,
         stockRestored: sale.stockRestored,
         createdAt: sale.createdAt,
+        version: sale.version + 1,
       },
       [...sale.abonos, abono],
     );

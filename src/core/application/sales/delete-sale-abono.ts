@@ -54,7 +54,7 @@ export async function deleteSaleAbono(
     }
 
     // POS-6: remove abono (atomic $pull)
-    await saleRepo.deleteAbono(workspaceId, saleId, abonoId, tx);
+    await saleRepo.deleteAbono(workspaceId, saleId, abonoId, tx, sale.version);
 
     return new Sale(
       {
@@ -68,6 +68,7 @@ export async function deleteSaleAbono(
         deletedAt: sale.deletedAt,
         stockRestored: sale.stockRestored,
         createdAt: sale.createdAt,
+        version: sale.version + 1,
       },
       sale.abonos.filter(a => a.id !== abonoId),
     );
