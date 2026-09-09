@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–6)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–7)
 
 ## Purpose
 
@@ -86,6 +86,31 @@ N=10/25/50 concurrentes (1 gana, stock restaurado una vez); createAccount
 SUCCESS / FAIL / retry; register SUCCESS / FAIL_SEED (0 documentos parciales) /
 retry (sin duplicados por índices únicos).
 
+Fase 7 (verificación §25/§14) entregó la suite de integridad
+`src/infrastructure/transactions/integrity-suite.test.ts` (replSet pin 7.0.41,
+mismo molde F2/F4/F6: reales repos + `MongoUnitOfWork` + use cases reales):
+verifica los invariantes financieros sobre transacciones REALES sin repetir
+coberturas previas — write-off concurrente N=10/50/100 sobre la MISMA deuda
+(exactamente 1 gana, EXACTAMENTE UN solo movimiento de gasto
+`creditGrantedWriteOff`, `__v == 1`); deleteSale concurrente N=100 (F6 ya cubría
+N=10/25/50; stock restaurado exactamente 1 vez, perdedores `NotFoundError`);
+invariante de sobrepago (pending nunca negativo: N abonos paralelos que superan
+el principal convergen a exactamente floor(P/abono) ganadores y ningún
+documento almacena pending < 0); net-zero same-currency (Σ signedAmount de ambas
+patas == 0) y cross-currency con la fórmula FX documentada
+(`dest_minor == src_minor × rate × 10^(destExp − srcExp)`, validada con
+100.00 USD @ 4000 → 400_000 COP y 200.00 USD @ 5000 → 1_000_000 COP — el gap §9f
+de NO-validación del cuadre en producción queda deliberadamente fuera de
+alcance); invariante de venta a crédito (principal del `CreditGranted` ==
+`sale.total`; `pending === total − Σ abonos`; el pago inicial es el PRIMER abono
+del crédito con refId = creditId y contexto Business; los abonos posteriores por
+la rama sale-born mantienen el invariante); invariante de inventario
+(stock_final == stock_inicial − Σ cantidades de ventas ACTIVAS + restauraciones;
+las ventas soft-deleted — `deletedAt` — nunca cuentan como activas); y rollback
+real del write-off con FAIL_STEP en la ÚLTIMA escritura (`markWrittenOff`
+falla): el movement de gasto ya creado dentro del tx se aborta junto con él
+(atomicidad real, no compensación).
+
 ## Decision table
 
 | Operación | Documentos implicados | Estado actual | Decisión |
@@ -153,8 +178,10 @@ retry (sin duplicados por índices únicos).
     (CAS sobre `__v` de la cuenta origen, verificado con N=10/50/100 transfers
     paralelos en `concurrency-transfers.test.ts`).
 5. **Criterio R15.5.2** ("todas las operaciones financieras críticas con
-    atomicidad real") se cumple al cerrar las Fases 2–6 (las 5 fases cerradas — la
-    Fase 6 cerró `deleteSale`, `createAccount` con opening y `register`); las filas
+    atomicidad real") se cumple al cerrar las Fases 2–7 (las 6 fases cerradas — la
+    Fase 6 cerró `deleteSale`, `createAccount` con opening y `register`, y la
+    Fase 7 agregó la suite de integridad §25/§14 que verifica los invariantes
+    financieros sobre transacciones reales: `integrity-suite.test.ts`); las filas
    "justificado" de esta matriz son operaciones tolerantes por diseño, no
    deuda pendiente.
 
@@ -253,8 +280,12 @@ Semántica: `bumpVersion` ejecuta `runVersionedUpdate(AccountModel, {_id,
 workspaceId}, {}, expectedVersion, session)` — update `{}` + `$inc: { __v: 1 }`
 + timestamps — y devuelve `matchedCount > 0` SIN traducir el fallo (el caller
 mapea `false` → `ConflictError(DEBT_MODIFIED_MSG)` dentro del tx, abortando).
-`aggregateBalance` replica la lógica existente de balance vivo (excluye
-`link.kind === 'transfer'` y movimientos cancelados) pero ejecutada con la
+`aggregateBalance` hace `$sum: "$signedAmount"` sobre TODOS los movimientos de la
+cuenta (filtro workspace+account), SIN excluir transfers/cancelados/huérfanos —
+esto es CORRECTO para el saldo de la cuenta (los transfers sí mueven saldo); la
+exclusión de transfers del resultado económico vive en
+`core/application/economic-result.ts` (`NON_ECONOMIC_LINK_KINDS`) y la exclusión de
+huérfanos del dashboard en `accountBalancesFromMovements` (R7-A). Se ejecuta con la
 sesión del tx (snapshot-consistente con las escrituras previas del mismo tx).
 `updateTransfer`/`deleteTransfer` reutilizan `findById(tx?)` para las lecturas de
 cuenta dentro de la transacción. Verificación real:
