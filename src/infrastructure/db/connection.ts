@@ -8,6 +8,9 @@ const CONNECTION_OPTIONS = {
   serverSelectionTimeoutMS: 5000,
   maxPoolSize: 10,
   appName: "twincap",
+  // R15.2-C1: index lifecycle is explicit in production (ensure/verify-*.mjs).
+  // Dev/test keep auto-building so fresh databases stay frictionless.
+  autoIndex: env.NODE_ENV !== "production",
 } as const;
 
 type MongooseGlobal = typeof globalThis & {
