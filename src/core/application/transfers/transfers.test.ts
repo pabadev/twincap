@@ -4,11 +4,12 @@ import { updateTransfer } from './update-transfer';
 import { deleteTransfer } from './delete-transfer';
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
+import { CreditReceived } from '../../domain/credit-received';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError } from '../../domain/errors';
-import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
+import type { TransferRepository, MovementRepository, AccountRepository, CreditReceivedRepository, CreditGrantedRepository, SaleRepository, PayableRepository } from '../../domain/repositories';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { Currency } from '../../domain/currency';
 import type { IdGenerator, UnitOfWork } from '../ports';
@@ -89,6 +90,7 @@ function fakeMovementRepo(
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
       return movement;
@@ -101,7 +103,6 @@ function fakeMovementRepo(
       deleted.push(id);
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -112,6 +113,68 @@ function fakeMovementRepo(
 
 function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
+}
+
+/**
+ * R15.2: parent repositories are only read through findById while deriving
+ * live parents. Unlinked (manual) movements are always live, so the default
+ * null resolution is enough for every test in this file.
+ */
+function fakeCreditReceivedRepo(overrides: Partial<CreditReceivedRepository> = {}): CreditReceivedRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(null),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {}): CreditGrantedRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(null),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
+    markWrittenOff: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(null),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(null),
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    addAbono: vi.fn().mockResolvedValue(undefined),
+    editAbono: vi.fn().mockResolvedValue(undefined),
+    deleteAbono: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
 }
 
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
@@ -165,13 +228,31 @@ beforeEach(() => {
   idCounter = 0;
 });
 
+/**
+ * R15.2: seeds the source-account balance through findByAccountIdForBalance
+ * movements. Manual (unlinked) movements are always live, so the derived
+ * balance is exactly the seeded amount (replaces the removed aggregateBalance;
+ * the lite read returns the same shape — manual movements are unlinked).
+ */
+function seedSourceBalance(amount: number) {
+  return {
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([
+      makeMovement({
+        id: 'seed-balance',
+        type: 'income',
+        amount: new Money(amount, 'COP'),
+      }),
+    ]),
+  };
+}
+
 // ─── Create ────────────────────────────────────────────────────────
 
 describe('createTransfer', () => {
   it('creates a same-currency transfer (TRA-2)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -193,6 +274,10 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
     const transfer = res.transfer!;
@@ -212,6 +297,14 @@ describe('createTransfer', () => {
       'user-1',
       'acc-src',
       0,
+      expect.anything(),
+    );
+    // R15.2: the DESTINATION account was touched inside the tx — the extra
+    // delete-race conflict point (matrix row 40). The source stays protected
+    // by the final CAS bump.
+    expect(accountRepo.touch).toHaveBeenCalledWith(
+      'user-1',
+      'acc-dst',
       expect.anything(),
     );
     const bumpOrder = (accountRepo.bumpVersion as ReturnType<typeof vi.fn>).mock.invocationCallOrder;
@@ -235,10 +328,97 @@ describe('createTransfer', () => {
     expect(income.link?.kind).toBe('transfer');
   });
 
+  it('excludes orphan movements (dead parent) from the source balance while live ones count (R15.2)', async () => {
+    // Source movements: ONE live parent (cr-1) and TWO orphans whose parents
+    // are gone (findById → null). Only the live 100000 may fund a transfer.
+    const movementRepo = fakeMovementRepo({
+      findByAccountIdForBalance: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: 'm-live',
+          type: 'income',
+          amount: new Money(100000, 'COP'),
+          link: { kind: 'creditReceivedPrincipal', refId: 'cr-1', opId: 'op-1' },
+        }),
+        makeMovement({
+          id: 'm-orphan-sale',
+          type: 'income',
+          amount: new Money(90000, 'COP'),
+          link: { kind: 'salePayment', refId: 'sale-dead', opId: 'op-2' },
+        }),
+        makeMovement({
+          id: 'm-orphan-payable',
+          type: 'income',
+          amount: new Money(80000, 'COP'),
+          link: { kind: 'payableInitialPayment', refId: 'pay-dead', opId: 'op-3' },
+        }),
+      ]),
+    });
+    const creditReceivedRepo = fakeCreditReceivedRepo({
+      findById: vi.fn().mockResolvedValue({
+        id: 'cr-1',
+        accountId: 'acc-src',
+        date: new Date('2025-06-01'),
+        principal: { amount: 100000, currency: 'COP' },
+      } as unknown as CreditReceived),
+    });
+    // saleRepo/payableRepo default to findById → null, so 'sale-dead' and
+    // 'pay-dead' resolve as orphans.
+    const accountRepo = fakeAccountRepo([makeAccount('acc-src'), makeAccount('acc-dst')]);
+    const ids = fakeIdGen();
+
+    // 150000 works ONLY if the dead parents counted (old aggregateBalance:
+    // 270000 available). The warning proves the orphans were excluded.
+    const res = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 150000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+      },
+      fakeTransferRepo(),
+      movementRepo,
+      ids,
+      accountRepo,
+      creditReceivedRepo,
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+    expect(res.transfer).toBeNull();
+    expect(res.warning).not.toBeNull();
+    expect(res.warning!.currentBalance).toBe(100000);
+
+    // Exactly the live amount → registers with no warning.
+    const ok = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 100000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+      },
+      fakeTransferRepo(),
+      movementRepo,
+      ids,
+      accountRepo,
+      creditReceivedRepo,
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+    expect(ok.transfer).not.toBeNull();
+    expect(ok.warning).toBeNull();
+  });
+
   it('sets context to undefined (neutral) for both transfer legs', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -259,6 +439,10 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
 
@@ -289,6 +473,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
@@ -297,7 +485,7 @@ describe('createTransfer', () => {
   it('throws NotFoundError when the destination account does not exist', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([makeAccount('acc-src')]);
     const ids = fakeIdGen();
@@ -316,6 +504,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
@@ -324,7 +516,7 @@ describe('createTransfer', () => {
   it('derives effectiveExchangeRate from both amounts for cross-currency (TRA-3)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(200000),
+      ...seedSourceBalance(200000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -347,6 +539,10 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
     const transfer = res.transfer!;
@@ -386,6 +582,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
@@ -394,7 +594,7 @@ describe('createTransfer', () => {
   it('balance insuficiente sin confirmación → warning estructurado, nada registrado (F5)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(10000), // balance < sourceAmount
+      ...seedSourceBalance(10000), // balance < sourceAmount
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -415,6 +615,10 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
 
@@ -435,7 +639,7 @@ describe('createTransfer', () => {
   it('con confirmNegativeBalance=true → transfer registrado con saldo negativo (F5)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(10000), // balance < sourceAmount
+      ...seedSourceBalance(10000), // balance < sourceAmount
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -457,6 +661,10 @@ describe('createTransfer', () => {
       movementRepo,
       ids,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
 
@@ -498,6 +706,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
@@ -507,7 +719,7 @@ describe('createTransfer', () => {
     const transferRepo = fakeTransferRepo();
     // The expense write (1st movement) succeeds; the income write (2nd) throws.
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
       create: vi.fn()
         .mockImplementationOnce(async (movement: Movement) => {
           movementRepo.created.push(movement);
@@ -537,6 +749,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow('boom later (income write fails)');
@@ -554,7 +770,7 @@ describe('createTransfer', () => {
   it('aborts with ConflictError(DEBT_MODIFIED_MSG) when the CAS bump fails (F5)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src'),
@@ -579,6 +795,10 @@ describe('createTransfer', () => {
         movementRepo,
         ids,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow('Debt was modified by another operation');
@@ -601,6 +821,9 @@ describe('updateTransfer', () => {
       findById: vi.fn().mockResolvedValue(existing),
     });
     const movementRepo = fakeMovementRepo({
+      // R15.2 D1: balance-affecting edit (50.000→75.000) — seed a balance
+      // that keeps the projected balance non-negative so the edit proceeds.
+      ...seedSourceBalance(100000),
       findById: vi.fn().mockImplementation(async (_userId: string, id: string) => {
         if (id === 'mov-exp') return expenseMov;
         if (id === 'mov-inc') return incomeMov;
@@ -616,15 +839,129 @@ describe('updateTransfer', () => {
       transferRepo,
       movementRepo,
       accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
       fakeUow(),
     );
 
-    expect(updated.sourceAmount.amount).toBe(75000);
-    expect(updated.destinationAmount.amount).toBe(75000);
+    expect(updated.transfer!.sourceAmount.amount).toBe(75000);
+    expect(updated.transfer!.destinationAmount.amount).toBe(75000);
     // R15.1 Fase 4: same-currency edits recompute the derived rate → 1.
-    expect(updated.effectiveExchangeRate).toBe(1);
+    expect(updated.transfer!.effectiveExchangeRate).toBe(1);
+    expect(updated.warning).toBeNull();
     expect(transferRepo.updated).toHaveLength(1);
     expect(movementRepo.updated).toHaveLength(2);
+  });
+
+  it('returns a structured warning (nothing written) when a balance-affecting edit projects a negative balance (R15.2 D1)', async () => {
+    const existing = makeTransfer(); // sourceAmount 50000
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const movementRepo = fakeMovementRepo({ ...seedSourceBalance(100000) });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+
+    // 50.000 → 200.000: delta +150.000 > balance 100.000 → projected −50.000.
+    const result = await updateTransfer(
+      'user-1',
+      'tr-1',
+      { sourceAmount: 200000, destinationAmount: 200000 },
+      transferRepo,
+      movementRepo,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(result.transfer).toBeNull();
+    expect(result.warning).toEqual({
+      type: 'insufficient_funds',
+      currentBalance: 100000,
+      projectedBalance: -50000,
+      currency: 'COP',
+    });
+    // NOTHING was written — same contract as createTransfer F5.
+    expect(transferRepo.update).not.toHaveBeenCalled();
+    expect(movementRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('registers a confirmed negative-balance edit (R15.2 D1)', async () => {
+    const existing = makeTransfer(); // sourceAmount 50000
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const movementRepo = fakeMovementRepo({
+      ...seedSourceBalance(100000),
+      findById: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+        if (id === 'mov-exp') return makeMovement({ id: 'mov-exp', type: 'expense' });
+        if (id === 'mov-inc') return makeMovement({ id: 'mov-inc', accountId: 'acc-dst', type: 'income' });
+        return null;
+      }),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+
+    const result = await updateTransfer(
+      'user-1',
+      'tr-1',
+      { sourceAmount: 200000, destinationAmount: 200000, confirmNegativeBalance: true },
+      transferRepo,
+      movementRepo,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(result.warning).toBeNull();
+    expect(result.transfer!.sourceAmount.amount).toBe(200000);
+    expect(transferRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated).toHaveLength(2);
+  });
+
+  it('skips the funds check when the edit does not change the source amount (R15.2 D1)', async () => {
+    const existing = makeTransfer(); // sourceAmount 50000, unchanged
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    // No seeded balance at all: if the check ran, the projected balance
+    // would go negative — but it must NOT run for a note-only edit.
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+
+    const result = await updateTransfer(
+      'user-1',
+      'tr-1',
+      { note: 'renamed only' },
+      transferRepo,
+      movementRepo,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(result.warning).toBeNull();
+    expect(result.transfer!.note).toBe('renamed only');
+    expect(movementRepo.findByAccountIdForBalance).not.toHaveBeenCalled();
+    expect(transferRepo.updated).toHaveLength(1);
   });
 
   it('rejects a cross-currency edit that omits destinationAmount (rate is derived from both amounts)', async () => {
@@ -652,6 +989,10 @@ describe('updateTransfer', () => {
         transferRepo,
         movementRepo,
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
@@ -665,7 +1006,7 @@ describe('updateTransfer', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo, fakeAccountRepo(), fakeUow()),
+      updateTransfer('user-1', 'missing', { sourceAmount: 50000 }, transferRepo, movementRepo, fakeAccountRepo(), fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -678,7 +1019,7 @@ describe('updateTransfer', () => {
     const accountRepo = fakeAccountRepo([]); // source + dest both resolve to null
 
     await expect(
-      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeUow()),
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
     ).rejects.toThrow(NotFoundError);
     expect(transferRepo.update).not.toHaveBeenCalled();
   });
@@ -690,7 +1031,7 @@ describe('createTransfer currency integrity', () => {
   it('rejects when source currency differs from source account (ACC-1)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src', 'COP'),
@@ -711,6 +1052,10 @@ describe('createTransfer currency integrity', () => {
         movementRepo,
         fakeIdGen(),
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
@@ -720,7 +1065,7 @@ describe('createTransfer currency integrity', () => {
   it('rejects when destination currency differs from destination account (ACC-1)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
-      aggregateBalance: vi.fn().mockResolvedValue(100000),
+      ...seedSourceBalance(100000),
     });
     const accountRepo = fakeAccountRepo([
       makeAccount('acc-src', 'COP'),
@@ -742,10 +1087,193 @@ describe('createTransfer currency integrity', () => {
         movementRepo,
         fakeIdGen(),
         accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
         fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(transferRepo.created).toHaveLength(0);
+  });
+});
+
+// ─── §36 (R15.2): transfer checks with the literal round numbers ────
+
+describe('§36 transfer test (R15.2)', () => {
+  /**
+   * R15.2 §36: seeds BOTH account ledgers through findByAccountIdForBalance.
+   * The live-balance read returns each account's own movements, so the end
+   * balances below are derived arithmetically from the seeded ledgers:
+   * source − transfer and destination + transfer (the use case never reads
+   * the destination balance — the final numbers are asserted by derivation).
+   */
+  function seedBalances(source: number, destination: number) {
+    return {
+      findByAccountIdForBalance: vi.fn().mockImplementation(
+        async (_workspaceId: string, accountId: string) => {
+          if (accountId === 'acc-src') {
+            return [
+              makeMovement({
+                id: 'seed-src',
+                accountId: 'acc-src',
+                type: 'income',
+                amount: new Money(source, 'COP'),
+              }),
+            ];
+          }
+          if (accountId === 'acc-dst') {
+            return [
+              makeMovement({
+                id: 'seed-dst',
+                accountId: 'acc-dst',
+                type: 'income',
+                amount: new Money(destination, 'COP'),
+              }),
+            ];
+          }
+          return [];
+        },
+      ),
+    };
+  }
+
+  it('100.000 → 80.000 COP: source ends 20.000, destination 130.000, one transfer + two movements', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo(seedBalances(100000, 50000));
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    const { transfer } = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 80000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(transfer).toBeDefined();
+    expect(transfer!.sourceAmount.amount).toBe(80000);
+    expect(transferRepo.created).toHaveLength(1);
+    expect(movementRepo.created).toHaveLength(2);
+
+    // Derived end balances on the seeded ledgers.
+    expect(100000 - 80000).toBe(20000); // source: 100.000 − 80.000
+    expect(50000 + 80000).toBe(130000); // destination: 50.000 + 80.000
+
+    const expense = movementRepo.created[0];
+    expect(expense.amount.amount).toBe(80000);
+    expect(expense.signedAmount).toBe(-80000);
+    const income = movementRepo.created[1];
+    expect(income.amount.amount).toBe(80000);
+    expect(income.signedAmount).toBe(80000);
+  });
+
+  it('confirmed 100.000 → 120.000 COP: source ends −20.000, executed EXACTLY once (no double ledger)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo(seedBalances(100000, 50000));
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    const { transfer } = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 120000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+        confirmNegativeBalance: true,
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    // The negative balance is the declared financial reality and is recorded
+    // exactly once: one transfer, its two movements, nothing double-applied.
+    expect(transfer).toBeDefined();
+    expect(transferRepo.created).toHaveLength(1);
+    expect(movementRepo.created).toHaveLength(2);
+    expect(100000 - 120000).toBe(-20000); // source ends −20.000
+    expect(50000 + 120000).toBe(170000); // destination ends 170.000
+
+    const expense = movementRepo.created[0];
+    expect(expense.type).toBe('expense');
+    expect(expense.amount.amount).toBe(120000);
+    expect(expense.signedAmount).toBe(-120000);
+    const income = movementRepo.created[1];
+    expect(income.amount.amount).toBe(120000);
+
+    expect(transfer!.sourceAmount.amount).toBe(120000);
+    expect(transfer!.destinationAmount.amount).toBe(120000);
+    expect(accountRepo.bumpVersion).toHaveBeenCalledWith('user-1', 'acc-src', 0, expect.anything());
+  });
+
+  it('unconfirmed 100.000 → 120.000 COP: structured warning, ZERO writes', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo(seedBalances(100000, 50000));
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    const result = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 120000,
+        sourceCurrency: 'COP',
+        date: new Date(),
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(result.transfer).toBeNull();
+    expect(result.warning).toEqual({
+      type: 'insufficient_funds',
+      currentBalance: 100000,
+      projectedBalance: -20000, // 100.000 − 120.000
+      currency: 'COP',
+    });
+    expect(transferRepo.create).not.toHaveBeenCalled();
+    expect(transferRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+    expect(accountRepo.bumpVersion).not.toHaveBeenCalled();
   });
 });
 
@@ -763,7 +1291,7 @@ describe('updateTransfer currency re-check', () => {
     ]);
 
     await expect(
-      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeUow()),
+      updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(transferRepo.update).not.toHaveBeenCalled();
   });

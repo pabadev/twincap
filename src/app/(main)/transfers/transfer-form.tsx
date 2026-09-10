@@ -18,13 +18,16 @@ import { formatAmount } from '../../../lib/format';
 
 /**
  * Action-state shape shared by the create/edit transfer actions.
- * `warning` is only ever produced by createTransferAction (R15.1 Fase 5);
- * updateTransferAction never emits it but is structurally compatible.
+ * `warning` is produced by createTransferAction (R15.1 Fase 5) and, since
+ * R15.2 Fase D (D1), by updateTransferAction too when a balance-affecting
+ * edit projects a negative source balance without confirmation — the shared
+ * confirm modal below handles both. The `type` discriminator keeps the
+ * warning payload future-proof for additional warning flavors.
  */
 type TransferFormState = {
   error?: string;
   success?: string;
-  warning?: { currentBalance: number; projectedBalance: number; currency: string };
+  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
 };
 
 export function TransferForm({
@@ -38,8 +41,8 @@ export function TransferForm({
   onSuccess?: () => void;
 }) {
   const isEdit = !!transfer;
-  // Explicit State generic: the action is the create/edit union and only
-  // createTransferAction can return `warning`.
+  // The action is the create/edit union; both can now return `warning`
+  // (create since R15.1 F5, edit since R15.2 D1) with the same shape.
   const [state, formAction, isPending] = useActionState<TransferFormState | null, FormData>(
     isEdit ? updateTransferAction : createTransferAction,
     null,

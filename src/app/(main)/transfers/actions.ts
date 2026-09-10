@@ -10,6 +10,10 @@ import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
+import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
+import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
+import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
+import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
 import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
@@ -29,7 +33,7 @@ export async function createTransferAction(
 ): Promise<{
   error?: string;
   success?: string;
-  warning?: { currentBalance: number; projectedBalance: number; currency: string };
+  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
 }> {
   const user = await getCurrentUser();
   if (!user) return { error: 'error.unauthorized' };
@@ -97,6 +101,11 @@ export async function createTransferAction(
           movementRepo,
           ids,
           accountRepo,
+          // R15.2: parent repos for the live-parent balance derivation.
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         );
         // Audit records the entityId only when a transfer was actually
@@ -133,7 +142,11 @@ export async function createTransferAction(
 export async function updateTransferAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<{
+  error?: string;
+  success?: string;
+  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
+}> {
   const user = await getCurrentUser();
   if (!user) return { error: 'error.unauthorized' };
 
@@ -143,13 +156,22 @@ export async function updateTransferAction(
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
+  const confirmNegativeBalance = formData.get('confirmNegativeBalance') === 'true';
 
   const input: UpdateTransferInput = {
     sourceAmount,
     destinationAmount,
     date,
     note,
+    confirmNegativeBalance,
   };
+
+  // R15.2 D1: the use case returns EITHER a written transfer or a structured
+  // insufficient-funds warning (same contract as createTransferAction). The
+  // result must be inspected AFTER the audit wrapper (which only logs — it
+  // does not consume the value), so the warning can surface to the frontend
+  // as data and the shared confirm modal can re-submit with the field.
+  let result!: Awaited<ReturnType<typeof updateTransfer>>;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -158,21 +180,36 @@ export async function updateTransferAction(
     await withAudit(
       logger,
       { action: 'updateTransfer', entityType: 'transfer', userId: user.userId },
-      () => {
+      async () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return updateTransfer(
+        result = await updateTransfer(
           user.workspaceId!,
           transferId,
           input,
           transferRepo,
           movementRepo,
           accountRepo,
+          // R15.2 D1: parent repos for the live-parent balance derivation
+          // (same set as createTransfer).
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         );
+        // Audit records the entityId only when the edit was actually
+        // written; a warning emits a success record with no entity.
+        return result.transfer?.id ?? undefined;
       },
     );
+    if (result.warning) {
+      // The edit was processed but NOTHING was written. Update has no
+      // idempotency claim to release — the same mounted form simply
+      // re-submits with confirmNegativeBalance and the edit registers.
+      return { warning: result.warning };
+    }
     revalidatePath('/transfers');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');

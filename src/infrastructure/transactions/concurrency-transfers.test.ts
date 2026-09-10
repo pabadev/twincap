@@ -13,6 +13,8 @@ import { MongoMovementRepository } from "../repositories/movement-repository";
 import { MongoAccountRepository } from "../repositories/account-repository";
 import { MongoCreditReceivedRepository } from "../repositories/credit-received-repository";
 import { MongoCreditGrantedRepository } from "../repositories/credit-granted-repository";
+import { MongoSaleRepository } from "../repositories/sale-repository";
+import { MongoPayableRepository } from "../repositories/payable-repository";
 import { objectIdGenerator } from "../config/id-generator";
 import { MongoUnitOfWork } from "./mongo-unit-of-work";
 import { AccountModel } from "../models/account";
@@ -169,6 +171,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
               new MongoMovementRepository(),
               objectIdGenerator,
               new MongoAccountRepository(),
+              new MongoCreditReceivedRepository(),
+              new MongoCreditGrantedRepository(),
+              new MongoSaleRepository(),
+              new MongoPayableRepository(),
               new MongoUnitOfWork(),
             ),
           ),
@@ -242,6 +248,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
               new MongoMovementRepository(),
               objectIdGenerator,
               new MongoAccountRepository(),
+              new MongoCreditReceivedRepository(),
+              new MongoCreditGrantedRepository(),
+              new MongoSaleRepository(),
+              new MongoPayableRepository(),
               new MongoUnitOfWork(),
             ),
           ),
@@ -296,6 +306,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           new MongoMovementRepository(),
           objectIdGenerator,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         )
       ).transfer!;
@@ -309,6 +323,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
             new MongoTransferRepository(),
             new MongoMovementRepository(),
             new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
             new MongoUnitOfWork(),
           ),
         ),
@@ -352,6 +370,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           new MongoMovementRepository(),
           objectIdGenerator,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         )
       ).transfer!;
@@ -365,6 +387,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
             new MongoTransferRepository(),
             new MongoMovementRepository(),
             new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
             new MongoUnitOfWork(),
           ),
         ),
@@ -411,6 +437,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           movementRepo,
           objectIdGenerator,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: income movement write fails");
@@ -432,6 +462,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
         new MongoMovementRepository(),
         objectIdGenerator,
         new MongoAccountRepository(),
+        new MongoCreditReceivedRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoSaleRepository(),
+        new MongoPayableRepository(),
         new MongoUnitOfWork(),
       );
 
@@ -467,6 +501,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           new MongoTransferRepository(),
           movementRepo,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: income movement update fails");
@@ -504,6 +542,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
         new MongoMovementRepository(),
         objectIdGenerator,
         new MongoAccountRepository(),
+        new MongoCreditReceivedRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoSaleRepository(),
+        new MongoPayableRepository(),
         new MongoUnitOfWork(),
       );
       const transferDoc = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {
@@ -537,6 +579,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
         new MongoMovementRepository(),
         objectIdGenerator,
         new MongoAccountRepository(),
+        new MongoCreditReceivedRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoSaleRepository(),
+        new MongoPayableRepository(),
         new MongoUnitOfWork(),
       );
       const transferDoc = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {

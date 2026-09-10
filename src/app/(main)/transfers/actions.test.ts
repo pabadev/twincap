@@ -19,6 +19,18 @@ const { MongoMovementRepository } = vi.hoisted(() => ({
 const { MongoAccountRepository } = vi.hoisted(() => ({
   MongoAccountRepository: vi.fn(),
 }));
+const { MongoCreditReceivedRepository } = vi.hoisted(() => ({
+  MongoCreditReceivedRepository: vi.fn(),
+}));
+const { MongoCreditGrantedRepository } = vi.hoisted(() => ({
+  MongoCreditGrantedRepository: vi.fn(),
+}));
+const { MongoSaleRepository } = vi.hoisted(() => ({
+  MongoSaleRepository: vi.fn(),
+}));
+const { MongoPayableRepository } = vi.hoisted(() => ({
+  MongoPayableRepository: vi.fn(),
+}));
 const { trackAnalytics } = vi.hoisted(() => ({ trackAnalytics: vi.fn() }));
 const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
@@ -38,6 +50,18 @@ vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
 }));
 vi.mock('../../../infrastructure/repositories/account-repository', () => ({
   MongoAccountRepository,
+}));
+vi.mock('../../../infrastructure/repositories/credit-received-repository', () => ({
+  MongoCreditReceivedRepository,
+}));
+vi.mock('../../../infrastructure/repositories/credit-granted-repository', () => ({
+  MongoCreditGrantedRepository,
+}));
+vi.mock('../../../infrastructure/repositories/sale-repository', () => ({
+  MongoSaleRepository,
+}));
+vi.mock('../../../infrastructure/repositories/payable-repository', () => ({
+  MongoPayableRepository,
 }));
 vi.mock('../../../lib/track-analytics', () => ({ trackAnalytics }));
 vi.mock('../../../infrastructure/repositories/operation-log-repository', () => ({
@@ -90,6 +114,28 @@ function makeMovement(type: 'expense' | 'income'): Movement {
   });
 }
 
+/**
+ * Source-account balance seed for createTransferAction: an unlinked (manual)
+ * movement is always considered live, so the derived balance is exactly the
+ * seeded amount (replaces the removed aggregateBalance mock).
+ */
+function seededBalanceMovement(amount: number) {
+  return [
+    {
+      id: 'seed-balance',
+      workspaceId: 'user-1',
+      accountId: 'acc-1',
+      type: 'income' as const,
+      amount: { amount, currency: 'COP' },
+      signedAmount: amount,
+      date: new Date('2026-09-01'),
+      note: 'seed',
+      link: undefined,
+      createdAt: new Date('2026-09-10'),
+    },
+  ];
+}
+
 function transferFormData(): FormData {
   const fd = new FormData();
   fd.append('transferId', 'tr-1');
@@ -117,6 +163,12 @@ describe('updateTransferAction', () => {
         return null;
       }),
       update: vi.fn().mockResolvedValue(undefined),
+      // R15.2 D1: the funds check derives the source balance via the lite
+      // read. 200_000 keeps the default edit (50.000→75.000) non-negative;
+      // the warning test below stubs a tighter balance.
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(
+        seededBalanceMovement(200000),
+      ),
     }));
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockImplementation(async (_ws: string, id: string) => {
@@ -125,6 +177,20 @@ describe('updateTransferAction', () => {
         }
         return null;
       }),
+    }));
+    // R15.2 D1: live-parent resolution never reaches these in the mocked flow
+    // (the seeded movements are unlinked), but the action instantiates them.
+    MongoCreditReceivedRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoCreditGrantedRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoSaleRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoPayableRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
     }));
     MongoUnitOfWork.mockImplementation(() => ({
       withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
@@ -139,6 +205,49 @@ describe('updateTransferAction', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/accounts');
     expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
     expect(revalidatePath).toHaveBeenCalledWith('/movements');
+  });
+
+  it('returns the structured warning (nothing written, no revalidation) when the edit projects a negative balance (R15.2 D1)', async () => {
+    // Balance 10_000 < delta 25_000 (50.000→75.000) → projected −15_000.
+    MongoMovementRepository.mockImplementation(() => ({
+      findById: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+        if (id === 'mov-exp') return makeMovement('expense');
+        if (id === 'mov-inc') return makeMovement('income');
+        return null;
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(
+        seededBalanceMovement(10000),
+      ),
+    }));
+
+    const result = await updateTransferAction(null, transferFormData());
+
+    expect(result).toEqual({
+      warning: { type: 'insufficient_funds', currentBalance: 10000, projectedBalance: -15000, currency: 'COP' },
+    });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('registers the negative-balance edit when confirmNegativeBalance is true (R15.2 D1)', async () => {
+    MongoMovementRepository.mockImplementation(() => ({
+      findById: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+        if (id === 'mov-exp') return makeMovement('expense');
+        if (id === 'mov-inc') return makeMovement('income');
+        return null;
+      }),
+      update: vi.fn().mockResolvedValue(undefined),
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(
+        seededBalanceMovement(10000),
+      ),
+    }));
+
+    const fd = transferFormData();
+    fd.append('confirmNegativeBalance', 'true');
+    const result = await updateTransferAction(null, fd);
+
+    expect(result).toEqual({ success: 'transferUpdated' });
+    expect(revalidatePath).toHaveBeenCalledWith('/transfers');
   });
 
   it('maps a missing transfer to the notFound error key', async () => {
@@ -180,7 +289,12 @@ describe('createTransferAction (analytics emission)', () => {
     }));
     MongoMovementRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),
-      aggregateBalance: vi.fn().mockResolvedValue(200000),
+      // R15.2: source balance derived from movements via the lite read
+      // findByAccountIdForBalance (aggregateBalance removed). Unlinked seed
+      // movement → always live.
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(
+        seededBalanceMovement(200000),
+      ),
     }));
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockImplementation(async (_ws: string, id: string) => {
@@ -189,7 +303,24 @@ describe('createTransferAction (analytics emission)', () => {
         }
         return null;
       }),
+      // R15.2: createTransfer touches the DESTINATION account doc inside the
+      // tx (the source is already CAS-protected via bumpVersion).
+      touch: vi.fn().mockResolvedValue(true),
       bumpVersion: vi.fn().mockResolvedValue(true),
+    }));
+    // R15.2: live-parent resolution never reaches these in the mocked flow
+    // (the seeded movements are unlinked), but the action instantiates them.
+    MongoCreditReceivedRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoCreditGrantedRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoSaleRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
+    }));
+    MongoPayableRepository.mockImplementation(() => ({
+      findById: vi.fn().mockResolvedValue(null),
     }));
     claimIdempotency.mockResolvedValue(true);
     releaseIdempotency.mockResolvedValue(undefined);
@@ -217,7 +348,9 @@ describe('createTransferAction (analytics emission)', () => {
     // Balance 10_000 < sourceAmount 50_000 → projected −40_000.
     MongoMovementRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),
-      aggregateBalance: vi.fn().mockResolvedValue(10000),
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(
+        seededBalanceMovement(10000),
+      ),
     }));
 
     const fd = new FormData();
