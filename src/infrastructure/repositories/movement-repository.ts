@@ -1,6 +1,6 @@
 import { Types, type ClientSession } from "mongoose";
 import type { MovementRepository } from "../../core/domain/repositories";
-import type { Movement } from "../../core/domain/movement";
+import type { Movement, BalanceMovement, MovementLinkKind } from "../../core/domain/movement";
 import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Category } from "../../core/domain/category";
 import type { Currency } from "../../core/domain/currency";
@@ -133,6 +133,69 @@ export class MongoMovementRepository implements MovementRepository {
     });
   }
 
+  /** R15.2 corrective — light balance read: same session-aware filter and
+   *  sort as findByAccountId, but with a minimal projection and NO dependency
+   *  resolution (categories/accounts), so each balance evaluation costs ≈1
+   *  query instead of 3. Live-parent filtering needs only link/accountId/
+   *  date/amount/createdAt; the sum needs signedAmount.
+   *
+   *  Category parity with the dashboard read (findByWorkspaceIdForBalance
+   *  skips movements whose category does not resolve): orphan categories are
+   *  impossible by construction — deleteCategory rejects deletion while any
+   *  movement references the category (countByCategoryId guard,
+   *  src/core/application/categories/delete-category.ts:14-17), and synthetic
+   *  categories are always resolvable. No category query needed.
+   *
+   *  Account parity: the caller (use case) already loaded the account as live
+   *  (findById before the tx writes), and the account id is the pre-seeded
+   *  live parent — a movement of a dead account cannot appear here.
+   *  `amount` is persisted as a bare minor-units number (currency lives on the
+   *  account), so `amount: { amount }` mirrors the domain shape. */
+  async findByAccountIdForBalance(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<BalanceMovement[]> {
+    const docs = await MovementModel.find(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+        accountId: new Types.ObjectId(accountId),
+      },
+      {
+        accountId: 1,
+        type: 1,
+        amount: 1,
+        date: 1,
+        createdAt: 1,
+        link: 1,
+        signedAmount: 1,
+      },
+      { session: sessionOf(tx) },
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
+    return docs.map((doc) => {
+      const d = doc as MovementDocument;
+      return {
+        id: d._id.toString(),
+        accountId: d.accountId.toString(),
+        type: d.type,
+        amount: { amount: d.amount },
+        signedAmount: d.signedAmount,
+        date: d.date,
+        createdAt: d.createdAt,
+        link: d.link
+          ? {
+              kind: d.link.kind as MovementLinkKind,
+              refId: d.link.refId,
+              saleId: d.link.saleId,
+              opId: d.link.opId,
+            }
+          : undefined,
+      };
+    });
+  }
+
   async create(movement: Movement, tx?: TransactionHandle): Promise<Movement> {
     try {
       const session = sessionOf(tx);
@@ -208,29 +271,6 @@ export class MongoMovementRepository implements MovementRepository {
       { session },
     ).exec();
     return result.deletedCount ?? 0;
-  }
-
-  async aggregateBalance(
-    workspaceId: string,
-    accountId: string,
-    tx?: TransactionHandle,
-  ): Promise<number> {
-    const result = await MovementModel.aggregate([
-      {
-        $match: {
-          workspaceId: new Types.ObjectId(workspaceId),
-          accountId: new Types.ObjectId(accountId),
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$signedAmount" },
-        },
-      },
-    ]).session(sessionOf(tx) ?? null).exec();
-
-    return result.length > 0 ? result[0].total : 0;
   }
 
   async findByWorkspaceIdAndDateRange(

@@ -27,7 +27,7 @@ import type { Client } from "./client";
 import type { CreditGranted } from "./credit-granted";
 import type { CreditReceived } from "./credit-received";
 import type { Membership } from "./membership";
-import type { Movement } from "./movement";
+import type { BalanceMovement, Movement } from "./movement";
 import type { Payable } from "./payable";
 import type { Sale } from "./sale";
 import type { Transfer } from "./transfer";
@@ -123,6 +123,21 @@ export interface MovementRepository {
    *   joins the caller's transaction session (snapshot-consistent cascade read
    *   in transactional deleteAccount). */
   findByAccountId(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<Movement[]>;
+  /** R15.2 corrective — minimal projected read for the account-balance path
+   *  (computeAccountLiveBalance). Same session-aware filter and (date,
+   *  createdAt) sort as {@link findByAccountId}, but WITHOUT category/account
+   *  resolution (no resolveBulkDependencies, no entity mappers) so each
+   *  balance evaluation stays ≈1 query — previously the dependency resolution
+   *  added 2 extra finds per write-conflict retry. {@link BalanceMovement} is
+   *  a structural subset of Movement; live-parent filtering only reads
+   *  link/accountId/date/amount/createdAt and the sum needs signedAmount.
+   *  Category parity with the dashboard read holds by construction (see
+   *  compute-live-balance.ts). */
+  findByAccountIdForBalance(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<BalanceMovement[]>;
   /**
    * Cursor-based paginated query across all workspace movements.
    * @param cursor Optional `{ date, createdAt }` of the last item from the previous page.
@@ -157,11 +172,6 @@ export interface MovementRepository {
   findByWorkspaceIdAndDateRange(workspaceId: string, from: Date, to: Date): Promise<Movement[]>;
   /** Full-history minimal-projection read for R7-A account balances (live-parent-filtered). Same orphan guard + dependency resolution as findByWorkspaceId. */
   findByWorkspaceIdForBalance(workspaceId: string): Promise<Movement[]>;
-  /** Σ signedAmount grouped by accountId (design rev.2 §2 derived balance).
-   *  @param tx optional transaction handle (R15 F5): the read joins the
-   *   caller's transaction session (snapshot-consistent balance validation
-   *   for transfer origins/destinations). */
-  aggregateBalance(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<number>;
   /** CAT-3: count movements referencing a category (deletion guard). */
   countByCategoryId(workspaceId: string, categoryId: string): Promise<number>;
 }

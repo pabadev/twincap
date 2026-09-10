@@ -41,11 +41,11 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     findById: async () => null,
     findByWorkspaceId: async () => movements,
     findByAccountId: async () => [],
+    findByAccountIdForBalance: async () => [],
     create: async (m) => m,
     update: async (m) => m,
     delete: async () => {},
     deleteByRefId: async () => 0,
-    aggregateBalance: async () => 0,
     countByCategoryId: async () => 0,
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -175,7 +175,7 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     date: new Date("2026-01-01"),
     paymentMode: "paid-in-full",
     accountId: "acc1",
-    total: 50000,
+    total: 50000, // Sale.total is minor units (number), not Money
     createdAt: new Date("2026-01-01"),
     ...overrides,
   } as Sale;
@@ -200,8 +200,8 @@ function makeCreditGranted(overrides: Partial<CreditGranted> = {}): CreditGrante
     workspaceId: "u1",
     accountId: "acc1",
     personName: "Test Credit",
-    principal: 100000,
-    totalToPay: 100000,
+    principal: { amount: 100000, currency: "COP" },
+    totalToPay: { amount: 100000, currency: "COP" },
     pending: 100000,
     interestRate: 0,
     date: new Date("2026-01-01"),
@@ -546,6 +546,165 @@ describe("reconcile", () => {
       );
 
       expect(actions).toHaveLength(0);
+    });
+
+    // R15.1 6d — legacy value-based reconciliation must mirror the read path:
+    // a legacy UUID refId that fails the id lookup is reconciled by
+    // (accountId + business-date key + mirror amount). Modern movements
+    // (created at/after the R15.1 cutoff) are STRICT: unmatched id → orphan.
+    it("reconciles a legacy salePayment with a matching live sale by value", async () => {
+      const movement = makeMovement({
+        id: "m11",
+        link: { kind: "salePayment", refId: "legacy-uuid-sale-1", opId: "op11" },
+        createdAt: new Date("2026-01-01"), // legacy: before the R15.1 cutoff
+        amount: { amount: 50000, currency: "COP" } as Movement["amount"],
+        signedAmount: -50000,
+      });
+      const sale = makeSale({
+        id: "s1",
+        accountId: "acc1",
+        date: new Date("2026-01-01"),
+        total: 50000, // Sale.total is minor units (number), not Money
+      });
+      const movementRepo = fakeMovementRepo([movement]);
+      const transferRepo = fakeTransferRepo([]);
+      const creditReceivedRepo = fakeCreditReceivedRepo([]);
+      const creditGrantedRepo = fakeCreditGrantedRepo([]);
+      const saleRepo = fakeSaleRepo([sale]);
+      const accountRepo = fakeAccountRepo([]);
+      const payableRepo = fakePayableRepo([]);
+
+      const actions = await findOrphanMovements(
+        movementRepo,
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+        "u1",
+      );
+
+      // Value reconciliation found exactly one candidate → the movement is live.
+      expect(actions).toHaveLength(0);
+    });
+
+    it("treats an AMBIGUOUS legacy salePayment as live (value matches 2 sales)", async () => {
+      const movement = makeMovement({
+        id: "m12",
+        link: { kind: "salePayment", refId: "legacy-uuid-sale-2", opId: "op12" },
+        createdAt: new Date("2026-01-01"),
+        amount: { amount: 50000, currency: "COP" } as Movement["amount"],
+        signedAmount: -50000,
+      });
+      const saleA = makeSale({
+        id: "s-a",
+        accountId: "acc1",
+        date: new Date("2026-01-01"),
+        total: 50000, // Sale.total is minor units (number), not Money
+      });
+      const saleB = makeSale({
+        id: "s-b",
+        accountId: "acc1",
+        date: new Date("2026-01-01"),
+        total: 50000, // Sale.total is minor units (number), not Money
+      });
+      const movementRepo = fakeMovementRepo([movement]);
+      const transferRepo = fakeTransferRepo([]);
+      const creditReceivedRepo = fakeCreditReceivedRepo([]);
+      const creditGrantedRepo = fakeCreditGrantedRepo([]);
+      const saleRepo = fakeSaleRepo([saleA, saleB]);
+      const accountRepo = fakeAccountRepo([]);
+      const payableRepo = fakePayableRepo([]);
+
+      const actions = await findOrphanMovements(
+        movementRepo,
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+        "u1",
+      );
+
+      // Ambiguous → still included (flagged for manual review in the read
+      // filter, but never treated as an orphan).
+      expect(actions).toHaveLength(0);
+    });
+
+    it("flags a legacy salePayment whose value matches NO live sale", async () => {
+      const movement = makeMovement({
+        id: "m13",
+        link: { kind: "salePayment", refId: "legacy-uuid-sale-3", opId: "op13" },
+        createdAt: new Date("2026-01-01"),
+        amount: { amount: 50000, currency: "COP" } as Movement["amount"],
+        signedAmount: -50000,
+      });
+      const sale = makeSale({
+        id: "s1",
+        accountId: "acc1",
+        date: new Date("2026-01-01"),
+        total: 99999, // amount mismatch
+      });
+      const movementRepo = fakeMovementRepo([movement]);
+      const transferRepo = fakeTransferRepo([]);
+      const creditReceivedRepo = fakeCreditReceivedRepo([]);
+      const creditGrantedRepo = fakeCreditGrantedRepo([]);
+      const saleRepo = fakeSaleRepo([sale]);
+      const accountRepo = fakeAccountRepo([]);
+      const payableRepo = fakePayableRepo([]);
+
+      const actions = await findOrphanMovements(
+        movementRepo,
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+        "u1",
+      );
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].entityId).toBe("m13");
+    });
+
+    it("flags a MODERN salePayment with unmatched refId even when the value matches", async () => {
+      const movement = makeMovement({
+        id: "m14",
+        link: { kind: "salePayment", refId: "modern-unmatched", opId: "op14" },
+        createdAt: new Date("2026-09-10"), // modern: at/after the R15.1 cutoff
+        amount: { amount: 50000, currency: "COP" } as Movement["amount"],
+        signedAmount: -50000,
+      });
+      const sale = makeSale({
+        id: "s1",
+        accountId: "acc1",
+        date: new Date("2026-01-01"),
+        total: 50000, // Sale.total is minor units (number), not Money
+      });
+      const movementRepo = fakeMovementRepo([movement]);
+      const transferRepo = fakeTransferRepo([]);
+      const creditReceivedRepo = fakeCreditReceivedRepo([]);
+      const creditGrantedRepo = fakeCreditGrantedRepo([]);
+      const saleRepo = fakeSaleRepo([sale]);
+      const accountRepo = fakeAccountRepo([]);
+      const payableRepo = fakePayableRepo([]);
+
+      const actions = await findOrphanMovements(
+        movementRepo,
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+        "u1",
+      );
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].entityId).toBe("m14");
     });
   });
 

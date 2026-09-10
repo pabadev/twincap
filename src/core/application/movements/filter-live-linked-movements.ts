@@ -1,4 +1,4 @@
-import type { Movement, MovementLinkKind } from '../../domain/movement';
+import type { BalanceMovement, MovementLinkKind } from '../../domain/movement';
 import { isModernRecord } from '../../domain/modern-record';
 
 /** Default date key: extracts YYYY-MM-DD (UTC) from a Date. */
@@ -73,7 +73,7 @@ function countByValue(
  */
 function reconcileLegacyByValue(
   arr: LinkableParent[],
-  movement: Movement,
+  movement: BalanceMovement,
   kind: MovementLinkKind,
   dateKeyOf: (d: Date) => string,
 ): boolean {
@@ -97,10 +97,18 @@ function reconcileLegacyByValue(
   return false;
 }
 
-export function filterMovementsWithLiveParents(
-  movements: Movement[],
+/**
+ * R15.2 corrective — parameter widened from `Movement[]` to a generic over
+ * `BalanceMovement` (structural subset), so both the full entity read
+ * (dashboard/reconcile: `Movement[]`) and the lite balance read
+ * (`BalanceMovement[]`) can pass through the same filter. The filter only
+ * reads `link`, `accountId`, `date`, `amount.amount` and `createdAt` —
+ * exactly the fields the lite read projects.
+ */
+export function filterMovementsWithLiveParents<T extends BalanceMovement>(
+  movements: T[],
   live: LiveParentIds,
-): Movement[] {
+): T[] {
   const dateKeyOf = live.dateKeyOf ?? defaultDateKey;
 
   return movements.filter((m) => {

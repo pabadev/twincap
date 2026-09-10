@@ -239,6 +239,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     findPaged: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: vi.fn().mockResolvedValue([]),
     findByWorkspaceIdForBalance: vi.fn().mockResolvedValue([]),
@@ -246,7 +247,6 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     update: vi.fn().mockImplementation(async (m: unknown) => m),
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
@@ -405,6 +405,7 @@ describe('Tenant isolation (B1)', () => {
           accountRepo,
           movementRepo,
           fakeIdGen(),
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(accountRepo.countReferences).not.toHaveBeenCalled();
@@ -444,7 +445,7 @@ describe('Tenant isolation (B1)', () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo(), fakeUow()),
+        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo(), fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.update).not.toHaveBeenCalled();
     });
@@ -476,6 +477,10 @@ describe('Tenant isolation (B1)', () => {
           movementRepo,
           fakeIdGen(),
           accountRepo,
+          fakeCreditReceivedRepo(),
+          fakeCreditGrantedRepo(),
+          fakeSaleRepo(),
+          fakePayableRepo(),
           fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
@@ -511,6 +516,10 @@ describe('Tenant isolation (B1)', () => {
           movementRepo,
           fakeIdGen(),
           accountRepo,
+          fakeCreditReceivedRepo(),
+          fakeCreditGrantedRepo(),
+          fakeSaleRepo(),
+          fakePayableRepo(),
           fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
@@ -585,7 +594,7 @@ describe('Tenant isolation (B1)', () => {
     it('writeOffCreditGranted with user-b creditId → NotFoundError', async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen(), fakeUow()),
+        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen(), fakeAccountRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.markWrittenOff).not.toHaveBeenCalled();
     });
@@ -864,7 +873,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteClient with user-b clientId → NotFoundError', async () => {
       const repo = fakeClientRepo();
       await expect(
-        deleteClient(WORKSPACE_A, CLI_B, repo),
+        deleteClient(WORKSPACE_A, CLI_B, repo, fakeSaleRepo()),
       ).rejects.toThrow(NotFoundError);
       expect(repo.delete).not.toHaveBeenCalled();
     });

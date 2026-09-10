@@ -346,3 +346,84 @@ describe("MongoMovementRepository windowed reads (R14-I)", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe("MongoMovementRepository lite balance read (R15.2 corrective)", () => {
+  let repo: MongoMovementRepository;
+  const UID = new Types.ObjectId().toString();
+  const ACCOUNT_ID = new Types.ObjectId().toString();
+
+  beforeEach(() => {
+    repo = new MongoMovementRepository();
+    movementFind.mockReset();
+    categoryFind.mockReset();
+    accountFind.mockReset();
+  });
+
+  it("findByAccountIdForBalance maps the lite shape with a minimal projection and NO dependency resolution", async () => {
+    const m = fakeMovementDoc({
+      _id: new Types.ObjectId(),
+      accountId: ACCOUNT_ID,
+      type: "income",
+      amount: 150000, // the doc persists amount as bare minor units
+      signedAmount: 150000,
+      date: new Date("2026-09-01T00:00:00.000Z"),
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+      link: { kind: "transfer", refId: "t-1", saleId: undefined, opId: "op-1" },
+    });
+
+    const chain = execResult([m]);
+    movementFind.mockImplementation(() => chain);
+    // The balance path must stay at 1 query — no category/account lookups.
+    categoryFind.mockImplementation(() => execResult([]));
+    accountFind.mockImplementation(() => execResult([]));
+
+    const result = await repo.findByAccountIdForBalance(UID, ACCOUNT_ID);
+
+    const [query, projection, options] = movementFind.mock.calls[0] as [
+      { workspaceId: Types.ObjectId; accountId: Types.ObjectId },
+      Record<string, number>,
+      { session: unknown },
+    ];
+    expect(query.workspaceId.toString()).toBe(UID);
+    expect(query.accountId.toString()).toBe(ACCOUNT_ID);
+    expect(projection).toEqual({
+      accountId: 1,
+      type: 1,
+      amount: 1,
+      date: 1,
+      createdAt: 1,
+      link: 1,
+      signedAmount: 1,
+    });
+    expect(options).toHaveProperty("session");
+    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(m._id.toString());
+    expect(result[0].accountId).toBe(ACCOUNT_ID);
+    expect(result[0].type).toBe("income");
+    expect(result[0].amount.amount).toBe(150000);
+    expect(result[0].signedAmount).toBe(150000);
+    expect(result[0].date).toEqual(new Date("2026-09-01T00:00:00.000Z"));
+    expect(result[0].createdAt).toEqual(new Date("2026-08-30T00:00:00.000Z"));
+    expect(result[0].link).toEqual({
+      kind: "transfer",
+      refId: "t-1",
+      saleId: undefined,
+      opId: "op-1",
+    });
+
+    // Parity by construction: computeAccountLiveBalance performs NO category
+    // check (deleteCategory guards referenced categories) and no account lookup.
+    expect(categoryFind).not.toHaveBeenCalled();
+    expect(accountFind).not.toHaveBeenCalled();
+  });
+
+  it("findByAccountIdForBalance returns [] when the account has no movements", async () => {
+    movementFind.mockImplementation(() => execResult([]));
+    const result = await repo.findByAccountIdForBalance(UID, ACCOUNT_ID);
+    expect(result).toEqual([]);
+    expect(categoryFind).not.toHaveBeenCalled();
+    expect(accountFind).not.toHaveBeenCalled();
+  });
+});

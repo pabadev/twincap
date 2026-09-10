@@ -1,6 +1,6 @@
 export interface CurrencyPosition {
   currency: string;
-  /** Σ account aggregateBalance (signed) + Σ CreditGranted.pending */
+  /** Σ account balances (signed) + Σ CreditGranted.pending */
   activos: number;
   /** Σ CreditReceived.pending + Σ Payable.pending */
   pasivos: number;
@@ -15,7 +15,7 @@ export interface ActivosPasivosResult {
 /**
  * Compute per-currency financial position (decision D4):
  *
- * Activos = Σ account balances (aggregateBalance) + Σ CreditGranted.pending
+ * Activos = Σ account balances (signed) + Σ CreditGranted.pending
  *   de créditos no castigados — writtenOff excluye el crédito del activo
  *   (representa todo lo de valor que el usuario posee o se le debe;
  *   un crédito dado de baja ya no es cobrable).

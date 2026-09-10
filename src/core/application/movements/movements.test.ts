@@ -27,6 +27,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
       return movement;
@@ -39,7 +40,6 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
       deleted.push(id);
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],

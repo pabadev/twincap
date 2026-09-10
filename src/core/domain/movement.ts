@@ -209,3 +209,26 @@ export class Movement {
 
 /** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
 export type SerializedMovement = ReturnType<Movement['toJSON']>;
+
+/**
+ * R15.2 corrective — structural subset of {@link Movement} consumed by the
+ * account-balance read path (live-parent filtering + signedAmount sum).
+ * `MovementRepository.findByAccountIdForBalance` returns these WITHOUT
+ * resolving categories/accounts, so each balance evaluation stays ≈1 query
+ * (the hot path of transfer write-conflict retries).
+ *
+ * `amount.currency` is optional because the movement document persists
+ * `amount` as a bare minor-units number — the currency lives on the owning
+ * account, which the lite read never loads; the balance path matches by
+ * amount value and sums `signedAmount`, so currency is never read here.
+ */
+export interface BalanceMovement {
+  id: string;
+  accountId: string;
+  type: string;
+  amount: { amount: number; currency?: string };
+  signedAmount: number;
+  date: Date;
+  createdAt: Date;
+  link?: MovementLink;
+}

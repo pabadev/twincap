@@ -5,6 +5,11 @@ import { getUserBalances } from '../../../core/application/balance';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
+import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
+import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
+import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
+import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { AccountsPageClient } from './accounts-page-client';
 import { DeleteAccountButton } from './delete-account-button';
@@ -28,10 +33,17 @@ export default async function AccountsPage() {
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
 
-  const [accounts, balances] = await Promise.all([
-    listAccounts(user.workspaceId!, accountRepo),
-    getUserBalances(user.workspaceId!, movementRepo),
-  ]);
+  // R15.2: getUserBalances needs the live accounts (opening movements resolve
+  // against them) and the parent repos to resolve link parents — listed first
+  // so the balance read is sequential (accounts → full history → parents).
+  const accounts = await listAccounts(user.workspaceId!, accountRepo);
+  const balances = await getUserBalances(user.workspaceId!, accounts, movementRepo, {
+    transferRepo: new MongoTransferRepository(),
+    creditReceivedRepo: new MongoCreditReceivedRepository(),
+    creditGrantedRepo: new MongoCreditGrantedRepository(),
+    saleRepo: new MongoSaleRepository(),
+    payableRepo: new MongoPayableRepository(),
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">

@@ -1,4 +1,7 @@
-import type { MovementRepository } from "../domain/repositories";
+import type { MovementRepository } from '../domain/repositories';
+import type { LiveBalanceDeps } from './movements/compute-live-balance';
+import { resolveLiveParentsForMovements } from './movements/compute-live-balance';
+import { filterMovementsWithLiveParents, accountBalancesFromMovements } from './movements/index';
 
 /**
  * Balance aggregation service.
@@ -6,41 +9,30 @@ import type { MovementRepository } from "../domain/repositories";
  * Balances are DERIVED from the sum of movement signedAmounts per account
  * (design rev.2 §2). There is no stored balance field.
  *
- * Request-scoped memo (React.cache or per-request Map) will be wired
- * in Phase 7 (app wiring). This module provides the pure aggregation logic.
+ * R15.2: the read applies the canonical live-parent filter (the same
+ * R6-P1/R7-A orphan semantics the dashboard uses) — movements whose linked
+ * parent was deleted without cascade never affect the derived balance.
  */
-
-/**
- * Get the balance of a single account: Σ signedAmount for all its movements.
- * Returns 0 when the account has no movements.
- */
-export async function getAccountBalance(
-  workspaceId: string,
-  accountId: string,
-  movementRepo: MovementRepository,
-): Promise<number> {
-  return movementRepo.aggregateBalance(workspaceId, accountId);
-}
 
 /**
  * Get balances for ALL accounts belonging to a user.
  * Returns a Map<accountId, balance>.
  *
- * Implementation: fetches all user movements and groups by accountId in memory.
- * This is acceptable for the foundation; request-scoped memo and optimization
- * will be added in Phase 7.
+ * Implementation (R15.2): fetches the full workspace movement history
+ * (minimal projection) and resolves every distinctive link parent ONCE
+ * (serial reads — the MongoDB driver forbids concurrent ops on a session),
+ * then filters and groups by account in memory. The provided `accounts` are
+ * the live account set (already loaded by the caller): opening movements
+ * survive the filter because their refId IS the account id.
  */
 export async function getUserBalances(
   workspaceId: string,
+  accounts: Array<{ id: string }>,
   movementRepo: MovementRepository,
+  deps: LiveBalanceDeps,
 ): Promise<Map<string, number>> {
-  const movements = await movementRepo.findByWorkspaceId(workspaceId);
-  const balances = new Map<string, number>();
-
-  for (const m of movements) {
-    const current = balances.get(m.accountId) ?? 0;
-    balances.set(m.accountId, current + m.signedAmount);
-  }
-
-  return balances;
+  const movements = await movementRepo.findByWorkspaceIdForBalance(workspaceId);
+  const live = await resolveLiveParentsForMovements(workspaceId, movements, deps, accounts);
+  const liveMovements = filterMovementsWithLiveParents(movements, live);
+  return accountBalancesFromMovements(accounts, liveMovements);
 }

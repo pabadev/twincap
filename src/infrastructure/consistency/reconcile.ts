@@ -14,6 +14,11 @@ import type {
   AccountRepository,
   PayableRepository,
 } from "../../core/domain/repositories";
+import { isMovementLinkKind } from "../../core/domain/movement";
+import {
+  collectLiveParentIds,
+  filterMovementsWithLiveParents,
+} from "../../core/application/movements";
 
 export interface ReconcileAction {
   type: "complete_parent" | "delete_orphan" | "restore_stock" | "flag";
@@ -62,24 +67,15 @@ export async function findIncompleteTransfers(
   return actions;
 }
 
-/** Movement link kinds that reference a parent entity. */
-const PARENT_LINK_KINDS = [
-  "opening",
-  "transfer",
-  "creditReceivedPrincipal",
-  "creditReceivedAbono",
-  "creditGrantedPrincipal",
-  "creditGrantedAbono",
-  "creditGrantedAbonoInterest",
-  "creditGrantedWriteOff",
-  "salePayment",
-  "payableInitialPayment",
-  "payableAbono",
-] as const;
-
 /**
  * Find movements whose link.refId points to a deleted parent.
  * Action: delete_orphan.
+ *
+ * R15.2: the sweep reuses the canonical live-parent machinery
+ * (`collectLiveParentIds` + `filterMovementsWithLiveParents`, the same
+ * R6-P1/R7-A orphan semantics every read uses). Legacy movements whose UUID
+ * refId fails the id lookup are value-reconciled exactly like in reads, so
+ * the sweep never flags what the app still considers live.
  */
 export async function findOrphanMovements(
   movementRepo: MovementRepository,
@@ -94,70 +90,38 @@ export async function findOrphanMovements(
   const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const actions: ReconcileAction[] = [];
 
-  // Pre-load parent IDs per collection for efficient membership checks
-  const accountIds = new Set(
-    (await accountRepo.findByWorkspaceId(workspaceId)).map((a) => a.id),
-  );
-  const transferIds = new Set(
-    (await transferRepo.findByWorkspaceId(workspaceId)).map((t) => t.id),
-  );
-  const creditReceivedIds = new Set(
-    (await creditReceivedRepo.findByWorkspaceId(workspaceId)).map((c) => c.id),
-  );
-  const creditGrantedIds = new Set(
-    (await creditGrantedRepo.findByWorkspaceId(workspaceId)).map((c) => c.id),
-  );
-  const saleIds = new Set(
-    (await saleRepo.findByWorkspaceId(workspaceId)).map((s) => s.id),
-  );
-  const payableIds = new Set(
-    (await payableRepo.findByWorkspaceId(workspaceId)).map((p) => p.id),
+  // Current parent collections = the live set. Anything a movement links to
+  // that is not in them is orphaned state left behind by a failed cascade.
+  const live = collectLiveParentIds({
+    accounts: await accountRepo.findByWorkspaceId(workspaceId),
+    transfers: await transferRepo.findByWorkspaceId(workspaceId),
+    creditsReceived: await creditReceivedRepo.findByWorkspaceId(workspaceId),
+    creditsGranted: await creditGrantedRepo.findByWorkspaceId(workspaceId),
+    sales: await saleRepo.findByWorkspaceId(workspaceId),
+    payables: await payableRepo.findByWorkspaceId(workspaceId),
+  });
+
+  const liveMovementIds = new Set(
+    filterMovementsWithLiveParents(movements, live).map((m) => m.id),
   );
 
   for (const movement of movements) {
     if (!movement.link) continue;
-    if (!(PARENT_LINK_KINDS as readonly string[]).includes(movement.link.kind))
-      continue;
+    // Unknown kinds are skipped (fail-open for detection): only the kinds the
+    // domain knows how to resolve participate in the sweep.
+    if (!isMovementLinkKind(movement.link.kind)) continue;
 
-    let parentExists = false;
+    if (liveMovementIds.has(movement.id)) continue;
 
-    switch (movement.link.kind) {
-      case "opening":
-        parentExists = accountIds.has(movement.link.refId);
-        break;
-      case "transfer":
-        parentExists = transferIds.has(movement.link.refId);
-        break;
-      case "creditReceivedPrincipal":
-      case "creditReceivedAbono":
-        parentExists = creditReceivedIds.has(movement.link.refId);
-        break;
-      case "creditGrantedPrincipal":
-      case "creditGrantedAbono":
-      case "creditGrantedAbonoInterest":
-      case "creditGrantedWriteOff":
-        parentExists = creditGrantedIds.has(movement.link.refId);
-        break;
-      case "salePayment":
-        parentExists = saleIds.has(movement.link.refId);
-        break;
-      case "payableInitialPayment":
-      case "payableAbono":
-        parentExists = payableIds.has(movement.link.refId);
-        break;
-    }
-
-    if (!parentExists) {
-      actions.push({
-        type: "delete_orphan",
-        description: `Movement ${movement.id} links to deleted ${movement.link.kind} parent ${movement.link.refId}`,
-        entity: "Movement",
-        entityId: movement.id,
-        details: {
-          link: movement.link,
-        },
-      });
-    }
+    actions.push({
+      type: "delete_orphan",
+      description: `Movement ${movement.id} links to deleted ${movement.link.kind} parent ${movement.link.refId}`,
+      entity: "Movement",
+      entityId: movement.id,
+      details: {
+        link: movement.link,
+      },
+    });
   }
 
   return actions;

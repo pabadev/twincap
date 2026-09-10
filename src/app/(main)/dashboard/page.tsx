@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getT, getLocale } from '../../../i18n/server';
 import { listAccounts } from '../../../core/application/accounts';
-import { filterMovementsWithLiveParents, accountBalancesFromMovements } from '../../../core/application/movements';
+import { filterMovementsWithLiveParents, accountBalancesFromMovements, collectLiveParentIds } from '../../../core/application/movements';
 import { buildDashboardSnapshot } from '../../../core/application/dashboard/build-dashboard-snapshot';
 import { computeDashboardWindow } from '../../../core/application/dashboard/compute-dashboard-window';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
@@ -72,30 +72,16 @@ export default async function DashboardPage() {
 
   // R6-P1: defensive filter — drop movements whose linked parent is gone
   // (orphans from a deletion that failed to cascade must not reach the
-  // dashboard or its aggregations). See page.tsx history for details.
-  const liveParents = {
-    accounts: new Set(accounts.map((a) => a.id)),
-    transfers: new Set(transfers.map((tr) => tr.id)),
-    creditsReceived: creditsReceived.map((c) => ({
-      id: c.id,
-      accountId: c.accountId,
-      date: c.date,
-      amount: c.principal.amount,
-    })),
-    creditsGranted: creditsGranted.map((c) => ({
-      id: c.id,
-      accountId: c.accountId,
-      date: c.date,
-      amount: c.principal.amount,
-    })),
-    sales: sales.map((s) => ({
-      id: s.id,
-      accountId: s.accountId,
-      date: s.date,
-      amount: s.total,
-    })),
-    payables: new Set(payables.map((p) => p.id)),
-  };
+  // dashboard or its aggregations). R15.2: shared assembly via
+  // collectLiveParentIds (single source of truth with actions.ts).
+  const liveParents = collectLiveParentIds({
+    accounts,
+    transfers,
+    creditsReceived,
+    creditsGranted,
+    sales,
+    payables,
+  });
   const liveMovements = filterMovementsWithLiveParents(windowedMovements, liveParents);
   // R7-A balances derive from the FULL live history (same filter, complete
   // read) — identical numbers to the pre-windowed dashboard.
