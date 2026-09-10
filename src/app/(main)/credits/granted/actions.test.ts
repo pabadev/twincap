@@ -78,6 +78,10 @@ describe('writeOffCreditAction', () => {
     MongoUnitOfWork.mockImplementation(() => ({
       withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
     }));
+    // R15.2: writeOffCreditGranted touches the credit's account doc in-tx.
+    MongoAccountRepository.mockImplementation(() => ({
+      touch: vi.fn().mockResolvedValue(true),
+    }));
     MongoCreditGrantedRepository.mockImplementation(() => ({
       findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
       markWrittenOff: vi.fn().mockResolvedValue(undefined),
@@ -188,6 +192,8 @@ describe('createCreditGrantedAction', () => {
         currency: 'COP',
         isFixed: false,
       }),
+      // R15.2: createCreditGranted touches the account doc inside the tx.
+      touch: vi.fn().mockResolvedValue(true),
     }));
     MongoCreditGrantedRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),

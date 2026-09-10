@@ -117,6 +117,17 @@ export async function createSale(
   // R14-B: the whole write phase — stock decrements, sale, movements, credit —
   // is ONE atomic multi-document transaction. Reads/validations ran above.
   return uow.withTransaction(async (tx) => {
+    // R15.2: shared-document write — touch the collection account inside this
+    // transaction. deleteAccount deletes the SAME doc as its last write, so a
+    // delete that commits between our reads and our inserts aborts THIS
+    // transaction (write-write conflict) and the retry re-reads the account as
+    // gone → NotFoundError. Without this touch, the delete could commit in that
+    // window and leave the sale's movements orphaned (matrix row 31).
+    const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
+    if (!touched) {
+      throw new NotFoundError('Account not found');
+    }
+
     // POS-3: Decrement stock for physical products (atomic guard)
     for (let i = 0; i < input.items.length; i++) {
       const item = input.items[i];

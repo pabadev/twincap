@@ -130,6 +130,7 @@ function fakeMovementRepo(
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
       return movement;
@@ -142,7 +143,6 @@ function fakeMovementRepo(
       deleted.push(id);
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -1482,7 +1482,7 @@ describe('writeOffCreditGranted', () => {
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
-    const result = await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow());
+    const result = await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow());
 
     expect(movementRepo.created).toHaveLength(1);
     const movement = movementRepo.created[0];
@@ -1509,7 +1509,7 @@ describe('writeOffCreditGranted', () => {
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
-    await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow());
+    await writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow());
 
     expect(movementRepo.created[0].amount.amount).toBe(45000);
   });
@@ -1523,7 +1523,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(ConflictError);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1539,7 +1539,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(WRITE_OFF_ALREADY_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1556,7 +1556,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(WRITE_OFF_PAID_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1574,7 +1574,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeUow()),
+      writeOffCreditGranted('user-1', 'cg-1', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(WRITE_OFF_NO_LOSS_MSG);
 
     expect(movementRepo.created).toHaveLength(0);
@@ -1589,7 +1589,7 @@ describe('writeOffCreditGranted', () => {
     const ids = fakeIdGen();
 
     await expect(
-      writeOffCreditGranted('user-1', 'missing', creditRepo, movementRepo, ids, fakeUow()),
+      writeOffCreditGranted('user-1', 'missing', creditRepo, movementRepo, ids, fakeAccountRepo(), fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

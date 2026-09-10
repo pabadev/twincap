@@ -3,7 +3,7 @@ import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator, UnitOfWork } from '../ports';
 import { splitAbonoCapitalInterest } from './split-abono';
 import { SALE_BORN_CREDIT_DELETE_MSG } from './delete-credit-granted';
@@ -48,6 +48,7 @@ export async function writeOffCreditGranted(
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<CreditGranted> {
   return uow.withTransaction(async (tx) => {
@@ -57,6 +58,16 @@ export async function writeOffCreditGranted(
     const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
     const credit = credits.find(c => c.id === creditId);
     if (!credit) throw new NotFoundError('Credit not found');
+
+    // R15.2: shared-document write — touch the credit's account inside this
+    // transaction so a concurrent deleteAccount cannot commit between the
+    // aggregate read and the write-off expense insert, leaving that movement
+    // orphaned (matrix row 37). The write-off expense hits the credit's
+    // account, so THAT doc is the conflict point.
+    const touched = await accountRepo.touch(workspaceId, credit.accountId, tx);
+    if (!touched) {
+      throw new NotFoundError('Account not found');
+    }
 
     // R5-D0c: sale-born credits are owned by their sale — write-off would orphan
     // the linked sale whose ledger it owns.

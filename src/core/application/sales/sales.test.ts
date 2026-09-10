@@ -122,6 +122,7 @@ function fakeMovementRepo(
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
       return movement;
@@ -137,7 +138,6 @@ function fakeMovementRepo(
       deletedByRefId.push(refId);
       return deletedByRefId.length;
     }),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -334,6 +334,9 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
     expect(catalogRepo.decremented).toHaveLength(1);
     expect(catalogRepo.decremented[0].quantity).toBe(2);
+    // R15.2: the collection account was touched inside the tx — the
+    // delete-race conflict point (matrix row 31).
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
   });
 
   it('rejects a paid-in-full sale carrying an initial payment (H14)', async () => {

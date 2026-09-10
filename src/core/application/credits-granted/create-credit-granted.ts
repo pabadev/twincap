@@ -72,6 +72,15 @@ export async function createCreditGranted(
 
   // R15 Fase 2: credit + principal movement commit or roll back atomically.
   return uow.withTransaction(async (tx) => {
+    // R15.2: shared-document write — touch the paying account inside this
+    // transaction so a concurrent deleteAccount cannot commit between our read
+    // and the credit/movement inserts, leaving the principal movement orphaned
+    // (matrix row 35).
+    const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
+    if (!touched) {
+      throw new NotFoundError('Account not found');
+    }
+
     await creditRepo.create(credit, tx);
 
     // Create principal movement (expense on paying account — money goes out)

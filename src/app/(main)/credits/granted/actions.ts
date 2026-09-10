@@ -372,12 +372,14 @@ export async function writeOffCreditAction(
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
         return writeOffCreditGranted(
           user.workspaceId!,
           creditId,
           creditRepo,
           movementRepo,
           ids,
+          accountRepo,
           new MongoUnitOfWork(),
         );
       },

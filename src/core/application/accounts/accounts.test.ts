@@ -48,6 +48,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement) => {
       created.push(movement);
       return movement;
@@ -55,7 +56,6 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     update: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -376,6 +376,7 @@ describe('setInitialAccountBalance', () => {
       accountRepo,
       movementRepo,
       ids,
+      fakeUow(),
     );
 
     expect(movementRepo.created).toHaveLength(1);
@@ -406,6 +407,7 @@ describe('setInitialAccountBalance', () => {
       accountRepo,
       movementRepo,
       fakeIdGen(),
+      fakeUow(),
     );
 
     expect(movement).toBe(movementRepo.created[0]);
@@ -425,6 +427,7 @@ describe('setInitialAccountBalance', () => {
         accountRepo,
         movementRepo,
         fakeIdGen(),
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
     expect(movementRepo.create).not.toHaveBeenCalled();
@@ -445,6 +448,7 @@ describe('setInitialAccountBalance', () => {
         accountRepo,
         movementRepo,
         fakeIdGen(),
+        fakeUow(),
       ),
     ).rejects.toThrow(ConflictError);
     expect(movementRepo.create).not.toHaveBeenCalled();
@@ -463,6 +467,7 @@ describe('setInitialAccountBalance', () => {
         accountRepo,
         movementRepo,
         fakeIdGen(),
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
     expect(movementRepo.create).not.toHaveBeenCalled();
@@ -481,6 +486,7 @@ describe('setInitialAccountBalance', () => {
       accountRepo,
       movementRepo,
       fakeIdGen(),
+      fakeUow(),
     );
 
     const created = movementRepo.created[0]! as Movement;

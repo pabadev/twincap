@@ -93,6 +93,8 @@ describe('createPayableAction', () => {
         currency: 'COP',
         isFixed: false,
       }),
+      // R15.2: createPayable touches the account doc inside the tx.
+      touch: vi.fn().mockResolvedValue(true),
     }));
     MongoPayableRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),

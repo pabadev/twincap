@@ -265,6 +265,7 @@ describe("R15 Fase 4 — optimistic concurrency (CAS via __v)", () => {
         new MongoCreditGrantedRepository(),
         new MongoMovementRepository(),
         objectIdGenerator,
+        new MongoAccountRepository(),
         new MongoUnitOfWork(),
       );
 

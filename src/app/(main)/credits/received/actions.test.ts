@@ -93,6 +93,8 @@ describe('createCreditReceivedAction', () => {
         currency: 'COP',
         isFixed: false,
       }),
+      // R15.2: createCreditReceived touches the account doc inside the tx.
+      touch: vi.fn().mockResolvedValue(true),
     }));
     MongoCreditReceivedRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),

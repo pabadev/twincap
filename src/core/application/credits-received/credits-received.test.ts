@@ -115,6 +115,7 @@ function fakeMovementRepo(
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByAccountId: vi.fn().mockResolvedValue([]),
+    findByAccountIdForBalance: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (movement: Movement) => {
       created.push(movement);
       return movement;
@@ -127,7 +128,6 @@ function fakeMovementRepo(
       deleted.push(id);
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
-    aggregateBalance: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
@@ -227,6 +227,9 @@ describe('createCreditReceived', () => {
     expect(movement.accountId).toBe('acc-1');
     expect(movement.link?.kind).toBe('creditReceivedPrincipal');
     expect(movement.link?.refId).toBe(credit.id);
+    // R15.2: the account doc was touched inside the tx — the delete-race
+    // conflict point (matrix row 33).
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
   });
 
   it('sets context to Personal (hardcoded) for credit received principal movement', async () => {

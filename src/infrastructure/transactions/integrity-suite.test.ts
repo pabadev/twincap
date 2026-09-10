@@ -17,6 +17,7 @@ import { MongoCreditGrantedRepository } from "../repositories/credit-granted-rep
 import { MongoMovementRepository } from "../repositories/movement-repository";
 import { MongoAccountRepository } from "../repositories/account-repository";
 import { MongoSaleRepository } from "../repositories/sale-repository";
+import { MongoPayableRepository } from "../repositories/payable-repository";
 import { MongoCatalogItemRepository } from "../repositories/catalog-repository";
 import { MongoClientRepository } from "../repositories/client-repository";
 import { MongoTransferRepository } from "../repositories/transfer-repository";
@@ -210,6 +211,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
               new MongoCreditGrantedRepository(),
               new MongoMovementRepository(),
               objectIdGenerator,
+              new MongoAccountRepository(),
               new MongoUnitOfWork(),
             ),
           ),
@@ -428,6 +430,10 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           new MongoMovementRepository(),
           objectIdGenerator,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         );
         transferIds.push(res.transfer!.id);
@@ -518,6 +524,10 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           new MongoMovementRepository(),
           objectIdGenerator,
           new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
           new MongoUnitOfWork(),
         );
         transferIds.push(res.transfer!.id);
@@ -839,6 +849,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           creditRepo,
           new MongoMovementRepository(),
           objectIdGenerator,
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: write-off marker write fails");

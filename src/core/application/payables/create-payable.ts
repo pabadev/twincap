@@ -62,6 +62,15 @@ export async function createPayable(
   // R15 Fase 2: payable + optional initial-payment movement are ONE atomic
   // unit — a failure on the movement rolls back the payable too.
   return uow.withTransaction(async (tx) => {
+    // R15.2: shared-document write — touch the payment account inside this
+    // transaction so a concurrent deleteAccount cannot commit between our read
+    // and the payable/initial-payment inserts, leaving an orphaned expense
+    // movement (matrix row 38).
+    const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
+    if (!touched) {
+      throw new NotFoundError('Account not found');
+    }
+
     await payableRepo.create(payable, tx);
 
     if (payable.initialPayment > 0) {

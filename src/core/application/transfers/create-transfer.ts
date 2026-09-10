@@ -4,9 +4,18 @@ import { Money, deriveExchangeRate } from '../../domain/money';
 import { ValidationError, ConflictError, NotFoundError, DEBT_MODIFIED_MSG } from '../../domain/errors';
 import type { InsufficientFundsWarning } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
-import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
+import type {
+  TransferRepository,
+  MovementRepository,
+  AccountRepository,
+  CreditReceivedRepository,
+  CreditGrantedRepository,
+  SaleRepository,
+  PayableRepository,
+} from '../../domain/repositories';
 import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreateTransferInput } from './dto/transfers';
+import { computeAccountLiveBalance } from '../movements/compute-live-balance';
 
 /**
  * Result of a createTransfer attempt: either a written transfer (with no
@@ -70,6 +79,10 @@ export async function createTransfer(
   movementRepo: MovementRepository,
   ids: IdGenerator,
   accountRepo: AccountRepository,
+  creditReceivedRepo: CreditReceivedRepository,
+  creditGrantedRepo: CreditGrantedRepository,
+  saleRepo: SaleRepository,
+  payableRepo: PayableRepository,
   uow: UnitOfWork,
 ): Promise<CreateTransferResult> {
   // TRA-1: source ≠ destination (pure input validation — no state involved,
@@ -93,6 +106,20 @@ export async function createTransfer(
     const destinationAccount = await accountRepo.findById(workspaceId, input.destinationAccountId, tx);
     if (!destinationAccount) {
       throw new NotFoundError(`Destination account ${input.destinationAccountId} not found`);
+    }
+
+    // R15.2: shared-document write — touch the DESTINATION account inside this
+    // transaction so a concurrent deleteAccount cannot commit between the
+    // aggregate reads and the income-leg insert, leaving that movement orphaned
+    // (matrix row 40). This is NOT the CAS point (the source bump stays LAST —
+    // see class comment); it only makes the destination doc a conflict point
+    // for deletes. The loss of the race is symmetric: either the transfer wins
+    // and the delete fails with ConflictError (references exist), or the delete
+    // wins and THIS transaction aborts on the touch while retrying against a
+    // non-existent account → NotFoundError.
+    const touchedDestination = await accountRepo.touch(workspaceId, input.destinationAccountId, tx);
+    if (!touchedDestination) {
+      throw new NotFoundError('Account not found');
     }
 
     // ACC-1: declared currencies must match the accounts' real currencies.
@@ -137,7 +164,19 @@ export async function createTransfer(
     // with a fresh read. A negative projected balance is NOT a conflict: it
     // either emits a warning (nothing written) or, when confirmed by the
     // caller, is recorded as declared financial reality.
-    const sourceBalance = await movementRepo.aggregateBalance(workspaceId, input.sourceAccountId, tx);
+    const sourceBalance = await computeAccountLiveBalance(
+      workspaceId,
+      input.sourceAccountId,
+      movementRepo,
+      {
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        payableRepo,
+      },
+      tx,
+    );
     const projectedBalance = sourceBalance - input.sourceAmount;
     if (projectedBalance < 0 && !input.confirmNegativeBalance) {
       return {

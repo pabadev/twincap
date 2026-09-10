@@ -13,16 +13,20 @@ import { addAbono as addCreditGrantedAbono } from "../../core/application/credit
 import { deleteCreditGranted } from "../../core/application/credits-granted/delete-credit-granted";
 import { splitAbonoCapitalInterest } from "../../core/application/credits-granted/split-abono";
 import { deleteAccount } from "../../core/application/accounts/delete-account";
+import { setInitialAccountBalance } from "../../core/application/accounts/set-initial-balance";
 import { createMovement } from "../../core/application/movements/create-movement";
 import { deleteSale } from "../../core/application/sales/delete-sale";
 import { addSaleAbono } from "../../core/application/sales/add-sale-abono";
 import { createSale } from "../../core/application/sales/create-sale";
+import { writeOffCreditGranted } from "../../core/application/credits-granted/write-off-credit-granted";
+import { createTransfer } from "../../core/application/transfers/create-transfer";
 import { MongoPayableRepository } from "../repositories/payable-repository";
 import { MongoCreditReceivedRepository } from "../repositories/credit-received-repository";
 import { MongoCreditGrantedRepository } from "../repositories/credit-granted-repository";
 import { MongoMovementRepository } from "../repositories/movement-repository";
 import { MongoAccountRepository } from "../repositories/account-repository";
 import { MongoSaleRepository } from "../repositories/sale-repository";
+import { MongoTransferRepository } from "../repositories/transfer-repository";
 import { MongoCatalogItemRepository } from "../repositories/catalog-repository";
 import { MongoClientRepository } from "../repositories/client-repository";
 import { MongoCategoryRepository } from "../repositories/category-repository";
@@ -33,6 +37,7 @@ import { PayableModel } from "../models/payable";
 import { CreditReceivedModel } from "../models/credit-received";
 import { CreditGrantedModel } from "../models/credit-granted";
 import { MovementModel } from "../models/movement";
+import { TransferModel } from "../models/transfer";
 import { SaleModel } from "../models/sale";
 import { CatalogItemModel } from "../models/catalog";
 import { CategoryModel } from "../models/category";
@@ -621,6 +626,572 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       } else {
         // Terminal B (defensivo): sale vivo → 1 (el total) + 1 por abono ganador.
         expect(await linkedMovementCount(sale.id)).toBe(1 + fulfilled);
+      }
+    }, 120_000);
+  });
+
+  // ─── R15.2 matriz "Eliminaciones": deleteAccount × cada operación que
+  // escribe movimientos. Cada par demuestra que el doble-ganador es imposible:
+  // cuenta viva → el delete aborta con ConflictError (guard de referencias);
+  // cuenta borrada → la op re-ejecuta sobre el snapshot fresco y aborta con
+  // NotFoundError → 0 movimientos huérfanos. Para los pares cuyo padre debe
+  // existir (abonos/writeOff), el propio documento del padre es una referencia
+  // → el delete pierde DETERMINÍSTICAMENTE con ConflictError.
+
+  const SRC_MOVEMENTS_MSG = "invariant: cuenta viva ⇒ el delete DEBE haber rechazado";
+  const SRC_DELETED_MSG = "invariant: cuenta borrada ⇒ el delete DEBE haber ganado";
+
+  function accountExists(): Promise<boolean> {
+    return AccountModel.countDocuments({ _id: SRC, workspaceId: WS }).then((n) => n > 0);
+  }
+
+  function movementsOnSrc(): Promise<number> {
+    return MovementModel.countDocuments({ workspaceId: WS, accountId: SRC });
+  }
+
+  async function assertDeleteConflict(deleteResult: PromiseSettledResult<unknown>): Promise<void> {
+    expect(deleteResult.status, SRC_MOVEMENTS_MSG).toBe("rejected");
+    const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
+    expect(reason).toBeInstanceOf(ConflictError);
+    expect((reason as Error).message).toBe(
+      "Account has references and cannot be deleted",
+    );
+  }
+
+  async function assertDeleteFulfilled(deleteResult: PromiseSettledResult<unknown>): Promise<void> {
+    expect(deleteResult.status, SRC_DELETED_MSG).toBe("fulfilled");
+  }
+
+  describe("deleteAccount × createSale (N=10)", () => {
+    it("9 ventas + 1 delete → doble-ganador imposible; 0 movimientos huérfanos (fila 31)", async () => {
+      await CatalogItemModel.create({
+        _id: "cccccccccccccccccccccccc",
+        workspaceId: WS,
+        name: "Consultoria",
+        unitPrice: 50_000,
+        currency: "COP",
+        type: "service",
+      });
+
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, () =>
+          createSale(
+            WS,
+            {
+              items: [{ itemId: "cccccccccccccccccccccccc", quantity: 1, unitPrice: 50_000 }],
+              date: D,
+              paymentMode: "paid-in-full",
+              accountId: SRC,
+              currency: "COP",
+            },
+            new MongoSaleRepository(),
+            new MongoCatalogItemRepository(),
+            movementRepo(),
+            objectIdGenerator,
+            new MongoClientRepository(),
+            creditGrantedRepo(),
+            accountRepo(),
+            uow(),
+          ),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const ops = settled.slice(0, 9);
+      const deleteResult = settled[9];
+      const alive = await accountExists();
+      const fulfilled = ops.filter((s) => s.status === "fulfilled").length;
+      // Cada venta paid-in-full → exactamente 1 salePayment sobre SRC.
+      expect(await movementsOnSrc()).toBe(fulfilled);
+      for (const r of ops) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(NotFoundError); // cuenta ya borrada
+        }
+      }
+      if (alive) {
+        await assertDeleteConflict(deleteResult);
+        expect(fulfilled).toBe(9);
+      } else {
+        await assertDeleteFulfilled(deleteResult);
+        expect(await movementsOnSrc()).toBe(0);
+        expect(fulfilled).toBe(0);
+      }
+    }, 120_000);
+  });
+
+  describe("deleteAccount × addSaleAbono (seed en SRC)", () => {
+    it("3 abonos + 3 deletes interleaved → delete pierde siempre con ConflictError; 0 huérfanos (fila 32)", async () => {
+      await CatalogItemModel.create({
+        _id: "cccccccccccccccccccccccc",
+        workspaceId: WS,
+        name: "Consultoria",
+        unitPrice: 50_000,
+        currency: "COP",
+        type: "service",
+      });
+      const sale = await createSale(
+        WS,
+        {
+          items: [{ itemId: "cccccccccccccccccccccccc", quantity: 2, unitPrice: 50_000 }],
+          date: D,
+          paymentMode: "paid-in-full",
+          accountId: SRC,
+          currency: "COP",
+        },
+        new MongoSaleRepository(),
+        new MongoCatalogItemRepository(),
+        movementRepo(),
+        objectIdGenerator,
+        new MongoClientRepository(),
+        creditGrantedRepo(),
+        accountRepo(),
+        uow(),
+      );
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 6 }, (_, i) =>
+          i % 2 === 0
+            ? deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow())
+            : addSaleAbono(
+                WS,
+                sale.id,
+                { amount: 10_000, currency: "COP", accountId: SRC, date: D },
+                new MongoSaleRepository(),
+                movementRepo(),
+                objectIdGenerator,
+                accountRepo(),
+                uow(),
+              ),
+        ),
+      );
+
+      assertNoTransactionErrors(settled);
+      // El doc del sale + su salePayment son referencias → el guard NUNCA deja
+      // pasar al delete: pierde en TODAS las posiciones, la cuenta vive.
+      expect(await accountExists()).toBe(true);
+      const abonoResults = settled.filter((_, i) => i % 2 === 1);
+      expect(abonoResults.every((s) => s.status === "fulfilled")).toBe(true);
+      const deleteResults = settled.filter((_, i) => i % 2 === 0);
+      for (const d of deleteResults) {
+        await assertDeleteConflict(d);
+      }
+      // 1 salePayment + 1 abono por ganador.
+      expect(await movementsOnSrc()).toBe(1 + abonoResults.length);
+    }, 120_000);
+  });
+
+  describe("deleteAccount × createCreditReceived (N=10)", () => {
+    it("9 créditos + 1 delete → doble-ganador imposible; 0 huérfanos (fila 33)", async () => {
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, () =>
+          createCreditReceived(
+            WS,
+            { counterparty: "Banco XYZ", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+            creditReceivedRepo(),
+            movementRepo(),
+            objectIdGenerator,
+            accountRepo(),
+            uow(),
+          ),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const ops = settled.slice(0, 9);
+      const deleteResult = settled[9];
+      const alive = await accountExists();
+      const fulfilled = ops.filter((s) => s.status === "fulfilled").length;
+      expect(await movementsOnSrc()).toBe(fulfilled); // 1 principal por crédito
+      for (const r of ops) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(NotFoundError);
+        }
+      }
+      if (alive) {
+        await assertDeleteConflict(deleteResult);
+        expect(fulfilled).toBe(9);
+      } else {
+        await assertDeleteFulfilled(deleteResult);
+        expect(await movementsOnSrc()).toBe(0);
+        expect(fulfilled).toBe(0);
+      }
+    }, 120_000);
+  });
+
+  describe("deleteAccount × addCreditReceivedAbono (seed en SRC)", () => {
+    it("3 abonos + 3 deletes interleaved → delete pierde siempre; 0 huérfanos (fila 34)", async () => {
+      const credit = await createCreditReceived(
+        WS,
+        { counterparty: "Banco XYZ", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+        creditReceivedRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        accountRepo(),
+        uow(),
+      );
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 6 }, (_, i) =>
+          i % 2 === 0
+            ? deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow())
+            : addCreditReceivedAbono(
+                WS,
+                credit.id,
+                { amount: 10_000, currency: "COP", accountId: SRC, date: D },
+                creditReceivedRepo(),
+                movementRepo(),
+                objectIdGenerator,
+                accountRepo(),
+                uow(),
+              ),
+        ),
+      );
+
+      assertNoTransactionErrors(settled);
+      expect(await accountExists()).toBe(true);
+      const abonoResults = settled.filter((_, i) => i % 2 === 1);
+      expect(abonoResults.every((s) => s.status === "fulfilled")).toBe(true);
+      const deleteResults = settled.filter((_, i) => i % 2 === 0);
+      for (const d of deleteResults) {
+        await assertDeleteConflict(d);
+      }
+      expect(await movementsOnSrc()).toBe(1 + abonoResults.length); // principal + abonos
+    }, 120_000);
+  });
+
+  describe("deleteAccount × createCreditGranted (N=10)", () => {
+    it("9 créditos + 1 delete → doble-ganador imposible; 0 huérfanos (fila 35)", async () => {
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, () =>
+          createCreditGranted(
+            WS,
+            { counterparty: "Cliente", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+            creditGrantedRepo(),
+            movementRepo(),
+            objectIdGenerator,
+            accountRepo(),
+            uow(),
+          ),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const ops = settled.slice(0, 9);
+      const deleteResult = settled[9];
+      const alive = await accountExists();
+      const fulfilled = ops.filter((s) => s.status === "fulfilled").length;
+      expect(await movementsOnSrc()).toBe(fulfilled); // 1 principal por crédito
+      for (const r of ops) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(NotFoundError);
+        }
+      }
+      if (alive) {
+        await assertDeleteConflict(deleteResult);
+        expect(fulfilled).toBe(9);
+      } else {
+        await assertDeleteFulfilled(deleteResult);
+        expect(await movementsOnSrc()).toBe(0);
+        expect(fulfilled).toBe(0);
+      }
+    }, 120_000);
+  });
+
+  describe("deleteAccount × addCreditGrantedAbono (seed en SRC)", () => {
+    it("3 abonos + 3 deletes interleaved → delete pierde siempre; 0 huérfanos (fila 36)", async () => {
+      const credit = await createCreditGranted(
+        WS,
+        { counterparty: "Cliente", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+        creditGrantedRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        accountRepo(),
+        uow(),
+      );
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 6 }, (_, i) =>
+          i % 2 === 0
+            ? deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow())
+            : addCreditGrantedAbono(
+                WS,
+                credit.id,
+                { amount: 10_000, currency: "COP", accountId: SRC, date: D },
+                creditGrantedRepo(),
+                movementRepo(),
+                objectIdGenerator,
+                accountRepo(),
+                uow(),
+              ),
+        ),
+      );
+
+      assertNoTransactionErrors(settled);
+      expect(await accountExists()).toBe(true);
+      const abonoResults = settled.filter((_, i) => i % 2 === 1);
+      expect(abonoResults.every((s) => s.status === "fulfilled")).toBe(true);
+      const deleteResults = settled.filter((_, i) => i % 2 === 0);
+      for (const d of deleteResults) {
+        await assertDeleteConflict(d);
+      }
+      // 1 principal + 1 abono por ganador (interés 0 → sin leg de interés).
+      expect(await movementsOnSrc()).toBe(1 + abonoResults.length);
+    }, 120_000);
+  });
+
+  describe("deleteAccount × writeOffCreditGranted (seed en SRC)", () => {
+    it("3 write-offs + 3 deletes interleaved → delete pierde siempre; 0 huérfanos (fila 37)", async () => {
+      const credit = await createCreditGranted(
+        WS,
+        { counterparty: "Cliente", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+        creditGrantedRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        accountRepo(),
+        uow(),
+      );
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 6 }, (_, i) =>
+          i % 2 === 0
+            ? deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow())
+            : writeOffCreditGranted(
+                WS,
+                credit.id,
+                creditGrantedRepo(),
+                movementRepo(),
+                objectIdGenerator,
+                accountRepo(),
+                uow(),
+              ),
+        ),
+      );
+
+      assertNoTransactionErrors(settled);
+      expect(await accountExists()).toBe(true);
+      const writeOffResults = settled.filter((_, i) => i % 2 === 1);
+      // El primer write-off gana; los siguientes abortan (ya castigado).
+      expect(writeOffResults.filter((s) => s.status === "fulfilled")).toHaveLength(1);
+      for (const r of writeOffResults) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(ConflictError);
+        }
+      }
+      const deleteResults = settled.filter((_, i) => i % 2 === 0);
+      for (const d of deleteResults) {
+        await assertDeleteConflict(d);
+      }
+      // 1 principal + 1 write-off.
+      expect(await movementsOnSrc()).toBe(2);
+    }, 120_000);
+  });
+
+  describe("deleteAccount × createPayable (N=10)", () => {
+    it("9 payables + 1 delete → doble-ganador imposible; 0 huérfanos (fila 38)", async () => {
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, () =>
+          createPayable(
+            WS,
+            {
+              counterparty: "Proveedor SA",
+              total: 100_000,
+              initialPayment: 50_000,
+              currency: "COP",
+              accountId: SRC,
+              date: D,
+            },
+            payableRepo(),
+            movementRepo(),
+            objectIdGenerator,
+            accountRepo(),
+            uow(),
+          ),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const ops = settled.slice(0, 9);
+      const deleteResult = settled[9];
+      const alive = await accountExists();
+      const fulfilled = ops.filter((s) => s.status === "fulfilled").length;
+      expect(await movementsOnSrc()).toBe(fulfilled); // 1 initial por payable
+      for (const r of ops) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(NotFoundError);
+        }
+      }
+      if (alive) {
+        await assertDeleteConflict(deleteResult);
+        expect(fulfilled).toBe(9);
+      } else {
+        await assertDeleteFulfilled(deleteResult);
+        expect(await movementsOnSrc()).toBe(0);
+        expect(fulfilled).toBe(0);
+      }
+    }, 120_000);
+  });
+
+  describe("deleteAccount × addPayableAbono (seed en SRC)", () => {
+    it("3 abonos + 3 deletes interleaved → delete pierde siempre; 0 huérfanos (fila 39)", async () => {
+      const payable = await createPayable(
+        WS,
+        {
+          counterparty: "Proveedor SA",
+          total: 100_000,
+          initialPayment: 20_000,
+          currency: "COP",
+          accountId: SRC,
+          date: D,
+        },
+        payableRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        accountRepo(),
+        uow(),
+      );
+      await addPayableAbono(
+        WS,
+        payable.id,
+        { amount: 20_000, currency: "COP", accountId: SRC, date: D },
+        payableRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        accountRepo(),
+        uow(),
+      );
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 6 }, (_, i) =>
+          i % 2 === 0
+            ? deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow())
+            : addPayableAbono(
+                WS,
+                payable.id,
+                { amount: 10_000, currency: "COP", accountId: SRC, date: D },
+                payableRepo(),
+                movementRepo(),
+                objectIdGenerator,
+                accountRepo(),
+                uow(),
+              ),
+        ),
+      );
+
+      assertNoTransactionErrors(settled);
+      expect(await accountExists()).toBe(true);
+      const abonoResults = settled.filter((_, i) => i % 2 === 1);
+      expect(abonoResults.every((s) => s.status === "fulfilled")).toBe(true);
+      const deleteResults = settled.filter((_, i) => i % 2 === 0);
+      for (const d of deleteResults) {
+        await assertDeleteConflict(d);
+      }
+      // 1 initial + 1 abono seed + 3 abonos del race.
+      expect(await movementsOnSrc()).toBe(2 + abonoResults.length);
+    }, 120_000);
+  });
+
+  describe("deleteAccount × setInitialBalance (sin seed)", () => {
+    it("cuenta sin actividad → el delete gana SIEMPRE; el opening es cascaded; 0 huérfanos (fila 41)", async () => {
+      const settled = await Promise.allSettled([
+        setInitialAccountBalance(
+          WS,
+          { accountId: SRC, amount: 100_000 },
+          accountRepo(),
+          movementRepo(),
+          objectIdGenerator,
+          uow(),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const op = settled[0];
+      const deleteResult = settled[1];
+      await assertDeleteFulfilled(deleteResult);
+      // El opening NUNCA es referencia (cascade), y el touch comparte doc con el
+      // delete → en cualquier interleaving la cuenta termina borrada y sin
+      // movimientos. La op termina fulfilled (su opening fue cascaded por el
+      // delete) o aborted con NotFoundError — nunca huérfana.
+      expect(await accountExists()).toBe(false);
+      expect(await movementsOnSrc()).toBe(0);
+      if (op.status === "rejected") {
+        expect(op.reason).toBeInstanceOf(NotFoundError);
+      }
+    }, 120_000);
+  });
+
+  describe("deleteAccount × createTransfer (destino = cuenta borrada)", () => {
+    it("9 transfers AUX→SRC + 1 delete → doble-ganador imposible; 0 huérfanos (fila 40)", async () => {
+      const AUX = "dddddddddddddddddddddddd";
+      await AccountModel.create({
+        _id: AUX,
+        workspaceId: WS,
+        name: "Aux",
+        currency: "COP",
+        isFixed: false,
+      });
+      // R15.2: fund AUX so every transfer takes the real write path instead of
+      // the insufficient-funds warning (which fulfills without writing).
+      await setInitialAccountBalance(
+        WS,
+        { accountId: AUX, amount: 1_000_000 },
+        accountRepo(),
+        movementRepo(),
+        objectIdGenerator,
+        uow(),
+      );
+
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, () =>
+          createTransfer(
+            WS,
+            {
+              sourceAccountId: AUX,
+              destinationAccountId: SRC,
+              sourceAmount: 20_000,
+              sourceCurrency: "COP",
+              date: D,
+            },
+            new MongoTransferRepository(),
+            movementRepo(),
+            objectIdGenerator,
+            accountRepo(),
+            creditReceivedRepo(),
+            creditGrantedRepo(),
+            new MongoSaleRepository(),
+            payableRepo(),
+            uow(),
+          ),
+        ),
+        deleteAccount(WS, SRC, accountRepo(), movementRepo(), uow()),
+      ]);
+
+      assertNoTransactionErrors(settled);
+      const ops = settled.slice(0, 9);
+      const deleteResult = settled[9];
+      const alive = await accountExists();
+      const fulfilled = ops.filter((s) => s.status === "fulfilled").length;
+      // Cada transfer → 1 leg income sobre SRC.
+      expect(await movementsOnSrc()).toBe(fulfilled);
+      for (const r of ops) {
+        if (r.status === "rejected") {
+          expect(r.reason).toBeInstanceOf(NotFoundError);
+        }
+      }
+      if (alive) {
+        await assertDeleteConflict(deleteResult);
+        expect(fulfilled).toBe(9);
+      } else {
+        await assertDeleteFulfilled(deleteResult);
+        expect(await movementsOnSrc()).toBe(0);
+        expect(
+          await TransferModel.countDocuments({ workspaceId: WS, destinationAccountId: SRC }),
+        ).toBe(0);
+        expect(fulfilled).toBe(0);
       }
     }, 120_000);
   });

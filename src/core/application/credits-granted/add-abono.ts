@@ -67,6 +67,16 @@ export async function addAbono(
   }
 
   return uow.withTransaction(async (tx) => {
+    // R15.2: shared-document write — touch the RECEIVING account inside this
+    // transaction so a concurrent deleteAccount cannot commit between the
+    // aggregate read and the abono/movement inserts, leaving the abono
+    // movement(s) orphaned (matrix row 36). The account read above stays
+    // outside the tx (static reference resolved up front; matrix row 70).
+    const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
+    if (!touched) {
+      throw new NotFoundError('Account not found');
+    }
+
     // Re-fetch via repo — returns CreditGranted instance with pending getter.
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
