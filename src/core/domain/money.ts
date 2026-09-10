@@ -64,14 +64,18 @@ export class Money {
     return money;
   }
 
-  plus(other: Money): Money {
+plus(other: Money): Money {
     assertSameCurrency(this, other);
-    return new Money(this.amount + other.amount, this.currency);
+    const result = this.amount + other.amount;
+    assertArithmeticResult("plus", result);
+    return new Money(result, this.currency);
   }
 
   minus(other: Money): Money {
     assertSameCurrency(this, other);
-    return new Money(this.amount - other.amount, this.currency);
+    const result = this.amount - other.amount;
+    assertArithmeticResult("minus", result);
+    return new Money(result, this.currency);
   }
 
   equals(other: Money): boolean {
@@ -81,6 +85,24 @@ export class Money {
   /** Serializable snapshot for Next.js server→client boundary. */
   toJSON(): { amount: number; currency: Currency } {
     return { amount: this.amount, currency: this.currency };
+  }
+}
+
+/**
+ * Re-validate the result of a Money arithmetic operation before it can enter
+ * the constructor lineage (R15.2 D5). The constructor already rejects
+ * non-safe-integer and non-positive amounts, but `plus`/`minus` re-check
+ * FIRST so the operation itself reports the failure with an explicit message
+ * instead of letting an out-of-range intermediate value leak through.
+ */
+function assertArithmeticResult(op: string, result: number): void {
+  if (!Number.isSafeInteger(result)) {
+    throw new MoneyError(
+      `Amount must be an integer in minor units after ${op}, got ${result}`,
+    );
+  }
+  if (result <= 0) {
+    throw new MoneyError(`Amount must be positive after ${op}, got ${result}`);
   }
 }
 

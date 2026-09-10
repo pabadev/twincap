@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Client } from "../../domain/client";
-import type { ClientRepository } from "../../domain/repositories";
+import type { ClientRepository, SaleRepository } from "../../domain/repositories";
 import type { IdGenerator } from "../ports";
 import { ConflictError, NotFoundError } from "../../domain/errors";
 import { createClient } from "./create-client";
@@ -133,19 +133,46 @@ describe("updateClient", () => {
 });
 
 describe("deleteClient", () => {
-  it("deletes existing client", async () => {
+  /** SaleRepository fake stubbed to the workspace sales list (R15.2 D2). */
+  function makeSaleRepo(sales: Array<{ clientId?: string; deletedAt?: Date }> = []): SaleRepository {
+    return { findByWorkspaceId: vi.fn().mockResolvedValue(sales) } as unknown as SaleRepository;
+  }
+
+  it("deletes existing client with no active sales", async () => {
     const client = makeClient();
     const repo = makeRepo({ findById: vi.fn().mockResolvedValue(client) });
+    // A soft-deleted sale for this client does NOT block deletion (D2).
+    const saleRepo = makeSaleRepo([
+      { clientId: "c1", deletedAt: new Date("2026-02-01") },
+    ]);
 
-    await deleteClient("u1", "c1", repo);
+    await deleteClient("u1", "c1", repo, saleRepo);
 
     expect(repo.findById).toHaveBeenCalledWith("u1", "c1");
+    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith("u1");
     expect(repo.delete).toHaveBeenCalledWith("u1", "c1");
   });
 
   it("throws NotFoundError if client not found", async () => {
     const repo = makeRepo({ findById: vi.fn().mockResolvedValue(null) });
-    await expect(deleteClient("u1", "c1", repo)).rejects.toThrow("Client not found");
+    const saleRepo = makeSaleRepo([]);
+    await expect(deleteClient("u1", "c1", repo, saleRepo)).rejects.toThrow(
+      "Client not found",
+    );
+    expect(repo.delete).not.toHaveBeenCalled();
+  });
+
+  it("throws ConflictError when the client still has active sales (R15.2 D2)", async () => {
+    const client = makeClient();
+    const repo = makeRepo({ findById: vi.fn().mockResolvedValue(client) });
+    const saleRepo = makeSaleRepo([
+      { clientId: "c1" }, // active sale (no deletedAt)
+      { clientId: "other" },
+    ]);
+
+    await expect(deleteClient("u1", "c1", repo, saleRepo)).rejects.toThrow(
+      new ConflictError("Client has sales and cannot be deleted"),
+    );
     expect(repo.delete).not.toHaveBeenCalled();
   });
 });

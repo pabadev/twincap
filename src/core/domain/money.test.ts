@@ -37,6 +37,25 @@ describe("Money", () => {
     expect(diff).toEqual(new Money(300_000, "COP"));
   });
 
+  it("re-validates the plus result and rejects non-safe-integer overflow (R15.2 D5)", () => {
+    expect(() =>
+      new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP")),
+    ).toThrow(MoneyError);
+    expect(() =>
+      new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP")),
+    ).toThrow(/after plus/);
+  });
+
+  it("re-validates the minus result and rejects non-positive results (R15.2 D5)", () => {
+    expect(() => new Money(500, "COP").minus(new Money(700, "COP"))).toThrow(
+      MoneyError,
+    );
+    // Zero result (x − x) is not a valid transactional amount either.
+    expect(() => new Money(500, "COP").minus(new Money(500, "COP"))).toThrow(
+      /after minus/,
+    );
+  });
+
   it("enforces the same-currency guard on plus", () => {
     expect(() => new Money(100, "USD").plus(new Money(100, "COP"))).toThrow(/Currency mismatch/);
   });

@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError, ValidationError } from '../core/domain/errors';
 import { DEBT_MODIFIED_MSG } from '../core/domain/errors';
+import { MoneyError } from '../core/domain/money';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
 import { reportUnexpectedError } from './report-unexpected-error';
 
@@ -22,6 +23,11 @@ export function handleActionError(error: unknown): { error: string } {
     throw error;
   }
 
+  // Money-domain errors (invalid amounts, currency mismatches, non-safe
+  // arithmetic results) are KNOWN failures with a descriptive key — they
+  // never reach the unexpected-crash reporter (R15.2 D3).
+  if (error instanceof MoneyError) return { error: 'error.invalidAmount' };
+
   // Map blocked-deletion domain errors to descriptive i18n keys.
   // Fall back to category-level keys for any other conflict/validation.
   if (error instanceof ConflictError || error instanceof ValidationError) {
@@ -30,6 +36,8 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.accountHasReferences' };
       case 'Category has movements and cannot be deleted':
         return { error: 'error.categoryHasMovements' };
+      case 'Client has sales and cannot be deleted':
+        return { error: 'error.clientHasSales' };
       case 'Cannot delete catalog item referenced by a sale':
         return { error: 'error.catalogItemReferenced' };
       case SALE_BORN_CREDIT_DELETE_MSG:

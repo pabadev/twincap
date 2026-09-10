@@ -9,6 +9,7 @@ import {
 import type { SerializedClient } from '../../../core/domain/client';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
+import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
@@ -105,7 +106,14 @@ export async function deleteClientAction(
   try {
     await connectDb();
     const clientRepo = new MongoClientRepository();
-    await deleteClient(user.workspaceId!, clientId, clientRepo);
+    // R15.2 D2: the reference guard needs the sales portfolio of the
+    // workspace to block deletion of clients that still have active sales.
+    await deleteClient(
+      user.workspaceId!,
+      clientId,
+      clientRepo,
+      new MongoSaleRepository(),
+    );
     revalidatePath('/clients');
     revalidatePath('/pos/sales');
   } catch (error) {

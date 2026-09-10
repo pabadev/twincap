@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NotFoundError, ConflictError, ValidationError, DEBT_MODIFIED_MSG } from '../core/domain/errors';
+import { MoneyError } from '../core/domain/money';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
 import { handleActionError } from './handle-action-error';
 
@@ -9,6 +10,18 @@ describe('handleActionError', () => {
       new ConflictError('Account has references and cannot be deleted'),
     );
     expect(result).toEqual({ error: 'error.accountHasReferences' });
+  });
+
+  it('maps blocked client deletion (active sales) to a descriptive key (R15.2 D2)', () => {
+    const result = handleActionError(
+      new ConflictError('Client has sales and cannot be deleted'),
+    );
+    expect(result).toEqual({ error: 'error.clientHasSales' });
+  });
+
+  it('maps MoneyError to a descriptive key without the unexpected-crash reporter (R15.2 D3)', () => {
+    const result = handleActionError(new MoneyError('Amount must be positive, got 0'));
+    expect(result).toEqual({ error: 'error.invalidAmount' });
   });
 
   it('maps blocked category deletion to a descriptive key', () => {

@@ -618,6 +618,8 @@
     "operationFailed": "Operation failed. Please try again.",
     "accountHasReferences": "The account has linked movements or transactions and cannot be deleted",
     "categoryHasMovements": "The category has linked movements and cannot be deleted",
+    "clientHasSales": "The client has linked sales and cannot be deleted",
+    "invalidAmount": "The entered amount is not valid",
     "catalogItemReferenced": "The item is referenced by a sale and cannot be deleted",
     "saleBornCreditDelete": "This credit was created from a sale and must be deleted through the sale",
     "fixedAccountDelete": "Fixed accounts cannot be deleted",
