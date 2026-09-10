@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–7)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–7 + R15.1 6e + R15.2)
 
 ## Purpose
 
@@ -52,7 +52,9 @@ in `src/infrastructure/transactions/concurrency-abonos.test.ts`.
 Fase 5 (transfers + editPrincipal + CAS sobre Account) delivered la familia de
 transfers y el editPrincipal restante: `createTransfer` ahora lee AMBAS cuentas
 y valida el saldo de origen DENTRO de `uow.withTransaction` (snapshot-consistente
-vía `AccountRepository.findById(tx?)` + `MovementRepository.aggregateBalance(tx?)`),
+vía `AccountRepository.findById(tx?)` + `computeAccountLiveBalance` sobre
+`MovementRepository.findByAccountIdForBalance(tx?)` — el saldo de cuenta
+unificado de R15.2-B; `aggregateBalance` ya no existe en el código),
 escribe Transfer + 2 Movements con el tx y cierra con un CAS bump (helper F4
 `runVersionedUpdate`: `$inc: { __v: 1 }`) SOLO sobre la cuenta de ORIGEN
 (`AccountRepository.bumpVersion`); si el bump falla lanza
@@ -136,7 +138,7 @@ falla): el movement de gasto ya creado dentro del tx se aborta junto con él
 | `writeOffCreditGranted` | Movement create (gasto por capital no recuperado) + `markWrittenOff` | ✅ **YA transaccional + CAS** (R15 F4) | **Transacción + CAS** — implementada (Fase 4): todo el flujo (reads, guards R5-D0c/ya-bajada/ya-pagada/capital-pendiente, expense movement + `markWrittenOff` con `expectedVersion`) corre dentro de `uow.withTransaction`; el guard `writtenOff` en `addAbono` (grants) la complementa para que write-off vs abono final converja a exactamente un ganador tras el retry. |
 | `editPrincipal` (CreditReceived) | CreditReceived update (full doc) + Movement update (principal) | ✅ **YA transaccional + CAS** (R15 F5) | **Transacción** — implementada (Fase 5): mismo patrón que `writeOffCreditGranted` (reads + guards + `update` con `expectedVersion` + cascada de movement dentro de `uow.withTransaction`). |
 | `editPrincipal` (CreditGranted) | CreditGranted update (full doc) + Movement update (principal) | ✅ **YA transaccional + CAS** (R15 F5) | **Transacción** — implementada (Fase 5): idem; conserva el `saleId` en el snapshot del CreditGranted. |
-| `updateTransfer` | Transfer update + 1–2 Movement updates (expense/income) | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): reads de cuenta con tx; writes de transfer + movements con tx dentro de `uow.withTransaction`. |
+| `updateTransfer` | Transfer update + 1–2 Movement updates (expense/income) | ✅ **YA transaccional** (R15 F5 + R15.2 policy F5) | **Transacción** — implementada (Fase 5 + R15.2): reads de cuenta y chequeo de SALDO (policy F5) con tx; delta `new−old` calculado en el tx — sin cambio real de sourceAmount → warning `insufficient_funds` con CERO escrituras; writes de transfer + movements con tx dentro de `uow.withTransaction`. |
 | `deleteTransfer` | Movement delete ×2 + Transfer delete | ✅ **YA transaccional** (R15 F5) | **Transacción** — implementada (Fase 5): deletes de movements con tx (NotFound tolerante, orden expense→income) + `transferRepo.delete(..., tx)` dentro de `uow.withTransaction`. |
 | `deleteSale` | stock increments ×N + Movement `deleteMany` (sale refId) + Movement `deleteMany` (credit refId) + CreditGranted delete + Sale delete | ✅ **YA transaccional + idempotente** (R15 F6) | **Transacción** — implementada (Fase 6, §9): toda la cascada (lectura de la venta y del ítem, stock restores, deletes de movements por refId, delete del crédito vinculado, delete final de la venta) dentro de `uow.withTransaction` con todas las lecturas/escrituras en la sesión. Idempotencia: la re-lectura en tx + `NotFoundError` del `saleRepo.delete` final hace que un request duplicado/concurrente aborte SIN volver a restaurar stock — restaurado exactamente 1 vez (verificado N=10/25/50). |
 | `createAccount` con opening | Account create + Movement create (`opening`) | ✅ **YA transaccional** (R15 F6) | **Transacción** — implementada (Fase 6, §11): Account + opening movement en `uow.withTransaction`; la compensación manual R8 (`try/catch` → `accountRepo.delete`) fue ELIMINADA — el rollback real aborta la cuenta si el movement falla. Fix de causa raíz necesario: `MongoMovementRepository.resolveDependencies` ahora lee Account/Category con la sesión del tx (sin sesión la cuenta recién creada era invisible). |
@@ -148,8 +150,8 @@ falla): el movement de gasto ya creado dentro del tx se aborta junto con él
 | `setInitialAccountBalance` | 1 Movement create | — | **Justificado** — documento único. |
 | `createAccount` sin opening | 1 Account create | — | **Justificado** — documento único. |
 | `editTotal` (Payable) | 1 Payable update | — | **Justificado** — documento único; sin cascada de movimientos por diseño (`edit-total.ts`: "NO movement cascade"). |
-| `deleteAccount` | Movement deletes + Account delete | NO | **Justificado** — misma justificación que los deletes de débitos (idempotente + orden hijos→padre + `countReferences` como guard de pre-condición). |
-| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — las lecturas del AGREGADO DE DEUDA (findById/findByWorkspaceId con `tx?`) y las validaciones de saldo/moneda que derivan de él corren DENTRO del tx desde Fase 3 (snapshot-consistent); `AccountRepository.findById(tx?)` (F5) y `MovementRepository.aggregateBalance(tx?)` participan del tx cuando el agregado validado es una cuenta (transfers), y `MovementRepository.resolveDependencies` es session-aware desde F6 (el opening de `createAccount` lee la cuenta recién creada con la sesión). La protección bajo concurrencia es CAS sobre `__v` (Fase 4, implementada; Fase 5 para Account). |
+| `deleteAccount` | Movement deletes + Account delete (+ touch de saldo dentro del tx) | ✅ **YA transaccional** (R15.1 6e) | **Transacción** — implementada (R15.1 6e): `countReferences` (7 referencias, counts SERIALES con la sesión del tx en `account-repository.ts:169-180`) como guard de pre-condición + touch de saldo en el mismo tx; los deletes hijos→padre corren dentro de `uow.withTransaction`; bajo create-vs-delete concurrente el touch + counts en la sesión impiden "perdonar" saldo de una cuenta recién creada (write-skew cerrado). R15.2 no cambió este mecanismo. |
+| Lecturas y validaciones (findById/findByWorkspaceId, validaciones de saldo/moneda) | N/A | — | **Justificado** — las lecturas del AGREGADO DE DEUDA (findById/findByWorkspaceId con `tx?`) y las validaciones de saldo/moneda que derivan de él corren DENTRO del tx desde Fase 3 (snapshot-consistent); `AccountRepository.findById(tx?)` (F5) y el saldo de cuenta unificado R15.2-B (`computeAccountLiveBalance` sobre `MovementRepository.findByAccountIdForBalance(tx?)` — reemplazó a `aggregateBalance(tx?)`) participan del tx cuando el agregado validado es una cuenta (createTransfer/updateTransfer), y `MovementRepository.resolveDependencies` es session-aware desde F6 (el opening de `createAccount` lee la cuenta recién creada con la sesión). La protección bajo concurrencia es CAS sobre `__v` (Fase 4, implementada; Fase 5 para Account). |
 
 ## Notas de diseño
 
@@ -274,23 +276,28 @@ mapper, default 0) y dos métodos nuevos:
 | Repositorio | Métodos |
 |---|---|
 | `AccountRepository` | `findById(workspaceId, id, tx?)` (lectura con sesión), `bumpVersion(workspaceId, accountId, expectedVersion, tx?): Promise<boolean>` |
-| `MovementRepository` | `aggregateBalance(workspaceId, accountId, tx?)` (agregación del saldo vivo con sesión) |
+| `MovementRepository` | `findByAccountIdForBalance(workspaceId, accountId, tx?)` (lectura del saldo vivo con sesión; definición ÚNICA de saldo junto a `computeAccountLiveBalance`, R15.2-B — reemplazó a `aggregateBalance`) |
 
 Semántica: `bumpVersion` ejecuta `runVersionedUpdate(AccountModel, {_id,
 workspaceId}, {}, expectedVersion, session)` — update `{}` + `$inc: { __v: 1 }`
 + timestamps — y devuelve `matchedCount > 0` SIN traducir el fallo (el caller
 mapea `false` → `ConflictError(DEBT_MODIFIED_MSG)` dentro del tx, abortando).
-`aggregateBalance` hace `$sum: "$signedAmount"` sobre TODOS los movimientos de la
-cuenta (filtro workspace+account), SIN excluir transfers/cancelados/huérfanos —
-esto es CORRECTO para el saldo de la cuenta (los transfers sí mueven saldo); la
-exclusión de transfers del resultado económico vive en
-`core/application/economic-result.ts` (`NON_ECONOMIC_LINK_KINDS`) y la exclusión de
-huérfanos del dashboard en `accountBalancesFromMovements` (R7-A). Se ejecuta con la
-sesión del tx (snapshot-consistente con las escrituras previas del mismo tx).
-`updateTransfer`/`deleteTransfer` reutilizan `findById(tx?)` para las lecturas de
-cuenta dentro de la transacción. Verificación real:
+`computeAccountLiveBalance` (use case puro, `core/application/movements/
+compute-live-balance.ts`) delega en `findByAccountIdForBalance`, que lee los
+movimientos de la cuenta (filtro workspace+account, proyección mínima, SESIÓN
+del tx cuando se llama dentro de una transacción) y suma `signedAmount` SIN
+excluir transfers/cancelados/huérfanos — esto es CORRECTO para el saldo de la
+cuenta (los transfers sí mueven saldo); la exclusión de transfers del resultado
+económico vive en `core/application/economic-result.ts`
+(`NON_ECONOMIC_LINK_KINDS`) y la exclusión de huérfanos del dashboard en
+`accountBalancesFromMovements` (R7-A). Desde R15.2 este es el ÚNICO saldo
+oficial (`aggregateBalance` eliminado). `createTransfer` (F5) y `updateTransfer`
+(R15.2, policy F5: delta `new−old` + warning `insufficient_funds` con CERO
+escrituras si no hay cambio real) lo usan DENTRO del tx (snapshot-consistente
+con las escrituras previas del mismo tx); `deleteTransfer` reutiliza
+`findById(tx?)` para las lecturas de cuenta. Verificación real:
 `src/infrastructure/transactions/concurrency-transfers.test.ts` — N=10/50/100
 transfers paralelos del mismo origen (exactamente 1 gana; `__v` origen == 1;
 saldos finales correctos; perdedores por re-validación de fondos), rollback de
 create/update/deleteTransfer y de editPrincipal ×2 con cascada fallida (crédito
-intacto y `__v` sin mover).
+intacto y `__v` sin mover); §36 verifica la policy F5 del updateTransfer.

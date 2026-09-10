@@ -16,7 +16,7 @@
 
 ---
 
-## ESTADO ACTUAL (última actualización: 2026-09-06)
+## ESTADO ACTUAL (última actualización: 2026-09-10)
 
 | Ronda | Estado |
 |-------|--------|
@@ -38,6 +38,8 @@
 
 | **Ronda 15 — Atomicidad y Concurrencia Financiera** | ✅ **COMPLETADA (2026-09-09).** 8 fases (F1–F8). F1 movimientos/journal transaccionales; F2 CAS `__v`; F3 abonos; F4 CAS en edits; F5 transfers + editPrincipal con CAS; F6 deleteSale + createAccount + register transaccionales; F7 suite de integridad §25/§14; F8 verificación final — suite **1125/1125** (108 archivos), tsc/lint/build EXIT 0, **E2E 24/24**. **Bug de causa raíz corregido en F8** (sesión MongoDB usada concurrentemente en `createTransfer` → error 251 → retry infinito → E2E colgada). Detalle sección `RONDA 15`. **RONDA 15 CERRADA.** |
 | **Ronda 15.1 — Cierre de invariantes financieras y de concurrencia** | 🟢 **COMPLETADA (2026-09-09, SIN COMMITEAR — 58 archivos + 6 nuevos; pendiente commit/push con aviso).** Basada en la auditoría interna `docs/Auditoría post-R15.md` (evaluación de la Ronda 15 + hallazgos, decisiones y recomendaciones). Plan `docs/R15.1-plan.md` (6 fases + diseño 6e agregado en sesión). **F1 Transaction Safety** — `updateTransfer` con lecturas seriales sobre la misma sesión (elimina `Promise.all` → MongoServerError 251; grep 0 `Promise.all` con `tx`). **F2 Movement Integrity** — `MOVEMENT_LINK_KIND_REGISTRY` (11 kinds, fuente única), `filterMovementsWithLiveParents` fail-closed (sin `default: return true`), `PARENT_LINK_KINDS` + `findOrphanMovements` con payables. **F3 Concurrencia de eliminación** — `deletePayable`/`deleteCreditReceived`/`deleteCreditGranted` transaccionales (orden R5-B: movimientos primero, agregado después) + `concurrency-deletion.test.ts` (N=10 delete×abono, idempotencia). **F4 Transferencias multidivisa** — usuario introduce AMBOS importes reales; `deriveExchangeRate()` en dominio; `effectiveExchangeRate` derivado (legacy `doc.rate` soportado); UI sin campo de tasa manual, tasa read-only en vivo; i18n es/en actualizado. **F5 Política de saldos negativos** — `InsufficientFundsWarning` estructurado (sin `ConflictError`); `confirmNegativeBalance` → modal de confirmación con saldo actual/operación/proyectado; la acción libera el claim de idempotencia para el re-submit confirmado. **F6 Hardening** — (6a) `idempotencyKey` OBLIGATORIO en las 6 actions de creación financiera + `error.idempotencyKeyRequired` es/en; (6b) post-commit documentado seguro (revalidatePath best-effort, idempotencia previene duplicado); (6c) `isModernRecord` (cutoff 2026-09-09): agregados modernos sin movimiento obligatorio → `ConflictError`; legacy → warn+continue; (6d) reconciliación legacy con gate modern/legacy + detección de ambigüedad (1 único → incluye, >1 → log+incluye, 0 → huérfano); (6e, diseño de sesión) `deleteAccount` + `createMovement` transaccionales con `AccountRepository.touch` (shared-document write que convierte la carrera delete×create de write-skew en write-write conflict; `countReferences` session-aware serial). **Gates: 1177/1177 tests (110 archivos)**, tsc/lint/build EXIT 0. Los 4 gates verificados dos veces (pre y post limpieza de lint: fix `react-hooks/refs` en `transfer-form.tsx` — ref de dismiss reemplazado por `useState`; probe temporal `probe-write-skew.test.ts` eliminado tras responder su pregunta de diseño). Detalle sección `RONDA 15.1`. |
+
+| **Ronda 15.2 — Cierre final de la base financiera (saldo unificado, touch de cuentas, idempotencia, policy F5)** | 🟢 **COMPLETADA (2026-09-10, SIN COMMITEAR — 64 archivos + 2 nuevos; pendiente commit/push con aviso).** Basada en la auditoría interna `docs/R15.2.md` (última mini-ronda estructural antes de UX/UI; directiva "CERRAR, NO POSTERGAR" §53). Plan por fases A–F. **Fase A (touch de cuentas)** — los 11 use cases que mueven dinero tocan la cuenta de pago DENTRO de `uow.withTransaction` (patrón A/B: el caso B duplica el touch solo si la cuenta ya está tocada); `deleteAccount` transaccional con `countReferences` serial en sesión + touch + CAS (write-skew create-vs-delete cerrado). **Fase B (saldo unificado)** — `computeAccountLiveBalance` + `MovementRepository.findByAccountIdForBalance(tx?)` (session-aware, proyección mínima, sin `$group`); `aggregateBalance` ELIMINADO del código; definición única de saldo (consumidores: createTransfer/updateTransfer dentro del tx). **Fase C (idempotencia + auditoría)** — `IdempotencyModel.init()` explícito (índice unique `(userId,action,key)` + TTL 24h deterministas), `claimIdempotency` traduce E11000 → `duplicateRequest` (retry/duplicado sin re-ejecución), `updateAccountAction` con `withAudit` + rename vacío → `error.nameRequired`; scripts `ensure/verify-{idempotency,movement}-indexes.mjs` (dry-run default, `--apply`, fail-closed). **Fase D (policy F5 + guards)** — `updateTransfer` con chequeo de saldo dentro del tx: delta `new−old`, sin cambio real → warning `insufficient_funds` con CERO escrituras + `TransferFormState.warning`; `deleteClient` → `error.clientHasSales`; `Money.plus/minus` re-validan; `MoneyError` → `error.invalidAmount`. **Fase E (tests de cierre §§36–38, 13 tests, 2 archivos nuevos)** — §36 transferencias F5 (3 tests, literales 100.000/80.000/120.000); §37 idempotencia integración Mongo real (replSet pin 7.0.41): retry lost-response / audit trail / Promise.all concurrente (1 winner + 1 duplicate); §38 rollback REAL de `createSale` por inyección de fallo en cada etapa (touch/decrementStock/sale/credit/abono/salePayment → CERO evidencia persistida). **Fase F (cierre §40–42, §49, §52)** — gates **tsc 0 errores / lint exit 0 / build exit 0 / suite 1218/1218 (112 archivos, 874.39 s)**; §41: 0 marcadores TODO/FIXME/etc. en src/core+src/infrastructure; §42: 0 `Promise.all`+session, 0 escrituras sin sesión en ops compuestas (todos los repos de tx son session-aware), 0 `bulkWrite`; entregable `docs/R15.2-report.md` (§52, 15 secciones, veredicto **SÍ** §53); `docs/atomicity-matrix.md` actualizada a la realidad post-R15.2; `docs/CONSISTENCY-AUDIT.md` revisado (sin afirmaciones falsas). **Pendiente operativo (no es código):** aplicar `scripts/ensure-idempotency-indexes.mjs --apply` + `scripts/ensure-movement-indexes.mjs --apply` contra Atlas + `verify-*.mjs` → `CONTRACT OK` + desactivar `autoIndex` en producción. |
 
 ## PENDIENTES OPERATIVOS HEREDADOS (cerrados en R13, pendientes de ejecución/operación)
 
@@ -317,6 +319,40 @@ I1 Atomicidad · I2 Concurrencia · I3 CAS · I4 Movimientos sin agregado → in
 - **Commit/push por unidad de trabajo lógica** (58 + 6 archivos; el protocolo R3.13 exige aviso explícito del fundador).
 - Clave i18n `error.insufficientFunds` quedó SIN referencias (fue reemplazada por el flujo de warning) — limpieza opcional en la ronda UX/UI.
 - E2E del modal de confirmación de saldo negativo (candidato a spec en ronda UX/UI).
+
+---
+
+# RONDA 15.2 — CIERRE FINAL DE LA BASE FINANCIERA
+
+Iniciada: 2026-09-09 · Especificación: `docs/R15.2.md` (§53: "CERRAR, NO POSTERGAR" — última mini-ronda estructural antes de UX/UI).
+
+## Contexto
+
+La base financiera arrastraba 4 focos: saldo de cuenta con definiciones múltiples, write-skew cuenta vs. operación (11 use cases sin tocar la cuenta de pago en el mismo tx), idempotencia débil (índice unique no materializado de forma determinista, retry E11000 sin traducción, rename sin auditoría) y transfers sin defensa de saldo en `updateTransfer`. La ronda los cerró con verificación empírica (rollback real por inyección de fallo, concurrencia N=10/50/100, integración Mongo replSet 7.0.41).
+
+## Fases ejecutadas
+
+| Fase | Contenido | Estado |
+|------|-----------|--------|
+| **A — Touch de cuentas** | 11 use cases que mueven dinero tocan la cuenta de pago DENTRO de `uow.withTransaction` (patrón A; caso B duplica el touch solo si la cuenta ya fue tocada); `deleteAccount` transaccional: `countReferences` serial con sesión + touch + CAS (write-skew create-vs-delete cerrado — diseño 6e de R15.1) | ✅ |
+| **B — Saldo unificado** | `computeAccountLiveBalance` (`src/core/application/movements/compute-live-balance.ts:157`) + puerto `MovementRepository.findByAccountIdForBalance` (`src/core/domain/repositories.ts:136`) + impl session-aware con proyección mínima (`movement-repository.ts:154`); **`aggregateBalance` eliminado del código**; consumidores migrados (createTransfer:167, updateTransfer:144) | ✅ |
+| **C — Idempotencia + auditoría** | `IdempotencyModel.init()` explícito (índice unique `(userId,action,key)` + TTL 24h deterministas); `claimIdempotency`: true → retry E11000 → false (`duplicateRequest`), sin release en éxito; `updateAccountAction` con `withAudit`, rename vacío → `error.nameRequired` sin escrituras; scripts `ensure/verify-{idempotency,movement}-indexes.mjs` (dry-run default, `--apply`, fail-closed) | ✅ |
+| **D — Policy F5 + guards** | `updateTransfer`: chequeo de saldo dentro del tx (delta `new−old`; sin cambio real → warning `insufficient_funds` con CERO escrituras) + `TransferFormState.warning`; `deleteClient` → `error.clientHasSales`; `Money.plus/minus` re-validan; `MoneyError` → `error.invalidAmount` | ✅ |
+| **E — Tests de cierre §§36–38** | §36: +3 tests transferencias F5 (describe '§36 transfer test (R15.2)', literales 100.000/80.000/120.000). §37: NUEVO `src/app/(main)/accounts/idempotency-actions.test.ts` (3 tests integración: retry lost-response, audit trail, Promise.all concurrente → 1 winner + 1 duplicate). §38: NUEVO `src/infrastructure/transactions/use-case-rollback-sale.test.ts` (7 tests fail-injection en cada etapa de createSale → CERO evidencia persistida) | ✅ |
+| **F — Cierre §40–42/§49/§52** | Gates: tsc 0 errores · lint exit 0 · build exit 0 · suite **1218/1218 (112 archivos, 874.39 s)**. §41: 0 marcadores en src/core+infra. §42: 0 `Promise.all`+session; todos los repos de ops compuestas session-aware; 0 `bulkWrite`; `findOneAndUpdate/Delete` de documento único justificados. Entregable `docs/R15.2-report.md` (§52, 15 secciones, veredicto **SÍ**). `docs/atomicity-matrix.md` y `docs/CONSISTENCY-AUDIT.md` actualizados a la realidad post-R15.2 | ✅ |
+
+## Verificación final
+
+- `pnpm exec tsc --noEmit` → **EXIT 0** (0 errores)
+- `pnpm lint` → **EXIT 0**
+- `pnpm build` → **EXIT 0** (next build completo, rutas + Proxy Middleware)
+- `pnpm test` → **1218/1218** (112 archivos; 1218 passed / 0 failed / 0 skipped; 874.39 s) — incluye los 38 dirigidos de cierre y las suites de integración R14/R15/R15.1 (replSet pin 7.0.41)
+
+## Pendiente
+
+- **Commit/push por unidad de trabajo lógica** (64 + 2 archivos; protocolo R3.13 exige aviso explícito del fundador).
+- **Aplicar índices en Atlas (paso operativo de despliegue):** `node --env-file=.env.local scripts/ensure-idempotency-indexes.mjs --apply` + `scripts/ensure-movement-indexes.mjs --apply`, luego `scripts/verify-idempotency-indexes.mjs` + `scripts/verify-movement-indexes.mjs` → `CONTRACT OK`; desactivar `autoIndex` en producción (queda solo como redundancia local/dev).
+- Riesgos residuales documentados en el reporte §14 (addSaleAbono sin rollback explícito, reconcile legacy, cuadre FX §9f, deletes tolerantes).
 
 ---
 
