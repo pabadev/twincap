@@ -100,34 +100,96 @@ export class MongoAccountRepository implements AccountRepository {
   }
 
   /**
+   * R15.1-6e — shared-document write used by transactional createMovement.
+   *
+   * A plain `$set` touch of the account doc: no CAS, no balance change. Its
+   * purpose is concurrency, not data — by writing the SAME document that
+   * deleteAccount deletes (its last write), it turns the create-vs-delete
+   * race into a write-write conflict on that doc instead of a write skew.
+   * The loser aborts (WriteConflict) and re-executes on the winner's
+   * committed state: the create then sees the account gone → NotFoundError;
+   * the delete then sees the fresh movement via the reference guard →
+   * ConflictError. Without this shared write, a delete that commits between
+   * the create's read and its insert leaves an orphaned movement.
+   *
+   * The account model has `timestamps: true`, so `updatedAt` exists on every
+   * doc and the touch also bumps it.
+   *
+   * @returns true when the account exists (matchedCount 1); false when it is
+   *   already gone — the caller maps that to NotFoundError.
+   */
+  async touch(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean> {
+    const result = await AccountModel.updateOne(
+      {
+        _id: accountId,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { $set: { updatedAt: new Date() } },
+      { session: sessionOf(tx) },
+    ).exec();
+    return result.matchedCount > 0;
+  }
+
+  /**
    * ACC-4: count references to an account across all collections that
    * reference it — movements, transfers, credits, sales, and payables.
    * Opening movements do NOT count as references: they are intrinsic to the
    * account (created when it is opened with an initial balance) and are removed
    * in cascade on deletion. Returns the total number of references
    * (0 means safe to delete).
+   * @param tx optional transaction handle (R15.1-6e): when present the counts
+   *   join the caller's transaction session (deletion guard runs on the SAME
+   *   snapshot as the account read) and run SERIALLY — the MongoDB driver
+   *   forbids concurrent ops on one ClientSession.
    */
-  async countReferences(workspaceId: string, accountId: string): Promise<number> {
+  async countReferences(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<number> {
     const uid = new Types.ObjectId(workspaceId);
     const aid = new Types.ObjectId(accountId);
 
+    const movementFilter = {
+      workspaceId: uid,
+      accountId: aid,
+      'link.kind': { $ne: 'opening' },
+    };
+    const transferSourceFilter = { workspaceId: uid, sourceAccountId: aid };
+    const transferDestFilter = { workspaceId: uid, destinationAccountId: aid };
+    const creditReceivedFilter = { workspaceId: uid, accountId: aid };
+    const creditGrantedFilter = { workspaceId: uid, accountId: aid };
+    const saleFilter = { workspaceId: uid, accountId: aid, deletedAt: { $exists: false } };
+    const payableFilter = { workspaceId: uid, accountId: aid };
+
+    const session = sessionOf(tx);
+    if (session) {
+      // R15.1-6e: serial counts on the session (never parallel — the MongoDB
+      // driver forbids concurrent operations on one ClientSession).
+      return (
+        (await MovementModel.countDocuments(movementFilter).session(session).exec()) +
+        (await TransferModel.countDocuments(transferSourceFilter).session(session).exec()) +
+        (await TransferModel.countDocuments(transferDestFilter).session(session).exec()) +
+        (await CreditReceivedModel.countDocuments(creditReceivedFilter).session(session).exec()) +
+        (await CreditGrantedModel.countDocuments(creditGrantedFilter).session(session).exec()) +
+        (await SaleModel.countDocuments(saleFilter).session(session).exec()) +
+        (await PayableModel.countDocuments(payableFilter).session(session).exec())
+      );
+    }
+
     const [movements, transfersAsSource, transfersAsDest, creditsReceived, creditsGranted, sales, payables] =
       await Promise.all([
-        MovementModel.countDocuments({
-          workspaceId: uid,
-          accountId: aid,
-          'link.kind': { $ne: 'opening' },
-        }),
-        TransferModel.countDocuments({ workspaceId: uid, sourceAccountId: aid }),
-        TransferModel.countDocuments({ workspaceId: uid, destinationAccountId: aid }),
-        CreditReceivedModel.countDocuments({ workspaceId: uid, accountId: aid }),
-        CreditGrantedModel.countDocuments({ workspaceId: uid, accountId: aid }),
-        SaleModel.countDocuments({
-          workspaceId: uid,
-          accountId: aid,
-          deletedAt: { $exists: false },
-        }),
-        PayableModel.countDocuments({ workspaceId: uid, accountId: aid }),
+        MovementModel.countDocuments(movementFilter),
+        TransferModel.countDocuments(transferSourceFilter),
+        TransferModel.countDocuments(transferDestFilter),
+        CreditReceivedModel.countDocuments(creditReceivedFilter),
+        CreditGrantedModel.countDocuments(creditGrantedFilter),
+        SaleModel.countDocuments(saleFilter),
+        PayableModel.countDocuments(payableFilter),
       ]);
 
     return (

@@ -2,6 +2,7 @@ import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
+import { isModernRecord } from '../../domain/modern-record';
 import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
@@ -66,18 +67,28 @@ export async function editPrincipal(
       [...credit.abonos],
     );
 
-    // CAS update: aborts with ConflictError(DEBT_MODIFIED_MSG) if a concurrent
-    // mutation moved the version between the read and this write.
-    await creditRepo.update(updatedCredit, tx, credit.version);
-
-    // Find and update principal movement (link.kind = creditReceivedPrincipal).
+    // Find the principal movement (link.kind = creditReceivedPrincipal).
     // The lookup stays session-less (F3 convention: cheap existence source);
     // when the movement exists it is updated WITH the transaction session.
+    // It runs BEFORE the credit write so a missing required movement aborts
+    // the whole transaction without any partial write.
     const movements = await movementRepo.findByWorkspaceId(workspaceId);
     const principalMovement = movements.find(
       m => m.link?.kind === 'creditReceivedPrincipal' && m.link?.refId === creditId,
     );
-    if (principalMovement) {
+    if (!principalMovement) {
+      // R15.1 6c: every credit is created with its principal movement — for
+      // modern records a missing one is an integrity violation (ConflictError
+      // + rollback). Legacy credits keep the tolerant behavior with a
+      // reconciliation log.
+      if (isModernRecord(credit.createdAt)) {
+        throw new ConflictError('Required movement not found for modern record');
+      }
+      console.warn('[reconcile] Legacy record missing movement, continuing', {
+        aggregateId: credit.id,
+        kind: 'creditReceivedPrincipal',
+      });
+    } else {
       const updatedMovement = new Movement({
         id: principalMovement.id,
         workspaceId: principalMovement.workspaceId,
@@ -93,6 +104,10 @@ export async function editPrincipal(
       });
       await movementRepo.update(updatedMovement, tx);
     }
+
+    // CAS update: aborts with ConflictError(DEBT_MODIFIED_MSG) if a concurrent
+    // mutation moved the version between the read and this write.
+    await creditRepo.update(updatedCredit, tx, credit.version);
 
     return updatedCredit;
   });

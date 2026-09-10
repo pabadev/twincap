@@ -2,6 +2,7 @@ import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { isModernRecord } from '../../domain/modern-record';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
 import type { IdGenerator, UnitOfWork } from '../ports';
@@ -104,7 +105,17 @@ export async function editAbono(
       if (split.interestAmount > 0) {
         if (abono.interestMovementId) {
           const movement = await movementRepo.findById(workspaceId, abono.interestMovementId);
-          if (movement) {
+          if (!movement) {
+            // R15.1 6c: the split abono carries an interestMovementId, so its
+            // interest movement is REQUIRED for modern records.
+            if (isModernRecord(credit.createdAt)) {
+              throw new ConflictError('Required movement not found for modern record');
+            }
+            console.warn('[reconcile] Legacy record missing movement, continuing', {
+              aggregateId: credit.id,
+              movementId: abono.interestMovementId,
+            });
+          } else {
             await movementRepo.update(
               new Movement({
                 id: movement.id,
@@ -151,7 +162,17 @@ export async function editAbono(
         // Primary capital movement — sync its amount. (Only the 100%-interest
         // abono has no capital movement; that case is handled below.)
         const movement = await movementRepo.findById(workspaceId, abono.movementId);
-        if (movement) {
+        if (!movement) {
+          // R15.1 6c: abono.movementId is set, so the primary movement is
+          // REQUIRED for modern records.
+          if (isModernRecord(credit.createdAt)) {
+            throw new ConflictError('Required movement not found for modern record');
+          }
+          console.warn('[reconcile] Legacy record missing movement, continuing', {
+            aggregateId: credit.id,
+            movementId: abono.movementId,
+          });
+        } else {
           await movementRepo.update(
             new Movement({
               id: movement.id,
@@ -172,7 +193,17 @@ export async function editAbono(
       } else if (abono.movementId) {
         // 100%-interest abono: the primary movement IS the interest movement.
         const movement = await movementRepo.findById(workspaceId, abono.movementId);
-        if (movement) {
+        if (!movement) {
+          // R15.1 6c: abono.movementId is set, so the primary movement is
+          // REQUIRED for modern records.
+          if (isModernRecord(credit.createdAt)) {
+            throw new ConflictError('Required movement not found for modern record');
+          }
+          console.warn('[reconcile] Legacy record missing movement, continuing', {
+            aggregateId: credit.id,
+            movementId: abono.movementId,
+          });
+        } else {
           await movementRepo.update(
             new Movement({
               id: movement.id,
@@ -244,15 +275,22 @@ export async function editAbono(
     // ── Legacy single-movement path (sale-born + pre-R9 abonos) ──────────────
     // Resolved values only — passing `undefined` to the repository would $unset
     // the field (undefined → $unset contract), clearing amounts by accident.
-    await creditRepo.editAbono(workspaceId, creditId, abonoId, {
-      amount: updatedAmount.amount,
-      date: updatedDate,
-    }, tx, credit.version);
-
-    // Update linked movement (income type for abonos)
+    // The movement read happens BEFORE the abono write so a missing required
+    // movement aborts the whole transaction without any partial write.
     if (abono.movementId) {
       const movement = await movementRepo.findById(workspaceId, abono.movementId);
-      if (movement) {
+      if (!movement) {
+        // R15.1 6c: modern aggregates must keep their required movement — a
+        // missing one is an integrity violation (ConflictError + rollback).
+        // Legacy aggregates keep the tolerant behavior with a reconciliation log.
+        if (isModernRecord(credit.createdAt)) {
+          throw new ConflictError('Required movement not found for modern record');
+        }
+        console.warn('[reconcile] Legacy record missing movement, continuing', {
+          aggregateId: credit.id,
+          movementId: abono.movementId,
+        });
+      } else {
         const updatedMovement = new Movement({
           id: movement.id,
           workspaceId: movement.workspaceId,
@@ -273,6 +311,11 @@ export async function editAbono(
         await movementRepo.update(updatedMovement, tx);
       }
     }
+
+    await creditRepo.editAbono(workspaceId, creditId, abonoId, {
+      amount: updatedAmount.amount,
+      date: updatedDate,
+    }, tx, credit.version);
 
     return new CreditGranted(
       {

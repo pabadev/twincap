@@ -9,7 +9,8 @@ import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
+import type { IdGenerator, UnitOfWork } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -65,6 +66,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
+
 function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}): Category {
   return new Category({
     id: 'cat-1',
@@ -87,6 +96,7 @@ function fakeAccountRepo(
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
   };
@@ -152,6 +162,7 @@ describe('createMovement', () => {
       categoryRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movement.amount.amount).toBe(50000);
@@ -185,6 +196,7 @@ describe('createMovement', () => {
       categoryRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movement.amount.amount).toBe(25000);
@@ -216,6 +228,7 @@ describe('createMovement', () => {
       categoryRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movement.context).toBe('Business');
@@ -244,6 +257,7 @@ describe('createMovement', () => {
       categoryRepo,
       ids,
       accountRepo,
+      fakeUow(),
     );
 
     expect(movement.context).toBeUndefined();
@@ -273,6 +287,7 @@ describe('createMovement', () => {
         categoryRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(NotFoundError);
   });
@@ -301,6 +316,7 @@ describe('createMovement', () => {
         categoryRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
   });
@@ -329,6 +345,7 @@ describe('createMovement', () => {
         categoryRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
   });
@@ -356,6 +373,7 @@ describe('createMovement', () => {
         categoryRepo,
         ids,
         accountRepo,
+        fakeUow(),
       ),
     ).rejects.toThrow(ValidationError);
   });

@@ -227,6 +227,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
     create: vi.fn().mockImplementation(async (a: unknown) => a),
     update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
     ...overrides,
@@ -388,7 +389,7 @@ describe('Tenant isolation (B1)', () => {
       const accountRepo = fakeAccountRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteAccount(WORKSPACE_A, ACC_B, accountRepo, movementRepo),
+        deleteAccount(WORKSPACE_A, ACC_B, accountRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(accountRepo.delete).not.toHaveBeenCalled();
       expect(movementRepo.delete).not.toHaveBeenCalled();
@@ -523,7 +524,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditGrantedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, movementRepo),
+        deleteCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
@@ -610,7 +611,7 @@ describe('Tenant isolation (B1)', () => {
       const creditRepo = fakeCreditReceivedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditReceived(WORKSPACE_A, CRD_R_B, creditRepo, movementRepo),
+        deleteCreditReceived(WORKSPACE_A, CRD_R_B, creditRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
@@ -688,7 +689,7 @@ describe('Tenant isolation (B1)', () => {
       const payableRepo = fakePayableRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deletePayable(WORKSPACE_A, PAY_B, payableRepo, movementRepo),
+        deletePayable(WORKSPACE_A, PAY_B, payableRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.delete).not.toHaveBeenCalled();
     });

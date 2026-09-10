@@ -62,8 +62,25 @@ export interface AccountRepository {
   /** @param tx optional transaction handle (R15-F6): the write joins the
    *   caller's transaction (createAccount rollback path). */
   delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
-  /** ACC-4: count references across all collections (movements, transfers, credits, sales). */
-  countReferences(workspaceId: string, accountId: string): Promise<number>;
+  /** R15.1-6e: shared-document write that makes the account a transaction
+   *  conflict point. createMovement touches the account doc INSIDE its
+   *  transaction before inserting, so a concurrent deleteAccount (which deletes
+   *  that same doc) cannot interleave between the create's read and its insert:
+   *  the race becomes a write-write conflict on the account doc instead of a
+   *  write skew, the loser aborts and re-executes on the winner's committed
+   *  state — no orphaned movements in any terminal. Plain `updateOne`, no CAS.
+   *  @returns true when the account exists and was touched; false when it is
+   *  gone (the caller maps false to NotFoundError).
+   *  @param tx optional transaction handle; joins the caller's transaction. */
+  touch(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<boolean>;
+  /** ACC-4: count references across all collections (movements, transfers, credits, sales).
+   *  @param tx optional transaction handle (R15.1-6e): when present, every
+   *   count joins the caller's transaction session so the deletion guard runs
+   *   on the SAME snapshot as the account read (used by transactional
+   *   deleteAccount — the counts run serially on a session, never in
+   *   parallel, because the MongoDB driver forbids concurrent ops on one
+   *   ClientSession). */
+  countReferences(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<number>;
   /**
    * R15-F5: optimistic-concurrency bump of the account `__v`.
    * `$inc __v` only when the persisted version still equals `expectedVersion`.
@@ -102,7 +119,10 @@ export interface CategoryRepository {
 export interface MovementRepository {
   findById(workspaceId: string, id: string): Promise<Movement | null>;
   findByWorkspaceId(workspaceId: string): Promise<Movement[]>;
-  findByAccountId(workspaceId: string, accountId: string): Promise<Movement[]>;
+  /** @param tx optional transaction handle (R15.1-6e): the movement-docs read
+   *   joins the caller's transaction session (snapshot-consistent cascade read
+   *   in transactional deleteAccount). */
+  findByAccountId(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<Movement[]>;
   /**
    * Cursor-based paginated query across all workspace movements.
    * @param cursor Optional `{ date, createdAt }` of the last item from the previous page.
@@ -197,7 +217,12 @@ export interface CreditReceivedRepository {
    *   (Fase 5 editPrincipal cascade).
    */
   update(credit: CreditReceived, tx?: TransactionHandle, expectedVersion?: number): Promise<CreditReceived>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  /**
+   * Delete a received credit (cascade use cases; transactional deleteCreditReceived
+   * needs it inside the transaction, R15.1 Fase 3).
+   * @param tx optional transaction handle (R15); joins the caller's transaction.
+   */
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
   addAbono(workspaceId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
@@ -268,7 +293,12 @@ export interface PayableRepository {
    *   (edit-total aggregation writes inside transactional contexts).
    */
   update(payable: Payable, tx?: TransactionHandle, expectedVersion?: number): Promise<Payable>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  /**
+   * Delete a payable (cascade use cases; transactional deletePayable needs it
+   * inside the transaction, R15.1 Fase 3).
+   * @param tx optional transaction handle (R15); joins the caller's transaction.
+   */
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
   addAbono(workspaceId: string, payableId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;

@@ -75,4 +75,27 @@ describe('createSaleAction', () => {
     expect(MongoCatalogItemRepository).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
+
+  it('rejects a request without an idempotency key before any data access (R15.1 6a)', async () => {
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+
+    const fd = new FormData();
+    fd.append(
+      'lineItems',
+      JSON.stringify([{ itemId: 'it-1', quantity: 1, unitPrice: 15000 }]),
+    );
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('paymentMode', 'cash');
+    fd.append('currency', 'COP');
+
+    const result = await createSaleAction(null, fd);
+
+    expect(result).toEqual({ error: 'error.idempotencyKeyRequired' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(MongoSaleRepository).not.toHaveBeenCalled();
+    expect(MongoCatalogItemRepository).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
 });

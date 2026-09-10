@@ -219,6 +219,7 @@ function fakeAccountRepo(
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
   };

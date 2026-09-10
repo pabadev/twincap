@@ -2,6 +2,7 @@ import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
 import { Money } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
+import { isModernRecord } from '../../domain/modern-record';
 import { creditCategory } from '../../domain/synthetic-categories';
 import type { CreditReceivedRepository, MovementRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
@@ -51,15 +52,23 @@ export async function editAbono(
     const updatedAccountId = input.accountId ?? abono.accountId;
     const updatedDate = input.date ?? abono.date;
 
-    await creditRepo.editAbono(workspaceId, creditId, abonoId, {
-      amount: input.amount,
-      date: input.date,
-    }, tx, credit.version);
-
-    // Update linked movement
+    // Update linked movement. The read happens BEFORE the abono write so a
+    // missing required movement aborts the whole transaction without any
+    // partial write (fail fast, same tx rollback).
     if (abono.movementId) {
       const movement = await movementRepo.findById(workspaceId, abono.movementId);
-      if (movement) {
+      if (!movement) {
+        // R15.1 6c: modern aggregates must keep their required movement — a
+        // missing one is an integrity violation (ConflictError + rollback).
+        // Legacy aggregates keep the tolerant behavior with a reconciliation log.
+        if (isModernRecord(credit.createdAt)) {
+          throw new ConflictError('Required movement not found for modern record');
+        }
+        console.warn('[reconcile] Legacy record missing movement, continuing', {
+          aggregateId: credit.id,
+          movementId: abono.movementId,
+        });
+      } else {
         const updatedMovement = new Movement({
           id: movement.id,
           workspaceId: movement.workspaceId,
@@ -76,6 +85,11 @@ export async function editAbono(
         await movementRepo.update(updatedMovement, tx);
       }
     }
+
+    await creditRepo.editAbono(workspaceId, creditId, abonoId, {
+      amount: input.amount,
+      date: input.date,
+    }, tx, credit.version);
 
     return new CreditReceived(
       {

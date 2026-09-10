@@ -19,6 +19,7 @@ function fakeAccountRepo(): AccountRepository & { created: Account[] } {
     },
     update: async (a) => a,
     delete: async () => {},
+    touch: async () => true,
     countReferences: async () => 0,
     bumpVersion: async () => true,
   };

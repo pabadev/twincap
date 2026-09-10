@@ -48,7 +48,10 @@ export async function createSaleAction(
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const paymentMode = formData.get('paymentMode') as PaymentMode;
   const currency = formData.get('currency') as Currency;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   let items: { itemId: string; quantity: number; unitPrice: number }[];
   try {
@@ -108,6 +111,9 @@ export async function createSaleAction(
         );
       },
     );
+    // Post-commit is safe by design: the financial commit already happened and the
+    // idempotency key prevents duplicate effects on retry — revalidation failure
+    // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidatePath('/pos/sales');
     revalidatePath('/pos/catalog');
     revalidatePath('/credits/granted');

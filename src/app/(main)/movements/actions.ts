@@ -26,6 +26,7 @@ import { handleActionError } from '../../../lib/handle-action-error';
 import { serializeEntities } from '../../../lib/serialize';
 import { withAudit } from '../../../lib/with-audit';
 import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
+import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { trackAnalytics } from '../../../lib/track-analytics';
 import { getT } from '../../../i18n/server';
 import { buildMovementsCsv, filterMovementsForCsv } from './export-csv';
@@ -53,7 +54,10 @@ export async function createMovementAction(
   if (contextRaw && isMovementContext(contextRaw)) {
     context = contextRaw;
   }
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -88,9 +92,13 @@ export async function createMovementAction(
           categoryRepo,
           ids,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );
+    // Post-commit is safe by design: the financial commit already happened and the
+    // idempotency key prevents duplicate effects on retry — revalidation failure
+    // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidatePath('/movements');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');

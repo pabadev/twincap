@@ -36,6 +36,7 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
     }),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -245,7 +246,7 @@ describe('deleteAccount', () => {
       findById: vi.fn().mockResolvedValue(account),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo());
+    await deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow());
 
     expect(accountRepo.deleted).toContain('acc-1');
   });
@@ -257,7 +258,7 @@ describe('deleteAccount', () => {
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo()),
+      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow()),
     ).rejects.toThrow(ValidationError);
   });
 
@@ -269,7 +270,7 @@ describe('deleteAccount', () => {
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo()),
+      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -286,9 +287,9 @@ describe('deleteAccount', () => {
       findByAccountId: vi.fn().mockResolvedValue([opening]),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
 
-    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening');
+    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening', expect.anything());
     expect(accountRepo.deleted).toContain('acc-1');
   });
 
@@ -313,7 +314,7 @@ describe('deleteAccount', () => {
       }),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
 
     expect(order).toEqual(['movement:mov-opening', 'account:acc-1']);
   });
@@ -332,7 +333,7 @@ describe('deleteAccount', () => {
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement mov-opening not found')),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
 
     expect(accountRepo.deleted).toContain('acc-1');
   });
@@ -351,10 +352,10 @@ describe('deleteAccount', () => {
       findByAccountId: vi.fn().mockResolvedValue([opening, manual]),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo);
+    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
 
     expect(movementRepo.delete).toHaveBeenCalledTimes(1);
-    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening');
+    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening', expect.anything());
   });
 });
 

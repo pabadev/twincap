@@ -121,7 +121,7 @@ export async function deleteAccountAction(
       () => {
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAccount(user.workspaceId!, accountId, accountRepo, movementRepo);
+        return deleteAccount(user.workspaceId!, accountId, accountRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/accounts');
