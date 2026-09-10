@@ -18,7 +18,9 @@ export function toTransferEntity(doc: TransferDocument): Transfer {
     ),
     sourceCurrency: doc.sourceCurrency as Currency,
     destinationCurrency: doc.destinationCurrency as Currency,
-    rate: doc.rate,
+    // Dual legacy support (R15.1 Fase 4): new docs carry
+    // effectiveExchangeRate; pre-migration docs only have `rate`.
+    effectiveExchangeRate: doc.effectiveExchangeRate ?? doc.rate ?? undefined,
     date: doc.date,
     note: doc.note,
     movementIds: doc.movementIds
@@ -41,7 +43,7 @@ export function toTransferDocData(entity: Transfer): Record<string, unknown> {
     destinationAmount: entity.destinationAmount.amount,
     sourceCurrency: entity.sourceCurrency,
     destinationCurrency: entity.destinationCurrency,
-    rate: entity.rate,
+    effectiveExchangeRate: entity.effectiveExchangeRate,
     date: entity.date,
     note: entity.note,
     // R5-B: persist movementIds so deleteTransfer can actually reverse both

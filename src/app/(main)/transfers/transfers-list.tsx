@@ -155,9 +155,10 @@ export function TransfersList({
                       </div>
                       <div className="text-xs text-zinc-500 dark:text-zinc-400">
                         {formatAmount(transfer.destinationAmount.amount, transfer.destinationAmount.currency, locale)}
-                        {transfer.rate && (
+                        {transfer.effectiveExchangeRate &&
+                          transfer.effectiveExchangeRate !== 1 && (
                           <span className="ml-1 text-xs font-normal text-zinc-400">
-                            ({t('rate')}: {transfer.rate})
+                            ({t('effectiveRate')}: {transfer.effectiveExchangeRate})
                           </span>
                         )}
                       </div>

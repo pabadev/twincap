@@ -28,20 +28,30 @@ describe("Transfer entity", () => {
     expect(t.destinationAmount.amount).toBe(300_000);
     expect(t.sourceCurrency).toBe("COP");
     expect(t.destinationCurrency).toBe("COP");
-    expect(t.rate).toBeUndefined();
+    expect(t.effectiveExchangeRate).toBeUndefined();
   });
 
-  it("creates a cross-currency transfer with rate (TRA-3)", () => {
+  it("stores a derived effectiveExchangeRate for cross-currency transfers (TRA-3)", () => {
     const t = transfer({
       sourceAmount: new Money(100_00, "USD"),
       destinationAmount: new Money(400_000, "COP"),
       sourceCurrency: "USD",
       destinationCurrency: "COP",
-      rate: 4000,
+      effectiveExchangeRate: 4000,
     });
-    expect(t.rate).toBe(4000);
+    expect(t.effectiveExchangeRate).toBe(4000);
     expect(t.sourceAmount.currency).toBe("USD");
     expect(t.destinationAmount.currency).toBe("COP");
+  });
+
+  it("accepts a cross-currency transfer without effectiveExchangeRate (the use case derives it)", () => {
+    const t = transfer({
+      sourceAmount: new Money(100_00, "USD"),
+      destinationAmount: new Money(400_000, "COP"),
+      sourceCurrency: "USD",
+      destinationCurrency: "COP",
+    });
+    expect(t.effectiveExchangeRate).toBeUndefined();
   });
 
   it("rejects same-currency transfer with unequal amounts (TRA-2)", () => {
@@ -53,25 +63,26 @@ describe("Transfer entity", () => {
     ).toThrow(ValidationError);
   });
 
-  it("rejects cross-currency transfer without rate (TRA-3)", () => {
+  it("rejects cross-currency transfer with zero effectiveExchangeRate", () => {
     expect(() =>
       transfer({
         sourceAmount: new Money(100_00, "USD"),
         destinationAmount: new Money(400_000, "COP"),
         sourceCurrency: "USD",
         destinationCurrency: "COP",
+        effectiveExchangeRate: 0,
       }),
     ).toThrow(ValidationError);
   });
 
-  it("rejects cross-currency transfer with zero rate", () => {
+  it("rejects cross-currency transfer with negative effectiveExchangeRate", () => {
     expect(() =>
       transfer({
         sourceAmount: new Money(100_00, "USD"),
         destinationAmount: new Money(400_000, "COP"),
         sourceCurrency: "USD",
         destinationCurrency: "COP",
-        rate: 0,
+        effectiveExchangeRate: -4000,
       }),
     ).toThrow(ValidationError);
   });

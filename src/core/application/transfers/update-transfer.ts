@@ -1,6 +1,6 @@
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, deriveExchangeRate } from '../../domain/money';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
@@ -9,13 +9,18 @@ import type { UnitOfWork } from '../ports';
 export interface UpdateTransferInput {
   sourceAmount?: number;
   destinationAmount?: number;
-  rate?: number;
   date?: Date;
   note?: string;
 }
 
 /**
  * Update a transfer and cascade changes to both linked movements (TRA-5).
+ *
+ * R15.1 Fase 4 — derived exchange rate (TRA-3): the rate is never user input.
+ * It is recomputed from the effective amounts on every edit —
+ * effectiveExchangeRate = destinationAmount / sourceAmount (1 for
+ * same-currency). Cross-currency edits MUST re-supply the destination amount:
+ * both real amounts are the source of truth for the derived rate.
  *
  * R15-F5: the transfer write and both movement writes run INSIDE a single
  * multi-document transaction — they commit or roll back atomically, so the
@@ -41,13 +46,18 @@ export async function updateTransfer(
     // ACC-1 re-check: the transfer's persisted currencies must still match the
     // accounts' current currencies (accounts are currency-immutable, so a
     // mismatch means the transfer was recorded against the wrong account).
-    const [sourceAccount, destinationAccount] = await Promise.all([
-      accountRepo.findById(userId, existing.sourceAccountId, tx),
-      accountRepo.findById(userId, existing.destinationAccountId, tx),
-    ]);
+    //
+    // NOTE: serial reads are REQUIRED. The MongoDB driver forbids concurrent
+    // use of a ClientSession: parallel ops on the same session desync the
+    // internal txnNumber, the server rejects them with MongoServerError 251
+    // (NoSuchTransaction → TransientTransactionError), and withTransaction
+    // replays the callback in an infinite retry loop that hangs the request.
+    // (Same convention as createTransfer; do not "optimize" back to Promise.all.)
+    const sourceAccount = await accountRepo.findById(userId, existing.sourceAccountId, tx);
     if (!sourceAccount) {
       throw new NotFoundError(`Source account ${existing.sourceAccountId} not found`);
     }
+    const destinationAccount = await accountRepo.findById(userId, existing.destinationAccountId, tx);
     if (!destinationAccount) {
       throw new NotFoundError(`Destination account ${existing.destinationAccountId} not found`);
     }
@@ -58,18 +68,30 @@ export async function updateTransfer(
       throw new ValidationError(`Destination account currency is ${destinationAccount.currency}, stored ${existing.destinationCurrency}`);
     }
 
-    // Build updated transfer values
+    // Build updated transfer values. The rate is DERIVED (R15.1 Fase 4):
+    // cross-currency edits must re-supply BOTH real amounts — the destination
+    // amount cannot be derived from the source one.
+    const isCrossCurrency =
+      existing.sourceCurrency !== existing.destinationCurrency;
+    if (isCrossCurrency && input.destinationAmount === undefined) {
+      throw new ValidationError(
+        'Cross-currency transfers require a destination amount',
+      );
+    }
     const newSourceAmount = input.sourceAmount ?? existing.sourceAmount.amount;
     const newDestAmount = input.destinationAmount ?? existing.destinationAmount.amount;
-    const newRate = input.rate ?? existing.rate;
     const newDate = input.date ?? existing.date;
     const newNote = input.note ?? existing.note;
+    const newEffectiveExchangeRate = deriveExchangeRate(
+      new Money(newSourceAmount, existing.sourceCurrency),
+      new Money(newDestAmount, existing.destinationCurrency),
+    );
 
     const updatedTransfer = new Transfer({
       ...existing,
       sourceAmount: new Money(newSourceAmount, existing.sourceCurrency),
       destinationAmount: new Money(newDestAmount, existing.destinationCurrency),
-      rate: newRate,
+      effectiveExchangeRate: newEffectiveExchangeRate,
       date: newDate,
       note: newNote,
     });

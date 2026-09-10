@@ -15,7 +15,10 @@ export interface TransferDoc {
   destinationAmount: number;
   sourceCurrency: string;
   destinationCurrency: string;
+  /** Legacy field (pre-R15.1 Fase 4) — kept for backward-compatible reads. */
   rate?: number;
+  /** Derived from destinationAmount / sourceAmount (R15.1 Fase 4). */
+  effectiveExchangeRate?: number;
   date: Date;
   note?: string;
   movementIds?: TransferMovementIdsDoc;
@@ -67,6 +70,9 @@ const TransferSchema = new Schema<TransferDoc>(
       enum: ["COP", "USD", "MXN", "EUR"],
     },
     rate: {
+      type: Number,
+    },
+    effectiveExchangeRate: {
       type: Number,
     },
     date: {

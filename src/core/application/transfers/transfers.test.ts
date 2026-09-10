@@ -7,7 +7,7 @@ import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
+import { NotFoundError, ValidationError } from '../../domain/errors';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { Currency } from '../../domain/currency';
@@ -28,6 +28,7 @@ function fakeAccountRepo(
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
   };
@@ -178,7 +179,7 @@ describe('createTransfer', () => {
     ]);
     const ids = fakeIdGen();
 
-    const transfer = await createTransfer(
+    const res = await createTransfer(
       'user-1',
       {
         sourceAccountId: 'acc-src',
@@ -194,11 +195,14 @@ describe('createTransfer', () => {
       accountRepo,
       fakeUow(),
     );
+    const transfer = res.transfer!;
 
     expect(transfer.sourceAmount.amount).toBe(50000);
     expect(transfer.destinationAmount.amount).toBe(50000);
     expect(transfer.sourceCurrency).toBe('COP');
     expect(transfer.destinationCurrency).toBe('COP');
+    // R15.1 Fase 4: the rate is derived, never received — same-currency → 1.
+    expect(transfer.effectiveExchangeRate).toBe(1);
     expect(transferRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(2);
 
@@ -317,7 +321,7 @@ describe('createTransfer', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('creates a cross-currency transfer with rate (TRA-3)', async () => {
+  it('derives effectiveExchangeRate from both amounts for cross-currency (TRA-3)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(200000),
@@ -328,7 +332,7 @@ describe('createTransfer', () => {
     ]);
     const ids = fakeIdGen();
 
-    const transfer = await createTransfer(
+    const res = await createTransfer(
       'user-1',
       {
         sourceAccountId: 'acc-src',
@@ -337,7 +341,6 @@ describe('createTransfer', () => {
         sourceCurrency: 'COP',
         destinationAmount: 30,
         destinationCurrency: 'USD',
-        rate: 3333,
         date: new Date('2025-06-01'),
       },
       transferRepo,
@@ -346,12 +349,14 @@ describe('createTransfer', () => {
       accountRepo,
       fakeUow(),
     );
+    const transfer = res.transfer!;
 
     expect(transfer.sourceAmount.amount).toBe(100000);
     expect(transfer.sourceAmount.currency).toBe('COP');
     expect(transfer.destinationAmount.amount).toBe(30);
     expect(transfer.destinationAmount.currency).toBe('USD');
-    expect(transfer.rate).toBe(3333);
+    // R15.1 Fase 4: rate == destinationAmount / sourceAmount, never input.
+    expect(transfer.effectiveExchangeRate).toBe(30 / 100000);
 
     const expense = movementRepo.created[0];
     expect(expense.amount.currency).toBe('COP');
@@ -386,7 +391,7 @@ describe('createTransfer', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('throws ConflictError when source has insufficient funds (TRA-4)', async () => {
+  it('balance insuficiente sin confirmación → warning estructurado, nada registrado (F5)', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo({
       aggregateBalance: vi.fn().mockResolvedValue(10000), // balance < sourceAmount
@@ -397,26 +402,77 @@ describe('createTransfer', () => {
     ]);
     const ids = fakeIdGen();
 
-    await expect(
-      createTransfer(
-        'user-1',
-        {
-          sourceAccountId: 'acc-src',
-          destinationAccountId: 'acc-dst',
-          sourceAmount: 50000,
-          sourceCurrency: 'COP',
-          date: new Date(),
-        },
-        transferRepo,
-        movementRepo,
-        ids,
-        accountRepo,
-        fakeUow(),
-      ),
-    ).rejects.toThrow(ConflictError);
+    const result = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 50000,
+        sourceCurrency: 'COP',
+        date: new Date(),
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeUow(),
+    );
+
+    // Sin confirmación: NADA se escribe — solo el warning estructurado.
+    expect(result.transfer).toBeNull();
+    expect(result.warning).toEqual({
+      type: 'insufficient_funds',
+      currentBalance: 10000,
+      projectedBalance: -40000, // 10_000 − 50_000
+      currency: 'COP',
+    });
+    expect(transferRepo.create).not.toHaveBeenCalled();
+    expect(transferRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+    expect(accountRepo.bumpVersion).not.toHaveBeenCalled();
   });
 
-  it('throws ValidationError for cross-currency without rate', async () => {
+  it('con confirmNegativeBalance=true → transfer registrado con saldo negativo (F5)', async () => {
+    const transferRepo = fakeTransferRepo();
+    const movementRepo = fakeMovementRepo({
+      aggregateBalance: vi.fn().mockResolvedValue(10000), // balance < sourceAmount
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+    const ids = fakeIdGen();
+
+    const { transfer } = await createTransfer(
+      'user-1',
+      {
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        sourceAmount: 50000,
+        sourceCurrency: 'COP',
+        date: new Date('2025-06-01'),
+        confirmNegativeBalance: true,
+      },
+      transferRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(transfer).toBeDefined();
+    expect(transferRepo.created).toHaveLength(1);
+    expect(movementRepo.created).toHaveLength(2);
+    // Saldo derivado del libro: seed 10_000 − expense 50_000 == −40_000.
+    // El saldo negativo es la realidad financiera declarada y se registra.
+    const expense = movementRepo.created[0];
+    expect(expense.type).toBe('expense');
+    expect(expense.amount.amount).toBe(50000);
+    expect(10000 - expense.amount.amount).toBe(-40000);
+    expect(accountRepo.bumpVersion).toHaveBeenCalledWith('user-1', 'acc-src', 0, expect.anything());
+  });
+
+  it('throws ValidationError for cross-currency without destination amount', async () => {
     const transferRepo = fakeTransferRepo();
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([
@@ -433,9 +489,9 @@ describe('createTransfer', () => {
           destinationAccountId: 'acc-dst',
           sourceAmount: 100000,
           sourceCurrency: 'COP',
-          destinationAmount: 30,
           destinationCurrency: 'USD',
-          // rate omitted
+          // destinationAmount omitted — both real amounts are required
+          // (the rate is derived from them).
           date: new Date(),
         },
         transferRepo,
@@ -565,8 +621,41 @@ describe('updateTransfer', () => {
 
     expect(updated.sourceAmount.amount).toBe(75000);
     expect(updated.destinationAmount.amount).toBe(75000);
+    // R15.1 Fase 4: same-currency edits recompute the derived rate → 1.
+    expect(updated.effectiveExchangeRate).toBe(1);
     expect(transferRepo.updated).toHaveLength(1);
     expect(movementRepo.updated).toHaveLength(2);
+  });
+
+  it('rejects a cross-currency edit that omits destinationAmount (rate is derived from both amounts)', async () => {
+    const existing = makeTransfer({
+      sourceCurrency: 'USD',
+      destinationCurrency: 'COP',
+      sourceAmount: new Money(100_00, 'USD'),
+      destinationAmount: new Money(400_000, 'COP'),
+      effectiveExchangeRate: 40,
+    });
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src', 'USD'),
+      makeAccount('acc-dst'),
+    ]);
+
+    await expect(
+      updateTransfer(
+        'user-1',
+        'tr-1',
+        { sourceAmount: 200_00 },
+        transferRepo,
+        movementRepo,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(transferRepo.update).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundError when transfer does not exist', async () => {
@@ -647,8 +736,6 @@ describe('createTransfer currency integrity', () => {
           sourceAmount: 50000,
           sourceCurrency: 'COP',
           destinationCurrency: 'USD', // declared USD on a COP account
-          destinationAmount: 50000,
-          rate: 1,
           date: new Date(),
         },
         transferRepo,

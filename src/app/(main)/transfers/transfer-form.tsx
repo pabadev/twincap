@@ -1,8 +1,8 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
+import { useT, useLocale } from '../../../i18n/client';
 import { createTransferAction, updateTransferAction } from './actions';
 import { IdempotencyField } from '../../../components/ui/idempotency-field';
 import type { SerializedAccount } from '../../../core/domain/account';
@@ -10,9 +10,22 @@ import type { SerializedTransfer } from '../../../core/domain/transfer';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { Modal } from '../../../components/ui/modal';
 import { useToast } from '../../../lib/hooks/use-toast';
 import { useActionError } from '../../../lib/use-action-error';
 import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
+import { formatAmount } from '../../../lib/format';
+
+/**
+ * Action-state shape shared by the create/edit transfer actions.
+ * `warning` is only ever produced by createTransferAction (R15.1 Fase 5);
+ * updateTransferAction never emits it but is structurally compatible.
+ */
+type TransferFormState = {
+  error?: string;
+  success?: string;
+  warning?: { currentBalance: number; projectedBalance: number; currency: string };
+};
 
 export function TransferForm({
   accounts,
@@ -25,17 +38,29 @@ export function TransferForm({
   onSuccess?: () => void;
 }) {
   const isEdit = !!transfer;
-  const [state, formAction, isPending] = useActionState(
+  // Explicit State generic: the action is the create/edit union and only
+  // createTransferAction can return `warning`.
+  const [state, formAction, isPending] = useActionState<TransferFormState | null, FormData>(
     isEdit ? updateTransferAction : createTransferAction,
     null,
   );
   const t = useT('Transfers');
   const tCommon = useT('Common');
   const tToast = useT('Toast');
+  const locale = useLocale();
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
+
+  // R15.1 Fase 5 — blocking confirm for negative balances. useActionState
+  // returns [state, formAction, isPending] (no state setter), so "Cancel"
+  // dismisses the CURRENT warning via local state; every new submission
+  // resets it so a fresh warning can surface again. The form fields are
+  // uncontrolled — their DOM values survive dismissal untouched.
+  const [warningDismissed, setWarningDismissed] = useState(false);
+  const warning = state?.warning ?? null;
+  const showWarning = !!warning && !warningDismissed;
 
   const [sourceCurrency, setSourceCurrency] = useState(
     transfer?.sourceCurrency ?? accounts[0]?.currency ?? 'COP',
@@ -53,6 +78,16 @@ export function TransferForm({
       : '',
   );
 
+  // R15.1 Fase 4 — live derived-rate display: the form is uncontrolled
+  // (defaultValue), so the two amounts are tracked in lightweight state and
+  // the effective rate is recomputed on every change, read-only.
+  const [sourceAmountStr, setSourceAmountStr] = useState(
+    transfer ? String(transfer.sourceAmount.amount) : '',
+  );
+  const [destAmountStr, setDestAmountStr] = useState(
+    transfer ? String(transfer.destinationAmount.amount) : '',
+  );
+
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
@@ -68,8 +103,36 @@ export function TransferForm({
     }
   }, [state?.error, addToast, translateError]);
 
+  const dismissWarning = () => {
+    setWarningDismissed(true);
+  };
+
+  // Intercept the submit so the SAME mounted form can re-run with the same
+  // fields: the confirm flow adds a hidden `confirmNegativeBalance` input and
+  // re-submits the FormData as-is (the idempotency key is per form mount and
+  // the server releases its claim when it returns a warning).
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setWarningDismissed(false); // a NEW submission may yield a NEW warning
+    const fd = new FormData(e.currentTarget);
+    formAction(fd);
+  };
+
+  // Derived rate shown read-only (R15.1 Fase 4): how many source units each
+  // destination unit costs (sourceAmount / destinationAmount). The stored
+  // effectiveExchangeRate is its inverse (destinationAmount / sourceAmount);
+  // only the two real amounts are user input.
+  const sourceAmt = Number(sourceAmountStr);
+  const destAmt = Number(destAmountStr);
+  const derivedRateDisplay =
+    isCrossCurrency && sourceAmt > 0 && destAmt > 0
+      ? new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(
+          sourceAmt / destAmt,
+        )
+      : null;
+
   return (
-    <form action={formAction} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {isEdit && <input type="hidden" name="transferId" value={transfer.id} />}
@@ -120,6 +183,7 @@ export function TransferForm({
           disabled={isPending}
           defaultValue={transfer?.sourceAmount.amount}
           onChange={(e) => {
+            setSourceAmountStr(e.target.value);
             if (isEdit && !isCrossCurrency) setMirroredDest(e.target.value);
           }}
         />
@@ -136,6 +200,7 @@ export function TransferForm({
               required
               disabled={isPending}
               defaultValue={transfer?.destinationAmount.amount}
+              onChange={(e) => setDestAmountStr(e.target.value)}
             />
             <input type="hidden" name="destinationCurrency" value={destCurrency} />
           </>
@@ -147,18 +212,17 @@ export function TransferForm({
         )}
       </div>
 
-      {isCrossCurrency && (
-        <Input
-          id="rate"
-          name="rate"
-          type="number"
-          label={t('fxRate', { from: sourceCurrency, to: destCurrency })}
-          step="0.01"
-          min="0"
-          required
-          disabled={isPending}
-          defaultValue={transfer?.rate}
-        />
+      {/* R15.1 Fase 4 — TwinCap derives the exchange rate from both real
+          amounts; the user never enters one. Read-only, live-recalculated. */}
+      {derivedRateDisplay !== null && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {t('effectiveRate')}:{' '}
+          {t('effectiveRateDescription', {
+            destCurrency,
+            rate: derivedRateDisplay,
+            sourceCurrency,
+          })}
+        </p>
       )}
 
       <Input
@@ -212,6 +276,53 @@ export function TransferForm({
           </Button>
         )}
       </div>
+
+      {showWarning && warning && (
+        <Modal
+          open
+          onClose={dismissWarning}
+          title={t('insufficientFundsTitle')}
+          actions={
+            <>
+              <Button type="submit" variant="primary" disabled={isPending} loading={isPending}>
+                {t('registerAnyway')}
+              </Button>
+              <Button type="button" variant="secondary" disabled={isPending} onClick={dismissWarning}>
+                {tCommon('cancel')}
+              </Button>
+            </>
+          }
+        >
+          {/* The re-submission reuses every field of the mounted form; this
+              hidden input is the ONLY extra field on the confirmed attempt. */}
+          <input type="hidden" name="confirmNegativeBalance" value="true" />
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            {t('insufficientFundsDescription', {
+              projected: formatAmount(warning.projectedBalance, warning.currency, locale),
+            })}
+          </p>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningCurrentBalance')}</dt>
+              <dd className="font-medium text-zinc-900 dark:text-white">
+                {formatAmount(warning.currentBalance, warning.currency, locale)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningOperation')}</dt>
+              <dd className="font-medium text-zinc-900 dark:text-white">
+                −{formatAmount(warning.currentBalance - warning.projectedBalance, warning.currency, locale)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningProjectedBalance')}</dt>
+              <dd className="font-medium text-red-600 dark:text-red-400">
+                {formatAmount(warning.projectedBalance, warning.currency, locale)}
+              </dd>
+            </div>
+          </dl>
+        </Modal>
+      )}
     </form>
   );
 }

@@ -28,6 +28,21 @@ export class ValidationError extends DomainError {}
 export class ConflictError extends DomainError {}
 
 /**
+ * Structured, non-thrown result produced by createTransfer when the projected
+ * source balance would go negative and the caller did NOT confirm.
+ *
+ * Deliberately carries ONLY structured data (no human-readable `message`):
+ * the frontend composes the user-facing text from messages/*.json. `currency`
+ * lets the client format the amounts.
+ */
+export interface InsufficientFundsWarning {
+  type: 'insufficient_funds';
+  currentBalance: number;
+  projectedBalance: number;
+  currency: string;
+}
+
+/**
  * Canonical message for optimistic-concurrency failures on debt entities.
  *
  * When a versioned write (CAS via `__v`) does not match, repositories re-read the

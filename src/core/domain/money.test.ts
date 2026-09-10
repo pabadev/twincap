@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { Money, MoneyError, assertSameCurrency } from "./money";
+import {
+  Money,
+  MoneyError,
+  assertSameCurrency,
+  deriveExchangeRate,
+} from "./money";
+import { ValidationError } from "./errors";
 
 describe("Money", () => {
   it("stores amounts as integer minor units with a currency", () => {
@@ -49,5 +55,40 @@ describe("Money", () => {
     expect(() => assertSameCurrency(new Money(1, "USD"), new Money(1, "MXN"))).toThrow(
       MoneyError,
     );
+  });
+});
+
+describe("deriveExchangeRate", () => {
+  it("returns 1 for same-currency amounts (TRA-2)", () => {
+    expect(
+      deriveExchangeRate(new Money(300_000, "COP"), new Money(300_000, "COP")),
+    ).toBe(1);
+  });
+
+  it("derives destination/source ratio for cross-currency amounts (TRA-3)", () => {
+    expect(
+      deriveExchangeRate(
+        new Money(100_00, "USD"),
+        new Money(400_000, "COP"),
+      ),
+    ).toBe(40); // 400_000 / 10_000
+  });
+
+  it("rejects a zero source amount", () => {
+    expect(() =>
+      deriveExchangeRate(
+        Money.nonNegative(0, "COP"),
+        new Money(100, "COP"),
+      ),
+    ).toThrow(ValidationError);
+  });
+
+  it("rejects a zero destination amount", () => {
+    expect(() =>
+      deriveExchangeRate(
+        new Money(100, "COP"),
+        Money.nonNegative(0, "COP"),
+      ),
+    ).toThrow(ValidationError);
   });
 });

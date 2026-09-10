@@ -38,8 +38,6 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.fixedAccountDelete' };
       case 'System-linked movements cannot be deleted directly':
         return { error: 'error.systemMovementDelete' };
-      case 'Insufficient funds in source account':
-        return { error: 'error.insufficientFunds' };
       case 'Future dates are not allowed':
         return { error: 'error.futureDate' };
       // Auth-domain messages (I8): stable English identifiers shared by the

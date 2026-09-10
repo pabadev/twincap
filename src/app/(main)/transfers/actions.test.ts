@@ -24,6 +24,8 @@ const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
 }));
 const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
+const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
+const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -43,6 +45,10 @@ vi.mock('../../../infrastructure/repositories/operation-log-repository', () => (
 }));
 vi.mock('../../../infrastructure/transactions/mongo-unit-of-work', () => ({
   MongoUnitOfWork,
+}));
+vi.mock('../../../infrastructure/auth/idempotency', () => ({
+  claimIdempotency,
+  releaseIdempotency,
 }));
 
 const { updateTransferAction, createTransferAction } = await import('./actions');
@@ -185,6 +191,8 @@ describe('createTransferAction (analytics emission)', () => {
       }),
       bumpVersion: vi.fn().mockResolvedValue(true),
     }));
+    claimIdempotency.mockResolvedValue(true);
+    releaseIdempotency.mockResolvedValue(undefined);
   });
 
   it('emits transferCreated scoped to the session user after a successful create', async () => {
@@ -195,6 +203,7 @@ describe('createTransferAction (analytics emission)', () => {
     fd.append('sourceCurrency', 'COP');
     fd.append('date', '2026-09-01');
     fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-transfer-1');
 
     const result = await createTransferAction(null, fd);
 
@@ -202,5 +211,60 @@ describe('createTransferAction (analytics emission)', () => {
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
     expect(trackAnalytics).toHaveBeenCalledWith('transferCreated', 'user-1', 'user-1');
     expect(revalidatePath).toHaveBeenCalledWith('/transfers');
+  });
+
+  it('returns the structured warning (nothing written, no analytics) on insufficient funds (F5)', async () => {
+    // Balance 10_000 < sourceAmount 50_000 → projected −40_000.
+    MongoMovementRepository.mockImplementation(() => ({
+      create: vi.fn().mockResolvedValue(undefined),
+      aggregateBalance: vi.fn().mockResolvedValue(10000),
+    }));
+
+    const fd = new FormData();
+    fd.append('sourceAccountId', 'acc-1');
+    fd.append('destinationAccountId', 'acc-2');
+    fd.append('sourceAmount', '50000');
+    fd.append('sourceCurrency', 'COP');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-transfer-2');
+
+    const result = await createTransferAction(null, fd);
+
+    expect(result).toEqual({
+      warning: {
+        type: 'insufficient_funds',
+        currentBalance: 10000,
+        projectedBalance: -40000,
+        currency: 'COP',
+      },
+    });
+    // Warning = nothing was written: no analytics, no cache revalidation and
+    // no transfer create on the repo instance the action instantiated.
+    expect(trackAnalytics).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalledWith('/transfers');
+    const transferRepoInstance = MongoTransferRepository.mock.results[0]?.value as {
+      create?: ReturnType<typeof vi.fn>;
+    };
+    expect(transferRepoInstance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a request without an idempotency key before any data access (R15.1 6a)', async () => {
+    const fd = new FormData();
+    fd.append('sourceAccountId', 'acc-1');
+    fd.append('destinationAccountId', 'acc-2');
+    fd.append('sourceAmount', '50000');
+    fd.append('sourceCurrency', 'COP');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+
+    const result = await createTransferAction(null, fd);
+
+    expect(result).toEqual({ error: 'error.idempotencyKeyRequired' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(claimIdempotency).not.toHaveBeenCalled();
+    expect(MongoTransferRepository).not.toHaveBeenCalled();
+    expect(trackAnalytics).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

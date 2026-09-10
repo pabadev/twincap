@@ -26,7 +26,11 @@ const ids = objectIdGenerator;
 export async function createTransferAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<{
+  error?: string;
+  success?: string;
+  warning?: { currentBalance: number; projectedBalance: number; currency: string };
+}> {
   const user = await getCurrentUser();
   if (!user) return { error: 'error.unauthorized' };
 
@@ -36,11 +40,14 @@ export async function createTransferAction(
   const sourceCurrency = formData.get('sourceCurrency') as CreateTransferInput['sourceCurrency'];
   const destinationAmount = Number(formData.get('destinationAmount') || '0') || undefined;
   const destinationCurrency = (formData.get('destinationCurrency') as CreateTransferInput['destinationCurrency']) || undefined;
-  const rate = Number(formData.get('rate') || '0') || undefined;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
+  const confirmNegativeBalance = formData.get('confirmNegativeBalance') === 'true';
 
   const input: CreateTransferInput = {
     sourceAccountId,
@@ -49,10 +56,16 @@ export async function createTransferAction(
     sourceCurrency,
     destinationAmount,
     destinationCurrency,
-    rate,
     date,
     note,
+    confirmNegativeBalance,
   };
+
+  // R15.1 Fase 5: the use case returns EITHER a written transfer or a
+  // structured insufficient-funds warning. The result must be inspected
+  // AFTER the audit wrapper (which only logs — it does not consume the
+  // value), so the warning can be surfaced to the frontend as data.
+  let result!: Awaited<ReturnType<typeof createTransfer>>;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -73,11 +86,11 @@ export async function createTransferAction(
     await withAudit(
       logger,
       { action: 'createTransfer', entityType: 'transfer', userId: user.userId, correlationId: idempotencyKey ?? undefined },
-      () => {
+      async () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return createTransfer(
+        result = await createTransfer(
           user.workspaceId!,
           input,
           transferRepo,
@@ -86,8 +99,23 @@ export async function createTransferAction(
           accountRepo,
           new MongoUnitOfWork(),
         );
+        // Audit records the entityId only when a transfer was actually
+        // written; a warning emits a success record with no entity.
+        return result.transfer?.id ?? undefined;
       },
     );
+    if (result.warning) {
+      // The request was processed but NOTHING was written. Release the
+      // idempotency claim (mirroring the catch block) so the user's
+      // confirmation resubmission with the SAME key — same mounted form —
+      // is not dropped as a duplicate. The claim stays consumed until then:
+      // that is the intended retry flow (same key + confirmNegativeBalance).
+      await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
+      return { warning: result.warning };
+    }
+    // Post-commit is safe by design: the financial commit already happened and the
+    // idempotency key prevents duplicate effects on retry — revalidation failure
+    // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidatePath('/transfers');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
@@ -112,7 +140,6 @@ export async function updateTransferAction(
   const transferId = formData.get('transferId') as string;
   const sourceAmount = Number(formData.get('sourceAmount') || '0');
   const destinationAmount = Number(formData.get('destinationAmount') || '0') || undefined;
-  const rate = Number(formData.get('rate') || '0') || undefined;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
   const note = (formData.get('note') as string) || undefined;
@@ -120,7 +147,6 @@ export async function updateTransferAction(
   const input: UpdateTransferInput = {
     sourceAmount,
     destinationAmount,
-    rate,
     date,
     note,
   };

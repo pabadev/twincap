@@ -21,8 +21,11 @@ export interface TransferInput {
   destinationAmount: Money;
   sourceCurrency: Currency;
   destinationCurrency: Currency;
-  /** Only required/meaningful for cross-currency transfers (TRA-3). */
-  rate?: number;
+  /**
+   * Derived from sourceAmount / destinationAmount. Never user-input.
+   * Only meaningful for cross-currency transfers (TRA-3).
+   */
+  effectiveExchangeRate?: number;
   date: Date;
   note?: string;
   /** Linked movement IDs — populated after transfer completion (design §5). */
@@ -39,7 +42,7 @@ export class Transfer {
   readonly destinationAmount: Money;
   readonly sourceCurrency: Currency;
   readonly destinationCurrency: Currency;
-  readonly rate?: number;
+  readonly effectiveExchangeRate?: number;
   readonly date: Date;
   readonly note?: string;
   readonly movementIds?: TransferMovementIds;
@@ -72,12 +75,17 @@ export class Transfer {
     const isCrossCurrency = input.sourceCurrency !== input.destinationCurrency;
 
     if (isCrossCurrency) {
-      // TRA-3: cross-currency requires a rate and positive destinationAmount
-      if (input.rate === undefined || input.rate <= 0) {
-        throw new ValidationError("Cross-currency transfer requires a positive FX rate");
-      }
-      if (input.destinationAmount.amount <= 0) {
-        throw new ValidationError("Cross-currency transfer destinationAmount must be positive");
+      // TRA-3 (R15.1 Fase 4): the exchange rate is DERIVED from both amounts —
+      // the user never enters it. The use case computes it; the entity only
+      // guards that an explicitly provided derived value is positive. Both
+      // amounts are already validated positive above (TRA-general).
+      if (
+        input.effectiveExchangeRate !== undefined &&
+        input.effectiveExchangeRate <= 0
+      ) {
+        throw new ValidationError(
+          "Cross-currency transfer effectiveExchangeRate must be positive",
+        );
       }
     } else {
       // TRA-2: same-currency requires equal amounts
@@ -96,7 +104,7 @@ export class Transfer {
     this.destinationAmount = input.destinationAmount;
     this.sourceCurrency = input.sourceCurrency;
     this.destinationCurrency = input.destinationCurrency;
-    this.rate = input.rate;
+    this.effectiveExchangeRate = input.effectiveExchangeRate;
     this.date = input.date;
     this.note = input.note;
     this.movementIds = input.movementIds;
@@ -114,7 +122,7 @@ export class Transfer {
       destinationAmount: this.destinationAmount.toJSON(),
       sourceCurrency: this.sourceCurrency,
       destinationCurrency: this.destinationCurrency,
-      rate: this.rate,
+      effectiveExchangeRate: this.effectiveExchangeRate,
       date: this.date,
       note: this.note,
       movementIds: this.movementIds,

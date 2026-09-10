@@ -1,14 +1,30 @@
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, deriveExchangeRate } from '../../domain/money';
 import { ValidationError, ConflictError, NotFoundError, DEBT_MODIFIED_MSG } from '../../domain/errors';
+import type { InsufficientFundsWarning } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
 import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator, UnitOfWork } from '../ports';
 import type { CreateTransferInput } from './dto/transfers';
 
 /**
+ * Result of a createTransfer attempt: either a written transfer (with no
+ * warning) or, when the projected source balance would go negative without
+ * the caller's confirmation, NO transfer plus a structured warning.
+ */
+export type CreateTransferResult =
+  | { transfer: Transfer; warning: null }
+  | { transfer: null; warning: InsufficientFundsWarning };
+
+/**
  * Create a transfer between two accounts (TRA-1..4).
+ *
+ * R15.1 Fase 4 — derived exchange rate (TRA-3): the user enters BOTH real
+ * amounts (sourceAmount + destinationAmount) and the use case computes
+ * effectiveExchangeRate = destinationAmount / sourceAmount. A `rate` input no
+ * longer exists; the derived value is stored for display/derived queries only
+ * and stays 1 for same-currency transfers.
  *
  * Produces two linked movements: an expense on the source account and
  * an income on the destination account. Both are system-linked (MOV-5)
@@ -23,6 +39,19 @@ import type { CreateTransferInput } from './dto/transfers';
  * roll back atomically. Balance + account version are read with the same
  * session as the writes, so no other transfer can interleave between the
  * funds check and the writes.
+ *
+ * R15.1 Fase 5 — negative-balance policy (TRA-4 replaced):
+ * - A negative PROJECTED source balance is NOT an error: TwinCap records
+ *   declared financial reality.
+ * - Without `confirmNegativeBalance` the use case returns a structured
+ *   InsufficientFundsWarning ({ transfer: null, warning }) and writes
+ *   NOTHING — the caller shows it and lets the user decide.
+ * - With `confirmNegativeBalance: true` the transfer registers normally and
+ *   the negative balance is valid state.
+ * - The balance read stays INSIDE the transaction: the snapshot-consistent
+ *   CAS protocol is unchanged. Concurrent transfers still serialize on the
+ *   source-account version bump; retried callbacks re-read the balance and
+ *   re-evaluate the (possibly confirmed) negative balance.
  *
  * Concurrency protocol:
  * - The writes conflict with any concurrent transfer of the same source
@@ -42,7 +71,7 @@ export async function createTransfer(
   ids: IdGenerator,
   accountRepo: AccountRepository,
   uow: UnitOfWork,
-): Promise<Transfer> {
+): Promise<CreateTransferResult> {
   // TRA-1: source ≠ destination (pure input validation — no state involved,
   // so it can stay outside the transaction).
   if (input.sourceAccountId === input.destinationAccountId) {
@@ -75,7 +104,9 @@ export async function createTransfer(
       throw new ValidationError(`Destination account currency is ${destinationAccount.currency}, declared ${declaredDestCurrency}`);
     }
 
-    // TRA-2/3: same-currency = equal amounts; cross-currency requires rate + destinationAmount.
+    // TRA-2/3 (R15.1 Fase 4): same-currency = equal amounts; cross-currency
+    // requires a positive destination amount — the rate is DERIVED from both
+    // amounts, never entered by the user.
     // Currencies come from the accounts, never from declarations.
     const sourceCurrency = sourceAccount.currency;
     const destCurrency = destinationAccount.currency;
@@ -86,19 +117,38 @@ export async function createTransfer(
     if (isSameCurrency) {
       destAmount = input.sourceAmount;
     } else {
-      if (!input.rate || !input.destinationAmount) {
-        throw new ValidationError('Cross-currency transfer requires rate and destination amount');
+      if (!input.destinationAmount || input.destinationAmount <= 0) {
+        throw new ValidationError(
+          'Cross-currency transfer requires a positive destination amount',
+        );
       }
       destAmount = input.destinationAmount;
     }
 
-    // TRA-4: source funds check (derived balance), read INSIDE the transaction
-    // snapshot. A concurrent transfer that committed before our snapshot is
-    // already reflected; one that commits after our snapshot will hit our CAS
-    // bump (or we will hit theirs) and the loser retries with a fresh read.
+    const destinationAmountMoney = new Money(destAmount, destCurrency);
+    const effectiveExchangeRate = isSameCurrency
+      ? 1
+      : deriveExchangeRate(sourceAmountMoney, destinationAmountMoney);
+
+    // TRA-4 (R15.1 Fase 5): source funds check (derived balance), read INSIDE
+    // the transaction snapshot. A concurrent transfer that committed before
+    // our snapshot is already reflected; one that commits after our snapshot
+    // will hit our CAS bump (or we will hit theirs) and the loser retries
+    // with a fresh read. A negative projected balance is NOT a conflict: it
+    // either emits a warning (nothing written) or, when confirmed by the
+    // caller, is recorded as declared financial reality.
     const sourceBalance = await movementRepo.aggregateBalance(workspaceId, input.sourceAccountId, tx);
-    if (sourceBalance < input.sourceAmount) {
-      throw new ConflictError('Insufficient funds in source account');
+    const projectedBalance = sourceBalance - input.sourceAmount;
+    if (projectedBalance < 0 && !input.confirmNegativeBalance) {
+      return {
+        transfer: null,
+        warning: {
+          type: 'insufficient_funds',
+          currentBalance: sourceBalance,
+          projectedBalance,
+          currency: sourceCurrency,
+        },
+      };
     }
 
     // Ids are generated INSIDE the callback on every attempt: a retried
@@ -117,10 +167,10 @@ export async function createTransfer(
       sourceAccountId: input.sourceAccountId,
       destinationAccountId: input.destinationAccountId,
       sourceAmount: sourceAmountMoney,
-      destinationAmount: new Money(destAmount, destCurrency),
+      destinationAmount: destinationAmountMoney,
       sourceCurrency: sourceCurrency,
       destinationCurrency: destCurrency,
-      rate: input.rate,
+      effectiveExchangeRate,
       date: input.date,
       note: input.note,
       movementIds: { expenseId: expenseMovementId, incomeId: incomeMovementId },
@@ -152,7 +202,7 @@ export async function createTransfer(
       accountId: input.destinationAccountId,
       category: transferCategory('income'),
       type: 'income',
-      amount: new Money(destAmount, destCurrency),
+      amount: destinationAmountMoney,
       date: input.date,
       note: input.note,
       link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
@@ -174,6 +224,6 @@ export async function createTransfer(
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
 
-    return transfer;
+    return { transfer, warning: null };
   });
 }

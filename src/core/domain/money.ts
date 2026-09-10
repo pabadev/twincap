@@ -1,5 +1,5 @@
 import { type Currency, isCurrency } from "./currency";
-import { DomainError } from "./errors";
+import { DomainError, ValidationError } from "./errors";
 
 /** Money-domain error, part of the shared DomainError hierarchy. */
 export class MoneyError extends DomainError {}
@@ -82,4 +82,34 @@ export class Money {
   toJSON(): { amount: number; currency: Currency } {
     return { amount: this.amount, currency: this.currency };
   }
+}
+
+/**
+ * Derives the effective exchange rate from two monetary amounts.
+ *
+ * The rate is DERIVED — the two integer minor-unit amounts are the source of
+ * truth, never the user. It exists for display and derived queries only:
+ * effectiveRate = destination.amount / source.amount (how many destination
+ * minor units one source minor unit buys).
+ *
+ * Same-currency amounts always yield 1 (TRA-2: destination === source).
+ *
+ * @throws ValidationError when either amount is zero
+ */
+export function deriveExchangeRate(source: Money, destination: Money): number {
+  if (source.amount === 0) {
+    throw new ValidationError("Source amount cannot be zero");
+  }
+  if (destination.amount === 0) {
+    throw new ValidationError(
+      "Destination amount cannot be zero for cross-currency transfer",
+    );
+  }
+  if (source.currency === destination.currency) {
+    return 1; // Same currency: rate is always 1
+  }
+  // Cross-currency: derived ratio in minor units. Stored as a float for
+  // display purposes only — the two integer amounts remain the source of
+  // truth for every derived query.
+  return destination.amount / source.amount;
 }

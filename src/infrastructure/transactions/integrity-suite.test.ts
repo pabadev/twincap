@@ -414,7 +414,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
       const amounts = [40_000, 60_000, 100_000];
       const transferIds: string[] = [];
       for (const amount of amounts) {
-        const transfer = await createTransfer(
+        const res = await createTransfer(
           WS,
           {
             sourceAccountId: ACCOUNT_ID,
@@ -430,7 +430,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           new MongoAccountRepository(),
           new MongoUnitOfWork(),
         );
-        transferIds.push(transfer.id);
+        transferIds.push(res.transfer!.id);
       }
 
       // Per transfer: the two legs cancel out exactly (one −, one +).
@@ -493,13 +493,16 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
 
       const transferIds: string[] = [];
       for (const fx of fxCases) {
-        // Formula cross-check BEFORE calling the use case (production never
-        // recomputes it — §9f gap; we verify the invariant with consistent values).
+        // Coherence cross-check BEFORE calling the use case: the chosen pairs
+        // satisfy the FX quoting convention (rate = destination units per 1
+        // source unit, account-style). Production no longer receives the rate
+        // (R15.1 Fase 4) — it derives effectiveExchangeRate = destMinor /
+        // srcMinor from the two real amounts.
         expect(
           expectedFxDestinationMinor(fx.srcMinor, fx.rate, "USD", "COP"),
         ).toBe(fx.destMinor);
 
-        const transfer = await createTransfer(
+        const res = await createTransfer(
           WS,
           {
             sourceAccountId: ACCOUNT_USD,
@@ -508,7 +511,6 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
             destinationAmount: fx.destMinor,
             destinationCurrency: "COP",
             sourceCurrency: "USD",
-            rate: fx.rate,
             date,
             note: `fx transfer rate ${fx.rate}`,
           },
@@ -518,7 +520,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           new MongoAccountRepository(),
           new MongoUnitOfWork(),
         );
-        transferIds.push(transfer.id);
+        transferIds.push(res.transfer!.id);
       }
 
       for (let i = 0; i < fxCases.length; i++) {
@@ -538,11 +540,11 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         // ...destination leg is +destinationAmount minor on the COP account.
         expect(destLeg.signedAmount).toBe(fx.destMinor);
 
-        // Transfer doc stores exactly the input numbers.
+        // Transfer doc stores exactly the input numbers and the DERIVED rate.
         const transferDoc = await TransferModel.findOne({ _id: transferIds[i] });
         expect(transferDoc!.sourceAmount).toBe(fx.srcMinor);
         expect(transferDoc!.destinationAmount).toBe(fx.destMinor);
-        expect(transferDoc!.rate).toBe(fx.rate);
+        expect(transferDoc!.effectiveExchangeRate).toBe(fx.destMinor / fx.srcMinor);
       }
 
       // Per-account ledger coherence in each currency's minors.

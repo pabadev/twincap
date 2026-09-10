@@ -18,7 +18,7 @@ function makeTransfer(
     destinationAmount: new Money(100, "COP"),
     sourceCurrency: "COP",
     destinationCurrency: "COP",
-    rate: undefined,
+    effectiveExchangeRate: undefined,
     date: new Date("2026-08-27"),
     note: "",
     movementIds: overrides.movementIds,

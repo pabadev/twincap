@@ -42,11 +42,14 @@ describe('handleActionError', () => {
     expect(result).toEqual({ error: 'error.systemMovementDelete' });
   });
 
-  it('maps insufficient transfer funds to a descriptive key', () => {
+  it('no longer maps "Insufficient funds in source account" to a key (R15.1 F5)', () => {
+    // The insufficient-funds case is no longer THROWN: createTransfer returns
+    // a structured InsufficientFundsWarning instead. The old message is dead
+    // code — if it ever surfaced, it falls back to the generic conflict key.
     const result = handleActionError(
       new ConflictError('Insufficient funds in source account'),
     );
-    expect(result).toEqual({ error: 'error.insufficientFunds' });
+    expect(result).toEqual({ error: 'error.conflict' });
   });
 
   it('maps a concurrently-modified debt to error.debtModified', () => {

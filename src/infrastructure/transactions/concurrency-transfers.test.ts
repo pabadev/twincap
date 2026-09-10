@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
-import { ConflictError } from "../../core/domain/errors";
 import { createTransfer } from "../../core/application/transfers/create-transfer";
 import { updateTransfer } from "../../core/application/transfers/update-transfer";
 import { deleteTransfer } from "../../core/application/transfers/delete-transfer";
@@ -33,11 +32,15 @@ import { OPENING_CATEGORY_ID } from "../../core/domain/synthetic-categories";
  *
  * What this suite proves:
  *   1. CONCURRENCY: N parallel createTransfer from the SAME source account
- *      converge to EXACTLY one winner; every loser aborts by RE-VALIDATION on
- *      the fresh snapshot (insufficient funds) after the driver's WriteConflict
- *      retry. The odd seed (X=100_001, amount=ceil(X/2)=50_001) guarantees
- *      `2×amount > X`: no two transfers of `amount` can ever both be funded,
- *      so funding a second one is impossible by construction.
+ *      converge to EXACTLY one winner; every loser (R15.1 Fase 5) returns the
+ *      structured insufficient-funds WARNING after the driver's WriteConflict
+ *      retry re-validates on the fresh snapshot — no throw, no writes. The odd
+ *      seed (X=100_001, amount=ceil(X/2)=50_001) guarantees `2×amount > X`:
+ *      no two transfers of `amount` can ever both be funded, so funding a
+ *      second one is impossible by construction.
+ *   1b. CONFIRMED negative balance: N=10 concurrent transfers with
+ *      `confirmNegativeBalance: true` ALL register (CAS serializes them) and
+ *      the source ends negative — declared financial reality is recorded.
  *   2. ROLLBACK createTransfer: a failing 2nd movement write leaves NO trace
  *      (criterion §7: transfer + movements commit or roll back together).
  *   3. ROLLBACK updateTransfer: the 3rd write (income-movement update) failing
@@ -54,13 +57,19 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
   const SRC = "bbbbbbbbbbbbbbbbbbbbbbbb";
   const DST = "cccccccccccccccccccccccc";
 
-  const transferInput = (sourceAmount: number) => ({
+  /**
+   * Build a createTransfer input. `confirmNegativeBalance` (R15.1 Fase 5)
+   * enables the negative-balance policy: without it a deficit returns a
+   * structured warning instead of throwing.
+   */
+  const transferInput = (sourceAmount: number, confirmNegativeBalance = false) => ({
     sourceAccountId: SRC,
     destinationAccountId: DST,
     sourceAmount,
     sourceCurrency: "COP" as const,
     date: new Date("2025-06-01"),
     note: "Test transfer",
+    ...(confirmNegativeBalance ? { confirmNegativeBalance: true } : {}),
   });
 
   const creditReceivedInput = {
@@ -147,7 +156,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
     const AMOUNT = Math.ceil(INITIAL / 2); // 50_001 > INITIAL/2
 
     it.each([10, 50, 100])(
-      "N=%i → exactamente 1 gana; el resto falla por re-validación (fondos); __v origen == 1",
+      "N=%i → exactamente 1 gana; el resto devuelve warning de fondos (sin escrituras); __v origen == 1",
       async (n) => {
         await seedSourceBalance(INITIAL);
 
@@ -165,12 +174,32 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           ),
         );
 
-        const winners = settled.filter(s => s.status === "fulfilled");
-        const losers = settled.filter(s => s.status === "rejected");
+        // F5: NINGÚN intento falla. Los perdedores no lanzan ConflictError:
+        // tras el retry del driver (WriteConflict) re-leen el snapshot fresco
+        // y devuelven el warning estructurado sin escribir nada.
+        const rejected = settled.filter((s) => s.status === "rejected");
+        expect(rejected).toHaveLength(0);
+        for (const r of rejected) {
+          const msg = r.reason?.message ?? String(r.reason);
+          expect(msg).not.toContain("NoSuchTransaction");
+          expect(msg).not.toContain("TransientTransactionError");
+        }
+        const winners = settled.filter(
+          (s) => s.status === "fulfilled" && s.value.transfer !== null,
+        );
+        const warned = settled.filter(
+          (s) => s.status === "fulfilled" && s.value.warning !== null,
+        );
         expect(winners).toHaveLength(1);
-        expect(losers).toHaveLength(n - 1);
-        for (const loser of losers) {
-          expect(loser.reason).toBeInstanceOf(ConflictError);
+        expect(warned).toHaveLength(n - 1);
+        for (const w of warned) {
+          if (w.status === "fulfilled") {
+            // Todos los perdedores ven el mismo estado final del ganador.
+            expect(w.value.warning?.type).toBe("insufficient_funds");
+            expect(w.value.warning?.currentBalance).toBe(INITIAL - AMOUNT);
+            expect(w.value.warning?.projectedBalance).toBe(INITIAL - 2 * AMOUNT); // −1
+            expect(w.value.warning?.currency).toBe("COP");
+          }
         }
 
         // La cuenta origen fue CAS-bumpeada 0→1 por el ganador.
@@ -198,6 +227,167 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
       },
       120_000,
     );
+
+    it(
+      "N=10 concurrentes con confirmNegativeBalance=true → TODOS se registran, saldo final negativo, 0 NoSuchTransaction (F5)",
+      async () => {
+        await seedSourceBalance(100_000);
+
+        const settled = await Promise.allSettled(
+          Array.from({ length: 10 }, () =>
+            createTransfer(
+              WS,
+              transferInput(70_000, true),
+              new MongoTransferRepository(),
+              new MongoMovementRepository(),
+              objectIdGenerator,
+              new MongoAccountRepository(),
+              new MongoUnitOfWork(),
+            ),
+          ),
+        );
+
+        // Cada intento registra: el CAS serializa y el driver reintenta desde
+        // snapshots frescos hasta que los 10 commits encadenan.
+        expect(settled.every((s) => s.status === "fulfilled")).toBe(true);
+        for (const s of settled) {
+          if (s.status === "rejected") {
+            const msg = s.reason?.message ?? String(s.reason);
+            expect(msg).not.toContain("NoSuchTransaction");
+            expect(msg).not.toContain("TransientTransactionError");
+          }
+        }
+        const transfers = settled.filter(
+          (s) => s.status === "fulfilled" && s.value.transfer !== null,
+        );
+        expect(transfers).toHaveLength(10);
+
+        // Saldo final: 100_000 − 10 × 70_000 == −600_000 (negativo → registrado).
+        expect(await sourceBalance()).toBe(-600_000);
+
+        // 10 transfers × 2 legs + el opening de seed.
+        expect(await TransferModel.countDocuments({ workspaceId: WS })).toBe(10);
+        expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(21);
+
+        // El destino recibió 10 × 70_000 == 700_000.
+        const destRows = await MovementModel.aggregate([
+          {
+            $match: {
+              workspaceId: new mongoose.Types.ObjectId(WS),
+              accountId: new mongoose.Types.ObjectId(DST),
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$signedAmount" } } },
+        ]);
+        expect(destRows.length > 0 ? destRows[0].total : 0).toBe(700_000);
+      },
+      120_000,
+    );
+  });
+
+  describe("concurrencia updateTransfer — sin NoSuchTransaction (R15.1 §5)", () => {
+    it("N=10 updates concurrentes sobre el MISMO transfer → 0 NoSuchTransaction, estado coherente", async () => {
+      await seedSourceBalance(100_000);
+      const created = (
+        await createTransfer(
+          WS,
+          transferInput(70_000),
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoUnitOfWork(),
+        )
+      ).transfer!;
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 10 }, (_, i) =>
+          updateTransfer(
+            WS,
+            created.id,
+            { sourceAmount: 30_000 + i, destinationAmount: 30_000 + i },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ),
+      );
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("NoSuchTransaction");
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("TransientTransactionError");
+        }
+      }
+      const fulfilled = settled.filter((s) => s.status === "fulfilled");
+      // Todos los updates pueden completar serializados (last-write-wins sin CAS)
+      // — lo que NO puede ocurrir es NoSuchTransaction / TransientTransactionError.
+      expect(fulfilled.length).toBeGreaterThan(0);
+
+      // El transfer existe con un estado coherente (uno de los updates ganó).
+      const transferDoc = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {
+        sourceAmount: number;
+        destinationAmount: number;
+        movementIds?: { expenseId?: string; incomeId?: string };
+      };
+      expect(transferDoc.sourceAmount).toBeGreaterThanOrEqual(30_000);
+      const expense = (await MovementModel.findById(transferDoc.movementIds!.expenseId).lean()) as unknown as {
+        amount: number;
+      };
+      const income = (await MovementModel.findById(transferDoc.movementIds!.incomeId).lean()) as unknown as {
+        amount: number;
+      };
+      expect(expense!.amount).toBe(transferDoc.sourceAmount);
+      expect(income!.amount).toBe(transferDoc.destinationAmount);
+    }, 120_000);
+
+    it("N=50 updates concurrentes → 0 NoSuchTransaction", async () => {
+      await seedSourceBalance(100_000);
+      const created = (
+        await createTransfer(
+          WS,
+          transferInput(70_000),
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoUnitOfWork(),
+        )
+      ).transfer!;
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 50 }, (_, i) =>
+          updateTransfer(
+            WS,
+            created.id,
+            { sourceAmount: 20_000 + (i % 10), destinationAmount: 20_000 + (i % 10) },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ),
+      );
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          const msg = s.reason?.message ?? String(s.reason);
+          expect(msg).not.toContain("NoSuchTransaction");
+          expect(msg).not.toContain("TransientTransactionError");
+        }
+      }
+
+      const transferDoc = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {
+        sourceAmount: number;
+        movementIds?: { expenseId?: string; incomeId?: string };
+      };
+      expect(transferDoc.sourceAmount).toBeGreaterThanOrEqual(20_000);
+      const expense = (await MovementModel.findById(transferDoc.movementIds!.expenseId).lean()) as unknown as {
+        amount: number;
+      };
+      expect(expense!.amount).toBe(transferDoc.sourceAmount);
+    }, 120_000);
   });
 
   describe("rollback createTransfer — un write fallido no deja rastro (criterio §7)", () => {
