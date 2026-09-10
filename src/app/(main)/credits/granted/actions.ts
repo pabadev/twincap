@@ -45,7 +45,10 @@ export async function createCreditGrantedAction(
   const installmentValueValue = formData.get('installmentValue');
   const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
   const frequency = (formData.get('frequency') as string) || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -81,6 +84,9 @@ export async function createCreditGrantedAction(
         );
       },
     );
+    // Post-commit is safe by design: the financial commit already happened and the
+    // idempotency key prevents duplicate effects on retry — revalidation failure
+    // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidateMovementData('/credits/granted');
     // R13-H: regular credit-granted creation event (APPENDED) for product analytics.
     await trackAnalytics('creditGrantedCreated', user.workspaceId!, user.userId);
@@ -280,7 +286,7 @@ export async function deleteCreditAction(
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteCreditGranted(user.workspaceId!, creditId, creditRepo, movementRepo);
+        return deleteCreditGranted(user.workspaceId!, creditId, creditRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/credits/granted');

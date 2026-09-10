@@ -20,6 +20,8 @@ const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
 }));
 const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
+const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
+const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -39,6 +41,10 @@ vi.mock('../../../infrastructure/repositories/operation-log-repository', () => (
 }));
 vi.mock('../../../infrastructure/transactions/mongo-unit-of-work', () => ({
   MongoUnitOfWork,
+}));
+vi.mock('../../../infrastructure/auth/idempotency', () => ({
+  claimIdempotency,
+  releaseIdempotency,
 }));
 
 const { createPayableAction } = await import('./actions');
@@ -94,6 +100,29 @@ describe('createPayableAction', () => {
     MongoMovementRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),
     }));
+    claimIdempotency.mockResolvedValue(true);
+    releaseIdempotency.mockResolvedValue(undefined);
+
+    const fd = new FormData();
+    fd.append('counterparty', 'Proveedor S.A.S.');
+    fd.append('total', '100000');
+    fd.append('initialPayment', '0');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-payable-1');
+
+    const result = await createPayableAction(null, fd);
+
+    expect(result).toEqual({ success: 'payableCreated' });
+    expect(trackAnalytics).toHaveBeenCalledTimes(1);
+    expect(trackAnalytics).toHaveBeenCalledWith('payableCreated', 'user-1', 'user-1');
+    expect(revalidatePath).toHaveBeenCalledTimes(4);
+  });
+
+  it('rejects a request without an idempotency key before any data access (R15.1 6a)', async () => {
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
 
     const fd = new FormData();
     fd.append('counterparty', 'Proveedor S.A.S.');
@@ -106,9 +135,11 @@ describe('createPayableAction', () => {
 
     const result = await createPayableAction(null, fd);
 
-    expect(result).toEqual({ success: 'payableCreated' });
-    expect(trackAnalytics).toHaveBeenCalledTimes(1);
-    expect(trackAnalytics).toHaveBeenCalledWith('payableCreated', 'user-1', 'user-1');
-    expect(revalidatePath).toHaveBeenCalledTimes(4);
+    expect(result).toEqual({ error: 'error.idempotencyKeyRequired' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(claimIdempotency).not.toHaveBeenCalled();
+    expect(MongoPayableRepository).not.toHaveBeenCalled();
+    expect(trackAnalytics).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

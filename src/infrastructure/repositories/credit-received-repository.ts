@@ -156,11 +156,12 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
     return toCreditReceivedEntity(updated as CreditReceivedDocument, currency);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
     const result = await CreditReceivedModel.findOneAndDelete({
       _id: id,
       workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+    }, { session }).exec();
     if (!result) {
       throw new NotFoundError(
         `CreditReceived ${id} not found for user ${workspaceId}`,

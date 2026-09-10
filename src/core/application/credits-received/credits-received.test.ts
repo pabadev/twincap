@@ -40,6 +40,7 @@ function fakeAccountRepo(
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
   };
@@ -602,6 +603,63 @@ describe('editAbono', () => {
     ).rejects.toThrow(ConflictError);
   });
 
+  it('rejects a MODERN credit whose required movement is missing (R15.1 6c)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-missing' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    // findById resolves null → required movement missing
+    const movementRepo = fakeMovementRepo();
+
+    const error = await editAbono(
+      'user-1',
+      'cr-1',
+      'ab-1',
+      { amount: 30000 },
+      creditRepo,
+      movementRepo,
+      fakeUow(),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe('Required movement not found for modern record');
+    // Fail-fast: the abono write must NOT be performed (tx rolls back)
+    expect(creditRepo.abonosEdited).toHaveLength(0);
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
+  it('keeps the tolerant behavior for a LEGACY credit with a missing movement (R15.1 6c)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const credit = makeCredit({ createdAt: new Date('2026-08-01T00:00:00.000Z') }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-missing' },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const result = await editAbono(
+      'user-1',
+      'cr-1',
+      'ab-1',
+      { amount: 30000 },
+      creditRepo,
+      movementRepo,
+      fakeUow());
+
+    expect(result.abonos[0].amount.amount).toBe(30000);
+    expect(creditRepo.editAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(0);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[reconcile] Legacy record missing movement, continuing',
+      expect.objectContaining({ aggregateId: 'cr-1', movementId: 'mov-missing' }),
+    );
+    warnSpy.mockRestore();
+  });
+
   it('throws NotFoundError when credit does not exist', async () => {
     const creditRepo = fakeCreditRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -777,8 +835,9 @@ describe('editPrincipal', () => {
     expect(movementRepo.updated[0].amount.amount).toBe(200000);
   });
 
-  it('still updates credit when principal movement does not exist', async () => {
-    const credit = makeCredit();
+  it('still updates credit when principal movement does not exist (LEGACY tolerance, R15.1 6c)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const credit = makeCredit({ createdAt: new Date('2026-08-01T00:00:00.000Z') });
     const creditRepo = fakeCreditRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
@@ -797,6 +856,37 @@ describe('editPrincipal', () => {
 
     expect(result.principal.amount).toBe(200000);
     expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(0);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[reconcile] Legacy record missing movement, continuing',
+      expect.objectContaining({ aggregateId: 'cr-1', kind: 'creditReceivedPrincipal' }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('rejects a MODERN credit whose principal movement is missing (R15.1 6c)', async () => {
+    const credit = makeCredit(); // createdAt defaults to now → modern
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    });
+
+    const error = await editPrincipal(
+      'user-1',
+      'cr-1',
+      { principal: 200000, currency: 'COP' },
+      creditRepo,
+      movementRepo,
+      fakeUow(),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe('Required movement not found for modern record');
+    // Fail-fast: the credit write must NOT be performed (tx rolls back)
+    expect(creditRepo.updated).toHaveLength(0);
     expect(movementRepo.updated).toHaveLength(0);
   });
 
@@ -842,33 +932,20 @@ describe('editPrincipal', () => {
 // ─── Delete Credit ─────────────────────────────────────────────────
 
 describe('deleteCreditReceived', () => {
-  it('cascade-deletes all linked movements then the credit', async () => {
+  it('cascade-deletes all linked movements via deleteByRefId then the credit', async () => {
     const credit = makeCredit({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
     ]);
-    const principalMov = makeMovement({
-      id: 'mov-principal',
-      type: 'income',
-      link: { kind: 'creditReceivedPrincipal', refId: 'cr-1', opId: 'op-1' },
-    });
-    const abonoMov = makeMovement({
-      id: 'mov-abono',
-      type: 'expense',
-      link: { kind: 'creditReceivedAbono', refId: 'cr-1', opId: 'op-2' },
-    });
 
     const creditRepo = fakeCreditRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
-    const movementRepo = fakeMovementRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([principalMov, abonoMov]),
-    });
+    const movementRepo = fakeMovementRepo();
 
-    await deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo);
+    await deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo, fakeUow());
 
-    expect(movementRepo.deleted).toContain('mov-principal');
-    expect(movementRepo.deleted).toContain('mov-abono');
-    expect(movementRepo.delete).toHaveBeenCalledTimes(2);
+    // deleteByRefId is a format-agnostic deleteMany (principal + abonos).
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'cr-1', expect.anything());
     expect(creditRepo.deleted).toContain('cr-1');
   });
 
@@ -879,31 +956,28 @@ describe('deleteCreditReceived', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteCreditReceived('user-1', 'missing', creditRepo, movementRepo),
+      deleteCreditReceived('user-1', 'missing', creditRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.deleteByRefId).not.toHaveBeenCalled();
+    expect(creditRepo.delete).not.toHaveBeenCalled();
   });
 
   it('is tolerant of an already-deleted linked movement (R5-B) and still deletes the credit', async () => {
     const credit = makeCredit({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-already-gone' },
     ]);
-    const principalMov = makeMovement({
-      id: 'mov-principal',
-      type: 'income',
-      link: { kind: 'creditReceivedPrincipal', refId: 'cr-1', opId: 'op-1' },
-    });
 
     const creditRepo = fakeCreditRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
     const movementRepo = fakeMovementRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([principalMov]),
-      // Simulate that one linked movement was already deleted (prior cleanup).
-      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+      // deleteByRefId is tolerant by construction: a deleteMany reports 0 for
+      // already-missing movements, never a NotFoundError.
+      deleteByRefId: vi.fn().mockResolvedValue(0),
     });
 
     await expect(
-      deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo),
+      deleteCreditReceived('user-1', 'cr-1', creditRepo, movementRepo, fakeUow()),
     ).resolves.toBeUndefined();
     expect(creditRepo.deleted).toContain('cr-1');
   });

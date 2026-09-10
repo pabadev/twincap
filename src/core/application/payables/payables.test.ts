@@ -40,6 +40,7 @@ function fakeAccountRepo(
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     countReferences: vi.fn().mockResolvedValue(0),
     bumpVersion: vi.fn().mockResolvedValue(true),
   };
@@ -764,6 +765,62 @@ describe('editAbono', () => {
     ).rejects.toThrow(ConflictError);
   });
 
+  it('rejects a MODERN payable whose required movement is missing (R15.1 6c)', async () => {
+    const payable = makePayable({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-missing' },
+    ]);
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+    // findById resolves null → required movement missing
+    const movementRepo = fakeMovementRepo();
+
+    const error = await editAbono(
+      'user-1',
+      'pay-1',
+      'ab-1',
+      { amount: 30000 },
+      payableRepo,
+      movementRepo,
+      fakeUow(),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe('Required movement not found for modern record');
+    // Fail-fast: the abono write must NOT be performed (tx rolls back)
+    expect(payableRepo.abonosEdited).toHaveLength(0);
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
+  it('keeps the tolerant behavior for a LEGACY payable with a missing movement (R15.1 6c)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const payable = makePayable({ createdAt: new Date('2026-08-01T00:00:00.000Z') }, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-missing' },
+    ]);
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const result = await editAbono(
+      'user-1',
+      'pay-1',
+      'ab-1',
+      { amount: 30000 },
+      payableRepo,
+      movementRepo, fakeUow());
+
+    expect(result.abonos[0].amount.amount).toBe(30000);
+    expect(payableRepo.editAbono).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(0);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[reconcile] Legacy record missing movement, continuing',
+      expect.objectContaining({ aggregateId: 'pay-1', movementId: 'mov-missing' }),
+    );
+    warnSpy.mockRestore();
+  });
+
   it('throws NotFoundError when payable does not exist', async () => {
     const payableRepo = fakePayableRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -988,33 +1045,20 @@ describe('editTotal', () => {
 // ─── Delete Payable ────────────────────────────────────────────────
 
 describe('deletePayable', () => {
-  it('cascade-deletes all linked movements then the payable', async () => {
+  it('cascade-deletes all linked movements via deleteByRefId then the payable', async () => {
     const payable = makePayable({ initialPayment: 20000 }, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
     ]);
-    const initialMov = makeMovement({
-      id: 'mov-initial',
-      type: 'expense',
-      link: { kind: 'payableInitialPayment', refId: 'pay-1', opId: 'op-1' },
-    });
-    const abonoMov = makeMovement({
-      id: 'mov-abono',
-      type: 'expense',
-      link: { kind: 'payableAbono', refId: 'pay-1', opId: 'op-2' },
-    });
 
     const payableRepo = fakePayableRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
     });
-    const movementRepo = fakeMovementRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([initialMov, abonoMov]),
-    });
+    const movementRepo = fakeMovementRepo();
 
-    await deletePayable('user-1', 'pay-1', payableRepo, movementRepo);
+    await deletePayable('user-1', 'pay-1', payableRepo, movementRepo, fakeUow());
 
-    expect(movementRepo.deleted).toContain('mov-initial');
-    expect(movementRepo.deleted).toContain('mov-abono');
-    expect(movementRepo.delete).toHaveBeenCalledTimes(2);
+    // deleteByRefId is a format-agnostic deleteMany (initial payment + abonos).
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'pay-1', expect.anything());
     expect(payableRepo.deleted).toContain('pay-1');
   });
 
@@ -1023,13 +1067,11 @@ describe('deletePayable', () => {
     const payableRepo = fakePayableRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
     });
-    const movementRepo = fakeMovementRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([]),
-    });
+    const movementRepo = fakeMovementRepo();
 
-    await deletePayable('user-1', 'pay-1', payableRepo, movementRepo);
+    await deletePayable('user-1', 'pay-1', payableRepo, movementRepo, fakeUow());
 
-    expect(movementRepo.delete).not.toHaveBeenCalled();
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'pay-1', expect.anything());
     expect(payableRepo.deleted).toContain('pay-1');
   });
 
@@ -1037,23 +1079,18 @@ describe('deletePayable', () => {
     const payable = makePayable({ initialPayment: 20000 }, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-already-gone' },
     ]);
-    const initialMov = makeMovement({
-      id: 'mov-initial',
-      type: 'expense',
-      link: { kind: 'payableInitialPayment', refId: 'pay-1', opId: 'op-1' },
-    });
 
     const payableRepo = fakePayableRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
     });
     const movementRepo = fakeMovementRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([initialMov]),
-      // Simulate that one linked movement was already deleted (prior cleanup).
-      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+      // deleteByRefId is tolerant by construction: a deleteMany reports 0 for
+      // already-missing movements, never a NotFoundError.
+      deleteByRefId: vi.fn().mockResolvedValue(0),
     });
 
     await expect(
-      deletePayable('user-1', 'pay-1', payableRepo, movementRepo),
+      deletePayable('user-1', 'pay-1', payableRepo, movementRepo, fakeUow()),
     ).resolves.toBeUndefined();
     expect(payableRepo.deleted).toContain('pay-1');
   });
@@ -1065,7 +1102,9 @@ describe('deletePayable', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deletePayable('user-1', 'missing', payableRepo, movementRepo),
+      deletePayable('user-1', 'missing', payableRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.deleteByRefId).not.toHaveBeenCalled();
+    expect(payableRepo.delete).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { UnitOfWork } from '../ports';
 
 /**
  * Human-readable reason an exported for callers/UI: a credit born from a POS
@@ -13,38 +14,54 @@ export const SALE_BORN_CREDIT_DELETE_MSG =
  * Delete a credit granted and cascade-delete all linked movements (CRED-G-5).
  *
  * A sale-born credit (saleId present) is BLOCKED: deleting it here would
- * orphan the linked sale whose ledger it owns. Deletes principal movement +
- * all abono movements, then the credit record. Movement deletion is tolerant
- * (already-missing movements are skipped, no false error).
+ * orphan the linked sale whose ledger it owns. Movement deletion is tolerant
+ * by construction: `deleteByRefId` is a `deleteMany` over every movement whose
+ * link.refId === creditId (principal + abonos), which never throws for "not
+ * found" (it reports 0 deleted). Any non-NotFound repo error still propagates
+ * naturally. Deleting movements first then the aggregate record keeps a
+ * failure from orphaning the credit.
+ *
+ * R15.1 Fase 3 — transactional + idempotent (CRED-G-5 + R5-D0c):
+ * The WHOLE cascade (read credit snapshot, sale-born guard, movement deletes,
+ * credit delete) runs inside `uow.withTransaction(...)`. All reads and writes
+ * join the transaction session, so either the entire cascade commits or it
+ * rolls back atomically — a mid-way failure can no longer leave movements
+ * deleted while the credit survives.
+ *
+ * Idempotency under CONCURRENT/duplicate requests is guaranteed by the
+ * transaction PLUS the `creditRepo.delete` NotFound: the credit is read inside
+ * the transaction (snapshot), and `delete` is the final write. If a second
+ * request races the first, its transaction re-executes after the winner
+ * commits and the aggregate read inside it no longer finds the credit →
+ * NotFoundError → clean abort with zero partial state.
  */
 export async function deleteCreditGranted(
   workspaceId: string,
   creditId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
+  uow: UnitOfWork,
 ): Promise<void> {
-  const credits = await creditRepo.findByWorkspaceId(workspaceId);
-  const credit = credits.find(c => c.id === creditId);
-  if (!credit) throw new NotFoundError('Credit not found');
+  return uow.withTransaction(async (tx) => {
+    const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
+    const credit = credits.find(c => c.id === creditId);
+    if (!credit) throw new NotFoundError('Credit not found');
 
-  // R5-D0c: sale-born credits cannot be deleted directly — must go through
-  // the sale cascade so both entities and their movements stay in sync.
-  if (credit.saleId) {
-    throw new ConflictError(SALE_BORN_CREDIT_DELETE_MSG);
-  }
-
-  // Find all movements linked to this credit (principal + abonos)
-  const movements = await movementRepo.findByWorkspaceId(workspaceId);
-  const linkedMovements = movements.filter(m => m.link?.refId === creditId);
-
-  for (const m of linkedMovements) {
-    try {
-      await movementRepo.delete(workspaceId, m.id);
-    } catch (err) {
-      if (err instanceof NotFoundError) continue;
-      throw err;
+    // R5-D0c: sale-born credits cannot be deleted directly — must go through
+    // the sale cascade so both entities and their movements stay in sync.
+    if (credit.saleId) {
+      throw new ConflictError(SALE_BORN_CREDIT_DELETE_MSG);
     }
-  }
 
-  await creditRepo.delete(workspaceId, creditId);
+    // Robust format-agnostic cascade: delete every movement that references
+    // the credit (creditGrantedPrincipal + creditGrantedAbono +
+    // creditGrantedAbonoInterest — ObjectId or UUID refIds). deleteMany is
+    // tolerant of already-missing movements (returns 0).
+    await movementRepo.deleteByRefId(workspaceId, creditId, tx);
+
+    // Final write. If the credit was deleted by a concurrent request, this
+    // throws NotFoundError and the whole transaction (including the movement
+    // deletes) rolls back — movements are never deleted twice.
+    await creditRepo.delete(workspaceId, creditId, tx);
+  });
 }

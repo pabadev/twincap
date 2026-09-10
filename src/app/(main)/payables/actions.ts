@@ -43,7 +43,10 @@ export async function createPayableAction(
   const dueDateRaw = formData.get('dueDate') as string;
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
   const note = ((formData.get('note') as string) || '').trim() || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -79,6 +82,9 @@ export async function createPayableAction(
         );
       },
     );
+    // Post-commit is safe by design: the financial commit already happened and the
+    // idempotency key prevents duplicate effects on retry — revalidation failure
+    // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidateMovementData('/payables');
     // R13-H: regular payable creation event (APPENDED) for product analytics.
     await trackAnalytics('payableCreated', user.workspaceId!, user.userId);
@@ -274,7 +280,7 @@ export async function deletePayableAction(
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
-        return deletePayable(user.workspaceId!, payableId, payableRepo, movementRepo);
+        return deletePayable(user.workspaceId!, payableId, payableRepo, movementRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/payables');

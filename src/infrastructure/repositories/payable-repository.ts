@@ -153,11 +153,12 @@ export class MongoPayableRepository implements PayableRepository {
     return toPayableEntity(updated as PayableDocument, currency);
   }
 
-  async delete(workspaceId: string, id: string): Promise<void> {
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
+    const session = sessionOf(tx);
     const result = await PayableModel.findOneAndDelete({
       _id: id,
       workspaceId: new Types.ObjectId(workspaceId),
-    }).exec();
+    }, { session }).exec();
     if (!result) {
       throw new NotFoundError(
         `Payable ${id} not found for user ${workspaceId}`,

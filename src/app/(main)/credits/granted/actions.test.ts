@@ -23,6 +23,8 @@ const { MongoOperationLogger } = vi.hoisted(() => ({
   MongoOperationLogger: vi.fn(),
 }));
 const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
+const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
+const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
 
 vi.mock('../../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -42,6 +44,10 @@ vi.mock('../../../../infrastructure/repositories/operation-log-repository', () =
 }));
 vi.mock('../../../../infrastructure/transactions/mongo-unit-of-work', () => ({
   MongoUnitOfWork,
+}));
+vi.mock('../../../../infrastructure/auth/idempotency', () => ({
+  claimIdempotency,
+  releaseIdempotency,
 }));
 
 const { createCreditGrantedAction, writeOffCreditAction } = await import('./actions');
@@ -79,6 +85,8 @@ describe('writeOffCreditAction', () => {
     MongoMovementRepository.mockImplementation(() => ({
       create: vi.fn().mockImplementation(async (movement: unknown) => movement),
     }));
+    claimIdempotency.mockResolvedValue(true);
+    releaseIdempotency.mockResolvedValue(undefined);
   });
 
   it('rejects unauthenticated callers before any data access', async () => {
@@ -142,6 +150,8 @@ describe('createCreditGrantedAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue(null);
+    claimIdempotency.mockResolvedValue(true);
+    releaseIdempotency.mockResolvedValue(undefined);
   });
 
   it('rejects unauthenticated callers before any data access', async () => {
@@ -193,6 +203,7 @@ describe('createCreditGrantedAction', () => {
     fd.append('accountId', 'acc-1');
     fd.append('date', '2026-09-01');
     fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-credit-granted-1');
 
     const result = await createCreditGrantedAction(null, fd);
 
@@ -200,5 +211,25 @@ describe('createCreditGrantedAction', () => {
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
     expect(trackAnalytics).toHaveBeenCalledWith('creditGrantedCreated', 'user-1', 'user-1');
     expect(revalidatePath).toHaveBeenCalledTimes(4);
+  });
+
+  it('rejects a request without an idempotency key before any data access (R15.1 6a)', async () => {
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+
+    const fd = new FormData();
+    fd.append('counterparty', 'Pedro');
+    fd.append('principal', '100000');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+
+    const result = await createCreditGrantedAction(null, fd);
+
+    expect(result).toEqual({ error: 'error.idempotencyKeyRequired' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(claimIdempotency).not.toHaveBeenCalled();
+    expect(MongoCreditGrantedRepository).not.toHaveBeenCalled();
+    expect(trackAnalytics).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });
