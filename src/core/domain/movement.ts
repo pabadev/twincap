@@ -31,6 +31,40 @@ export const MOVEMENT_LINK_KINDS = [
 ] as const;
 export type MovementLinkKind = (typeof MOVEMENT_LINK_KINDS)[number];
 
+/**
+ * Single source of truth for every movement link kind's lifecycle metadata.
+ *
+ * Used by:
+ * - filterMovementsWithLiveParents (orphan filtering at read time)
+ * - findOrphanMovements (reconciliation sweep)
+ * - deletion cascades (aggregate → movements)
+ * - tests (exhaustive coverage by family)
+ *
+ * Each kind declares:
+ * - owner: which aggregate type owns this movement
+ * - lookup: how to resolve the parent ('id' = refId directly, 'value' = accountId+date+amount fallback for legacy)
+ * - parentCollection: which repository to query for the parent
+ */
+export interface MovementLinkKindMeta {
+  owner: 'account' | 'transfer' | 'credit-received' | 'credit-granted' | 'payable' | 'sale';
+  lookup: 'id' | 'value';
+  parentCollection: 'accounts' | 'transfers' | 'credits-received' | 'credits-granted' | 'payables' | 'sales';
+}
+
+export const MOVEMENT_LINK_KIND_REGISTRY: Record<MovementLinkKind, MovementLinkKindMeta> = {
+  opening:                    { owner: 'account',          lookup: 'id',    parentCollection: 'accounts' },
+  transfer:                   { owner: 'transfer',         lookup: 'id',    parentCollection: 'transfers' },
+  creditReceivedPrincipal:    { owner: 'credit-received',  lookup: 'value', parentCollection: 'credits-received' },
+  creditReceivedAbono:        { owner: 'credit-received',  lookup: 'id',    parentCollection: 'credits-received' },
+  creditGrantedPrincipal:     { owner: 'credit-granted',   lookup: 'value', parentCollection: 'credits-granted' },
+  creditGrantedAbono:         { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
+  creditGrantedAbonoInterest: { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
+  creditGrantedWriteOff:      { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
+  salePayment:                { owner: 'sale',             lookup: 'value', parentCollection: 'sales' },
+  payableInitialPayment:      { owner: 'payable',          lookup: 'id',    parentCollection: 'payables' },
+  payableAbono:               { owner: 'payable',          lookup: 'id',    parentCollection: 'payables' },
+};
+
 export interface MovementLink {
   kind: MovementLinkKind;
   /** Id of the parent operation (account, transfer, credit, or sale). */

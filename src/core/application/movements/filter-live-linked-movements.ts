@@ -1,4 +1,5 @@
-import type { Movement } from '../../domain/movement';
+import type { Movement, MovementLinkKind } from '../../domain/movement';
+import { isModernRecord } from '../../domain/modern-record';
 
 /** Default date key: extracts YYYY-MM-DD (UTC) from a Date. */
 function defaultDateKey(d: Date): string {
@@ -46,19 +47,54 @@ function isLinkable(arr: LinkableParent[], id: string): boolean {
   return arr.some((p) => p.id === id);
 }
 
-function findByValue(
+/** Number of parents matching accountId + business-date key + mirror amount. */
+function countByValue(
   arr: LinkableParent[],
   accountId: string,
   dateKey: string,
   amount: number,
   dateKeyOf: (d: Date) => string,
-): boolean {
-  return arr.some(
+): number {
+  return arr.filter(
     (p) =>
       p.accountId === accountId &&
       dateKeyOf(p.date) === dateKey &&
       p.amount === amount,
+  ).length;
+}
+
+/**
+ * R15.1 6d — value-based legacy reconciliation (exact id lookup already
+ * failed). Only for legacy movements (created before the R15.1 cutoff):
+ * 1 unambiguous candidate → reconciled; multiple candidates → ambiguous
+ * (logged for manual review) but still included; none → orphan. Modern
+ * movements whose parent cannot be resolved by id are ALWAYS orphans
+ * (strict — the value fallback exists only to repair pre-ObjectId UUIDs).
+ */
+function reconcileLegacyByValue(
+  arr: LinkableParent[],
+  movement: Movement,
+  kind: MovementLinkKind,
+  dateKeyOf: (d: Date) => string,
+): boolean {
+  if (isModernRecord(movement.createdAt)) return false;
+  const candidatesCount = countByValue(
+    arr,
+    movement.accountId,
+    dateKeyOf(movement.date),
+    movement.amount.amount,
+    dateKeyOf,
   );
+  if (candidatesCount === 1) return true;
+  if (candidatesCount > 1) {
+    console.warn('[reconcile] Ambiguous legacy reconciliation', {
+      movementId: movement.id,
+      kind,
+      candidatesCount,
+    });
+    return true;
+  }
+  return false;
 }
 
 export function filterMovementsWithLiveParents(
@@ -79,49 +115,28 @@ export function filterMovementsWithLiveParents(
 
       // --- linkable kinds: id lookup first, then value reconciliation ---
       case 'creditReceivedPrincipal':
-        return (
-          isLinkable(live.creditsReceived, refId) ||
-          findByValue(
-            live.creditsReceived,
-            m.accountId,
-            dateKeyOf(m.date),
-            m.amount.amount,
-            dateKeyOf,
-          )
-        );
+        if (isLinkable(live.creditsReceived, refId)) return true;
+        return reconcileLegacyByValue(live.creditsReceived, m, kind, dateKeyOf);
       case 'creditGrantedPrincipal':
-        return (
-          isLinkable(live.creditsGranted, refId) ||
-          findByValue(
-            live.creditsGranted,
-            m.accountId,
-            dateKeyOf(m.date),
-            m.amount.amount,
-            dateKeyOf,
-          )
-        );
+        if (isLinkable(live.creditsGranted, refId)) return true;
+        return reconcileLegacyByValue(live.creditsGranted, m, kind, dateKeyOf);
       case 'salePayment':
-        return (
-          isLinkable(live.sales, refId) ||
-          findByValue(
-            live.sales,
-            m.accountId,
-            dateKeyOf(m.date),
-            m.amount.amount,
-            dateKeyOf,
-          )
-        );
+        if (isLinkable(live.sales, refId)) return true;
+        return reconcileLegacyByValue(live.sales, m, kind, dateKeyOf);
 
       // --- non-linkable kinds: id-only, keep current Set semantics ---
       case 'creditReceivedAbono':
         return isLinkable(live.creditsReceived, refId);
       case 'creditGrantedAbono':
+      case 'creditGrantedAbonoInterest':
+      case 'creditGrantedWriteOff':
         return isLinkable(live.creditsGranted, refId);
       case 'payableInitialPayment':
       case 'payableAbono':
         return live.payables.has(refId);
       default:
-        return true;
+        // Unknown future kinds are excluded (fail-closed) rather than silently included.
+        return false;
     }
   });
 }

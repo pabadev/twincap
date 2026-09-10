@@ -102,11 +102,21 @@ export class MongoMovementRepository implements MovementRepository {
     return { items, nextCursor };
   }
 
-  async findByAccountId(workspaceId: string, accountId: string): Promise<Movement[]> {
-    const docs = await MovementModel.find({
-      workspaceId: new Types.ObjectId(workspaceId),
-      accountId: new Types.ObjectId(accountId),
-    }).sort({ date: -1, createdAt: -1 }).exec();
+  async findByAccountId(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<Movement[]> {
+    const docs = await MovementModel.find(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+        accountId: new Types.ObjectId(accountId),
+      },
+      null,
+      { session: sessionOf(tx) },
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);

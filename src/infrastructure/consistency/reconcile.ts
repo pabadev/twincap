@@ -11,6 +11,8 @@ import type {
   CreditReceivedRepository,
   CreditGrantedRepository,
   SaleRepository,
+  AccountRepository,
+  PayableRepository,
 } from "../../core/domain/repositories";
 
 export interface ReconcileAction {
@@ -62,12 +64,17 @@ export async function findIncompleteTransfers(
 
 /** Movement link kinds that reference a parent entity. */
 const PARENT_LINK_KINDS = [
+  "opening",
   "transfer",
   "creditReceivedPrincipal",
   "creditReceivedAbono",
   "creditGrantedPrincipal",
   "creditGrantedAbono",
+  "creditGrantedAbonoInterest",
+  "creditGrantedWriteOff",
   "salePayment",
+  "payableInitialPayment",
+  "payableAbono",
 ] as const;
 
 /**
@@ -80,12 +87,17 @@ export async function findOrphanMovements(
   creditReceivedRepo: CreditReceivedRepository,
   creditGrantedRepo: CreditGrantedRepository,
   saleRepo: SaleRepository,
+  accountRepo: AccountRepository,
+  payableRepo: PayableRepository,
   workspaceId: string,
 ): Promise<ReconcileAction[]> {
   const movements = await movementRepo.findByWorkspaceId(workspaceId);
   const actions: ReconcileAction[] = [];
 
   // Pre-load parent IDs per collection for efficient membership checks
+  const accountIds = new Set(
+    (await accountRepo.findByWorkspaceId(workspaceId)).map((a) => a.id),
+  );
   const transferIds = new Set(
     (await transferRepo.findByWorkspaceId(workspaceId)).map((t) => t.id),
   );
@@ -98,6 +110,9 @@ export async function findOrphanMovements(
   const saleIds = new Set(
     (await saleRepo.findByWorkspaceId(workspaceId)).map((s) => s.id),
   );
+  const payableIds = new Set(
+    (await payableRepo.findByWorkspaceId(workspaceId)).map((p) => p.id),
+  );
 
   for (const movement of movements) {
     if (!movement.link) continue;
@@ -107,6 +122,9 @@ export async function findOrphanMovements(
     let parentExists = false;
 
     switch (movement.link.kind) {
+      case "opening":
+        parentExists = accountIds.has(movement.link.refId);
+        break;
       case "transfer":
         parentExists = transferIds.has(movement.link.refId);
         break;
@@ -116,10 +134,16 @@ export async function findOrphanMovements(
         break;
       case "creditGrantedPrincipal":
       case "creditGrantedAbono":
+      case "creditGrantedAbonoInterest":
+      case "creditGrantedWriteOff":
         parentExists = creditGrantedIds.has(movement.link.refId);
         break;
       case "salePayment":
         parentExists = saleIds.has(movement.link.refId);
+        break;
+      case "payableInitialPayment":
+      case "payableAbono":
+        parentExists = payableIds.has(movement.link.refId);
         break;
     }
 
