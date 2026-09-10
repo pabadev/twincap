@@ -12,6 +12,13 @@ const { MongoAccountRepository } = vi.hoisted(() => ({
 const { MongoMovementRepository } = vi.hoisted(() => ({
   MongoMovementRepository: vi.fn(),
 }));
+const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
+const { MongoOperationLogger } = vi.hoisted(() => ({
+  MongoOperationLogger: vi.fn(),
+}));
+const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
+const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
+const { trackAnalytics } = vi.hoisted(() => ({ trackAnalytics: vi.fn() }));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -22,6 +29,17 @@ vi.mock('../../../infrastructure/repositories/account-repository', () => ({
 vi.mock('../../../infrastructure/repositories/movement-repository', () => ({
   MongoMovementRepository,
 }));
+vi.mock('../../../infrastructure/transactions/mongo-unit-of-work', () => ({
+  MongoUnitOfWork,
+}));
+vi.mock('../../../infrastructure/repositories/operation-log-repository', () => ({
+  MongoOperationLogger,
+}));
+vi.mock('../../../infrastructure/auth/idempotency', () => ({
+  claimIdempotency,
+  releaseIdempotency,
+}));
+vi.mock('../../../lib/track-analytics', () => ({ trackAnalytics }));
 
 const { createAccountAction, updateAccountAction, deleteAccountAction, setInitialBalanceAction } =
   await import('./actions');
@@ -124,6 +142,15 @@ describe('setInitialBalanceAction', () => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
+    MongoOperationLogger.mockImplementation(() => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoUnitOfWork.mockImplementation(() => ({
+      withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+    }));
+    claimIdempotency.mockResolvedValue(true);
+    releaseIdempotency.mockResolvedValue(undefined);
+    trackAnalytics.mockResolvedValue(undefined);
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({
         id: 'acc-1',
@@ -134,6 +161,8 @@ describe('setInitialBalanceAction', () => {
         createdAt: new Date(),
       }),
       countReferences: vi.fn().mockResolvedValue(0),
+      // R15.2: setInitialAccountBalance touches the account doc inside its tx.
+      touch: vi.fn().mockResolvedValue(true),
     }));
   });
 

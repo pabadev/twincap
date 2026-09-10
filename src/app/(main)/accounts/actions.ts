@@ -90,8 +90,19 @@ export async function updateAccountAction(
 
   try {
     await connectDb();
-    const accountRepo = new MongoAccountRepository();
-    await updateAccount(user.workspaceId!, { accountId, name }, accountRepo);
+    // R15.2 C2: durable audit record for account edits (same wrapper as
+    // create/deleteAccountAction). No idempotency claim needed here: a name
+    // edit is naturally idempotent (re-running it converges to the same
+    // state), so double submissions are harmless by construction.
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: 'updateAccount', entityType: 'account', userId: user.userId },
+      () => {
+        const accountRepo = new MongoAccountRepository();
+        return updateAccount(user.workspaceId!, { accountId, name }, accountRepo);
+      },
+    );
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
@@ -173,6 +184,7 @@ export async function setInitialBalanceAction(
           accountRepo,
           movementRepo,
           ids,
+          new MongoUnitOfWork(),
         );
       },
     );
