@@ -15,6 +15,7 @@ import { useToast } from '../../../lib/hooks/use-toast';
 import { useActionError } from '../../../lib/use-action-error';
 import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
 import { formatAmount } from '../../../lib/format';
+import { exponentOf } from '../../../core/domain/currency';
 
 /**
  * Action-state shape shared by the create/edit transfer actions.
@@ -121,16 +122,20 @@ export function TransferForm({
     formAction(fd);
   };
 
-  // Derived rate shown read-only (R15.1 Fase 4): how many source units each
-  // destination unit costs (sourceAmount / destinationAmount). The stored
-  // effectiveExchangeRate is its inverse (destinationAmount / sourceAmount);
-  // only the two real amounts are user input.
+  // Derived rate shown read-only (R15.1 Fase 4 / R15.3 §11). Convention:
+  // how many MAJOR units of the SOURCE currency one MAJOR unit of the
+  // DESTINATION currency costs — (sourceAmount / 10^exp(src)) /
+  // (destinationAmount / 10^exp(dst)). Both input fields hold the amounts in
+  // minor units, so the exponents normalize them to majors here to match the
+  // stored effectiveExchangeRate (COP→USD 190.000 → 50 shows 3.800). Only the
+  // two real amounts are user input.
   const sourceAmt = Number(sourceAmountStr);
   const destAmt = Number(destAmountStr);
   const derivedRateDisplay =
     isCrossCurrency && sourceAmt > 0 && destAmt > 0
       ? new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(
-          sourceAmt / destAmt,
+          (sourceAmt / 10 ** exponentOf(sourceCurrency)) /
+            (destAmt / 10 ** exponentOf(destCurrency)),
         )
       : null;
 

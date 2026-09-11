@@ -1,6 +1,6 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, assertSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import { isModernRecord } from '../../domain/modern-record';
 import { creditCategory } from '../../domain/synthetic-categories';
@@ -45,6 +45,9 @@ export async function editPrincipal(
 
     // CRED-R-5: pending must remain ≥ 0
     const totalAbonos = credit.abonos.reduce((sum, a) => sum + a.amount.amount, 0);
+    // R15.3 §18: the abono sum must stay a safe integer before it is compared
+    // against the incoming principal.
+    assertSafeMinorUnits(totalAbonos, "EditPrincipal abonos sum");
     if (input.principal < totalAbonos) {
       throw new ConflictError('New principal is less than total abonos');
     }

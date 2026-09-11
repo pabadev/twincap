@@ -32,7 +32,10 @@ export async function createAccountAction(
   const name = formData.get('name') as string;
   const currency = formData.get('currency') as CreateAccountInput['currency'];
   const initialBalance = Number(formData.get('initialBalance') || '0');
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     await connectDb();
@@ -155,7 +158,10 @@ export async function setInitialBalanceAction(
 
   const accountId = formData.get('accountId') as string;
   const amount = Number(formData.get('amount') || '0');
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     await connectDb();

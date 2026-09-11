@@ -1,5 +1,5 @@
 import { ValidationError } from "./errors";
-import { Money } from "./money";
+import { Money, assertSafeMinorUnits } from "./money";
 
 /** POS-2: payment mode for a sale. */
 export const PAYMENT_MODES = ["paid-in-full", "on-credit"] as const;
@@ -22,7 +22,11 @@ export interface SaleLineItem {
 
 /** Computed subtotal for a line item in minor units. */
 export function computeLineItemSubtotal(quantity: number, unitPrice: Money): number {
-  return quantity * unitPrice.amount;
+  // R15.3 §18: quantity × unitPrice can overflow the safe-integer range
+  // before the subtotal re-enters Money — fail fast here.
+  const subtotal = quantity * unitPrice.amount;
+  assertSafeMinorUnits(subtotal, "Sale line item subtotal");
+  return subtotal;
 }
 
 /** Embedded abono for a sale (POS-4/5). */
@@ -95,7 +99,10 @@ export class Sale {
   /** Derived pending = total − Σ abonos (POS-5). Never stored. */
   get pending(): number {
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    return this.total - abonoSum;
+    assertSafeMinorUnits(abonoSum, "Sale abonos sum");
+    const pending = this.total - abonoSum;
+    assertSafeMinorUnits(pending, "Sale pending");
+    return pending;
   }
 
   /** Read-only view of abonos. */
@@ -143,6 +150,9 @@ export class Sale {
         subtotal,
       });
       total += subtotal;
+      // R15.3 §18: the running sale total must stay a safe integer at every
+      // step (fail fast before the total feeds Money/overpayment guards).
+      assertSafeMinorUnits(total, "Sale constructor total");
     }
 
     // POS-5: validate abonos don't overpay
@@ -152,6 +162,7 @@ export class Sale {
       }
       return sum + a.amount.amount;
     }, 0);
+    assertSafeMinorUnits(abonoSum, "Sale constructor abonos sum");
     if (abonoSum > total) {
       throw new ValidationError("Sale abonos exceed total (overpayment rejected)");
     }

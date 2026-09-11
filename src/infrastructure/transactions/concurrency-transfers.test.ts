@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { ConflictError, NotFoundError, DEBT_MODIFIED_MSG } from "../../core/domain/errors";
 import { createTransfer } from "../../core/application/transfers/create-transfer";
 import { updateTransfer } from "../../core/application/transfers/update-transfer";
 import { deleteTransfer } from "../../core/application/transfers/delete-transfer";
@@ -339,8 +340,10 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
         }
       }
       const fulfilled = settled.filter((s) => s.status === "fulfilled");
-      // Todos los updates pueden completar serializados (last-write-wins sin CAS)
-      // — lo que NO puede ocurrir es NoSuchTransaction / TransientTransactionError.
+      // R15.3 §5: los updates serializan — WriteConflict → retry con snapshot
+      // fresco (todos pueden ganar) o CAS directo → ConflictError(DEBT_MODIFIED_MSG).
+      // Lo que NO puede ocurrir es NoSuchTransaction / TransientTransactionError
+      // ni un estado incoherente (transfer sin movements actualizados).
       expect(fulfilled.length).toBeGreaterThan(0);
 
       // El transfer existe con un estado coherente (uno de los updates ganó).
@@ -414,6 +417,236 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
       };
       expect(expense!.amount).toBe(transferDoc.sourceAmount);
     }, 120_000);
+
+    // ── R15.3 §5 — CAS semantics: transfer `__v` + source-account bump ──
+
+    it.each([0, 1, 2, 3, 4])(
+      "update×update — round %i: N=5 concurrentes sobre el MISMO transfer → serializan; rejects SOLO ConflictError(DEBT_MODIFIED_MSG); coherencia total",
+      async () => {
+        await seedSourceBalance(100_000);
+        const created = (
+          await createTransfer(
+            WS,
+            transferInput(70_000),
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            objectIdGenerator,
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          )
+        ).transfer!;
+
+        const settled = await Promise.allSettled(
+          Array.from({ length: 5 }, (_, i) =>
+            updateTransfer(
+              WS,
+              created.id,
+              { sourceAmount: 20_000 + i, destinationAmount: 20_000 + i },
+              new MongoTransferRepository(),
+              new MongoMovementRepository(),
+              new MongoAccountRepository(),
+              new MongoCreditReceivedRepository(),
+              new MongoCreditGrantedRepository(),
+              new MongoSaleRepository(),
+              new MongoPayableRepository(),
+              new MongoUnitOfWork(),
+            ),
+          ),
+        );
+
+        for (const s of settled) {
+          if (s.status === "rejected") {
+            const msg = s.reason?.message ?? String(s.reason);
+            expect(msg).not.toContain("NoSuchTransaction");
+            expect(msg).not.toContain("TransientTransactionError");
+            // Un reject legítimo solo puede venir del CAS (transfer o bump del
+            // source) — nunca de un error de driver ni de validación.
+            expect(s.reason).toBeInstanceOf(ConflictError);
+            expect(msg).toBe(DEBT_MODIFIED_MSG);
+          }
+        }
+        expect(settled.filter((s) => s.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+
+        // Coherencia total: transfer, expense e income muestran EL MISMO monto
+        // del último update que commiteó (sin legs a medio actualizar).
+        const transferDoc = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {
+          sourceAmount: number;
+          destinationAmount: number;
+          movementIds?: { expenseId?: string; incomeId?: string };
+        };
+        const expense = (await MovementModel.findById(transferDoc.movementIds!.expenseId).lean()) as unknown as {
+          amount: number;
+        };
+        const income = (await MovementModel.findById(transferDoc.movementIds!.incomeId).lean()) as unknown as {
+          amount: number;
+        };
+        expect(transferDoc.sourceAmount).toBe(transferDoc.destinationAmount);
+        expect(expense!.amount).toBe(transferDoc.sourceAmount);
+        expect(income!.amount).toBe(transferDoc.destinationAmount);
+        // 1 transfer + opening + expense + income; un update rechazado NO deja
+        // rastro (su transacción abortó por completo).
+        expect(await TransferModel.countDocuments({ workspaceId: WS })).toBe(1);
+        expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(3);
+      },
+      120_000,
+    );
+
+    it.each([0, 1, 2, 3, 4])(
+      "update×create sobre el MISMO source — round %i: doble-gasto imposible; rejects SOLO ConflictError(DEBT_MODIFIED_MSG)",
+      async () => {
+        await seedSourceBalance(100_000);
+        const existing = (
+          await createTransfer(
+            WS,
+            transferInput(70_000),
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            objectIdGenerator,
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          )
+        ).transfer!;
+
+        // La edición baja el sourceAmount (libera fondos) mientras el create
+        // intenta gastarlos: sin CAS, el create en snapshot viejo podría
+        // duplicar el gasto (write-skew). El bump del source es el punto de
+        // serialización — o ambos COMMITEAN serializados, o el perdedor del
+        // CAS aborta con ConflictError; nunca un doble débito.
+        const settled = await Promise.allSettled([
+          updateTransfer(
+            WS,
+            existing.id,
+            { sourceAmount: 20_000, destinationAmount: 20_000 },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          ),
+          createTransfer(
+            WS,
+            transferInput(10_000),
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            objectIdGenerator,
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ]);
+
+        for (const s of settled) {
+          if (s.status === "rejected") {
+            const msg = s.reason?.message ?? String(s.reason);
+            expect(msg).not.toContain("NoSuchTransaction");
+            expect(msg).not.toContain("TransientTransactionError");
+            expect(s.reason).toBeInstanceOf(ConflictError);
+            expect(msg).toBe(DEBT_MODIFIED_MSG);
+          }
+        }
+        expect(settled.filter((s) => s.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+
+        // Coherencia financiera: el saldo derivado refleja EXACTAMENTE los
+        // transfers vivos — saldo > 0 en cualquier orden (mejora de 70_000→20_000
+        // libera más de lo que el create pide), sin movimientos huérfanos.
+        const transfers = (await TransferModel.find({ workspaceId: WS }).lean()) as unknown as {
+          sourceAmount: number;
+        }[];
+        const balanceRows = await MovementModel.aggregate([
+          {
+            $match: {
+              workspaceId: new mongoose.Types.ObjectId(WS),
+              accountId: new mongoose.Types.ObjectId(SRC),
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$signedAmount" } } },
+        ]);
+        const balance = balanceRows.length > 0 ? balanceRows[0].total : 0;
+        const committedSource = transfers.reduce((sum, t) => sum + t.sourceAmount, 0);
+        expect(balance).toBe(100_000 - committedSource);
+        expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(
+          1 + 2 * transfers.length,
+        );
+      },
+      120_000,
+    );
+
+    it.each([0, 1, 2, 3, 4])(
+      "update×delete — round %i: terminal SIEMPRE 0 transfers/1 movement; rejects del update SOLO NotFoundError",
+      async () => {
+        await seedSourceBalance(100_000);
+        const existing = (
+          await createTransfer(
+            WS,
+            transferInput(40_000),
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            objectIdGenerator,
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          )
+        ).transfer!;
+
+        const settled = await Promise.allSettled([
+          updateTransfer(
+            WS,
+            existing.id,
+            { sourceAmount: 20_000, destinationAmount: 20_000 },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          ),
+          deleteTransfer(
+            WS,
+            existing.id,
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ]);
+
+        for (const s of settled) {
+          if (s.status === "rejected") {
+            const msg = s.reason?.message ?? String(s.reason);
+            expect(msg).not.toContain("NoSuchTransaction");
+            expect(msg).not.toContain("TransientTransactionError");
+          }
+        }
+        // El delete NO tiene CAS: si el update commiteó antes, el delete limpia
+        // todo; si el delete ganó, el update re-ejecuta y no encuentra el
+        // transfer → NotFoundError. Terminal siempre: 0 transfers, 0 legs.
+        expect(settled[1].status).toBe("fulfilled");
+        if (settled[0].status === "rejected") {
+          expect(settled[0].reason).toBeInstanceOf(NotFoundError);
+        }
+        expect(await TransferModel.countDocuments({ workspaceId: WS })).toBe(0);
+        expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1); // solo opening
+      },
+      120_000,
+    );
   });
 
   describe("rollback createTransfer — un write fallido no deja rastro (criterio §7)", () => {
@@ -690,5 +923,173 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
       expect(movements).toHaveLength(1);
       expect(movements[0].amount).toBe(100_000); // movement intacto
     }, 60_000);
+  });
+
+  describe("updateTransfer × createTransfer (R15.3 §23 fila 7)", () => {
+    it("N=10: 9 updates + 1 create sobre el MISMO origen → saldo coherente, 0 movements huérfanos", async () => {
+      await seedSourceBalance(200_000);
+      const created = (
+        await createTransfer(
+          WS,
+          transferInput(70_000),
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        )
+      ).transfer!;
+
+      const settled = await Promise.allSettled([
+        ...Array.from({ length: 9 }, (_, i) =>
+          updateTransfer(
+            WS,
+            created.id,
+            { sourceAmount: 30_000 + i, destinationAmount: 30_000 + i },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ),
+        createTransfer(
+          WS,
+          transferInput(50_000),
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        ),
+      ]);
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          // R15.3 §5: CAS → ConflictError(DEBT_MODIFIED_MSG) es la señal legal.
+          // Nunca errores transaccionales del driver.
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("NoSuchTransaction");
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("TransientTransactionError");
+        }
+      }
+      const fulfilled = settled.filter((s) => s.status === "fulfilled");
+      expect(fulfilled.length).toBeGreaterThan(0);
+
+      // Los transfers sobrevivientes escribieron sus dos movements al unísono
+      // (criterio §7): expense.amount == source, income.amount == destination.
+      const transferDocs = (await TransferModel.find({ workspaceId: WS }).lean()) as unknown as Array<{
+        sourceAmount: number;
+        destinationAmount: number;
+        movementIds?: { expenseId?: string; incomeId?: string };
+      }>;
+      expect(transferDocs.length).toBeGreaterThan(0);
+      expect(transferDocs.length).toBeLessThanOrEqual(2);
+      for (const t of transferDocs) {
+        const expense = (await MovementModel.findById(t.movementIds!.expenseId).lean()) as unknown as {
+          amount: number;
+        };
+        const income = (await MovementModel.findById(t.movementIds!.incomeId).lean()) as unknown as {
+          amount: number;
+        };
+        expect(expense!.amount).toBe(t.sourceAmount);
+        expect(income!.amount).toBe(t.destinationAmount);
+      }
+
+      // Σ movements vinculados == Σ montos de transfers presentes; el saldo
+      // derivado coincide con seed − Σ sourceAmount (sin pérdidas de saldo).
+      const totalSourceDebited = transferDocs.reduce((acc, t) => acc + t.sourceAmount, 0);
+      expect(await sourceBalance()).toBe(200_000 - totalSourceDebited);
+      const linked = await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "transfer" });
+      expect(linked).toBe(transferDocs.length * 2);
+    }, 120_000);
+  });
+
+  describe("updateTransfer × deleteTransfer (R15.3 §23 fila 8)", () => {
+    it("N=10: 9 updates + 1 delete del MISMO transfer → átomo update-en-fila-3 o delete; 0 estado mixto", async () => {
+      await seedSourceBalance(100_000);
+      const created = (
+        await createTransfer(
+          WS,
+          transferInput(40_000),
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoCreditReceivedRepository(),
+          new MongoCreditGrantedRepository(),
+          new MongoSaleRepository(),
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        )
+      ).transfer!;
+      const transferId = created.id;
+
+      const settled = await Promise.allSettled<unknown>([
+        ...Array.from({ length: 9 }, (_, i) =>
+          updateTransfer(
+            WS,
+            transferId,
+            { sourceAmount: 30_000 + i, destinationAmount: 30_000 + i },
+            new MongoTransferRepository(),
+            new MongoMovementRepository(),
+            new MongoAccountRepository(),
+            new MongoCreditReceivedRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoSaleRepository(),
+            new MongoPayableRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ),
+        deleteTransfer(
+          WS,
+          transferId,
+          new MongoTransferRepository(),
+          new MongoMovementRepository(),
+          new MongoUnitOfWork(),
+        ),
+      ]);
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          // Legal: ConflictError (CAS) o NotFoundError (delete ya ganó).
+          expect(
+            s.reason instanceof ConflictError || s.reason instanceof NotFoundError,
+            `unexpected rejection: ${s.reason?.message ?? String(s.reason)}`,
+          ).toBe(true);
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("NoSuchTransaction");
+          expect(s.reason?.message ?? String(s.reason)).not.toContain("TransientTransactionError");
+        }
+      }
+      const deleteWon = settled[9].status === "fulfilled";
+
+      if (deleteWon) {
+        // Terminal 1: transfer borrado → 0 movements vinculados (solo opening).
+        expect(await TransferModel.countDocuments({ workspaceId: WS })).toBe(0);
+        const linked = await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "transfer" });
+        expect(linked).toBe(0);
+      } else {
+        // Terminal 2: delete perdió (NotFoundError) → transfer vivo y coherente.
+        expect(await TransferModel.countDocuments({ workspaceId: WS })).toBe(1);
+        const t = (await TransferModel.findOne({ workspaceId: WS }).lean()) as unknown as {
+          sourceAmount: number;
+          movementIds?: { expenseId?: string; incomeId?: string };
+        };
+        const expense = (await MovementModel.findById(t.movementIds!.expenseId).lean()) as unknown as {
+          amount: number;
+        };
+        expect(expense!.amount).toBe(t.sourceAmount);
+      }
+    }, 120_000);
   });
 });

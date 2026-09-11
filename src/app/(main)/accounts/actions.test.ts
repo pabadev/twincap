@@ -47,6 +47,7 @@ const { createAccountAction, updateAccountAction, deleteAccountAction, setInitia
 function formData(accountId = 'acc-1', amount?: number): FormData {
   const fd = new FormData();
   fd.append('accountId', accountId);
+  fd.append('idempotencyKey', 'test-key-set-initial-balance');
   if (amount !== undefined) fd.append('amount', String(amount));
   return fd;
 }
@@ -173,6 +174,8 @@ describe('setInitialBalanceAction', () => {
         created.push(movement);
         return movement;
       }),
+      // R15.3 §4: the uniqueness guard runs inside the tx before the insert.
+      countOpeningMovements: vi.fn().mockResolvedValue(0),
     }));
 
     const result = await setInitialBalanceAction(null, formData('acc-1', 50000));

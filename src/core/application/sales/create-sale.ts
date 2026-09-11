@@ -2,7 +2,7 @@ import { Sale } from '../../domain/sale';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Client } from '../../domain/client';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, assertSafeMinorUnits } from '../../domain/money';
 import { ConflictError, NotFoundError, ValidationError } from '../../domain/errors';
 import type {
   SaleRepository,
@@ -73,7 +73,16 @@ export async function createSale(
     quantity: item.quantity,
     unitPrice: new Money(item.unitPrice, input.currency),
   }));
-  const total = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice.amount, 0);
+  const total = lineItems.reduce((sum, li) => {
+    // R15.3 §18: quantity × unitPrice and the running total must stay safe
+    // integers — the total feeds Money and the Sale aggregate next, so an
+    // overflow here would corrupt the record before it is persisted.
+    const subtotal = li.quantity * li.unitPrice.amount;
+    assertSafeMinorUnits(subtotal, "Sale line item subtotal");
+    const running = sum + subtotal;
+    assertSafeMinorUnits(running, "Sale total");
+    return running;
+  }, 0);
 
   // H14: validate on-credit preconditions up front.
   let client: Client | null = null;
@@ -128,6 +137,27 @@ export async function createSale(
       throw new NotFoundError('Account not found');
     }
 
+    // R15.3 §10: on-credit sales keep a client reference — re-validate the
+    // client INSIDE the transaction (snapshot-consistent) and touch the SAME
+    // doc deleteClient deletes as its last write (shared-document conflict
+    // point, R15.1-6e pattern). A delete that commits between this read and
+    // the sale insert aborts THIS transaction (write-write conflict on the
+    // client doc) and the retry re-reads the client as gone → NotFoundError.
+    // Without this touch, the delete could commit in that window and leave a
+    // Sale pointing at a deleted client. Paid-in-full sales carry no client
+    // reference and skip the touch.
+    let txClient: Client | null = null;
+    if (input.paymentMode === 'on-credit' && input.clientId) {
+      txClient = await clientRepo.findById(workspaceId, input.clientId, tx);
+      if (!txClient) {
+        throw new NotFoundError(`Client ${input.clientId} not found for user ${workspaceId}`);
+      }
+      const touchedClient = await clientRepo.touch(workspaceId, input.clientId, tx);
+      if (!touchedClient) {
+        throw new NotFoundError(`Client ${input.clientId} not found for user ${workspaceId}`);
+      }
+    }
+
     // POS-3: Decrement stock for physical products (atomic guard)
     for (let i = 0; i < input.items.length; i++) {
       const item = input.items[i];
@@ -171,7 +201,7 @@ export async function createSale(
     // (principal === total; no SALES-side abonos). The initial payment, when
     // present, is the credit's FIRST abono — never a standalone movement linked
     // to the sale — so the sale and the credit share ONE ledger.
-    if (input.paymentMode === 'on-credit' && client) {
+    if (input.paymentMode === 'on-credit' && txClient) {
       const creditId = ids.generate();
       const principal = new Money(total, input.currency);
 
@@ -192,7 +222,7 @@ export async function createSale(
         {
           id: creditId,
           workspaceId,
-          counterparty: client.name,
+          counterparty: txClient.name,
           principal,
           accountId: sale.accountId,
           date: sale.date,

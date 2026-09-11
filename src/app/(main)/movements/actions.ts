@@ -203,6 +203,7 @@ export async function updateMovementAction(
           movementRepo,
           categoryRepo,
           accountRepo,
+          new MongoUnitOfWork(),
         );
       },
     );

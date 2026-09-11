@@ -319,11 +319,41 @@ export class MongoMovementRepository implements MovementRepository {
     });
   }
 
-  async countByCategoryId(workspaceId: string, categoryId: string): Promise<number> {
-    return MovementModel.countDocuments({
-      workspaceId: new Types.ObjectId(workspaceId),
-      categoryId: new Types.ObjectId(categoryId),
-    }).exec();
+  /** R15.3 §9 — CAT-3 deletion guard: count movements referencing a category.
+   *  The count joins the caller's transaction session when a handle is
+   *  present, so the guard runs on the SAME snapshot as the category read and
+   *  delete (transactional deleteCategory). */
+  async countByCategoryId(
+    workspaceId: string,
+    categoryId: string,
+    tx?: TransactionHandle,
+  ): Promise<number> {
+    return MovementModel.countDocuments(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+        categoryId: new Types.ObjectId(categoryId),
+      },
+      { session: sessionOf(tx) },
+    ).exec();
+  }
+
+  /** R15.3 §4 — ACC-2 uniqueness guard: count the account's 'opening'
+   *  movements. The count joins the caller's transaction session when a
+   *  handle is present, so the check and the insert share one snapshot
+   *  (the partial unique index on (workspaceId, accountId) is the backstop). */
+  async countOpeningMovements(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<number> {
+    return MovementModel.countDocuments(
+      {
+        workspaceId: new Types.ObjectId(workspaceId),
+        accountId: new Types.ObjectId(accountId),
+        "link.kind": "opening",
+      },
+      { session: sessionOf(tx) },
+    ).exec();
   }
 
   // ─── Private helpers ───────────────────────────────────────────────

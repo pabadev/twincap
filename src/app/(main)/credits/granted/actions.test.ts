@@ -67,6 +67,7 @@ function makeCreditGranted(): CreditGranted {
 function formData(creditId = 'cg-1'): FormData {
   const fd = new FormData();
   fd.append('creditId', creditId);
+  fd.append('idempotencyKey', 'test-key-write-off');
   return fd;
 }
 

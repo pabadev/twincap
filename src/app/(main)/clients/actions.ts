@@ -10,6 +10,7 @@ import type { SerializedClient } from '../../../core/domain/client';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
 import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
+import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
@@ -113,6 +114,7 @@ export async function deleteClientAction(
       clientId,
       clientRepo,
       new MongoSaleRepository(),
+      new MongoUnitOfWork(),
     );
     revalidatePath('/clients');
     revalidatePath('/pos/sales');

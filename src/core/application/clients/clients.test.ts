@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { Client } from "../../domain/client";
 import type { ClientRepository, SaleRepository } from "../../domain/repositories";
-import type { IdGenerator } from "../ports";
+import type { TransactionHandle } from "../../domain/transaction";
+import type { IdGenerator, UnitOfWork } from "../ports";
 import { ConflictError, NotFoundError } from "../../domain/errors";
 import { createClient } from "./create-client";
 import { listClients } from "./list-clients";
@@ -9,6 +10,14 @@ import { updateClient } from "./update-client";
 import { deleteClient } from "./delete-client";
 
 const DATE = new Date("2026-01-01T00:00:00Z");
+
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
 
 function makeClient(overrides: Partial<{ id: string; name: string; phone: string; email: string; note: string }> = {}): Client {
   return new Client({
@@ -30,6 +39,7 @@ function makeRepo(overrides: Partial<ClientRepository> = {}): ClientRepository {
     create: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
     update: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -146,17 +156,17 @@ describe("deleteClient", () => {
       { clientId: "c1", deletedAt: new Date("2026-02-01") },
     ]);
 
-    await deleteClient("u1", "c1", repo, saleRepo);
+    await deleteClient("u1", "c1", repo, saleRepo, fakeUow());
 
-    expect(repo.findById).toHaveBeenCalledWith("u1", "c1");
-    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith("u1");
-    expect(repo.delete).toHaveBeenCalledWith("u1", "c1");
+    expect(repo.findById).toHaveBeenCalledWith("u1", "c1", expect.anything());
+    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith("u1", expect.anything());
+    expect(repo.delete).toHaveBeenCalledWith("u1", "c1", expect.anything());
   });
 
   it("throws NotFoundError if client not found", async () => {
     const repo = makeRepo({ findById: vi.fn().mockResolvedValue(null) });
     const saleRepo = makeSaleRepo([]);
-    await expect(deleteClient("u1", "c1", repo, saleRepo)).rejects.toThrow(
+    await expect(deleteClient("u1", "c1", repo, saleRepo, fakeUow())).rejects.toThrow(
       "Client not found",
     );
     expect(repo.delete).not.toHaveBeenCalled();
@@ -170,7 +180,7 @@ describe("deleteClient", () => {
       { clientId: "other" },
     ]);
 
-    await expect(deleteClient("u1", "c1", repo, saleRepo)).rejects.toThrow(
+    await expect(deleteClient("u1", "c1", repo, saleRepo, fakeUow())).rejects.toThrow(
       new ConflictError("Client has sales and cannot be deleted"),
     );
     expect(repo.delete).not.toHaveBeenCalled();

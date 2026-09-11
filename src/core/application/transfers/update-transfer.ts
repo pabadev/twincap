@@ -1,7 +1,7 @@
 import { Transfer } from '../../domain/transfer';
 import { Movement } from '../../domain/movement';
 import { Money, deriveExchangeRate } from '../../domain/money';
-import { NotFoundError, ValidationError } from '../../domain/errors';
+import { NotFoundError, ValidationError, ConflictError, DEBT_MODIFIED_MSG } from '../../domain/errors';
 import type { InsufficientFundsWarning } from '../../domain/errors';
 import { transferCategory } from '../../domain/synthetic-categories';
 import type {
@@ -46,9 +46,10 @@ export type UpdateTransferResult =
  * Update a transfer and cascade changes to both linked movements (TRA-5).
  *
  * R15.1 Fase 4 — derived exchange rate (TRA-3): the rate is never user input.
- * It is recomputed from the effective amounts on every edit —
- * effectiveExchangeRate = destinationAmount / sourceAmount (1 for
- * same-currency). Cross-currency edits MUST re-supply the destination amount:
+ * It is recomputed from the effective amounts on every edit under the R15.3
+ * §11 convention — how many MAJOR source units one MAJOR destination unit
+ * costs (sourceMajor / destinationMajor; 1 for same-currency).
+ * Cross-currency edits MUST re-supply the destination amount:
  * both real amounts are the source of truth for the derived rate.
  *
  * R15-F5: the transfer write and both movement writes run INSIDE a single
@@ -65,6 +66,17 @@ export type UpdateTransferResult =
  *   - with `confirmNegativeBalance: true` → edit registers normally and the
  *     negative balance is valid state.
  * Edits that do NOT touch the source amount skip the check entirely.
+ *
+ * R15.3 §5 — CAS on the transfer + balance-affecting account bump: the
+ * transfer write carries `existing.version` as its expected version, so a
+ * concurrent edit of the SAME transfer aborts with
+ * ConflictError(DEBT_MODIFIED_MSG) instead of silently last-write-wins. When
+ * the edit changes the source amount, the source account `__v` is bumped as
+ * the LAST write of the transaction — the same write-write conflict point
+ * createTransfer targets, so a concurrent createTransfer/edit from the same
+ * source serializes here instead of double-spending freed funds (write-skew
+ * window). A failed bump (concurrent account modification without a prior
+ * write conflict) aborts the whole edit: transfer + movements roll back.
  *
  * Reads follow the R15 convention: account reads join the transaction session
  * (snapshot-consistent currency re-check + funds derivation), while the
@@ -178,7 +190,10 @@ export async function updateTransfer(
       note: newNote,
     });
 
-    await transferRepo.update(updatedTransfer, tx);
+    // R15.3 §5: the write carries the TRANSFER's own version as the CAS
+    // expected version (`existing` was read session-less by documented
+    // convention — the persisted `__v` comparison happens inside the tx).
+    await transferRepo.update(updatedTransfer, tx, existing.version);
 
     // Cascade: update expense movement
     if (existing.movementIds?.expenseId) {
@@ -203,6 +218,27 @@ export async function updateTransfer(
           category: transferCategory('income'),
         });
         await movementRepo.update(updatedIncome, tx);
+      }
+    }
+
+    // R15.3 §5 — balance-affecting edits bump the SOURCE account `__v` as the
+    // LAST write. This is the same version write every competing transfer
+    // creation targets, so edit × create from the same source serialize here
+    // (write-write conflict → driver replay → fresh snapshot re-reads balance
+    // and version). Without it, an edit that LOWERS the source amount could
+    // free funds while a concurrent createTransfer spends them on the old
+    // snapshot — double-spend via write skew. `sourceAccount.version` was read
+    // inside this transaction's snapshot, so a concurrent bump between read
+    // and write fails the CAS and aborts the whole edit atomically.
+    if (newSourceAmount !== existing.sourceAmount.amount) {
+      const bumped = await accountRepo.bumpVersion(
+        userId,
+        existing.sourceAccountId,
+        sourceAccount.version,
+        tx,
+      );
+      if (!bumped) {
+        throw new ConflictError(DEBT_MODIFIED_MSG);
       }
     }
 

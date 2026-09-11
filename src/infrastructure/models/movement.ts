@@ -105,6 +105,19 @@ MovementSchema.index(
   { name: "workspace_date_createdAt" },
 );
 
+// R15.3 §4 (ACC-2): partial UNIQUE on (workspaceId, accountId) for 'opening'
+// movements — an account can have EXACTLY 0 or 1 initial balances. The use
+// case guard (MovementRepository.countOpeningMovements inside the tx) is the
+// transactional first line; this index is the enforcement backstop for the
+// direct-path race where two concurrent guards both read 0.
+MovementSchema.index(
+  { workspaceId: 1, accountId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { "link.kind": { $eq: "opening" } },
+  },
+);
+
 export const MovementModel =
   mongoose.models["Movement"] ||
   mongoose.model<MovementDoc>("Movement", MovementSchema);

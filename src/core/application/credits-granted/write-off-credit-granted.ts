@@ -1,6 +1,6 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, assertSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
 import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
@@ -91,7 +91,11 @@ export async function writeOffCreditGranted(
       credit.abonos.map(a => ({ amount: a.amount.amount })),
     );
     const capitalRecovered = splits.reduce((sum, s) => sum + s.capitalAmount, 0);
+    // R15.3 §18: the recovered-capital sum and the capital-loss subtraction
+    // must stay safe integers — `capitalLost` becomes a Money/expense next.
+    assertSafeMinorUnits(capitalRecovered, "Write-off capital recovered");
     const capitalLost = credit.principal.amount - capitalRecovered;
+    assertSafeMinorUnits(capitalLost, "Write-off capital lost");
 
     if (capitalLost <= 0) {
       throw new ConflictError(WRITE_OFF_NO_LOSS_MSG);

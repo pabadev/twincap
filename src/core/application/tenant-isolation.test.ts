@@ -248,6 +248,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
@@ -329,6 +330,7 @@ function fakeClientRepo(overrides: Partial<ClientRepository> = {}): ClientReposi
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -341,6 +343,7 @@ function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): Category
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -425,6 +428,7 @@ describe('Tenant isolation (B1)', () => {
           movementRepo,
           categoryRepo,
           fakeAccountRepo(),
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(movementRepo.update).not.toHaveBeenCalled();
@@ -748,6 +752,7 @@ describe('Tenant isolation (B1)', () => {
           PAY_B,
           { total: 200000, currency: 'COP' },
           payableRepo,
+          fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.update).not.toHaveBeenCalled();
@@ -873,7 +878,7 @@ describe('Tenant isolation (B1)', () => {
     it('deleteClient with user-b clientId → NotFoundError', async () => {
       const repo = fakeClientRepo();
       await expect(
-        deleteClient(WORKSPACE_A, CLI_B, repo, fakeSaleRepo()),
+        deleteClient(WORKSPACE_A, CLI_B, repo, fakeSaleRepo(), fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(repo.delete).not.toHaveBeenCalled();
     });
@@ -893,7 +898,7 @@ describe('Tenant isolation (B1)', () => {
       const categoryRepo = fakeCategoryRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCategory(WORKSPACE_A, CAT_B, categoryRepo, movementRepo),
+        deleteCategory(WORKSPACE_A, CAT_B, categoryRepo, movementRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(categoryRepo.delete).not.toHaveBeenCalled();
     });

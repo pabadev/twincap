@@ -40,13 +40,25 @@ export async function createMovement(
   // skew, and the loser re-executes on the winner's committed state — no
   // orphaned movements in any terminal.
   return uow.withTransaction(async (tx) => {
-    // MOV-2: category-type match — category must be same type as movement
-    const category = await categoryRepo.findById(workspaceId, input.categoryId);
+    // MOV-2: category-type match — category must be same type as movement.
+    // R15.3 §9: the read joins the transaction session (snapshot-consistent).
+    const category = await categoryRepo.findById(workspaceId, input.categoryId, tx);
     if (!category) {
       throw new ValidationError('Category not found');
     }
     if (category.type !== input.type) {
       throw new ValidationError('Category type must match movement type');
+    }
+
+    // R15.3 §9: shared-document write — touch the category INSIDE this
+    // transaction, BEFORE the movement insert. deleteCategory deletes the SAME
+    // doc as its last write, so a delete that commits between our read and our
+    // insert aborts THIS transaction (write-write conflict) and the retry
+    // re-reads the category as gone → ValidationError above. This is the
+    // REQUIRED conflict point — a second read alone would not close the race.
+    const touchedCategory = await categoryRepo.touch(workspaceId, input.categoryId, tx);
+    if (!touchedCategory) {
+      throw new ValidationError('Category not found');
     }
 
     // D3: validate account exists/owned (context comes from the client form).

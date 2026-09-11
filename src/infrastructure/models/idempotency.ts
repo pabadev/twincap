@@ -7,7 +7,25 @@ import mongoose, { Schema, type InferSchemaType } from 'mongoose';
  * and passes it as a hidden form field. The server records the key + result
  * so a retry/double-click returns the stored outcome without re-running.
  *
- * TTL index auto-expires records after 24h.
+ * R15.3 §20 — workspace scoping:
+ * The unique index is `(userId, action, key)`, NOT `(workspaceId, ...)`.
+ * This is safe because the 1-user → 1-workspace guarantee is structural
+ * (`register()` creates exactly one workspace per user, atomically, and the
+ * workspace migration is a per-user upsert). A key collision across
+ * workspaces is therefore impossible: only one workspace exists per user.
+ *
+ * IF the product ever allows 1 user → N workspaces, this schema MUST be
+ * evolved to scope the unique index by workspaceId BEFORE that ships — the
+ * current shape would silently dedupe across workspaces.
+ *
+ * TTL index auto-expires records after 24h (fresh UUID per submit; real
+ * retries happen within seconds/minutes; `releaseIdempotency` clears the
+ * record on failure — no queued-retry infrastructure exists).
+ *
+ * R15.3 §27 — the guarantee lives in MONGODB (unique index + TTL), not in
+ * any in-memory store: there is no process-local state. It survives backend
+ * restart and multiple backend instances by construction — the persisted
+ * record is what dedupes, regardless of which process claimed it.
  */
 const IdempotencySchema = new Schema(
   {
@@ -26,6 +44,8 @@ IdempotencySchema.index({ userId: 1, action: 1, key: 1 }, { unique: true });
 IdempotencySchema.index({ createdAt: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
 
 export type IdempotencyDocument = InferSchemaType<typeof IdempotencySchema>;
+
+export { IdempotencySchema };
 
 export const IdempotencyModel =
   mongoose.models.Idempotency || mongoose.model('Idempotency', IdempotencySchema);

@@ -502,8 +502,8 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         // Coherence cross-check BEFORE calling the use case: the chosen pairs
         // satisfy the FX quoting convention (rate = destination units per 1
         // source unit, account-style). Production no longer receives the rate
-        // (R15.1 Fase 4) — it derives effectiveExchangeRate = destMinor /
-        // srcMinor from the two real amounts.
+        // (R15.1 Fase 4) — it derives effectiveExchangeRate per R15.3 §11
+        // (sourceMajor / destinationMajor) from the two real amounts.
         expect(
           expectedFxDestinationMinor(fx.srcMinor, fx.rate, "USD", "COP"),
         ).toBe(fx.destMinor);
@@ -554,7 +554,12 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         const transferDoc = await TransferModel.findOne({ _id: transferIds[i] });
         expect(transferDoc!.sourceAmount).toBe(fx.srcMinor);
         expect(transferDoc!.destinationAmount).toBe(fx.destMinor);
-        expect(transferDoc!.effectiveExchangeRate).toBe(fx.destMinor / fx.srcMinor);
+        // R15.3 §11: rate = sourceMajor / destinationMajor — USD (exp 2) → COP
+        // (exp 0) here, i.e. (srcMinor / 100) / (destMinor / 1).
+        expect(transferDoc!.effectiveExchangeRate).toBe(
+          (fx.srcMinor / 10 ** exponentOf("USD")) /
+            (fx.destMinor / 10 ** exponentOf("COP")),
+        );
       }
 
       // Per-account ledger coherence in each currency's minors.
@@ -866,5 +871,61 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "creditGrantedWriteOff" }),
       ).toBe(0);
     }, 60_000);
+  });
+
+  describe("no-oversell invariant — stock + sale atómicos bajo concurrencia (R15.3 §24 Sale-a)", () => {
+    it("N=10 createSale paid-in-full sobre el MISMO ítem con stock 3 → exactamente 3 ganan; stock nunca negativo", async () => {
+      await CatalogItemModel.create({
+        _id: CAT_B,
+        workspaceId: WS,
+        name: "Pan",
+        unitPrice: 3000,
+        currency: "COP",
+        type: "product",
+        stock: 3,
+      });
+
+      const settled = await Promise.allSettled(
+        Array.from({ length: 10 }, () =>
+          createSale(
+            WS,
+            {
+              items: [{ itemId: CAT_B, quantity: 1, unitPrice: 3000 }],
+              accountId: ACCOUNT_ID,
+              date,
+              paymentMode: "paid-in-full",
+              currency: "COP",
+            },
+            new MongoSaleRepository(),
+            new MongoCatalogItemRepository(),
+            new MongoMovementRepository(),
+            objectIdGenerator,
+            new MongoClientRepository(),
+            new MongoCreditGrantedRepository(),
+            new MongoAccountRepository(),
+            new MongoUnitOfWork(),
+          ),
+        ),
+      );
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          // POS-3: el único aborto legal es stock insuficiente (ConflictError).
+          expect(s.reason).toBeInstanceOf(ConflictError);
+          expect(String(s.reason?.message ?? "")).toContain("Insufficient stock");
+          expect(String(s.reason?.message ?? "")).not.toContain("NoSuchTransaction");
+        }
+      }
+      const winners = settled.filter((s) => s.status === "fulfilled");
+      expect(winners).toHaveLength(3);
+
+      // Stock final == inicial − Σ quantities commiteadas; jamás negativo.
+      const item = await CatalogItemModel.findById(CAT_B);
+      expect(item!.stock).toBe(0);
+
+      // Cada venta commiteada == 1 sale doc + 1 movement salePayment.
+      expect(await SaleModel.countDocuments({ workspaceId: WS })).toBe(3);
+      expect(await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "salePayment" })).toBe(3);
+    }, 120_000);
   });
 });

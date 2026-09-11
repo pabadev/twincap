@@ -2,11 +2,16 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { ConflictError, DEBT_MODIFIED_MSG } from "../../core/domain/errors";
+import { createPayable } from "../../core/application/payables/create-payable";
+import { addAbono as addPayableAbono } from "../../core/application/payables/add-abono";
+import { editTotal } from "../../core/application/payables/edit-total";
+import { deleteAbono as deletePayableAbono } from "../../core/application/payables/delete-abono";
 import { createCreditReceived } from "../../core/application/credits-received/create-credit-received";
 import { addAbono as addAbonoReceived } from "../../core/application/credits-received/add-abono";
 import { createCreditGranted } from "../../core/application/credits-granted/create-credit-granted";
 import { addAbono as addAbonoGranted } from "../../core/application/credits-granted/add-abono";
 import { writeOffCreditGranted, WRITE_OFF_ALREADY_MSG, WRITE_OFF_PAID_MSG } from "../../core/application/credits-granted/write-off-credit-granted";
+import { MongoPayableRepository } from "../repositories/payable-repository";
 import { MongoCreditReceivedRepository } from "../repositories/credit-received-repository";
 import { MongoCreditGrantedRepository } from "../repositories/credit-granted-repository";
 import { MongoMovementRepository } from "../repositories/movement-repository";
@@ -14,6 +19,7 @@ import { MongoAccountRepository } from "../repositories/account-repository";
 import { objectIdGenerator } from "../config/id-generator";
 import { MongoUnitOfWork } from "./mongo-unit-of-work";
 import { AccountModel } from "../models/account";
+import { PayableModel } from "../models/payable";
 import { CreditReceivedModel } from "../models/credit-received";
 import { CreditGrantedModel } from "../models/credit-granted";
 import { MovementModel } from "../models/movement";
@@ -91,6 +97,7 @@ describe("R15 Fase 4 — optimistic concurrency (CAS via __v)", () => {
   }, 30_000);
 
   beforeEach(async () => {
+    await PayableModel.deleteMany({});
     await CreditReceivedModel.deleteMany({});
     await CreditGrantedModel.deleteMany({});
     await MovementModel.deleteMany({});
@@ -299,5 +306,193 @@ describe("R15 Fase 4 — optimistic concurrency (CAS via __v)", () => {
         expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(2); // principal + abono
       }
     }, 60_000);
+  });
+
+  describe("editTotal — CAS over concurrent payable writers (R15.3 §6)", () => {
+    const payableInput = {
+      counterparty: "Proveedor SA",
+      total: 1_000_000,
+      currency: "COP" as const,
+      accountId: ACCOUNT_ID,
+      date: new Date("2025-06-01"),
+      initialPayment: 100_000,
+    };
+
+    it("editTotal × addAbono — edición y abono serializan; invariantes financieras intactas", async () => {
+      const payable = await createPayable(
+        WS,
+        payableInput,
+        new MongoPayableRepository(),
+        new MongoMovementRepository(),
+        objectIdGenerator,
+        new MongoAccountRepository(),
+        new MongoUnitOfWork(),
+      );
+
+      const settled = await Promise.allSettled([
+        editTotal(
+          WS,
+          payable.id,
+          { total: 1_200_000, currency: "COP" },
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        ),
+        addPayableAbono(
+          WS,
+          payable.id,
+          abonoInput(200_000),
+          new MongoPayableRepository(),
+          new MongoMovementRepository(),
+          objectIdGenerator,
+          new MongoAccountRepository(),
+          new MongoUnitOfWork(),
+        ),
+      ]);
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          const msg = s.reason?.message ?? String(s.reason);
+          expect(msg).not.toContain("NoSuchTransaction");
+          expect(msg).not.toContain("TransientTransactionError");
+          // El único abort legítimo: CAS vencido (snapshot stale sin WriteConflict).
+          expect(s.reason).toBeInstanceOf(ConflictError);
+          expect(msg).toBe(DEBT_MODIFIED_MSG);
+        }
+      }
+      // Ambos escriben el MISMO doc payable → WriteConflict → retry con snapshot
+      // fresco → usualmente ambos commitean serializados; el assert robusto es
+      // winners ≥ 1 y coherencia por rama.
+      expect(settled.filter((s) => s.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+
+      const doc = await PayableModel.findById(payable.id);
+      const editWon = settled[0].status === "fulfilled";
+      const abonoWon = settled[1].status === "fulfilled";
+      expect(doc!.total).toBe(editWon ? 1_200_000 : 1_000_000);
+      expect(doc!.abonos).toHaveLength(abonoWon ? 1 : 0);
+      // PAY-R-4: pending nunca negativo en ningún interleaving.
+      const pending = doc!.total - 100_000 - (abonoWon ? 200_000 : 0);
+      expect(pending).toBeGreaterThanOrEqual(0);
+      // Un movement por abono vivo + initial payment; sin huérfanos.
+      expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(
+        1 + (abonoWon ? 1 : 0),
+      );
+    }, 120_000);
+
+    it("editTotal × editTotal — el total final es EXACTAMENTE uno de los propuestos; __v == edits commiteados", async () => {
+      const payable = await createPayable(
+        WS,
+        payableInput,
+        new MongoPayableRepository(),
+        new MongoMovementRepository(),
+        objectIdGenerator,
+        new MongoAccountRepository(),
+        new MongoUnitOfWork(),
+      );
+
+      const settled = await Promise.allSettled([
+        editTotal(
+          WS,
+          payable.id,
+          { total: 1_200_000, currency: "COP" },
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        ),
+        editTotal(
+          WS,
+          payable.id,
+          { total: 1_500_000, currency: "COP" },
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        ),
+      ]);
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          const msg = s.reason?.message ?? String(s.reason);
+          expect(msg).not.toContain("NoSuchTransaction");
+          expect(msg).not.toContain("TransientTransactionError");
+          expect(s.reason).toBeInstanceOf(ConflictError);
+          expect(msg).toBe(DEBT_MODIFIED_MSG);
+        }
+      }
+      const winners = settled.filter((s) => s.status === "fulfilled").length;
+      expect(winners).toBeGreaterThanOrEqual(1);
+
+      const doc = await PayableModel.findById(payable.id);
+      // Nunca un total híbrido o fantasma.
+      expect([1_200_000, 1_500_000]).toContain(doc!.total);
+      // Sin bump fantasma: `__v` == cantidad de edits que commiteó.
+      expect(doc!.__v).toBe(winners);
+      expect(doc!.total).toBeGreaterThanOrEqual(100_000);
+      expect(doc!.abonos).toHaveLength(0);
+      expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1); // solo initial payment
+    }, 120_000);
+
+    it("editTotal × deleteAbono — nunca pending negativo ni abono huérfano", async () => {
+      const payable = await createPayable(
+        WS,
+        payableInput,
+        new MongoPayableRepository(),
+        new MongoMovementRepository(),
+        objectIdGenerator,
+        new MongoAccountRepository(),
+        new MongoUnitOfWork(),
+      );
+      // Abono seed: lo busca el deleteAbono del race.
+      const withAbono = await addPayableAbono(
+        WS,
+        payable.id,
+        abonoInput(100_000),
+        new MongoPayableRepository(),
+        new MongoMovementRepository(),
+        objectIdGenerator,
+        new MongoAccountRepository(),
+        new MongoUnitOfWork(),
+      );
+      const seedAbonoId = withAbono.abonos[withAbono.abonos.length - 1].id;
+
+      // Total 900_000: con el abono seed vivo, paidSoFar = 200_000 < 900_000 OK;
+      // deleteAbono lo deja en 100_000 — ambas ramas válidas.
+      const settled = await Promise.allSettled([
+        editTotal(
+          WS,
+          payable.id,
+          { total: 900_000, currency: "COP" },
+          new MongoPayableRepository(),
+          new MongoUnitOfWork(),
+        ),
+        deletePayableAbono(
+          WS,
+          payable.id,
+          seedAbonoId,
+          new MongoPayableRepository(),
+          new MongoMovementRepository(),
+          new MongoUnitOfWork(),
+        ),
+      ]);
+
+      for (const s of settled) {
+        if (s.status === "rejected") {
+          const msg = s.reason?.message ?? String(s.reason);
+          expect(msg).not.toContain("NoSuchTransaction");
+          expect(msg).not.toContain("TransientTransactionError");
+          expect(s.reason).toBeInstanceOf(ConflictError);
+          expect(msg).toBe(DEBT_MODIFIED_MSG);
+        }
+      }
+      expect(settled.filter((s) => s.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+
+      const doc = await PayableModel.findById(payable.id);
+      const editWon = settled[0].status === "fulfilled";
+      const delWon = settled[1].status === "fulfilled";
+      expect(doc!.total).toBe(editWon ? 900_000 : 1_000_000);
+      expect(doc!.abonos).toHaveLength(delWon ? 0 : 1);
+      const pending = doc!.total - 100_000 - (delWon ? 0 : 100_000);
+      expect(pending).toBeGreaterThanOrEqual(0);
+      // initial payment + abono vivo (si quedó) — sin movimientos fantasma.
+      expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(
+        1 + (delWon ? 0 : 1),
+      );
+    }, 120_000);
   });
 });

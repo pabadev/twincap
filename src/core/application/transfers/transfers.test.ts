@@ -8,7 +8,7 @@ import { CreditReceived } from '../../domain/credit-received';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError } from '../../domain/errors';
+import { NotFoundError, ValidationError, ConflictError, DEBT_MODIFIED_MSG } from '../../domain/errors';
 import type { TransferRepository, MovementRepository, AccountRepository, CreditReceivedRepository, CreditGrantedRepository, SaleRepository, PayableRepository } from '../../domain/repositories';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { Currency } from '../../domain/currency';
@@ -104,6 +104,7 @@ function fakeMovementRepo(
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -231,8 +232,7 @@ beforeEach(() => {
 /**
  * R15.2: seeds the source-account balance through findByAccountIdForBalance
  * movements. Manual (unlinked) movements are always live, so the derived
- * balance is exactly the seeded amount (replaces the removed aggregateBalance;
- * the lite read returns the same shape — manual movements are unlinked).
+ * balance is exactly the seeded amount (the lite read returns the same shape — manual movements are unlinked).
  */
 function seedSourceBalance(amount: number) {
   return {
@@ -366,8 +366,7 @@ describe('createTransfer', () => {
     const accountRepo = fakeAccountRepo([makeAccount('acc-src'), makeAccount('acc-dst')]);
     const ids = fakeIdGen();
 
-    // 150000 works ONLY if the dead parents counted (old aggregateBalance:
-    // 270000 available). The warning proves the orphans were excluded.
+    // 150000 works ONLY if orphan parents were included; the warning proves they were excluded.
     const res = await createTransfer(
       'user-1',
       {
@@ -531,7 +530,7 @@ describe('createTransfer', () => {
         destinationAccountId: 'acc-dst',
         sourceAmount: 100000,
         sourceCurrency: 'COP',
-        destinationAmount: 30,
+        destinationAmount: 2500,
         destinationCurrency: 'USD',
         date: new Date('2025-06-01'),
       },
@@ -549,17 +548,18 @@ describe('createTransfer', () => {
 
     expect(transfer.sourceAmount.amount).toBe(100000);
     expect(transfer.sourceAmount.currency).toBe('COP');
-    expect(transfer.destinationAmount.amount).toBe(30);
+    expect(transfer.destinationAmount.amount).toBe(2500);
     expect(transfer.destinationAmount.currency).toBe('USD');
-    // R15.1 Fase 4: rate == destinationAmount / sourceAmount, never input.
-    expect(transfer.effectiveExchangeRate).toBe(30 / 100000);
+    // R15.3 §11: rate == sourceMajor / destinationMajor — 100000 COP / 25.00
+    // USD = (100000/1)/(2500/100) = 4000 COP/USD. Never input.
+    expect(transfer.effectiveExchangeRate).toBe(4000);
 
     const expense = movementRepo.created[0];
     expect(expense.amount.currency).toBe('COP');
 
     const income = movementRepo.created[1];
     expect(income.amount.currency).toBe('USD');
-    expect(income.amount.amount).toBe(30);
+    expect(income.amount.amount).toBe(2500);
   });
 
   it('throws ValidationError when source = destination (TRA-1)', async () => {
@@ -853,6 +853,9 @@ describe('updateTransfer', () => {
     expect(updated.warning).toBeNull();
     expect(transferRepo.updated).toHaveLength(1);
     expect(movementRepo.updated).toHaveLength(2);
+    // R15.3 §5: edit balance-affecting → bump del source account como ÚLTIMO
+    // write (serializa contra createTransfer/edit concurrentes del mismo origen).
+    expect(accountRepo.bumpVersion).toHaveBeenCalledWith('user-1', 'acc-src', 0, expect.anything());
   });
 
   it('returns a structured warning (nothing written) when a balance-affecting edit projects a negative balance (R15.2 D1)', async () => {
@@ -962,6 +965,8 @@ describe('updateTransfer', () => {
     expect(result.transfer!.note).toBe('renamed only');
     expect(movementRepo.findByAccountIdForBalance).not.toHaveBeenCalled();
     expect(transferRepo.updated).toHaveLength(1);
+    // R15.3 §5: un edit note-only NO toca el saldo → sin bump.
+    expect(accountRepo.bumpVersion).not.toHaveBeenCalled();
   });
 
   it('rejects a cross-currency edit that omits destinationAmount (rate is derived from both amounts)', async () => {
@@ -1022,6 +1027,77 @@ describe('updateTransfer', () => {
       updateTransfer('user-1', 'tr-1', {}, transferRepo, movementRepo, accountRepo, fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
     ).rejects.toThrow(NotFoundError);
     expect(transferRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('passes the transfer version as the CAS expected version (R15.3 §5)', async () => {
+    const existing = makeTransfer({ version: 3 }); // snapshot con versión 3
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const movementRepo = fakeMovementRepo({
+      ...seedSourceBalance(100000),
+      findById: vi.fn().mockImplementation(async (_userId: string, id: string) => {
+        if (id === 'mov-exp') return makeMovement({ id: 'mov-exp', type: 'expense' });
+        if (id === 'mov-inc') return makeMovement({ id: 'mov-inc', accountId: 'acc-dst', type: 'income' });
+        return null;
+      }),
+    });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+
+    const result = await updateTransfer(
+      'user-1',
+      'tr-1',
+      { sourceAmount: 75000, destinationAmount: 75000 },
+      transferRepo,
+      movementRepo,
+      accountRepo,
+      fakeCreditReceivedRepo(),
+      fakeCreditGrantedRepo(),
+      fakeSaleRepo(),
+      fakePayableRepo(),
+      fakeUow(),
+    );
+
+    expect(result.transfer!.sourceAmount.amount).toBe(75000);
+    // El write del transfer lleva la versión leída como expectedVersion → un
+    // edit concurrente que commiteó antes hace fallar el CAS del repo.
+    expect(transferRepo.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      3,
+    );
+  });
+
+  it('propagates ConflictError(DEBT_MODIFIED_MSG) when the write hits a stale version', async () => {
+    const existing = makeTransfer({ version: 0 });
+    const transferRepo = fakeTransferRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+      update: vi.fn().mockRejectedValue(new ConflictError(DEBT_MODIFIED_MSG)),
+    });
+    const movementRepo = fakeMovementRepo({ ...seedSourceBalance(100000) });
+    const accountRepo = fakeAccountRepo([
+      makeAccount('acc-src'),
+      makeAccount('acc-dst'),
+    ]);
+
+    await expect(
+      updateTransfer(
+        'user-1',
+        'tr-1',
+        { sourceAmount: 75000, destinationAmount: 75000 },
+        transferRepo,
+        movementRepo,
+        accountRepo,
+        fakeCreditReceivedRepo(),
+        fakeCreditGrantedRepo(),
+        fakeSaleRepo(),
+        fakePayableRepo(),
+        fakeUow(),
+      ),
+    ).rejects.toThrow(DEBT_MODIFIED_MSG);
   });
 });
 

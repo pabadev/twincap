@@ -88,8 +88,7 @@ export default async function DashboardPage() {
   const liveBalanceMovements = filterMovementsWithLiveParents(balanceMovements, liveParents);
   const serializedCategories = categories.map((c) => c.toJSON());
 
-  // R7-A: derive each account's balance from the LIVE (parent-filtered)
-  // movements instead of aggregateBalance.
+  // R7-A: derive each account's balance from the LIVE (parent-filtered) movements.
   const balanceByAccount = accountBalancesFromMovements(accounts, liveBalanceMovements);
 
   const accountBalances = accounts.map((account) => ({

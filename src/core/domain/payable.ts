@@ -1,5 +1,5 @@
 import { ValidationError } from "./errors";
-import { Money } from "./money";
+import { Money, assertSafeMinorUnits } from "./money";
 
 /** Embedded abono for payables (payments toward a purchase on credit). */
 export interface PayableAbono {
@@ -59,7 +59,12 @@ export class Payable {
   /** Derived pending = total − initialPayment − Σ abonos (PAY-R-2). Never stored. */
   get pending(): number {
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    return this.total.amount - this.initialPayment - abonoSum;
+    assertSafeMinorUnits(abonoSum, "Payable abonos sum");
+    // R15.3 §18: the intermediate subtraction must stay a safe integer before
+    // any consumer (overpayment guards, UI) uses it.
+    const pending = this.total.amount - this.initialPayment - abonoSum;
+    assertSafeMinorUnits(pending, "Payable pending");
+    return pending;
   }
 
   get abonos(): ReadonlyArray<PayableAbono> {
@@ -104,6 +109,9 @@ export class Payable {
       }
       abonoSum += a.amount.amount;
     }
+    // R15.3 §18: the accumulated abono sum must stay a safe integer before it
+    // is compared against the total.
+    assertSafeMinorUnits(abonoSum, "Payable constructor abonos sum");
     // PAY-R-2: overpayment rejected (initial payment + abonos <= total)
     if (input.initialPayment + abonoSum > input.total.amount) {
       throw new ValidationError("Payable payments exceed total (overpayment rejected)");

@@ -117,7 +117,7 @@ function makeMovement(type: 'expense' | 'income'): Movement {
 /**
  * Source-account balance seed for createTransferAction: an unlinked (manual)
  * movement is always considered live, so the derived balance is exactly the
- * seeded amount (replaces the removed aggregateBalance mock).
+ * seeded amount (the lite read returns the same shape — manual movements are unlinked).
  */
 function seededBalanceMovement(amount: number) {
   return [
@@ -177,6 +177,9 @@ describe('updateTransferAction', () => {
         }
         return null;
       }),
+      // R15.3 §5: balance-affecting edits bump the source account version as
+      // the last write — the mocked flow must accept it.
+      bumpVersion: vi.fn().mockResolvedValue(true),
     }));
     // R15.2 D1: live-parent resolution never reaches these in the mocked flow
     // (the seeded movements are unlinked), but the action instantiates them.
@@ -290,8 +293,7 @@ describe('createTransferAction (analytics emission)', () => {
     MongoMovementRepository.mockImplementation(() => ({
       create: vi.fn().mockResolvedValue(undefined),
       // R15.2: source balance derived from movements via the lite read
-      // findByAccountIdForBalance (aggregateBalance removed). Unlinked seed
-      // movement → always live.
+      // findByAccountIdForBalance. Unlinked seed movement → always live.
       findByAccountIdForBalance: vi.fn().mockResolvedValue(
         seededBalanceMovement(200000),
       ),

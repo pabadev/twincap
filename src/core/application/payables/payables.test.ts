@@ -11,7 +11,7 @@ import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
 import type { Currency } from '../../domain/currency';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
+import { NotFoundError, ConflictError, ValidationError, DEBT_MODIFIED_MSG } from '../../domain/errors';
 import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { IdGenerator, UnitOfWork } from '../ports';
@@ -129,6 +129,7 @@ function fakeMovementRepo(
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -727,6 +728,41 @@ describe('editAbono', () => {
     expect(result.pending).toBe(50000);
   });
 
+  it('R15.3 §16 — editing an abono never changes its account (amount/date only)', async () => {
+    const payable = makePayable({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-2', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({
+      id: 'mov-1',
+      accountId: 'acc-2',
+      amount: new Money(25000, 'COP'),
+    });
+
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+
+    const result = await editAbono(
+      'user-1',
+      'pay-1',
+      'ab-1',
+      { amount: 40000 },
+      payableRepo,
+      movementRepo,
+      fakeUow(),
+    );
+
+    // The embedded abono keeps the accountId fixed at addAbono time and the
+    // linked movement follows the SAME account — the edit contract is
+    // amount/date only (§16).
+    expect(result.abonos[0].accountId).toBe('acc-2');
+    expect(result.abonos[0].amount.amount).toBe(40000);
+    expect(movementRepo.updated[0].accountId).toBe('acc-2');
+  });
+
   it('skips movement update when abono has no movementId', async () => {
     const payable = makePayable({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1' },
@@ -968,7 +1004,7 @@ describe('editTotal', () => {
       { id: 'ab-1', amount: new Money(30000, 'COP'), date: new Date(), accountId: 'acc-1' },
     ]);
     const payableRepo = fakePayableRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+      findById: vi.fn().mockResolvedValue(payable),
     });
     const movementRepo = fakeMovementRepo();
 
@@ -977,6 +1013,7 @@ describe('editTotal', () => {
       'pay-1',
       { total: 120000, currency: 'COP' },
       payableRepo,
+      fakeUow(),
     );
 
     expect(result.total.amount).toBe(120000);
@@ -991,7 +1028,7 @@ describe('editTotal', () => {
       { id: 'ab-1', amount: new Money(60000, 'COP'), date: new Date(), accountId: 'acc-1' },
     ]);
     const payableRepo = fakePayableRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+      findById: vi.fn().mockResolvedValue(payable),
     });
 
     const result = await editTotal(
@@ -999,6 +1036,7 @@ describe('editTotal', () => {
       'pay-1',
       { total: 100000, currency: 'COP' },
       payableRepo,
+      fakeUow(),
     );
 
     expect(result.pending).toBe(0);
@@ -1009,36 +1047,69 @@ describe('editTotal', () => {
       { id: 'ab-1', amount: new Money(40000, 'COP'), date: new Date(), accountId: 'acc-1' },
     ]);
     const payableRepo = fakePayableRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+      findById: vi.fn().mockResolvedValue(payable),
     });
 
     // paid = 70000; 60000 < paid
     await expect(
-      editTotal('user-1', 'pay-1', { total: 60000, currency: 'COP' }, payableRepo),
+      editTotal('user-1', 'pay-1', { total: 60000, currency: 'COP' }, payableRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
     expect(payableRepo.update).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundError when payable does not exist', async () => {
     const payableRepo = fakePayableRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue(null),
     });
 
     await expect(
-      editTotal('user-1', 'missing', { total: 200000, currency: 'COP' }, payableRepo),
+      editTotal('user-1', 'missing', { total: 200000, currency: 'COP' }, payableRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
   it('throws ValidationError when changing the total currency (ACC-1)', async () => {
     const payable = makePayable();
     const payableRepo = fakePayableRepo({
-      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+      findById: vi.fn().mockResolvedValue(payable),
     });
 
     await expect(
-      editTotal('user-1', 'pay-1', { total: 200000, currency: 'USD' }, payableRepo),
+      editTotal('user-1', 'pay-1', { total: 200000, currency: 'USD' }, payableRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(payableRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('passes the payable version as the CAS expected version (R15.3 §6)', async () => {
+    const payable = makePayable({ version: 3 });
+    const payableRepo = fakePayableRepo({
+      findById: vi.fn().mockResolvedValue(payable),
+    });
+
+    await editTotal(
+      'user-1',
+      'pay-1',
+      { total: 120000, currency: 'COP' },
+      payableRepo,
+      fakeUow(),
+    );
+
+    expect(payableRepo.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      3,
+    );
+  });
+
+  it('propagates ConflictError when the write hits a stale version (concurrent edit winner)', async () => {
+    const payable = makePayable();
+    const payableRepo = fakePayableRepo({
+      findById: vi.fn().mockResolvedValue(payable),
+      update: vi.fn().mockRejectedValue(new ConflictError(DEBT_MODIFIED_MSG)),
+    });
+
+    await expect(
+      editTotal('user-1', 'pay-1', { total: 120000, currency: 'COP' }, payableRepo, fakeUow()),
+    ).rejects.toThrow(DEBT_MODIFIED_MSG);
   });
 });
 

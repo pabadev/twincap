@@ -1,15 +1,26 @@
 import { describe, expect, it, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import {
+import type { ErrorReporter, ErrorEventInput } from '../../core/application/ports';
+import type { AlertDispatcher } from './error-alerter';
+
+// Set env BEFORE any module import that triggers parseEnv — same pattern as
+// session.test.ts / getCurrentUser.test.ts. The error-monitor module graph
+// pulls db/connection.ts, which reads env at import time. With
+// fileParallelism:false the worker's process.env may or may not carry these
+// vars by the time this file runs (order-dependent flakiness), so set them
+// explicitly here and only then import the modules.
+process.env.MONGODB_URI = 'mongodb://localhost:27017/test';
+process.env.AUTH_SECRET = 'BOSQ3eUPIOigpsbEksIBEyDceVCvMHMXtBqSwWbA6l8';
+
+// Dynamic import after env is set
+const {
   computeFingerprint,
   normalizeStack,
   reportError,
   withAlertCooldownTimeout,
-} from './error-monitor';
-import type { ErrorReporter, ErrorEventInput } from '../../core/application/ports';
-import type { AlertDispatcher } from './error-alerter';
-import { RateLimitModel } from '../models/rate-limit';
+} = await import('./error-monitor');
+const { RateLimitModel } = await import('../models/rate-limit');
 
 /**
  * Fake alert-cooldown gate injected into tests that exercise the alert path:

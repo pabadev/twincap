@@ -22,8 +22,10 @@ export interface TransferInput {
   sourceCurrency: Currency;
   destinationCurrency: Currency;
   /**
-   * Derived from sourceAmount / destinationAmount. Never user-input.
-   * Only meaningful for cross-currency transfers (TRA-3).
+   * Derived from both real amounts via R15.3 §11 — how many MAJOR source
+   * units one MAJOR destination unit costs (sourceMajor / destinationMajor).
+   * Never user-input. Only meaningful for cross-currency transfers (TRA-3);
+   * display/derived-queries only, never a calculation source of truth.
    */
   effectiveExchangeRate?: number;
   date: Date;
@@ -31,6 +33,13 @@ export interface TransferInput {
   /** Linked movement IDs — populated after transfer completion (design §5). */
   movementIds?: TransferMovementIds;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (R15.3 §5). Mirrors the persisted `__v` so
+   * the application layer can CAS-update the transfer inside a transaction
+   * (concurrent-edit protection). Defaults to 0 for hand-built transfers in
+   * tests.
+   */
+  version?: number;
 }
 
 export class Transfer {
@@ -47,6 +56,8 @@ export class Transfer {
   readonly note?: string;
   readonly movementIds?: TransferMovementIds;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version; mirrors the persisted `__v` (R15.3 §5). */
+  readonly version: number;
 
   constructor(input: TransferInput) {
     if (input.id.length === 0) {
@@ -109,6 +120,7 @@ export class Transfer {
     this.note = input.note;
     this.movementIds = input.movementIds;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
   }
 
   /** Serializable snapshot for Next.js server→client boundary. */
@@ -127,6 +139,7 @@ export class Transfer {
       note: this.note,
       movementIds: this.movementIds,
       createdAt: this.createdAt,
+      version: this.version,
     };
   }
 }

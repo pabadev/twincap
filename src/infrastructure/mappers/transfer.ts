@@ -30,6 +30,8 @@ export function toTransferEntity(doc: TransferDocument): Transfer {
         }
       : undefined,
     createdAt: doc.createdAt,
+    // R15.3 §5: CAS needs the persisted version (`__v` exists from creation).
+    version: doc.__v ?? 0,
   });
 }
 

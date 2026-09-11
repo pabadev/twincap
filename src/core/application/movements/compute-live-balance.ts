@@ -10,6 +10,7 @@ import type { BalanceMovement } from '../../domain/movement';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { LiveParentIds } from './filter-live-linked-movements';
 import { filterMovementsWithLiveParents } from './filter-live-linked-movements';
+import { assertSafeMinorUnits } from '../../domain/money';
 
 /** Parent repositories needed to resolve a movement's link.refId to a live
  *  parent. `Pick` keeps the contract minimal — callers pass whatever they have
@@ -82,7 +83,7 @@ export async function resolveLiveParentsForMovements(
   // ClientSession (MongoServerError 251 → infinite retry loop). The per-kind
   // parent lookups run in sequence, never `Promise.all`.
   for (const id of refIds.transfers) {
-    const transfer = await deps.transferRepo.findById(workspaceId, id);
+    const transfer = await deps.transferRepo.findById(workspaceId, id, tx);
     if (transfer) live.transfers.add(id);
   }
   for (const id of refIds.creditsReceived) {
@@ -128,8 +129,7 @@ export async function resolveLiveParentsForMovements(
 }
 
 /**
- * R15.2 — derived account balance with canonical live-parent semantics,
- * replacing `MovementRepository.aggregateBalance` (removed).
+ * R15.2 — derived account balance with canonical live-parent semantics.
  *
  * Reads the account's movements via the LITE read
  * (`findByAccountIdForBalance`): same session-aware filter + sort, but no
@@ -151,8 +151,10 @@ export async function resolveLiveParentsForMovements(
  * itself is the only pre-seeded live parent, so opening movements (whose
  * `refId` IS the account id) survive the filter.
  *
- * Note: `TransferRepository.findById` has no transaction handle, so transfer
- * parents resolve OUTSIDE the tx snapshot; all other parents join it.
+ * Note (R15.3 §12): `TransferRepository.findById` now accepts the tx handle,
+ * so transfer parents join the same snapshot as every other parent lookup —
+ * a concurrent transfer delete can no longer flip a balance between the
+ * parent read and the signedAmount sum (visible-at-commit consistency).
  */
 export async function computeAccountLiveBalance(
   workspaceId: string,
@@ -170,5 +172,14 @@ export async function computeAccountLiveBalance(
     tx,
   );
   const liveMovements = filterMovementsWithLiveParents(movements, live);
-  return liveMovements.reduce((sum, m) => sum + m.signedAmount, 0);
+  // R15.3 §18: the aggregated balance (Σ signedAmount) must stay a safe
+  // integer — it feeds transfer fund checks inside transactions and derived
+  // queries, so an overflow here would corrupt the financial result. Fail
+  // fast per accumulation step.
+  let balance = 0;
+  for (const m of liveMovements) {
+    balance += m.signedAmount;
+    assertSafeMinorUnits(balance, `Account live balance (${accountId})`);
+  }
+  return balance;
 }

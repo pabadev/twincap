@@ -139,6 +139,7 @@ function fakeMovementRepo(
       return deletedByRefId.length;
     }),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -178,6 +179,7 @@ function fakeClientRepo(
     create: vi.fn().mockImplementation(async (c: Client) => c),
     update: vi.fn().mockImplementation(async (c: Client) => c),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }

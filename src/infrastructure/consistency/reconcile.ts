@@ -1,8 +1,12 @@
 /**
- * Consistency sweep + repair utility (design §5).
+ * Consistency sweep — DIAGNOSIS ONLY (design §5, R15.3 §21).
  *
- * Each detection function accepts repository interfaces (testable with fakes).
- * executeReconcile applies or dry-runs the detected actions.
+ * Every detection function accepts repository interfaces (testable with
+ * fakes). The sweep DETECTES anomalies (orphan/ambiguous/unknown movements,
+ * incomplete links, pending stock restores) and reports them as actions; it
+ * NEVER mutates data. There is no "apply" path: repairing financial data
+ * requires transactional guarantees that are out of scope, so the contract
+ * is honest — diagnostics, not repairs.
  */
 
 import type {
@@ -14,10 +18,9 @@ import type {
   AccountRepository,
   PayableRepository,
 } from "../../core/domain/repositories";
-import { isMovementLinkKind } from "../../core/domain/movement";
 import {
   collectLiveParentIds,
-  filterMovementsWithLiveParents,
+  classifyLegacyMovement,
 } from "../../core/application/movements";
 
 export interface ReconcileAction {
@@ -28,10 +31,14 @@ export interface ReconcileAction {
   details?: Record<string, unknown>;
 }
 
-export interface ReconcileResult {
-  dryRun: boolean;
+/**
+ * Result of a diagnosis run. `mode` is always 'diagnose': the sweep reports
+ * anomalies, it does not apply fixes (R15.3 §21 — no fake repair contract).
+ */
+export interface ReconcileDiagnosis {
+  mode: "diagnose";
   actions: ReconcileAction[];
-  applied: number;
+  applied: 0;
 }
 
 /**
@@ -68,14 +75,21 @@ export async function findIncompleteTransfers(
 }
 
 /**
- * Find movements whose link.refId points to a deleted parent.
- * Action: delete_orphan.
+ * Find movements whose link does not resolve to a live parent, were created
+ * with a link kind outside the registry, or are ambiguous legacy movements.
  *
  * R15.2: the sweep reuses the canonical live-parent machinery
- * (`collectLiveParentIds` + `filterMovementsWithLiveParents`, the same
+ * (`collectLiveParentIds` + {@link classifyLegacyMovement}, the same
  * R6-P1/R7-A orphan semantics every read uses). Legacy movements whose UUID
  * refId fails the id lookup are value-reconciled exactly like in reads, so
  * the sweep never flags what the app still considers live.
+ *
+ * R15.3 §13/§15 — the sweep reports the three diagnostic classes:
+ *   - orphan       → delete_orphan   (parent provably deleted, cascade failed)
+ *   - ambiguous    → flag            (>1 legacy candidates — NEVER deleted,
+ *                                     only excluded + surfaced for review)
+ *   - unknown kind → flag            (kind outside the registry — never
+ *                                     treated as valid, never silently hidden)
  */
 export async function findOrphanMovements(
   movementRepo: MovementRepository,
@@ -101,18 +115,50 @@ export async function findOrphanMovements(
     payables: await payableRepo.findByWorkspaceId(workspaceId),
   });
 
-  const liveMovementIds = new Set(
-    filterMovementsWithLiveParents(movements, live).map((m) => m.id),
-  );
-
   for (const movement of movements) {
-    if (!movement.link) continue;
-    // Unknown kinds are skipped (fail-open for detection): only the kinds the
-    // domain knows how to resolve participate in the sweep.
-    if (!isMovementLinkKind(movement.link.kind)) continue;
+    if (!movement.link) continue; // manual movements are always live
 
-    if (liveMovementIds.has(movement.id)) continue;
+    const result = classifyLegacyMovement(movement, live);
 
+    if (result.classification === "reconciled") continue;
+
+    if (result.classification === "unknown-kind") {
+      // Fail-closed: an unknown kind is never a valid movement (it cannot be
+      // resolved to any parent) and never silently hidden — it is surfaced
+      // with a flag, NOT a delete (we know nothing about its parent).
+      actions.push({
+        type: "flag",
+        description:
+          `Movement ${movement.id} has UNKNOWN link kind "${String(movement.link.kind)}" — ` +
+          "excluded from financial calculations, inspect manually (R15.3 §15)",
+        entity: "Movement",
+        entityId: movement.id,
+        details: { link: movement.link },
+      });
+      continue;
+    }
+
+    if (result.classification === "ambiguous") {
+      // >1 legacy candidates: the real parent cannot be known. The movement
+      // is excluded from every financial calculation but its data is intact —
+      // flagging (not deleting) keeps the anomaly visible for review (§13).
+      actions.push({
+        type: "flag",
+        description:
+          `Movement ${movement.id} is AMBIGUOUS (${result.candidatesCount} legacy ` +
+          `candidates for ${movement.link.kind}) — excluded from financial ` +
+          "calculations, inspect manually (R15.3 §13)",
+        entity: "Movement",
+        entityId: movement.id,
+        details: {
+          link: movement.link,
+          candidatesCount: result.candidatesCount,
+        },
+      });
+      continue;
+    }
+
+    // orphan — a linked movement whose parent is provably gone.
     actions.push({
       type: "delete_orphan",
       description: `Movement ${movement.id} links to deleted ${movement.link.kind} parent ${movement.link.refId}`,
@@ -153,21 +199,15 @@ export async function findPendingStockRestores(
 }
 
 /**
- * Execute reconcile actions.
- * If dryRun: return actions without applying.
- * If not dryRun: apply each action and return result.
+ * Run a diagnosis over the detected actions.
+ *
+ * R15.3 §21 — honest contract: this NEVER applies repairs. The reconcile
+ * utility is a diagnostic/detection tool; repairing financial data requires
+ * transactional guarantees that are not implemented, so no path pretends
+ * otherwise. `applied` is always 0 by construction.
  */
-export async function executeReconcile(
+export async function runReconcileDiagnosis(
   actions: ReconcileAction[],
-  dryRun: boolean,
-): Promise<ReconcileResult> {
-  if (dryRun) {
-    return { dryRun: true, actions, applied: 0 };
-  }
-
-  // In production, each action type would dispatch to the appropriate repo
-  // method (e.g., deleteOrphanMovements, restoreStock, etc.).
-  // For now, the apply phase is a no-op placeholder — the reconcile utility
-  // provides detection; application is wired by the application layer.
-  return { dryRun: false, actions, applied: 0 };
+): Promise<ReconcileDiagnosis> {
+  return { mode: "diagnose", actions, applied: 0 };
 }

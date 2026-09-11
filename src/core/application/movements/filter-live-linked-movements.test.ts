@@ -1,9 +1,19 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { filterMovementsWithLiveParents, type LiveParentIds, type LinkableParent } from './filter-live-linked-movements';
+import {
+  filterMovementsWithLiveParents,
+  classifyLegacyMovement,
+  type LiveParentIds,
+  type LinkableParent,
+} from './filter-live-linked-movements';
 import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Money } from '../../domain/money';
-import type { MovementLinkKind } from '../../domain/movement';
+import {
+  MOVEMENT_LINK_KINDS,
+  MOVEMENT_LINK_KIND_REGISTRY,
+  type MovementLinkKind,
+  type MovementLinkKindMeta,
+} from '../../domain/movement';
 
 const CAT = new Category({ id: 'cat-1', workspaceId: 'user-1', name: 'Sale', type: 'income', createdAt: new Date() });
 
@@ -227,7 +237,7 @@ describe('filterMovementsWithLiveParents', () => {
       expect(result).toHaveLength(1);
     });
 
-    it('keeps a legacy movement with multiple value candidates but logs an ambiguity warning', () => {
+    it('EXCLUDES a legacy movement with multiple value candidates (§13 ambiguous) while logging the ambiguity', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const live = allLive();
       live.creditsReceived = [
@@ -243,12 +253,33 @@ describe('filterMovementsWithLiveParents', () => {
 
       const result = filterMovementsWithLiveParents([m], live);
 
-      expect(result).toHaveLength(1);
+      // §13: >1 candidates → ambiguous → excluded from the balance (never
+      // picked arbitrarily, never considered live).
+      expect(result).toHaveLength(0);
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(warnSpy).toHaveBeenCalledWith(
         '[reconcile] Ambiguous legacy reconciliation',
         expect.objectContaining({ kind: 'creditReceivedPrincipal', candidatesCount: 2 }),
       );
+    });
+
+    it('classifies an ambiguous legacy movement as ambiguous with its candidate count', () => {
+      const live = allLive();
+      live.creditsReceived = [
+        ...live.creditsReceived,
+        makeLinkable('cr-live-2', 'acc-1', 30000, new Date('2026-07-01T23:00:00Z')),
+      ];
+      const m = makeMovement('creditReceivedPrincipal', 'unresolved-uuid', {
+        accountId: 'acc-1',
+        amount: 30000,
+        date: new Date('2026-07-01T08:00:00Z'),
+        createdAt: LEGACY_CREATED_AT,
+      });
+
+      expect(classifyLegacyMovement(m, live)).toEqual({
+        classification: 'ambiguous',
+        candidatesCount: 2,
+      });
     });
 
     it('drops a MODERN movement whose parent cannot be resolved by id even when value candidates exist (strict)', () => {
@@ -289,5 +320,70 @@ describe('filterMovementsWithLiveParents', () => {
       const result = filterMovementsWithLiveParents([m], allLive());
       expect(result).toHaveLength(0);
     });
+  });
+
+  describe('R15.3 §15 — unknown link kind', () => {
+    // The Movement constructor rejects unknown kinds, so a corrupt document
+    // only ever surfaces through the lite balance read (BalanceMovement) —
+    // the filter must fail closed there too.
+    const UNKNOWN_KIND = 'futureKind' as MovementLinkKind;
+
+    function rawBalanceMovement(kind: MovementLinkKind) {
+      return {
+        id: `mov-${kind}`,
+        accountId: 'acc-1',
+        type: 'income',
+        amount: { amount: 50000 },
+        signedAmount: 50000,
+        date: new Date('2026-08-28T12:00:00Z'),
+        createdAt: new Date(),
+        link: { kind, refId: 'any-ref', opId: 'op-1' },
+      };
+    }
+
+    it('excludes an unknown kind from the live filter (fail-closed)', () => {
+      const result = filterMovementsWithLiveParents([rawBalanceMovement(UNKNOWN_KIND)], allLive());
+      expect(result).toHaveLength(0);
+    });
+
+    it('classifies an unknown kind as unknown-kind (never as valid, never as orphan)', () => {
+      const m = rawBalanceMovement(UNKNOWN_KIND);
+      expect(classifyLegacyMovement(m, allLive())).toEqual({ classification: 'unknown-kind' });
+    });
+  });
+
+  describe('R15.3 §14 — structural coverage: every registry kind has full support', () => {
+    // Live refId per parentCollection — derived FROM the registry, so adding
+    // a kind never needs this list to be updated by hand.
+    const LIVE_REF_BY_COLLECTION: Record<MovementLinkKindMeta['parentCollection'], string> = {
+      accounts: 'acc-live',
+      transfers: 'tr-live',
+      'credits-received': 'cr-live',
+      'credits-granted': 'cg-live',
+      sales: 'sale-live',
+      payables: 'pay-live',
+    };
+
+    it.each(MOVEMENT_LINK_KINDS)(
+      '%s resolves a live parent through filter + classifier (registry-driven)',
+      (kind) => {
+        const refId = LIVE_REF_BY_COLLECTION[MOVEMENT_LINK_KIND_REGISTRY[kind].parentCollection];
+        const m = makeMovement(kind, refId, { createdAt: new Date() });
+
+        const filtered = filterMovementsWithLiveParents([m], allLive());
+        expect(filtered).toHaveLength(1);
+        expect(classifyLegacyMovement(m, allLive()).classification).toBe('reconciled');
+      },
+    );
+
+    it.each(MOVEMENT_LINK_KINDS)(
+      '%s with a missing parent is excluded and not reconciled',
+      (kind) => {
+        const m = makeMovement(kind, `dead-${kind}`, { createdAt: new Date() });
+
+        expect(filterMovementsWithLiveParents([m], allLive())).toHaveLength(0);
+        expect(classifyLegacyMovement(m, allLive()).classification).toBe('orphan');
+      },
+    );
   });
 });

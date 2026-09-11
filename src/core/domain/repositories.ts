@@ -103,7 +103,10 @@ export interface AccountRepository {
 // ─── Category ────────────────────────────────────────────────────────
 
 export interface CategoryRepository {
-  findById(workspaceId: string, id: string): Promise<Category | null>;
+  /** @param tx optional transaction handle (R15.3 §8/§9): the read joins the
+   *   caller's transaction session (snapshot-consistent category validation
+   *   in updateMovement/createMovement). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Category | null>;
   findByWorkspaceId(workspaceId: string): Promise<Category[]>;
   /** For uniqueness check: name + type scoped to workspace (CAT-2). */
   findByNameAndType(workspaceId: string, name: string, type: string): Promise<Category | null>;
@@ -111,7 +114,23 @@ export interface CategoryRepository {
    *   caller's transaction (register seed). */
   create(category: Category, tx?: TransactionHandle): Promise<Category>;
   update(category: Category): Promise<Category>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  /** @param tx optional transaction handle (R15.3 §9): the write joins the
+   *   caller's transaction (transactional deleteCategory — the delete is the
+   *   LAST write of the transaction, the shared-document conflict point). */
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
+  /** R15.3 §8/§9: shared-document write that makes the category a transaction
+   *  conflict point. createMovement/updateMovement touch the category doc
+   *  INSIDE their transaction before inserting/updating, so a concurrent
+   *  deleteCategory (which deletes that same doc) cannot interleave between
+   *  the read and the write: the race becomes a write-write conflict on the
+   *  category doc instead of a write skew, and the loser re-executes on the
+   *  winner's committed state — no orphaned movements in any terminal. Plain
+   *  `updateOne`, no CAS. The category model has `timestamps: true`, so
+   *  `updatedAt` exists on every doc and the touch also bumps it.
+   *  @returns true when the category exists and was touched; false when it is
+   *  gone (the caller maps false to NotFoundError).
+   *  @param tx optional transaction handle; joins the caller's transaction. */
+  touch(workspaceId: string, categoryId: string, tx?: TransactionHandle): Promise<boolean>;
 }
 
 // ─── Movement ────────────────────────────────────────────────────────
@@ -172,14 +191,34 @@ export interface MovementRepository {
   findByWorkspaceIdAndDateRange(workspaceId: string, from: Date, to: Date): Promise<Movement[]>;
   /** Full-history minimal-projection read for R7-A account balances (live-parent-filtered). Same orphan guard + dependency resolution as findByWorkspaceId. */
   findByWorkspaceIdForBalance(workspaceId: string): Promise<Movement[]>;
-  /** CAT-3: count movements referencing a category (deletion guard). */
-  countByCategoryId(workspaceId: string, categoryId: string): Promise<number>;
+  /** CAT-3: count movements referencing a category (deletion guard).
+   *  @param tx optional transaction handle (R15.3 §9): when present, the
+   *   count joins the caller's transaction session (the guard runs on the
+   *   SAME snapshot as the category read and delete — used by transactional
+   *   deleteCategory). */
+  countByCategoryId(workspaceId: string, categoryId: string, tx?: TransactionHandle): Promise<number>;
+  /** R15.3 §4: count existing 'opening' movements for an account — enforces
+   *  the ACC-2 invariant of EXACTLY 0 or 1 initial balances per account.
+   *  @param tx optional transaction handle: when present, the count joins the
+   *   caller's transaction session (snapshot-consistent uniqueness check —
+   *   the guard runs on the SAME snapshot as the account touch and the
+   *   opening insert, so a concurrent setInitialBalance cannot double-write).
+   *   The partial unique index on (workspaceId, accountId) for
+   *   link.kind='opening' is the database-level backstop. */
+  countOpeningMovements(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<number>;
 }
 
 // ─── Transfer ────────────────────────────────────────────────────────
 
 export interface TransferRepository {
-  findById(workspaceId: string, id: string): Promise<Transfer | null>;
+  /** @param tx optional transaction handle (R15.3 §12): the read joins the
+   *   caller's transaction session (snapshot-consistent live-parent resolution
+   *   in computeAccountLiveBalance). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Transfer | null>;
   findByWorkspaceId(workspaceId: string): Promise<Transfer[]>;
   /**
    * Persist a new transfer.
@@ -190,8 +229,11 @@ export interface TransferRepository {
    * Update an existing transfer.
    * @param tx optional transaction handle (R15); joins the caller's transaction
    *   (used by transactional updateTransfer).
+   * @param expectedVersion optional CAS version (R15.3 §5): when provided the
+   *   write bumps `__v` and aborts with ConflictError(DEBT_MODIFIED_MSG) if the
+   *   persisted version moved concurrently; when absent, behavior is unchanged.
    */
-  update(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer>;
+  update(transfer: Transfer, tx?: TransactionHandle, expectedVersion?: number): Promise<Transfer>;
   /**
    * Delete a transfer.
    * @param tx optional transaction handle (R15); joins the caller's transaction
@@ -323,12 +365,31 @@ export interface PayableRepository {
 // ─── Client ─────────────────────────────────────────────────────────
 
 export interface ClientRepository {
-  findById(workspaceId: string, id: string): Promise<Client | null>;
+  /** @param tx optional transaction handle (R15.3 §10): the read joins the
+   *   caller's transaction session (snapshot-consistent client validation in
+   *   createSale and deleteClient). */
+  findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Client | null>;
   findByWorkspaceId(workspaceId: string): Promise<Client[]>;
   findByName(workspaceId: string, name: string): Promise<Client | null>;
   create(client: Client): Promise<Client>;
   update(client: Client): Promise<Client>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  /** @param tx optional transaction handle (R15.3 §10): the write joins the
+   *   caller's transaction (transactional deleteClient — the delete is the
+   *   LAST write of the transaction, the shared-document conflict point). */
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
+  /** R15.3 §10: shared-document write that makes the client a transaction
+   *  conflict point. createSale touches the client doc INSIDE its transaction
+   *  before inserting, so a concurrent deleteClient (which deletes that same
+   *  doc) cannot interleave between the create's read and its insert: the race
+   *  becomes a write-write conflict on the client doc instead of a write skew,
+   *  and the loser re-executes on the winner's committed state — no Sale
+   *  pointing at a deleted client in any terminal. Plain `updateOne`, no CAS.
+   *  The client model has `timestamps: true`, so `updatedAt` exists on every
+   *  doc and the touch also bumps it.
+   *  @returns true when the client exists and was touched; false when it is
+   *  gone (the caller maps false to NotFoundError).
+   *  @param tx optional transaction handle; joins the caller's transaction. */
+  touch(workspaceId: string, clientId: string, tx?: TransactionHandle): Promise<boolean>;
 }
 
 // ─── Catalog Item ────────────────────────────────────────────────────

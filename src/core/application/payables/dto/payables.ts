@@ -21,8 +21,12 @@ export interface AddAbonoInput {
 }
 
 export interface EditAbonoInput {
+  /**
+   * Changing the account of an abono is NOT an intentional product
+   * capability (R15.3 §16) — the embedded abono keeps the accountId fixed at
+   * addAbono time. Edits are amount/date only.
+   */
   amount?: number;
-  accountId?: string;
   date?: Date;
 }
 

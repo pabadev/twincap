@@ -1,8 +1,17 @@
 import type { ClientRepository, SaleRepository } from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
 import { NotFoundError, ConflictError } from "../../domain/errors";
 
 /**
  * Delete a client.
+ *
+ * R15.3 §10: transactional. The read, the active-sales guard and the delete
+ * run inside ONE transaction, and the delete is the LAST write — the client
+ * doc is the shared-document conflict point that createSale touches: a sale
+ * write that commits between the guard and the delete aborts THIS transaction
+ * (write-write conflict on the client doc) and the retry re-checks the guard
+ * → ConflictError. Without the transaction, a concurrent createSale could
+ * insert a Sale referencing a deleted client.
  *
  * R15.2 D2 — reference guard: a client that still has ACTIVE sales cannot be
  * deleted. Sales are soft-deleted (deletedAt), so the guard counts only sales
@@ -20,17 +29,23 @@ export async function deleteClient(
   clientId: string,
   clientRepo: ClientRepository,
   saleRepo: SaleRepository,
+  uow: UnitOfWork,
 ): Promise<void> {
-  const existing = await clientRepo.findById(userId, clientId);
-  if (!existing) throw new NotFoundError("Client not found");
+  return uow.withTransaction(async (tx) => {
+    const existing = await clientRepo.findById(userId, clientId, tx);
+    if (!existing) throw new NotFoundError("Client not found");
 
-  const sales = await saleRepo.findByWorkspaceId(userId);
-  const hasActiveSales = sales.some(
-    (sale) => sale.clientId === clientId && !sale.deletedAt,
-  );
-  if (hasActiveSales) {
-    throw new ConflictError("Client has sales and cannot be deleted");
-  }
+    // Serial on the transaction session (the driver forbids concurrent ops on
+    // one ClientSession — never Promise.all with tx).
+    const sales = await saleRepo.findByWorkspaceId(userId, tx);
+    const hasActiveSales = sales.some(
+      (sale) => sale.clientId === clientId && !sale.deletedAt,
+    );
+    if (hasActiveSales) {
+      throw new ConflictError("Client has sales and cannot be deleted");
+    }
 
-  await clientRepo.delete(userId, clientId);
+    // LAST write of the transaction: the shared-document conflict point.
+    await clientRepo.delete(userId, clientId, tx);
+  });
 }

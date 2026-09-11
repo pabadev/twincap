@@ -50,9 +50,13 @@ describe('idempotency', () => {
       ).rejects.toThrow('transient failure');
     });
 
-    it('allows when key is missing/null (backward compat)', async () => {
-      const result = await claimIdempotency('user-1', null, 'createSale');
-      expect(result).toBe(true);
+    it('throws when key is missing/null — §19 mandatory key policy', async () => {
+      await expect(
+        claimIdempotency('user-1', null, 'createSale'),
+      ).rejects.toThrow('Idempotency key is required');
+      await expect(
+        claimIdempotency('user-1', '', 'createSale'),
+      ).rejects.toThrow('Idempotency key is required');
       expect(IdempotencyModel.create).not.toHaveBeenCalled();
     });
 
@@ -83,6 +87,33 @@ describe('idempotency', () => {
     it('no-ops when key is missing', async () => {
       await releaseIdempotency('user-1', null, 'createSale');
       expect(IdempotencyModel.deleteOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('retry cycle (R15.3 §25)', () => {
+    it('claim → release → claim again with the SAME key succeeds (retry does not duplicate)', async () => {
+      const createdDocs: Array<{ userId: string; action: string; key: string }> = [];
+      vi.mocked(IdempotencyModel.create).mockImplementation(async (doc) => {
+        createdDocs.push(doc as { userId: string; action: string; key: string });
+        return [doc] as unknown as IdempotencyDocument[];
+      });
+
+      // First attempt: claim succeeds, action runs, then the action FAILS and
+      // the caller releases the key so the retry is allowed.
+      expect(await claimIdempotency('user-1', 'key-retry', 'createSale')).toBe(true);
+      await releaseIdempotency('user-1', 'key-retry', 'createSale');
+
+      // Retry with the SAME key: claim succeeds again (record was released),
+      // proving the retry re-runs instead of silently returning a stale outcome.
+      expect(await claimIdempotency('user-1', 'key-retry', 'createSale')).toBe(true);
+      expect(createdDocs).toHaveLength(2);
+
+      // And WITHOUT the release, the duplicate is still rejected (idempotency
+      // preserved): the contract holds both ways.
+      vi.mocked(IdempotencyModel.create).mockRejectedValue(
+        Object.assign(new Error('E11000 duplicate key'), { code: 11000 }),
+      );
+      expect(await claimIdempotency('user-1', 'key-retry', 'createSale')).toBe(false);
     });
   });
 });

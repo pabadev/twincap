@@ -1,4 +1,4 @@
-import { type Currency, isCurrency } from "./currency";
+import { type Currency, isCurrency, exponentOf } from "./currency";
 import { DomainError, ValidationError } from "./errors";
 
 /** Money-domain error, part of the shared DomainError hierarchy. */
@@ -107,16 +107,50 @@ function assertArithmeticResult(op: string, result: number): void {
 }
 
 /**
+ * Guards an INTERMEDIATE minor-units computation BEFORE its result can be
+ * used any further (R15.3 §18). Operations outside Money — quantity ×
+ * unitPrice, installmentValue × installments, Σ abonos, aggregated balance
+ * sums — can overflow the safe-integer range before the value re-enters a
+ * Money constructor, silently corrupting derived amounts. Fail fast here
+ * instead.
+ *
+ * The contract is INTEGER-SAFETY only (minor units are always integers):
+ * negativity is not this helper's concern — positive invariants are enforced
+ * by Money/aggregate constructors where the value is consumed.
+ *
+ * @throws MoneyError when the value is not a safe integer
+ */
+export function assertSafeMinorUnits(value: number, context: string): void {
+  if (!Number.isSafeInteger(value)) {
+    throw new MoneyError(
+      `\`${context}\` produced an unsafe minor-units value: ${value}`,
+    );
+  }
+}
+
+/**
  * Derives the effective exchange rate from two monetary amounts.
  *
+ * CONVENTION (R15.3 §11 — the single, formal definition): the rate answers
+ * "how many MAJOR units of the SOURCE currency does one MAJOR unit of the
+ * DESTINATION currency cost" —
+ *
+ *   effectiveExchangeRate = sourceMajor / destinationMajor
+ *                         = (source.amount / 10^exp(source))
+ *                           / (destination.amount / 10^exp(destination))
+ *
+ * Exponents come from ISO 4217 via `exponentOf` (COP 0; USD/MXN/EUR 2).
+ * Doc example: 190.000 COP → 50 USD is 190000/1 ÷ 5000/100 = 3800 COP/USD,
+ * NOT the old minor-unit ratio 0,0263158 nor 38.
+ *
  * The rate is DERIVED — the two integer minor-unit amounts are the source of
- * truth, never the user. It exists for display and derived queries only:
- * effectiveRate = destination.amount / source.amount (how many destination
- * minor units one source minor unit buys).
+ * truth, never the user. It exists for display and derived queries ONLY; it
+ * is NEVER used as the source of truth for calculations.
  *
  * Same-currency amounts always yield 1 (TRA-2: destination === source).
  *
- * @throws ValidationError when either amount is zero
+ * @throws ValidationError when either amount is zero or the destination's
+ *         major-unit value is zero (division by zero guard)
  */
 export function deriveExchangeRate(source: Money, destination: Money): number {
   if (source.amount === 0) {
@@ -130,8 +164,15 @@ export function deriveExchangeRate(source: Money, destination: Money): number {
   if (source.currency === destination.currency) {
     return 1; // Same currency: rate is always 1
   }
-  // Cross-currency: derived ratio in minor units. Stored as a float for
-  // display purposes only — the two integer amounts remain the source of
-  // truth for every derived query.
-  return destination.amount / source.amount;
+  const sourceMajor = source.amount / 10 ** exponentOf(source.currency);
+  const destinationMajor = destination.amount / 10 ** exponentOf(destination.currency);
+  if (destinationMajor === 0) {
+    throw new ValidationError(
+      "Destination major amount cannot be zero for cross-currency transfer",
+    );
+  }
+  // Cross-currency: derived ratio in major units per the §11 convention.
+  // Stored as a float for display purposes only — the two integer amounts
+  // remain the source of truth for every derived query.
+  return sourceMajor / destinationMajor;
 }

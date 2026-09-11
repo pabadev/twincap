@@ -3,7 +3,7 @@ import {
   findIncompleteTransfers,
   findOrphanMovements,
   findPendingStockRestores,
-  executeReconcile,
+  runReconcileDiagnosis,
   type ReconcileAction,
 } from "./reconcile";
 import type {
@@ -17,6 +17,7 @@ import type {
 } from "../../core/domain/repositories";
 import type { Transfer } from "../../core/domain/transfer";
 import type { Movement } from "../../core/domain/movement";
+import { MOVEMENT_LINK_KINDS, MOVEMENT_LINK_KIND_REGISTRY, type MovementLinkKind, type MovementLinkKindMeta } from "../../core/domain/movement";
 import type { CreditReceived } from "../../core/domain/credit-received";
 import type { CreditGranted } from "../../core/domain/credit-granted";
 import type { Sale } from "../../core/domain/sale";
@@ -47,6 +48,7 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     delete: async () => {},
     deleteByRefId: async () => 0,
     countByCategoryId: async () => 0,
+    countOpeningMovements: async () => 0,
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -208,6 +210,38 @@ function makeCreditGranted(overrides: Partial<CreditGranted> = {}): CreditGrante
     createdAt: new Date("2026-01-01"),
     ...overrides,
   } as unknown as CreditGranted;
+}
+
+function makeCreditReceived(
+  overrides: Partial<CreditReceived> = {},
+): CreditReceived {
+  return {
+    id: "cr1",
+    workspaceId: "u1",
+    accountId: "acc1",
+    counterparty: "Test Counterparty",
+    principal: { amount: 100000, currency: "COP" },
+    totalToPay: { amount: 100000, currency: "COP" },
+    pending: 100000,
+    interestRate: 0,
+    date: new Date("2026-01-01"),
+    createdAt: new Date("2026-01-01"),
+    ...overrides,
+  } as unknown as CreditReceived;
+}
+
+function makePayable(overrides: Partial<Payable> = {}): Payable {
+  return {
+    id: "pay1",
+    workspaceId: "u1",
+    accountId: "acc1",
+    vendorName: "Test Vendor",
+    total: { amount: 100000, currency: "COP" },
+    pending: 100000,
+    date: new Date("2026-01-01"),
+    createdAt: new Date("2026-01-01"),
+    ...overrides,
+  } as unknown as Payable;
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────
@@ -589,7 +623,7 @@ describe("reconcile", () => {
       expect(actions).toHaveLength(0);
     });
 
-    it("treats an AMBIGUOUS legacy salePayment as live (value matches 2 sales)", async () => {
+    it("flags an AMBIGUOUS legacy salePayment (value matches 2 sales) — §13", async () => {
       const movement = makeMovement({
         id: "m12",
         link: { kind: "salePayment", refId: "legacy-uuid-sale-2", opId: "op12" },
@@ -628,9 +662,53 @@ describe("reconcile", () => {
         "u1",
       );
 
-      // Ambiguous → still included (flagged for manual review in the read
-      // filter, but never treated as an orphan).
-      expect(actions).toHaveLength(0);
+      // §13: ambiguous → excluded from financial calcs AND surfaced as a
+      // flag (never deleted, never treated as live).
+      expect(actions).toHaveLength(1);
+      expect(actions[0].type).toBe("flag");
+      expect(actions[0].entityId).toBe("m12");
+      expect(actions[0].details).toEqual(
+        expect.objectContaining({ candidatesCount: 2 }),
+      );
+    });
+
+    it("flags a movement with a link kind outside the registry — §15 fail-closed", async () => {
+      const movement = makeMovement({
+        id: "m15",
+        link: {
+          kind: "futureKind" as unknown as MovementLinkKind,
+          refId: "any-ref",
+          opId: "op15",
+        },
+        createdAt: new Date("2026-01-01"),
+        amount: { amount: 50000, currency: "COP" } as Movement["amount"],
+        signedAmount: -50000,
+      });
+      const movementRepo = fakeMovementRepo([movement]);
+      const transferRepo = fakeTransferRepo([]);
+      const creditReceivedRepo = fakeCreditReceivedRepo([]);
+      const creditGrantedRepo = fakeCreditGrantedRepo([]);
+      const saleRepo = fakeSaleRepo([]);
+      const accountRepo = fakeAccountRepo([]);
+      const payableRepo = fakePayableRepo([]);
+
+      const actions = await findOrphanMovements(
+        movementRepo,
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+        "u1",
+      );
+
+      // §15: an unknown kind can never resolve to a parent → flag, never delete.
+      expect(actions).toHaveLength(1);
+      expect(actions[0].type).toBe("flag");
+      expect(actions[0].entityId).toBe("m15");
+      expect(actions[0].description).toContain("futureKind");
+      expect(actions[0].description).toContain("UNKNOWN");
     });
 
     it("flags a legacy salePayment whose value matches NO live sale", async () => {
@@ -745,8 +823,85 @@ describe("reconcile", () => {
     });
   });
 
-  describe("executeReconcile", () => {
-    it("dryRun returns actions without applying", async () => {
+  describe("R15.3 §14 — structural coverage: reconcile never flags a kind the registry supports", () => {
+    // Live refId per parentCollection — derived FROM the registry so new kinds
+    // are covered without hand-maintained lists.
+    const LIVE_REF_BY_COLLECTION: Record<MovementLinkKindMeta["parentCollection"], string> = {
+      accounts: "acc1",
+      transfers: "t1",
+      "credits-received": "cr1",
+      "credits-granted": "cg1",
+      sales: "s1",
+      payables: "pay1",
+    };
+
+    function makeParentsForKind(
+      kind: MovementLinkKindMeta["parentCollection"],
+    ): {
+      transferRepo: TransferRepository;
+      creditReceivedRepo: CreditReceivedRepository;
+      creditGrantedRepo: CreditGrantedRepository;
+      saleRepo: SaleRepository;
+      accountRepo: AccountRepository;
+      payableRepo: PayableRepository;
+    } {
+      const transferRepo = fakeTransferRepo(
+        kind === "transfers" ? [makeTransfer({ id: "t1" })] : [],
+      );
+      const creditReceivedRepo = fakeCreditReceivedRepo(
+        kind === "credits-received" ? [makeCreditReceived({ id: "cr1" })] : [],
+      );
+      const creditGrantedRepo = fakeCreditGrantedRepo(
+        kind === "credits-granted" ? [makeCreditGranted({ id: "cg1" })] : [],
+      );
+      const saleRepo = fakeSaleRepo(
+        kind === "sales" ? [makeSale({ id: "s1" })] : [],
+      );
+      const accountRepo = fakeAccountRepo(
+        kind === "accounts" ? [makeAccount({ id: "acc1" })] : [],
+      );
+      const payableRepo = fakePayableRepo(
+        kind === "payables" ? [makePayable({ id: "pay1" })] : [],
+      );
+      return {
+        transferRepo,
+        creditReceivedRepo,
+        creditGrantedRepo,
+        saleRepo,
+        accountRepo,
+        payableRepo,
+      };
+    }
+
+    it.each(MOVEMENT_LINK_KINDS)(
+      "%s with a live parent is NOT flagged by the sweep",
+      async (kind) => {
+        const refId = LIVE_REF_BY_COLLECTION[MOVEMENT_LINK_KIND_REGISTRY[kind].parentCollection];
+        const movement = makeMovement({
+          id: `m-structural-${kind}`,
+          link: { kind: kind, refId: refId, opId: `op-${kind}` },
+          createdAt: new Date("2026-09-10"), // modern → strict id lookup
+        });
+        const repos = makeParentsForKind(MOVEMENT_LINK_KIND_REGISTRY[kind].parentCollection);
+
+        const actions = await findOrphanMovements(
+          fakeMovementRepo([movement]),
+          repos.transferRepo,
+          repos.creditReceivedRepo,
+          repos.creditGrantedRepo,
+          repos.saleRepo,
+          repos.accountRepo,
+          repos.payableRepo,
+          "u1",
+        );
+
+        expect(actions).toHaveLength(0);
+      },
+    );
+  });
+
+  describe("runReconcileDiagnosis", () => {
+    it("returns a diagnosis: actions reported, nothing applied (§21)", async () => {
       const actions: ReconcileAction[] = [
         {
           type: "flag",
@@ -755,28 +910,21 @@ describe("reconcile", () => {
           entityId: "1",
         },
       ];
-      const result = await executeReconcile(actions, true);
+      const result = await runReconcileDiagnosis(actions);
 
-      expect(result.dryRun).toBe(true);
+      expect(result.mode).toBe("diagnose");
       expect(result.actions).toHaveLength(1);
       expect(result.applied).toBe(0);
     });
 
-    it("non-dryRun returns result (apply phase placeholder)", async () => {
-      const actions: ReconcileAction[] = [
-        {
-          type: "flag",
-          description: "test action",
-          entity: "Test",
-          entityId: "1",
-        },
-      ];
-      const result = await executeReconcile(actions, false);
+    it("is honest: mode is always diagnose and there is no apply path", async () => {
+      const result = await runReconcileDiagnosis([]);
 
-      expect(result.dryRun).toBe(false);
-      expect(result.actions).toHaveLength(1);
-      // Apply phase is currently a no-op placeholder
+      expect(result.mode).toBe("diagnose");
+      expect(result.actions).toHaveLength(0);
       expect(result.applied).toBe(0);
+      // The API has no dryRun/apply parameter — the contract cannot lie about
+      // applying anything; a repair path does not exist (R15.3 §21).
     });
   });
 });

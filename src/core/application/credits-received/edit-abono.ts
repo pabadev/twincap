@@ -1,6 +1,6 @@
 import { CreditReceived } from '../../domain/credit-received';
 import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
+import { Money, assertSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import { isModernRecord } from '../../domain/modern-record';
 import { creditCategory } from '../../domain/synthetic-categories';
@@ -42,14 +42,20 @@ export async function editAbono(
     if (input.amount !== undefined) {
       const otherAbonos = credit.abonos.filter(a => a.id !== abonoId);
       const totalOther = otherAbonos.reduce((sum, a) => sum + a.amount.amount, 0);
+      // R15.3 §18: the intermediate sum and the derived pending must stay safe
+      // integers before the overpayment comparison.
+      assertSafeMinorUnits(totalOther, "EditAbono other abonos sum");
       const pending = credit.totalToPay - totalOther;
+      assertSafeMinorUnits(pending, "EditAbono pending");
       if (input.amount > pending) {
         throw new ConflictError('Abono exceeds pending amount');
       }
     }
 
     const updatedAmount = input.amount ? new Money(input.amount, abono.amount.currency) : abono.amount;
-    const updatedAccountId = input.accountId ?? abono.accountId;
+    // R15.3 §16: the abono keeps its original account — editing is amount/date
+    // only, changing the account is not a product capability.
+    const updatedAccountId = abono.accountId;
     const updatedDate = input.date ?? abono.date;
 
     // Update linked movement. The read happens BEFORE the abono write so a

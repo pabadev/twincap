@@ -21,6 +21,13 @@ function accountName(accounts: SerializedAccount[], id: string): string {
   return acc ? `${acc.name} (${acc.currency})` : id;
 }
 
+/** Formats the stored effectiveExchangeRate (§11) for display — up to 6
+ *  decimals so the inverse convention (e.g. USD→COP 0,00026316) stays
+ *  readable and integer rates (3800 COP/USD) keep their shape. */
+function formatRate(rate: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(rate);
+}
+
 export function TransfersList({
   accounts,
   transfers,
@@ -158,7 +165,7 @@ export function TransfersList({
                         {transfer.effectiveExchangeRate &&
                           transfer.effectiveExchangeRate !== 1 && (
                           <span className="ml-1 text-xs font-normal text-zinc-400">
-                            ({t('effectiveRate')}: {transfer.effectiveExchangeRate})
+                            ({t('effectiveRate')}: {formatRate(transfer.effectiveExchangeRate, locale)})
                           </span>
                         )}
                       </div>

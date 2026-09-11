@@ -54,6 +54,17 @@ export async function setInitialAccountBalance(
       throw new ConflictError('Account already has activity and cannot receive an initial balance');
     }
 
+    // R15.3 §4 (ACC-2): opening-uniqueness guard — an account gets EXACTLY one
+    // opening movement. Runs INSIDE the same transaction snapshot as the
+    // account touch, so a concurrent setInitialBalance cannot double-register
+    // (a write-write conflict on the account doc serializes the two
+    // transactions; the partial unique index on (workspaceId, accountId) for
+    // link.kind='opening' is the enforcement backstop for the direct path).
+    const openings = await movementRepo.countOpeningMovements(workspaceId, input.accountId, tx);
+    if (openings > 0) {
+      throw new ConflictError('Account already has an initial balance');
+    }
+
     const movement = new Movement({
       id: ids.generate(),
       workspaceId,

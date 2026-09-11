@@ -144,6 +144,7 @@ function fakeMovementRepo(
     }),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -566,6 +567,44 @@ describe('editAbono', () => {
     expect(creditRepo.abonosEdited[0].updates.amount).toBe(40000);
     expect(movementRepo.updated[0].amount.amount).toBe(40000);
     expect(result.pending).toBe(60000);
+  });
+
+  it('R15.3 §16 — editing an abono never changes its account (amount/date only)', async () => {
+    const credit = makeCredit({}, [
+      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-2', movementId: 'mov-1' },
+    ]);
+    const existingMovement = makeMovement({
+      id: 'mov-1',
+      type: 'income',
+      accountId: 'acc-2',
+      amount: new Money(25000, 'COP'),
+    });
+
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existingMovement),
+    });
+    const ids = fakeIdGen();
+
+    const result = await editAbono(
+      'user-1',
+      'cg-1',
+      'ab-1',
+      { amount: 40000 },
+      creditRepo,
+      movementRepo,
+      ids,
+      fakeUow(),
+    );
+
+    // The embedded abono keeps the accountId fixed at addAbono time and the
+    // linked movement follows the SAME account — the edit contract is
+    // amount/date only (§16).
+    expect(result.abonos[0].accountId).toBe('acc-2');
+    expect(result.abonos[0].amount.amount).toBe(40000);
+    expect(movementRepo.updated[0].accountId).toBe('acc-2');
   });
 
   it('skips movement update when abono has no movementId', async () => {

@@ -1,5 +1,5 @@
 import { ValidationError } from "./errors";
-import { Money } from "./money";
+import { Money, assertSafeMinorUnits } from "./money";
 import type { CreditAbono } from "./credit-received";
 
 /** Re-export CreditAbono for credits-granted (same shape as received). */
@@ -76,15 +76,24 @@ export class CreditGranted {
    * (R5-D2). Never stored.
    */
   get totalToPay(): number {
-    return this.installments && this.installments > 0 && this.installmentValue
-      ? this.installmentValue.amount * this.installments
-      : this.principal.amount;
+    if (this.installments && this.installments > 0 && this.installmentValue) {
+      // R15.3 §18: fail fast BEFORE the derived total is consumed — the
+      // multiplication can overflow the safe-integer range before re-entering
+      // Money.
+      const total = this.installmentValue.amount * this.installments;
+      assertSafeMinorUnits(total, "CreditGranted totalToPay");
+      return total;
+    }
+    return this.principal.amount;
   }
 
   /** Derived pending = totalToPay − Σ abonos (CRED-G-2). Never stored. */
   get pending(): number {
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    return this.totalToPay - abonoSum;
+    assertSafeMinorUnits(abonoSum, "CreditGranted abonos sum");
+    const pending = this.totalToPay - abonoSum;
+    assertSafeMinorUnits(pending, "CreditGranted pending");
+    return pending;
   }
 
   get abonos(): ReadonlyArray<CreditAbono> {
@@ -124,14 +133,19 @@ export class CreditGranted {
       }
       abonoSum += a.amount.amount;
     }
+    // R15.3 §18: the accumulated abono sum itself must stay a safe integer
+    // before it can be compared against the derived total.
+    assertSafeMinorUnits(abonoSum, "CreditGranted constructor abonos sum");
     // CRED-G-2: overpayment rejected — against the derived total to pay
     // (installments × installmentValue when present, else principal). This
     // mirrors the totalToPay getter so reconstruction of legacy/current docs
     // never throws here.
-    const totalToPay =
-      input.installments && input.installments > 0 && input.installmentValue
-        ? input.installmentValue.amount * input.installments
-        : input.principal.amount;
+    let totalToPay = input.principal.amount;
+    if (input.installments && input.installments > 0 && input.installmentValue) {
+      // R15.3 §18: fail fast before the derived total is consumed.
+      totalToPay = input.installmentValue.amount * input.installments;
+      assertSafeMinorUnits(totalToPay, "CreditGranted constructor totalToPay");
+    }
     if (abonoSum > totalToPay) {
       throw new ValidationError("CreditGranted abonos exceed total to pay (overpayment rejected)");
     }

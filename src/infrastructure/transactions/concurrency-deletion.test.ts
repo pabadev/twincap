@@ -1124,6 +1124,60 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
     }, 120_000);
   });
 
+  describe("setInitialBalance — EXACTAMENTE un saldo inicial por cuenta (R15.3 §4 / ACC-2)", () => {
+    it.each([5, 10])(
+      "N=%i concurrentes sobre la MISMA cuenta → exactamente 1 gana; 1 solo opening; saldo derivado == monto",
+      async (n) => {
+        const settled = await Promise.allSettled(
+          Array.from({ length: n }, () =>
+            setInitialAccountBalance(
+              WS,
+              { accountId: SRC, amount: 100_000 },
+              accountRepo(),
+              movementRepo(),
+              objectIdGenerator,
+              uow(),
+            ),
+          ),
+        );
+
+        assertNoTransactionErrors(settled);
+        const winners = settled.filter((s) => s.status === "fulfilled");
+        const losers = settled.filter((s) => s.status === "rejected");
+        expect(winners, `losers: ${losers.map((l) => (l.status === "rejected" ? l.reason?.message : "")).join(" | ")}`).toHaveLength(1);
+        for (const loser of losers) {
+          if (loser.status !== "rejected") continue;
+          const err = loser.reason as { message?: string; code?: unknown } | null;
+          // Guard (ConflictError) o backstop del índice único parcial
+          // (E11000 duplicate key — la ventana estrecha donde dos guards leen 0).
+          const isDuplicateKey = typeof err?.code === "number" && err.code === 11000;
+          expect(
+            loser.reason instanceof ConflictError || isDuplicateKey,
+            `unexpected loser: ${err?.message ?? String(loser.reason)}`,
+          ).toBe(true);
+        }
+
+        // Cero o un opening: el invariante ACC-2 se cumple en el ledger.
+        expect(
+          await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "opening" }),
+        ).toBe(1);
+        // El único opening es del ganador: saldo derivado == monto exacto.
+        const rows = await MovementModel.aggregate([
+          {
+            $match: {
+              workspaceId: new mongoose.Types.ObjectId(WS),
+              accountId: new mongoose.Types.ObjectId(SRC),
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$signedAmount" } } },
+        ]);
+        expect(rows.length > 0 ? rows[0].total : 0).toBe(100_000);
+        expect(await accountExists()).toBe(true);
+      },
+      120_000,
+    );
+  });
+
   describe("deleteAccount × createTransfer (destino = cuenta borrada)", () => {
     it("9 transfers AUX→SRC + 1 delete → doble-ganador imposible; 0 huérfanos (fila 40)", async () => {
       const AUX = "dddddddddddddddddddddddd";

@@ -57,6 +57,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -392,6 +393,12 @@ describe('setInitialAccountBalance', () => {
     expect(created.amount.currency).toBe('COP');
     expect(created.categoryId).toBe(openingCategory().id);
     expect(created.accountId).toBe('acc-1');
+    // R15.3 §4: el guard de unicidad corre dentro de la tx, ANTES del insert.
+    expect(movementRepo.countOpeningMovements).toHaveBeenCalledWith(
+      'user-1',
+      'acc-1',
+      expect.anything(),
+    );
   });
 
   it('returns the created movement', async () => {
@@ -440,6 +447,31 @@ describe('setInitialAccountBalance', () => {
       countReferences: vi.fn().mockResolvedValue(3),
     });
     const movementRepo = fakeMovementRepo();
+
+    await expect(
+      setInitialAccountBalance(
+        'user-1',
+        { accountId: 'acc-1', amount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeIdGen(),
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ConflictError);
+    expect(movementRepo.create).not.toHaveBeenCalled();
+    // El guard de referencias corta ANTES del guard de openings.
+    expect(movementRepo.countOpeningMovements).not.toHaveBeenCalled();
+  });
+
+  it('rejects an account that already has an opening movement (R15.3 §4 / ACC-2)', async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+      countReferences: vi.fn().mockResolvedValue(0),
+    });
+    const movementRepo = fakeMovementRepo({
+      countOpeningMovements: vi.fn().mockResolvedValue(1),
+    });
 
     await expect(
       setInitialAccountBalance(

@@ -33,6 +33,7 @@ function fakeClientRepo(client: Client | null) {
     create: vi.fn().mockImplementation(async (c: Client) => c),
     update: vi.fn().mockImplementation(async (c: Client) => c),
     delete: vi.fn().mockResolvedValue(undefined),
+    touch: vi.fn().mockResolvedValue(true),
   };
 }
 

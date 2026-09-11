@@ -111,7 +111,10 @@ export async function addAbonoAction(
   const accountId = formData.get('accountId') as string;
   const date = new Date(formData.get('date') as string);
   const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -305,7 +308,10 @@ export async function markAsPaidAction(
   if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     await connectDb();
@@ -349,7 +355,10 @@ export async function writeOffCreditAction(
   if (!user) return { error: 'error.unauthorized' };
 
   const creditId = formData.get('creditId') as string;
-  const idempotencyKey = formData.get('idempotencyKey') as string | null;
+  const idempotencyKey = formData.get('idempotencyKey') as string;
+  if (!idempotencyKey) {
+    return { error: 'error.idempotencyKeyRequired' };
+  }
 
   try {
     await connectDb();

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { getUserBalances } from "./balance";
+import { computeAccountLiveBalance } from "./movements/compute-live-balance";
 import type { MovementRepository } from "../domain/repositories";
 import type { Movement, MovementLink } from "../domain/movement";
 import type { LiveBalanceDeps } from "./movements/compute-live-balance";
@@ -16,6 +17,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: vi.fn().mockResolvedValue([]),
     findByWorkspaceIdForBalance: vi.fn().mockResolvedValue([]),
@@ -209,5 +211,20 @@ describe("getUserBalances", () => {
     const balances = await getUserBalances("user-1", [{ id: "acc-1" }], repo, fakeDeps());
 
     expect(balances.get("acc-1")).toBe(-300);
+  });
+
+  it("computeAccountLiveBalance rejects when Σ signedAmount overflows the safe-integer range (R15.3 §18 guard)", async () => {
+    const nearMax = Number.MAX_SAFE_INTEGER - 5000; // both values individually safe…
+    const movements = [
+      fakeMovement({ id: "m1", accountId: "acc-1", signedAmount: nearMax }),
+      fakeMovement({ id: "m2", accountId: "acc-1", signedAmount: 9000 }), // …sum EXCEEDS the safe range
+    ];
+    const repo = fakeMovementRepo({
+      findByAccountIdForBalance: vi.fn().mockResolvedValue(movements),
+    });
+
+    await expect(
+      computeAccountLiveBalance("user-1", "acc-1", repo, fakeDeps()),
+    ).rejects.toThrow(/unsafe minor-units value/);
   });
 });

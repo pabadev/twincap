@@ -31,7 +31,9 @@ export type CreateTransferResult =
  *
  * R15.1 Fase 4 — derived exchange rate (TRA-3): the user enters BOTH real
  * amounts (sourceAmount + destinationAmount) and the use case computes
- * effectiveExchangeRate = destinationAmount / sourceAmount. A `rate` input no
+ * effectiveExchangeRate per the R15.3 §11 convention — how many MAJOR source
+ * units one MAJOR destination unit costs (sourceMajor / destinationMajor;
+ * COP→USD 190.000 → 50 = 3800). A `rate` input no
  * longer exists; the derived value is stored for display/derived queries only
  * and stays 1 for same-currency transfers.
  *

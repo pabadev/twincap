@@ -9,6 +9,7 @@ import type { CreateCategoryInput } from '../../../core/application/categories';
 import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
 import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
 import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
+import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
 import { connectDb } from '../../../infrastructure/db/connection';
 import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
 import { revalidatePath } from 'next/cache';
@@ -80,7 +81,7 @@ export async function deleteCategoryAction(
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
     const movementRepo = new MongoMovementRepository();
-    await deleteCategory(user.workspaceId!, categoryId, categoryRepo, movementRepo);
+    await deleteCategory(user.workspaceId!, categoryId, categoryRepo, movementRepo, new MongoUnitOfWork());
     revalidatePath('/categories');
     revalidatePath('/movements');
   } catch (error) {

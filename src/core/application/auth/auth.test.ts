@@ -92,6 +92,7 @@ function fakeCategoryRepo(): CategoryRepository & { created: Category[] } {
     },
     update: async (c) => c,
     delete: async () => {},
+    touch: async () => true,
   };
 }
 

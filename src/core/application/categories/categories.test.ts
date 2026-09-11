@@ -6,11 +6,20 @@ import { listCategories } from './list-categories';
 import { Category } from '../../domain/category';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import type { CategoryRepository, MovementRepository } from '../../domain/repositories';
-import type { IdGenerator } from '../ports';
+import type { TransactionHandle } from '../../domain/transaction';
+import type { IdGenerator, UnitOfWork } from '../ports';
 
 // ─── Fake factories ────────────────────────────────────────────────
 
 let idCounter = 0;
+
+/** R14-B: transparent unit of work that just runs the callback (no real tx). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
+      fn({} as TransactionHandle),
+  };
+}
 
 function fakeCategoryRepo(
   overrides: Partial<CategoryRepository> = {},
@@ -36,6 +45,7 @@ function fakeCategoryRepo(
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
     }),
+    touch: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -53,6 +63,7 @@ function fakeMovementRepo(
     delete: vi.fn().mockResolvedValue(undefined),
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
+    countOpeningMovements: vi.fn().mockResolvedValue(0),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -201,7 +212,7 @@ describe('deleteCategory', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    await deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo);
+    await deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo, fakeUow());
 
     expect(categoryRepo.deleted).toContain('cat-1');
   });
@@ -216,7 +227,7 @@ describe('deleteCategory', () => {
     });
 
     await expect(
-      deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo),
+      deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -227,7 +238,7 @@ describe('deleteCategory', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteCategory('user-1', 'missing', categoryRepo, movementRepo),
+      deleteCategory('user-1', 'missing', categoryRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

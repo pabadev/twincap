@@ -94,6 +94,7 @@ describe('createMovementAction (analytics emissions)', () => {
         name: 'Food',
         type: 'expense',
       }),
+      touch: vi.fn().mockResolvedValue(true),
     }));
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({

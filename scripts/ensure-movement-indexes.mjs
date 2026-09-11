@@ -7,14 +7,22 @@
  * never prints credentials.
  *
  * Contract:
- *   movements ── link.opId_1  partial UNIQUE { "link.opId": 1 }  (MOV-5)
+ *   movements ── link.opId_1            partial UNIQUE { "link.opId": 1 }          (MOV-5)
  *                 (partialFilterExpression: { "link.opId": { $exists: true } })
+ *   movements ── workspaceId_1_accountId_1  partial UNIQUE { workspaceId: 1, accountId: 1 }   (R15.3 §4 / ACC-2)
+ *                 (partialFilterExpression: { "link.kind": { $eq: "opening" } })
  *
  * MOV-5 is the idempotent-replay guarantee for system-generated movements:
  * the opId is the deterministic link between a movement and its financial
  * origin (sale, credit, transfer...). The partial unique index ENFORCES that
  * no two movements can ever carry the same opId, so a replayed/re-driven
  * financial event cannot double-register its movements on the ledger.
+ *
+ * The R15.3 §4 index enforces ACC-2: an account holds EXACTLY 0 or 1
+ * 'opening' movements (initial balances). The use-case guard
+ * (MovementRepository.countOpeningMovements inside the transaction) is the
+ * transactional first line; this index is the enforcement backstop that makes
+ * a double-registration IMPOSSIBLE even for paths that skip the guard.
  *
  * The dashboard compound index `workspace_date_createdAt` is NOT re-declared
  * here: it is already materialized by `ensure-dashboard-indexes.mjs` (R14-I,
@@ -23,7 +31,8 @@
  * from two places would split the contract, so the check is enough.
  *
  * Behavior:
- *   - Creates ONLY the missing `link.opId_1` partial unique index above.
+ *   - Creates ONLY the missing `link.opId_1` and `workspaceId_1_accountId_1`
+ *     (opening) partial unique indexes above.
  *   - `createIndex` is idempotent by name+properties: an exact match is a
  *     no-op (never recreated pointlessly).
  *   - An index with the SAME KEY but without the unique/partial properties is
@@ -71,6 +80,21 @@ const DASHBOARD = {
   },
 };
 
+// R15.3 §4 (ACC-2) partial unique on opening movements — created here. The
+// Mongoose schema does not assign an explicit name, so MongoDB's default
+// generated name (`workspaceId_1_accountId_1`) is the contract name; matching
+// by key+unique+partial is accepted too (generated names are deterministic
+// per driver version).
+const OPENING = {
+  name: "movements",
+  index: {
+    name: "workspaceId_1_accountId_1",
+    key: { workspaceId: 1, accountId: 1 },
+    unique: true,
+    partialFilterExpression: { "link.kind": { $eq: "opening" } },
+  },
+};
+
 let failed = false;
 
 function mov5Matches(idx) {
@@ -80,6 +104,17 @@ function mov5Matches(idx) {
   if (!keyMatch || !idx.unique) return false;
   const partial = idx.partialFilterExpression ?? {};
   return JSON.stringify(partial) === JSON.stringify(MOV5.index.partialFilterExpression);
+}
+
+function openingMatches(idx) {
+  if (!idx) return false;
+  const key =
+    Object.keys(idx.key ?? {}).length === 2 &&
+    idx.key?.workspaceId === 1 &&
+    idx.key?.accountId === 1;
+  if (!key || !idx.unique) return false;
+  const partial = idx.partialFilterExpression ?? {};
+  return JSON.stringify(partial) === JSON.stringify(OPENING.index.partialFilterExpression);
 }
 
 try {
@@ -146,6 +181,56 @@ try {
       }
     }
 
+    // ── R15.3 §4 (ACC-2) opening partial unique (created here) ──────
+    const opByName = indexes.find((i) => i.name === OPENING.index.name);
+    const opByProps = indexes.find(openingMatches);
+
+    if (opByProps) {
+      if (opByName) {
+        console.log(
+          `  [PASS] '${OPENING.index.name}' partial unique on {workspaceId, accountId} (opening) already exists and matches contract — no-op.`,
+        );
+      } else {
+        console.log(
+          `  [PASS] partial unique on {workspaceId, accountId} (opening) already exists (name '${opByProps.name}' from driver-generated naming) and matches contract — no-op.`,
+        );
+      }
+    } else if (opByName) {
+      console.error(
+        `  [FAIL] '${OPENING.index.name}' EXISTS but is NOT a partial unique matching the ACC-2 contract (unique=${!!opByName.unique}, partial=${JSON.stringify(opByName.partialFilterExpression ?? null)}) — refusing to mutate silently.`,
+      );
+      failed = true;
+    } else {
+      // Fail-closed if a NON-unique index on the same key exists (a
+      // non-unique {workspaceId, accountId} would silently allow the
+      // double-opening the contract forbids).
+      const sameOpeningKey = indexes.find(
+        (i) =>
+          Object.keys(i.key ?? {}).length === 2 &&
+          i.key?.workspaceId === 1 &&
+          i.key?.accountId === 1,
+      );
+      if (sameOpeningKey) {
+        console.error(
+          `  [FAIL] an index on {workspaceId, accountId} EXISTS without the unique+partial opening contract (name='${sameOpeningKey.name}', unique=${!!sameOpeningKey.unique}) — refusing to mutate silently.`,
+        );
+        failed = true;
+      } else if (APPLY) {
+        await db.collection(colName).createIndex(OPENING.index.key, {
+          name: OPENING.index.name,
+          unique: true,
+          partialFilterExpression: OPENING.index.partialFilterExpression,
+        });
+        console.log(
+          `  [APPLY] created index '${OPENING.index.name}' ${JSON.stringify(OPENING.index.key)} unique+partial (opening).`,
+        );
+      } else {
+        console.log(
+          `  [dry-run] MISSING index '${OPENING.index.name}' ${JSON.stringify(OPENING.index.key)} unique+partial (opening) — would create with --apply.`,
+        );
+      }
+    }
+
     // ── R14-I dashboard compound (owned elsewhere — verify only) ────
     const dashIdx = indexes.find((i) => i.name === DASHBOARD.index.name);
     const dashKeyMatch =
@@ -169,7 +254,7 @@ try {
       (failed
         ? "CONTRACT CONFLICT — fix indexes manually before applying (dashboard compound lives in ensure-dashboard-indexes.mjs)."
         : APPLY
-          ? "APPLY COMPLETE — MOV-5 contract materialized."
+          ? "APPLY COMPLETE — MOV-5 + ACC-2 (opening) contracts materialized."
           : "DRY-RUN COMPLETE — no changes made. Re-run with --apply to materialize."),
   );
 } catch (err) {
