@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT, useLocale } from '../../../i18n/client';
 import { createTransferAction, updateTransferAction } from './actions';
@@ -111,15 +111,64 @@ export function TransferForm({
     setWarningDismissed(true);
   };
 
-  // Intercept the submit so the SAME mounted form can re-run with the same
-  // fields: the confirm flow adds a hidden `confirmNegativeBalance` input and
-  // re-submits the FormData as-is (the idempotency key is per form mount and
-  // the server releases its claim when it returns a warning).
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setWarningDismissed(false); // a NEW submission may yield a NEW warning
-    const fd = new FormData(e.currentTarget);
+  // R15.3.1 regression fix: use the NATIVE React 19 form action binding (same
+  // as every other TwinCap form). The previous manual dispatch
+  // (onSubmit + preventDefault + formAction(fd)) raced the App Router's action
+  // pipeline under load: the router started a route transition (loading.tsx +
+  // display:none on the old tree) and aborted the action request BEFORE it
+  // transmitted (trace: POST created, send:-1), so the transfer was never
+  // written and the dialog ended hidden inside the display:none ancestor
+  // (toBeHidden passed spuriously). The native binding keeps the router in
+  // action context — request is sent, response applied, revalidation runs
+  // after commit.
+  //
+  // R15.3.1 confirm-flow fix: the warning modal lives INSIDE the same <form>
+  // (no portal), and its "Register anyway" button is a real type="submit".
+  // With the pure native binding, a second submission does NOT dispatch a new
+  // action request (verified live: zero POSTs after clicking Register anyway;
+  // the mutation only ever happened when the confirm step used an explicit
+  // dispatch). The hybrid below keeps the native binding for the FIRST submit
+  // (the fix above) and confirms the warning with an explicit dispatch: the
+  // handler builds FormData from the CURRENT mounted form — the hidden
+  // confirmNegativeBalance input included — and forwards it to the same action.
+  // preventDefault stops the native submit from ALSO firing, avoiding any
+  // double dispatch.
+  const formRef = useRef<HTMLFormElement>(null);
+  // The FIRST native submission's FormData, captured before the action runs.
+  // React 19 automatically resets the form after a form action completes, so
+  // by the time the R15.1 F5 confirm modal is shown the uncontrolled inputs
+  // have been cleared (trace: the registration-anyway POST carried empty
+  // sourceAccountId/destinationAccountId/sourceAmount/destinationAmount and
+  // the server rejected it). Re-dispatching a freshly-built FormData would
+  // re-send empty fields, so the confirm step re-uses this captured payload
+  // and only flips the confirm flag — exactly the fields the first attempt
+  // carried, including the idempotency key (the server released its claim
+  // when it returned the warning, so the same key may retry).
+  const firstSubmitDataRef = useRef<FormData | null>(null);
+
+  // R15.1 Fase 5 — confirm the negative-balance warning. This runs from the
+  // warning modal's "Register anyway" button (type="button"). It re-dispatches
+  // the SAME server action with the SAME fields of the first attempt (captured
+  // in handleSubmit before the action ran) plus the confirm flag, preserving
+  // the router's action context and the per form-mount idempotency key.
+  const handleConfirmNegativeBalance = () => {
+    if (!firstSubmitDataRef.current) return;
+    const fd = new FormData();
+    for (const [key, value] of firstSubmitDataRef.current.entries()) {
+      fd.append(key, value);
+    }
+    fd.set('confirmNegativeBalance', 'true');
     formAction(fd);
+  };
+
+  // R15.1 F5: a fresh submission resets the warning dismissal (native submit).
+  // The FormData snapshot is taken HERE, before the native action runs, so the
+  // confirm step can re-send the exact same fields later.
+  const handleSubmit = () => {
+    if (formRef.current) {
+      firstSubmitDataRef.current = new FormData(formRef.current);
+    }
+    setWarningDismissed(false); // a NEW submission may yield a NEW warning
   };
 
   // Derived rate shown read-only (R15.1 Fase 4 / R15.3 §11). Convention:
@@ -140,7 +189,7 @@ export function TransferForm({
       : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-4">
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {isEdit && <input type="hidden" name="transferId" value={transfer.id} />}
@@ -292,7 +341,7 @@ export function TransferForm({
           title={t('insufficientFundsTitle')}
           actions={
             <>
-              <Button type="submit" variant="primary" disabled={isPending} loading={isPending}>
+              <Button type="button" variant="primary" disabled={isPending} loading={isPending} onClick={handleConfirmNegativeBalance}>
                 {t('registerAnyway')}
               </Button>
               <Button type="button" variant="secondary" disabled={isPending} onClick={dismissWarning}>

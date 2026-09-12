@@ -1,11 +1,19 @@
 import { expect, type Page } from '@playwright/test';
 import mongoose from 'mongoose';
 import { RateLimitModel } from '../src/infrastructure/models/rate-limit';
+import { UserModel } from '../src/infrastructure/models/user';
+import { MembershipModel } from '../src/infrastructure/models/membership';
+import { AccountModel } from '../src/infrastructure/models/account';
+import { MovementModel } from '../src/infrastructure/models/movement';
 
 /**
  * R12-C3 E2E helpers (Slice 1).
  * Browser flows plus minimal DB plumbing to keep the rate-limiter and the
  * shared register:unknown counter deterministic across the suite.
+ *
+ * R15.3 §11 (P3 closing E2E): the exported `connectE2eDb` / `workspaceIdOf` /
+ * `accountIdOf` / `openingMovementsOf` helpers give the closing specs direct
+ * MongoDB access for DB-level assertions (the opening-uniqueness backstop).
  */
 
 let seq = 0;
@@ -34,6 +42,59 @@ async function ensureDb(): Promise<void> {
 export async function clearRateLimits(): Promise<void> {
   await ensureDb();
   await RateLimitModel.deleteMany({});
+}
+
+/** Public alias of the lazy local-mongod connection (R15.3 §11 DB assertions). */
+export async function connectE2eDb(): Promise<void> {
+  await ensureDb();
+}
+
+/**
+ * Resolve a user's workspaceId via its sole membership. Used by the closing
+ * specs to scope direct MongoDB queries to the right tenant.
+ */
+export async function workspaceIdOf(email: string): Promise<string> {
+  await ensureDb();
+  const user = await UserModel.findOne({ email }).lean<{
+    _id: mongoose.Types.ObjectId;
+  }>();
+  if (!user) throw new Error(`E2E user not found: ${email}`);
+  const membership = await MembershipModel.findOne({
+    userId: user._id,
+  }).lean<{ workspaceId: mongoose.Types.ObjectId }>();
+  if (!membership) throw new Error(`E2E membership not found for ${email}`);
+  return String(membership.workspaceId);
+}
+
+/** Resolve an account id by workspace + name (for DB-scoped assertions). */
+export async function accountIdOf(
+  workspaceId: string,
+  name: string,
+): Promise<string> {
+  await ensureDb();
+  const account = await AccountModel.findOne({ workspaceId, name }).lean<{
+    _id: mongoose.Types.ObjectId;
+  }>();
+  if (!account) throw new Error(`E2E account not found: ${name}`);
+  return String(account._id);
+}
+
+/**
+ * All `opening` movements of one account (ACC-2 invariant: exactly 0 or 1).
+ * Queries the movements collection directly — the same collection the
+ * `workspaceId_1_accountId_1` partial unique index (R15.3 §4) protects.
+ */
+export async function openingMovementsOf(
+  workspaceId: string,
+  accountId: string,
+): Promise<Array<{ amount: number }>> {
+  await ensureDb();
+  const docs = await MovementModel.find({
+    workspaceId,
+    accountId,
+    'link.kind': 'opening',
+  }).lean<Array<{ amount: number }>>();
+  return docs.map((d) => ({ amount: d.amount }));
 }
 
 /**
