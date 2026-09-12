@@ -2,6 +2,7 @@ import type { Currency } from '../../../domain/currency';
 import type { PaymentMode } from '../../../domain/sale';
 
 export interface CreateSaleInput {
+  /** quantity: discrete count — positive integer (R15.3.1 P3); enforced by the Sale aggregate. */
   items: { itemId: string; quantity: number; unitPrice: number }[];
   accountId: string;
   clientId?: string;

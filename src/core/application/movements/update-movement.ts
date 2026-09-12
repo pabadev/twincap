@@ -14,6 +14,17 @@ export interface UpdateMovementInput {
   date?: Date;
   note?: string;
   context?: MovementContext;
+  /**
+   * Optimistic-concurrency version the client read (R15.3.1 P2). When present,
+   * the repository CAS-updates the movement (`__v: version` + `$inc`), so a
+   * concurrent edit between read and write aborts with
+   * ConflictError(MOVEMENT_MODIFIED_MSG) — the loser keeps their form, the
+   * flight plan that was TRUE at read time is preserved. When absent (no
+   * version in the payload), the freshly-loaded `existing.version` is used, so
+   * transactions still guard against in-flight write-write conflicts even if a
+   * caller forgets to forward the version.
+   */
+  version?: number;
 }
 
 /**
@@ -37,9 +48,13 @@ export interface UpdateMovementInput {
  *   atomic write is simpler and stays consistent with the rest of the flow
  *   (validations below still join the session).
  *
- * `existing` is read session-less by documented convention: the movement has
- * no version field, and the account/category touches are the conflict points
- * (they re-run on retry with a fresh snapshot).
+ * `existing` is read session-less by documented convention: the CAT (account/
+ * category) touches are the conflict points (they re-run on retry with a fresh
+ * snapshot); the movement's own write is CAS-guarded instead (P2): the client
+ * version the form carries — or, failing that, the version just read — filters
+ * `__v: expectedVersion`, so two concurrent edits of the SAME manual movement
+ * cannot silently overwrite each other (one commits, the other gets
+ * ConflictError(MOVEMENT_MODIFIED_MSG) and the UI re-prompts).
  */
 export async function updateMovement(
   workspaceId: string,
@@ -138,9 +153,16 @@ export async function updateMovement(
       context: input.context ?? existing.context,
       link: existing.link,
       createdAt: existing.createdAt,
+      version: existing.version,
     });
 
-    await movementRepo.update(updated, tx);
+    // P2 CAS: prefer the version the client READ (stale-form protection across
+    // two users); fall back to the version just loaded (in-flight protection
+    // when the caller does not forward one). The repository bumps `__v` on
+    // success; a concurrent edit makes this update match nothing → the repo
+    // re-reads and throws ConflictError(MOVEMENT_MODIFIED_MSG).
+    const expectedVersion = input.version ?? existing.version;
+    await movementRepo.update(updated, tx, expectedVersion);
     return updated;
   });
 }

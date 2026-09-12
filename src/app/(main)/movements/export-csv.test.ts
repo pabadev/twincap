@@ -68,6 +68,7 @@ function movement(overrides: Partial<SerializedMovement> = {}): SerializedMoveme
     context: 'Personal',
     link: undefined,
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
+    version: 0,
     ...overrides,
   };
 }

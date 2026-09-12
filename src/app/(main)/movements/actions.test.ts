@@ -22,6 +22,9 @@ const { MongoOperationLogger } = vi.hoisted(() => ({
 }));
 const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
 const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
+const { updateMovement: mockedUpdateMovement } = vi.hoisted(() => ({
+  updateMovement: vi.fn(),
+}));
 
 vi.mock('../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
 vi.mock('../../../infrastructure/db/connection', () => ({ connectDb }));
@@ -46,8 +49,16 @@ vi.mock('../../../infrastructure/auth/idempotency', () => ({
 vi.mock('../../../infrastructure/transactions/mongo-unit-of-work', () => ({
   MongoUnitOfWork,
 }));
+// R15.3.1 P2: keep the REAL createMovement/deleteMovement/listMovementsPaged
+// (existing tests exercise them end-to-end against mocked repos) and swap ONLY
+// updateMovement for the CAS wiring assertions below.
+vi.mock('../../../core/application/movements', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../core/application/movements')>()),
+  updateMovement: mockedUpdateMovement,
+}));
 
-const { createMovementAction } = await import('./actions');
+const { createMovementAction, updateMovementAction } = await import('./actions');
+import type { UpdateMovementInput } from '../../../core/application/movements';
 
 describe('createMovementAction', () => {
   beforeEach(() => {
@@ -153,6 +164,62 @@ describe('createMovementAction (analytics emissions)', () => {
     expect(claimIdempotency).not.toHaveBeenCalled();
     expect(MongoMovementRepository).not.toHaveBeenCalled();
     expect(trackAnalytics).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateMovementAction (CAS version wiring, R15.3.1 P2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    connectDb.mockResolvedValue(undefined);
+    MongoOperationLogger.mockImplementation(() => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }));
+    MongoUnitOfWork.mockImplementation(() => ({
+      withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+    }));
+    mockedUpdateMovement.mockResolvedValue(undefined);
+  });
+
+  function editForm(overrides: Record<string, string> = {}): FormData {
+    const fd = new FormData();
+    fd.append('movementId', 'mov-1');
+    fd.append('accountId', 'acc-1');
+    fd.append('amount', '5000');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('categoryId', 'cat-1');
+    for (const [k, v] of Object.entries(overrides)) fd.append(k, v);
+    return fd;
+  }
+
+  it('forwards the version from the form into the use case', async () => {
+    const result = await updateMovementAction(null, editForm({ version: '3' }));
+
+    expect(result).toEqual({ success: 'movementUpdated' });
+    const [, input] = mockedUpdateMovement.mock.calls[0] as [string, UpdateMovementInput];
+    expect(input.movementId).toBe('mov-1');
+    expect(input.version).toBe(3);
+    expect(revalidatePath).toHaveBeenCalledWith('/movements');
+  });
+
+  it('leaves version undefined when the form does not carry one', async () => {
+    const result = await updateMovementAction(null, editForm());
+
+    expect(result).toEqual({ success: 'movementUpdated' });
+    const [, input] = mockedUpdateMovement.mock.calls[0] as [string, UpdateMovementInput];
+    expect(input.version).toBeUndefined();
+  });
+
+  it('rejects unauthenticated callers before any data access', async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    const result = await updateMovementAction(null, editForm());
+
+    expect(result).toEqual({ error: 'error.unauthorized' });
+    expect(connectDb).not.toHaveBeenCalled();
+    expect(mockedUpdateMovement).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

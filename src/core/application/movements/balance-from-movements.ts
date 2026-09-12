@@ -1,4 +1,5 @@
 import type { Movement } from '../../domain/movement';
+import { sumSafeMinorUnits } from '../../domain/money';
 
 /**
  * Balance per account summed from an already live (parent-filtered) movement
@@ -14,6 +15,12 @@ import type { Movement } from '../../domain/movement';
  * Movements without a `link` (manual movements) are always live and thus
  * included — the caller is responsible for passing a list already filtered by
  * parent liveness.
+ *
+ * R15.3.1 P1.3: every account total goes through {@link sumSafeMinorUnits} —
+ * the same bound enforcement `computeAccountLiveBalance` applies, so the
+ * dashboard path and the account-balance path can never diverge on a silent
+ * overflow (one throws, the other wraps). Iteration order is preserved: the
+ * accounts are grouped in first-occurrence order, not Map-insertion-sorted.
  */
 export function accountBalancesFromMovements(
   accounts: { id: string }[],
@@ -21,7 +28,11 @@ export function accountBalancesFromMovements(
 ): Map<string, number> {
   const balance = new Map<string, number>();
   for (const m of movements) {
-    balance.set(m.accountId, (balance.get(m.accountId) ?? 0) + m.signedAmount);
+    const sum = sumSafeMinorUnits(
+      [balance.get(m.accountId) ?? 0, m.signedAmount],
+      `Account balance (${m.accountId})`,
+    );
+    balance.set(m.accountId, sum);
   }
   return balance;
 }

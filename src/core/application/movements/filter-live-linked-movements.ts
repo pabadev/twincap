@@ -1,4 +1,4 @@
-import type { BalanceMovement, MovementLinkKind } from '../../domain/movement';
+import type { BalanceMovement } from '../../domain/movement';
 import { MOVEMENT_LINK_KIND_REGISTRY, type MovementLinkKindMeta } from '../../domain/movement';
 import { isModernRecord } from '../../domain/modern-record';
 

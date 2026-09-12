@@ -1,97 +1,75 @@
-# GlobalMoney
+# TwinCap
 
-Personal finance management application built with Clean Architecture on Next.js 16.
+Personal-finance and small-business management SaaS built on Next.js 16 with a hexagonal (ports & adapters) architecture.
 
-Manage accounts, track movements, handle transfers, manage credits (received and granted), and run a point-of-sale system with a product catalog and sales tracking.
+Manage accounts and movements, move money between your own accounts, track credits received and granted, register payables, and run a point-of-sale system with a catalog, clients, and sales.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16.3.1 (App Router, Turbopack) |
+| Framework | Next.js 16.3.4 (App Router, Turbopack) |
 | UI | React 19, Tailwind CSS 4 |
-| Language | TypeScript 5 (strict mode) |
-| Database | MongoDB (Mongoose 8 ODM) |
+| Language | TypeScript 5 (strict) |
+| Database | MongoDB (Mongoose 8 ODM) — Atlas M0 replica set |
 | Auth | jose (JWE A256GCM sessions), bcryptjs |
 | Validation | Zod 4 |
-| Testing | Vitest |
+| Email | Resend (transactional; console fallback in development) |
+| Icons | lucide-react |
+| Testing | Vitest (unit + integration), Playwright (E2E) |
 | Deployment | Vercel |
 
 ## Architecture
 
-GlobalMoney follows **Clean Architecture** with strict layer separation:
+TwinCap follows **hexagonal architecture** with strict layer separation:
 
 ```
 src/
-├── core/                          # Pure business logic (zero framework imports)
-│   ├── domain/                    # Entities, value objects, repository interfaces
-│   │   ├── account.ts
-│   │   ├── category.ts
-│   │   ├── catalog.ts
-│   │   ├── credit-received.ts
-│   │   ├── credit-granted.ts
-│   │   ├── currency.ts            # Multi-currency support
-│   │   ├── errors.ts              # DomainError, NotFoundError, etc.
-│   │   ├── money.ts               # Money value object with rounding
-│   │   ├── movement.ts            # Signed-amount movements
-│   │   ├── repositories.ts        # Repository port interfaces
-│   │   ├── sale.ts
-│   │   ├── transfer.ts
-│   │   └── user.ts
+├── core/
+│   ├── domain/                    # Entities and value objects (zero framework imports)
+│   │   ├── account.ts, movement.ts, transfer.ts
+│   │   ├── credit-received.ts, credit-granted.ts, payable.ts
+│   │   ├── sale.ts, catalog.ts, client.ts
+│   │   ├── category.ts, currency.ts, money.ts
+│   │   ├── workspace.ts, membership.ts, user.ts
+│   │   └── errors.ts, repositories.ts
 │   └── application/               # Use cases (orchestrate domain + ports)
-│       ├── accounts/              # create-account, list-accounts, update-account, delete-account
-│       ├── auth/                  # register, login, logout
-│       ├── balance.ts             # Account balance aggregation (signed-amount sum)
-│       ├── catalog/               # catalog CRUD use cases
-│       ├── categories/            # category CRUD use cases
-│       ├── credits-granted/       # credit lifecycle + abono management
-│       ├── credits-received/      # credit lifecycle + abono management
-│       ├── movements/             # movement CRUD with category-type guards
-│       ├── ports.ts               # Application ports (PasswordHasher, SessionManager, Clock, IdGenerator)
-│       ├── sales/                 # sale lifecycle with stock management + abonos
-│       └── transfers/             # transfer use cases with idempotent replay
+│       ├── accounts/, movements/, transfers/, categories/
+│       ├── credits-received/, credits-granted/, payables/
+│       ├── catalog/, sales/, clients/, dashboard/, auth/
+│       ├── balance-from-movements.ts, compute-live-balance.ts
+│       ├── compute-activos-pasivos.ts, economic-result.ts
+│       └── ports.ts               # Repository/service interfaces
 │
-├── infrastructure/                # Framework adapters (Mongoose, jose, bcryptjs)
-│   ├── auth/                      # Password hasher, session manager, cookie helpers
-│   ├── config/                    # Zod-validated env (fail-fast on startup)
-│   ├── consistency/               # Reconcile utility for derived balance sweep
-│   ├── db/                        # Mongoose singleton connection
-│   ├── mappers/                   # Document ↔ Entity mappers (8 modules)
-│   ├── models/                    # Mongoose schemas + indexes (9 models)
-│   ├── repositories/              # Repository implementations (8 modules)
-│   └── seeding/                   # Idempotent user bootstrap
+├── infrastructure/                # Framework adapters
+│   ├── models/                    # Mongoose schemas + indexes
+│   ├── repositories/              # Repository implementations
+│   ├── mappers/                   # Document ↔ entity mappers
+│   ├── auth/                      # Password hasher, session manager, rate limiter
+│   ├── db/                        # Mongoose connection singleton
+│   ├── config/                    # Zod-validated env (fail-fast)
+│   └── monitoring/               # Error monitoring + audit trail
 │
-├── app/                           # Next.js App Router (UI + server actions)
-│   ├── (auth)/                    # Login / register (public)
-│   ├── (main)/                    # Authenticated shell (session guard, nav sidebar)
-│   │   ├── dashboard/
-│   │   ├── accounts/
-│   │   ├── categories/
-│   │   ├── movements/
-│   │   ├── transfers/
-│   │   ├── credits/received/
-│   │   ├── credits/granted/
-│   │   └── pos/                   # catalog/ + sales/
-│   └── layout.tsx                 # Root layout
+├── app/                           # Next.js App Router (routes + server actions)
+│   ├── (auth)/                    # login, register, forgot/reset password, verify email
+│   ├── (main)/                    # Authenticated shell (dashboard, accounts, movements,
+│   │                              #   transfers, categories, credits, payables, clients, POS, profile)
+│   ├── (legal)/                   # privacy, terms, cookies, data-policy
+│   └── (analytics)/               # allowlisted product metrics
 │
-└── components/ui/                 # Shared UI primitives
-    ├── button.tsx
-    ├── card.tsx
-    ├── input.tsx
-    ├── modal.tsx
-    ├── select.tsx
-    └── table.tsx
+├── components/                    # UI primitives (components/ui) + feature components
+└── i18n/                          # Custom es/en localization
 ```
 
-**Dependency rule**: `core/domain` has zero imports. `core/application` imports only `domain`. `infrastructure` implements `domain` ports. `app` depends on everything but never reaches into `core/domain` directly from pages.
+**Dependency rule**: `core/domain` has zero imports. `core/application` imports only `domain`. `infrastructure` implements the ports declared in `core/application/ports.ts`. `app` wires everything together but pages never reach into repositories directly.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- pnpm 9+
-- MongoDB Atlas account (shared tier — no multi-document transactions required)
+- pnpm 11+
+- MongoDB Atlas account — the M0 shared tier is a replica set and supports the multi-document transactions TwinCap relies on
 
 ### Clone and install
 
@@ -106,21 +84,23 @@ pnpm install
 Copy the example and fill in your values:
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 ```
 
 Edit `.env.local`:
 
 ```bash
-# MongoDB connection string (Atlas shared tier)
+# MongoDB connection string (Atlas M0 shared tier)
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/twincap
 
-# Session encryption secret (jose JWE A256GCM) — must be at least 32 bytes
-# Generate one with: openssl rand -base64 32
-AUTH_SECRET=<generate-a-random-32-byte-string>
+# Session encryption secret (jose JWE A256GCM) — base64url-encoded 32-byte key
+# Generate one with: openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
+AUTH_SECRET=<base64url-encoded-32-bytes>
 ```
 
-> **Important**: `AUTH_SECRET` must be at least 32 bytes. The app validates this on startup and will fail fast with a clear error message if it's missing or too short.
+> **Important**: `AUTH_SECRET` must decode to exactly 32 bytes. The app validates this on startup and fails fast with a clear error message if it is missing or has the wrong length.
+
+Production deployments additionally require `RESEND_API_KEY`, `RESEND_FROM`, and `APP_BASE_URL` (otherwise the app fails fast at runtime). Monitoring, feedback, and analytics are opt-in — see `.env.example` for the full list.
 
 ### Run the development server
 
@@ -133,32 +113,45 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Run tests
 
 ```bash
-pnpm test          # single run
+pnpm test          # Vitest single run (unit + integration)
 pnpm test:watch    # watch mode
 ```
 
-24 test files, 242 tests covering domain logic, use cases, infrastructure adapters, and consistency checks.
+The suite has **1,340+ tests across 120 test files**, covering domain logic, use cases, infrastructure adapters, real MongoDB transactions, concurrency, and idempotency.
+
+End-to-end tests run with Playwright against a local `mongodb-memory-server` seeded through `.env.e2e` (never Atlas):
+
+```bash
+pnpm test:e2e:install   # one-time: install the Chromium browser
+pnpm test:e2e           # 24 E2E flows across 4 specs
+```
 
 ## Features
 
 | # | Capability | Description |
 |---|-----------|-------------|
-| 1 | **User Auth** | Register, login, logout with JWT sessions (jose A256GCM) and bcryptjs password hashing |
-| 2 | **Accounts** | Create, update, delete accounts with opening balance tracking |
-| 3 | **Categories** | Categorize movements (income/expense) with uniqueness and deletion guards |
-| 4 | **Movements** | Record income and expense movements with category-type matching and system-linked deletion guards |
-| 5 | **Transfers** | Move funds between accounts with idempotent replay and cascade |
-| 6 | **Credits Received** | Track credits you receive with abono (payment installment) management and cascade |
-| 7 | **Credits Granted** | Track credits you grant with abono management and cascade |
-| 8 | **POS (Point of Sale)** | Product catalog + sales with stock management, line items, and abono operations |
+| 1 | **User Auth** | Register, login, logout, email verification, and password reset (jose A256GCM sessions, bcryptjs, Resend) |
+| 2 | **Accounts** | Create, rename, and delete accounts with opening/initial balance tracking; balances are always derived (no stored balance field) |
+| 3 | **Categories** | Income/expense categories with uniqueness and deletion guards |
+| 4 | **Movements** | Income and expense movements with category-type matching, system-linked deletion guards, optimistic-concurrency (CAS) edits, and a policy that allows negative balances |
+| 5 | **Transfers** | Move funds between your own accounts (same or cross currency) with idempotent replay and CAS; the FX rate is derived from both amounts |
+| 6 | **Credits Received** | Track credits you receive with installment (abono) management and cascade deletes |
+| 7 | **Credits Granted** | Track credits you grant with capital-first amortization, interest-only income, and an uncollectible write-off flow |
+| 8 | **Payables** | Register purchase obligations with total/abono tracking (payable principal is never re-counted as an expense) |
+| 9 | **Clients** | Client records with guarded deletion and create/edit flows shared with the POS |
+| 10 | **POS** | Product catalog + sales with stock management, line items, paid-in-full or on-credit payment, and abono operations |
 
 ### Additional capabilities
 
-- **Dashboard** — Welcome view with account balance aggregation
-- **Balance aggregation** — Derived balances via signed-amount sum (no stored balance field)
-- **Consistency reconcile** — Sweep utility for derived data integrity
-- **Idempotent seeding** — User bootstrap runs safely on every startup
-- **Dark mode** — Tailwind CSS dark mode support throughout the UI
+- **Dashboard** — server-aggregated snapshot with filters, yearly evolution chart, financial position (assets/liabilities), and recent movements
+- **Multi-currency** — COP, USD, MXN, EUR with explicit derived FX (no silent conversion)
+- **Workspace isolation** — every record is scoped to a `workspaceId` through the user's membership
+- **Idempotency** — client-provided idempotency keys on financial creation actions
+- **Concurrency control** — optimistic locking via version (CAS) plus real MongoDB multi-document transactions
+- **Audit trail & monitoring** — operation log, error events, and opt-in alerting
+- **Analytics** — opt-in product metrics dashboard restricted to an email allowlist
+- **Legal & support** — privacy/terms/cookies/data-policy pages, help center, and in-product feedback widget
+- **PWA, dark mode, and i18n** — installable app with Spanish/English UI
 
 ## Project Structure
 
@@ -168,12 +161,17 @@ twincap/
 │   ├── core/                     # Domain + Application (framework-free)
 │   ├── infrastructure/           # Mongoose, auth, config adapters
 │   ├── app/                      # Next.js App Router pages + actions
-│   └── components/               # Shared UI components
+│   ├── components/               # Shared UI + feature components
+│   └── i18n/                     # Custom es/en localization
+├── e2e/                          # Playwright end-to-end specs
+├── messages/                     # es.json / en.json translation catalogs
 ├── .env.example                  # Environment variable template
+├── .env.e2e                      # E2E environment (local mongod only)
 ├── .env.local                    # Local environment (gitignored)
 ├── eslint.config.mjs             # ESLint flat config
 ├── next.config.ts                # Next.js configuration
 ├── package.json                  # pnpm scripts + dependencies
+├── playwright.config.ts          # Playwright E2E configuration
 ├── pnpm-lock.yaml                # Lockfile
 ├── postcss.config.mjs            # PostCSS + Tailwind
 ├── tsconfig.json                 # TypeScript strict config with @/* alias
@@ -188,14 +186,15 @@ twincap/
 1. Push to GitHub and import in [vercel.com/new](https://vercel.com/new)
 2. Set environment variables in the Vercel dashboard:
    - `MONGODB_URI` — your MongoDB Atlas connection string
-   - `AUTH_SECRET` — a random string ≥32 bytes (generate with `openssl rand -base64 32`)
+   - `AUTH_SECRET` — a base64url-encoded 32-byte key (see above)
+   - `RESEND_API_KEY`, `RESEND_FROM`, `APP_BASE_URL` — required in production
 3. Deploy — Vercel detects Next.js automatically
 
-> **Note**: `AUTH_SECRET` must be set in the Vercel environment variables. The app validates it at runtime (lazy validation) and will fail with a clear error on first request if missing.
+> **Note**: The app validates required environment variables at runtime and fails with a clear error if any are missing.
 
 ### MongoDB Atlas
 
-- Use the **Shared Tier (M0)** — no multi-document transactions needed
+- Use the **Shared Tier (M0)** — it is a replica set, so the multi-document transactions TwinCap uses are supported
 - Connection string format: `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<dbname>`
 - Whitelist your Vercel deployment IPs in Atlas Network Access
 
@@ -203,12 +202,18 @@ twincap/
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Start development server (Turbopack) |
+| `pnpm dev` | Start the development server (Turbopack) |
 | `pnpm build` | Production build |
-| `pnpm start` | Start production server |
+| `pnpm start` | Start the production server |
 | `pnpm lint` | Run ESLint |
 | `pnpm test` | Run Vitest (single run) |
 | `pnpm test:watch` | Run Vitest in watch mode |
+| `pnpm test:e2e` | Run Playwright E2E (local mongod via `.env.e2e`) |
+| `pnpm test:e2e:install` | Install the Playwright Chromium browser |
+| `pnpm e2e:server` | Build and start the server used by the E2E `webServer` |
+| `pnpm format` | Format the codebase with Prettier |
+| `pnpm format:check` | Check formatting without writing |
+| `pnpm migrate:workspace` | Run the workspace migration script |
 
 ## License
 

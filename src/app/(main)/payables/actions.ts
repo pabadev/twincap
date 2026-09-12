@@ -48,6 +48,11 @@ export async function createPayableAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. Once the mutation resolves, the key stays
+  // consumed even if a post-commit task (revalidatePath, analytics) fails.
+  let committed = false;
+
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
@@ -82,6 +87,10 @@ export async function createPayableAction(
         );
       },
     );
+    // Commit point: the payable (and any initial-payment movement) is persisted
+    // (withAudit resolved). From here on the idempotency key MUST NOT be
+    // released on failure (R15.3.1 P1.2).
+    committed = true;
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
@@ -89,7 +98,10 @@ export async function createPayableAction(
     // R13-H: regular payable creation event (APPENDED) for product analytics.
     await trackAnalytics('payableCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createPayable');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'createPayable');
+    }
     return handleActionError(error);
   }
 
@@ -113,6 +125,11 @@ export async function addAbonoAction(
   if (!idempotencyKey) {
     return { error: 'error.idempotencyKeyRequired' };
   }
+
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. Once the abono is persisted, the key stays
+  // consumed even if a post-commit task fails.
+  let committed = false;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -149,9 +166,16 @@ export async function addAbonoAction(
         );
       },
     );
+    // Commit point: the abono and its movement are persisted (withAudit
+    // resolved). From here on the idempotency key MUST NOT be released on
+    // failure (R15.3.1 P1.2).
+    committed = true;
     revalidateMovementData('/payables');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+    }
     return handleActionError(error);
   }
 

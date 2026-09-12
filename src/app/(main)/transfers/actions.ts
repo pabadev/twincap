@@ -71,6 +71,12 @@ export async function createTransferAction(
   // value), so the warning can be surfaced to the frontend as data.
   let result!: Awaited<ReturnType<typeof createTransfer>>;
 
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. For transfers the commit point is the presence
+  // of a written transfer (a warning writes NOTHING), so `committed` is set
+  // after the warning branch, never before it.
+  let committed = false;
+
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
@@ -114,14 +120,18 @@ export async function createTransferAction(
       },
     );
     if (result.warning) {
-      // The request was processed but NOTHING was written. Release the
-      // idempotency claim (mirroring the catch block) so the user's
-      // confirmation resubmission with the SAME key — same mounted form —
-      // is not dropped as a duplicate. The claim stays consumed until then:
-      // that is the intended retry flow (same key + confirmNegativeBalance).
+      // Pre-commit (R15.1 F5): the request was processed but NOTHING was
+      // written. Release the idempotency claim (mirroring the catch block) so
+      // the user's confirmation resubmission with the SAME key — same mounted
+      // form — is not dropped as a duplicate. The claim stays consumed until
+      // then: that is the intended retry flow (same key + confirmNegativeBalance).
       await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
       return { warning: result.warning };
     }
+    // Commit point: a transfer was actually written (withAudit resolved with a
+    // transfer). From here on the idempotency key MUST NOT be released on
+    // failure (R15.3.1 P1.2).
+    committed = true;
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
@@ -132,7 +142,10 @@ export async function createTransferAction(
     // R13-H: regular transfer creation event (APPENDED) for product analytics.
     await trackAnalytics('transferCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
+    }
     return handleActionError(error);
   }
 

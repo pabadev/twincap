@@ -1,4 +1,5 @@
 import type { Movement } from "../domain/movement";
+import { sumSafeMinorUnits } from "../domain/money";
 import {
   countsTowardEconomicResult,
   FINANCING_CAPITAL_LINK_KINDS,
@@ -83,8 +84,20 @@ export function computeDashboardSummary(input: {
       m.link !== undefined && FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind);
 
     if (m.amount.currency === currency && financingCapital && utcMonthKey(m.date) === currentKey) {
-      if (m.type === 'income') financingInflow += m.amount.amount;
-      else financingOutflow += m.amount.amount;
+      if (m.type === 'income') {
+        // R15.3.1 P1.3: guarded sums — every monetary aggregation is
+        // bound-checked, including the financing flows that the cards do NOT
+        // show (they feed the economic-result gap diagnostics).
+        financingInflow = sumSafeMinorUnits(
+          [financingInflow, m.amount.amount],
+          'Dashboard monthly financing inflow',
+        );
+      } else {
+        financingOutflow = sumSafeMinorUnits(
+          [financingOutflow, m.amount.amount],
+          'Dashboard monthly financing outflow',
+        );
+      }
     }
 
     if (!countsTowardEconomicResult(m)) continue;
@@ -93,13 +106,31 @@ export function computeDashboardSummary(input: {
     const key = utcMonthKey(m.date);
 
     if (key === currentKey) {
-      if (m.type === 'income') monthlyIncome += m.amount.amount;
-      else monthlyExpenses += m.amount.amount;
+      if (m.type === 'income') {
+        monthlyIncome = sumSafeMinorUnits(
+          [monthlyIncome, m.amount.amount],
+          'Dashboard monthly income',
+        );
+      } else {
+        monthlyExpenses = sumSafeMinorUnits(
+          [monthlyExpenses, m.amount.amount],
+          'Dashboard monthly expenses',
+        );
+      }
     }
 
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
-    if (m.type === 'income') bucket.income += m.amount.amount;
-    else bucket.expenses += m.amount.amount;
+    if (m.type === 'income') {
+      bucket.income = sumSafeMinorUnits(
+        [bucket.income, m.amount.amount],
+        'Dashboard monthly income',
+      );
+    } else {
+      bucket.expenses = sumSafeMinorUnits(
+        [bucket.expenses, m.amount.amount],
+        'Dashboard monthly expenses',
+      );
+    }
     monthlyMap.set(key, bucket);
   }
 

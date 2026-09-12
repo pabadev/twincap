@@ -3,7 +3,7 @@ import { computeDashboardSummary } from "./compute-dashboard-summary";
 import { Movement } from "../domain/movement";
 import type { MovementContext, MovementLinkKind, MovementType } from "../domain/movement";
 import { Category } from "../domain/category";
-import { Money } from "../domain/money";
+import { Money, MoneyError } from "../domain/money";
 import type { Currency } from "../domain/currency";
 
 const SEED_DATE = new Date("2026-01-01");
@@ -353,5 +353,39 @@ describe("computeDashboardSummary", () => {
       "2026-08",
     ]);
     expect(summary.months[5].income).toBe(500_000);
+  });
+
+  it("throws MoneyError when monthly income overflows — guarded aggregation (R15.3.1 P1.3)", () => {
+    const a = movement({ type: "income", amount: Number.MAX_SAFE_INTEGER });
+    const b = movement({ type: "income", amount: Number.MAX_SAFE_INTEGER });
+
+    expect(() =>
+      computeDashboardSummary({
+        movements: [a, b],
+        currency: "COP",
+        now: NOW,
+      }),
+    ).toThrow(/Dashboard monthly income/);
+  });
+
+  it("throws MoneyError when a 6-month bucket overflows even if monthly totals stay safe (previous month)", () => {
+    const a = movement({
+      type: "expense",
+      amount: Number.MAX_SAFE_INTEGER,
+      date: new Date("2026-07-10"),
+    });
+    const b = movement({
+      type: "expense",
+      amount: Number.MAX_SAFE_INTEGER,
+      date: new Date("2026-07-11"),
+    });
+
+    expect(() =>
+      computeDashboardSummary({
+        movements: [a, b],
+        currency: "COP",
+        now: NOW,
+      }),
+    ).toThrow(MoneyError);
   });
 });

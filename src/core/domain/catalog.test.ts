@@ -97,6 +97,31 @@ describe("CatalogItem entity", () => {
     expect(item.stock).toBe(0);
   });
 
+  it("rejects fractional stock — discrete count semantics (R15.3.1 P3)", () => {
+    expect(() =>
+      new CatalogItem({
+        id: "ci1",
+        workspaceId: "u1",
+        name: "Café",
+        unitPrice: new Money(5_000, "COP"),
+        type: "product",
+        stock: 1.5,
+        createdAt: DATE,
+      }),
+    ).toThrow(ValidationError);
+    expect(() =>
+      new CatalogItem({
+        id: "ci1",
+        workspaceId: "u1",
+        name: "Café",
+        unitPrice: new Money(5_000, "COP"),
+        type: "product",
+        stock: 2.0001,
+        createdAt: DATE,
+      }),
+    ).toThrow(/non-negative whole number/);
+  });
+
   it("rejects service with stock", () => {
     expect(() =>
       new CatalogItem({

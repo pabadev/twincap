@@ -1,4 +1,4 @@
-# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–7 + R15.1 6e + R15.2)
+# Atomicity Matrix — Multi-Document Operations (Ronda 15, Fases 1–7 + R15.1 6e + R15.2 + R15.3.1 §10)
 
 ## Purpose
 
@@ -301,3 +301,45 @@ transfers paralelos del mismo origen (exactamente 1 gana; `__v` origen == 1;
 saldos finales correctos; perdedores por re-validación de fondos), rollback de
 create/update/deleteTransfer y de editPrincipal ×2 con cascada fallida (crédito
 intacto y `__v` sin mover); §36 verifica la policy F5 del updateTransfer.
+
+## R15.3.1 §10 — Matriz de concurrencia por pares (auditoría)
+
+El mandato de §10 (`docs/R15.3.1.md`) exige EVIDENCIA de seguridad por par, no
+una lista artificial de tests: para cada par se responde (1) invariante,
+(2) mecanismo protector, (3) ¿funciona bajo concurrencia?, (4) ¿cambio de
+código? Un par ya cubierto por una suite existente NO requiere test nuevo. Esta
+auditoría no encontró ningún defecto: los mecanismos (guards transaccionales de
+referencia, conflict points de documento compartido, CAS) se sostienen; el
+único entregable nuevo es la evidencia faltante en `concurrency-matrix-pairs.test.ts`.
+
+| Par (§10) | Invariante | Mecanismo protector | Cobertura | Veredicto |
+|---|---|---|---|---|
+| `updateMovement` × `updateMovement` | Sin overwrite silencioso: por edición gana exactamente 1 | CAS `runVersionedUpdate` sobre `__v` del movement (P2) | `concurrency-movements.test.ts` (N=2×5: 1 gana, perdedor `ConflictError(MOVEMENT_MODIFIED_MSG)`, `__v` 0→1) | Cubierto — sin cambio |
+| `updateMovement` × `deleteAccount` | Nunca un movement huérfano de cuenta borrada | Edit toca la cuenta dentro del tx; delete borra la cuenta como ÚLTIMA escritura (write-write conflict → retry → `NotFoundError`); guard ACC-4 cuenta movements como referencias | `concurrency-references.test.ts:173` (§7, N=10) + `concurrency-deletion.test.ts` (createMovement × deleteAccount) | Cubierto — sin cambio |
+| `updateMovement` × `deleteCategory` | Nunca un movement que apunte a categoría borrada; tipo de categoría revalidado | Category touch dentro del edit + delete de categoría como última escritura + guard CAT-3 (counts con sesión); retry → `NotFoundError` | `concurrency-references.test.ts:222` (§8, N=10; también `createMovement` × `deleteCategory` en :264) | Cubierto — sin cambio |
+| `createSale` × `deleteAccount` | Sin movements de venta huérfanos; la venta toca el saldo de la cuenta | `createSale` toca la cuenta dentro del tx (antes de los inserts); delete = última escritura; retry → `NotFoundError` | `concurrency-deletion.test.ts:665` (fila 31: 9 ventas + 1 delete) | Cubierto — sin cambio |
+| `createSale` × `updateMovement` | Ventas y ediciones manuales sobre la MISMA cuenta serializan; ledger coherente | Ambos tocan la cuenta en su tx (touch vs touch → write-write conflict → replay del driver) | **NUEVO** — `concurrency-matrix-pairs.test.ts` "§10 pair 5" (N=5×5: los 10 commitean, ledger coherente, 0 NoSuchTransaction) | **Test nuevo** — sin cambio de código |
+| `createTransfer` × `deleteAccount` | Sin transfers/legs huérfanos de cuenta borrada | Legs = referencias (transferSource/DestFilter); guard cuenta los transfers; touch de cuenta en `createTransfer` (conflict point) | `concurrency-deletion.test.ts:1181` (fila 40: 9 transfers + 1 delete) | Cubierto — sin cambio |
+| `updateTransfer` × `deleteAccount` | El delete NO puede borrar una cuenta con transfers; los legs siguen al transfer | El transfer ES referencia (ACC-4 conta con la sesión del tx) → rechazo determinista; TRA-5 inmutabilidad de cuentas; edits con CAS todo-o-nada | **NUEVO** — `concurrency-matrix-pairs.test.ts` "§10 pair 7" (N=5×5: TODOS los deletes rechazados con el mensaje ACC-4 exacto; legs coherentes; edits abortan solo con `ConflictError(DEBT_MODIFIED_MSG)`) | **Test nuevo** — sin cambio de código |
+| `deleteTransfer` × `updateTransfer` | Átomo "update-en-fila-3 o delete"; sin estado mixto | Delete transaccional (cascada legs → transfer) + CAS del transfer | `concurrency-transfers.test.ts:1018` (fila 8, N=10) + rounds update×delete (:588) | Cubierto — sin cambio |
+| `createPayable` × `deleteAccount` | Sin payables/movements huérfanos de cuenta borrada | Payable = referencia (guard ACC-4); touch de cuenta en `createPayable` | `concurrency-deletion.test.ts:992` (fila 38: 9 payables + 1 delete) | Cubierto — sin cambio |
+| `addAbono` (payable) × `deletePayable` | Sin abonos/movements huérfanos; pending coherente | Touch de cuenta de pago + CAS del payable; delete tolerante de movements + delete final | `concurrency-deletion.test.ts:322` (N=10 interleave 5 deletes + 5 abonos) | Cubierto — sin cambio |
+| `createSale` × `deleteClient` | Sin venta huérfana de cliente borrado | `createSale` toca el client (on-credit) + guard D2 de ventas activas del `deleteClient`; última escritura = delete del client | `concurrency-references.test.ts:316` (§10, N=10) | Cubierto — sin cambio |
+| **`updateTransfer` × `updateMovement`** (descubierto, no listado) | Los legs del transfer no pueden divergir vía `updateMovement` (escudo MOV-5); edits de transfer y de movements sobre la misma cuenta serializan | `bumpVersion` de la cuenta origen (CAS, última escritura del edit) vs touch del edit de movement; MOV-5: movements con `link` → `ValidationError` | **NUEVO** — `concurrency-matrix-pairs.test.ts` (N=5×5: movs. siempre commitean, edits todo-o-nada, legs y ledger coherentes; `updateMovement` sobre un leg → `ValidationError`) | **Test nuevo** — sin cambio de código |
+| **`editAbono` (payable) × `deletePayable`** (descubierto, no listado) | Documento de movement de abono COMPARTIDO; terminal siempre limpio (payable borrado ⇒ 0 movements vinculados; vivo ⇒ abono y movement espejo) | CAS sobre el payable + re-lectura con sesión del tx; `deleteByRefId` tolerante + delete final; los edits re-ejecutados sobre el snapshot post-delete abortan en `NotFoundError`/`ConflictError` | **NUEVO** — `concurrency-matrix-pairs.test.ts` (N=5 edits + 5 deletes interleaved: el delete gana SIEMPRE, 0 movements vinculados, abortos limpios) | **Test nuevo** — sin cambio de código |
+
+Notas:
+
+1. **`updateTransfer` bajo concurrencia** — los edits son CAS (transfer `__v` +
+   `bumpVersion` de la cuenta origen). El driver re-juega el callback SOLO ante
+   WriteConflict; un CAS que queda atrás es un abort de negocio limpio
+   (`ConflictError(DEBT_MODIFIED_MSG)`), nunca una escritura parcial: cuántos
+   edits commitean es dependiente del scheduler (0..N); la coherencia (legs ==
+   transfer, ledger == saldo derivado) se sostiene siempre.
+2. **`deleteSale` × `updateMovement`** — no es par de §10: los movements de una
+   venta tienen `link` y MOV-5 los bloquea estructuralmente (documentado, sin
+   test dedicado).
+3. **write-off × abono** (credits-granted) — cubierto por `concurrency-abonos.test.ts`
+   e `integrity-suite.test.ts`; fuera de §10.
+4. **Veredicto de código**: 0 cambios de producción (solo el archivo de test
+   nuevo). Los pares con gap eran gaps de EVIDENCIA, no de mecanismo.

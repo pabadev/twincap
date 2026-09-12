@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 import type { CatalogItemRepository } from "../../core/domain/repositories";
 import type { CatalogItem } from "../../core/domain/catalog";
 import type { TransactionHandle } from "../../core/domain/transaction";
-import { NotFoundError, ConflictError } from "../../core/domain/errors";
+import { NotFoundError, ConflictError, ValidationError } from "../../core/domain/errors";
 import {
   CatalogItemModel,
   type CatalogItemDocument,
@@ -86,6 +86,12 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
   /**
    * Atomic stock decrement for products (POS-3).
    * matchedCount 0 = insufficient stock or item not found.
+   *
+   * R15.3.1 P3: quantity is a DISCRETE count — a non-positive or fractional
+   * quantity is rejected BEFORE the update (the `$gte` guard can only
+   * prevent overselling; it cannot model a fractional stock that the domain
+   * never allows). The Mongo `$gte` filter keeps the decrement atomic
+   * (never below zero, even under concurrent sales).
    */
   async decrementStock(
     workspaceId: string,
@@ -93,6 +99,11 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     quantity: number,
     tx?: TransactionHandle,
   ): Promise<boolean> {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new ValidationError(
+        `Stock decrement quantity must be a positive whole number, got ${quantity}`,
+      );
+    }
     const session = sessionOf(tx);
     const result = await CatalogItemModel.updateOne(
       {

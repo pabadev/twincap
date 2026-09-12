@@ -64,12 +64,26 @@ export async function createSaleAction(
     return { error: 'Sale must have at least one line item' };
   }
 
+  // R15.3.1 P3: line item quantities are discrete counts — reject
+  // non-positive/fractional values HERE (client-shape guard) with a specific
+  // i18n key; the Sale aggregate re-enforces the same rule server-side.
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      return { error: 'error.quantityInteger' };
+    }
+  }
+
   // H14: upfront payment applies only to on-credit sales.
   const initialPaymentRaw = formData.get('initialPayment');
   const initialPayment =
     paymentMode === 'on-credit' && initialPaymentRaw !== null
       ? Number(initialPaymentRaw)
       : undefined;
+
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. Once the mutation resolves, the key stays
+  // consumed even if a post-commit task (revalidatePath, analytics) fails.
+  let committed = false;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -111,6 +125,9 @@ export async function createSaleAction(
         );
       },
     );
+    // Commit point: the sale is persisted (withAudit resolved). From here on
+    // the idempotency key MUST NOT be released on failure (R15.3.1 P1.2).
+    committed = true;
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
@@ -123,7 +140,10 @@ export async function createSaleAction(
     // R13-G: track sale creation (analytics, best-effort).
     await trackAnalytics('saleCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createSale');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'createSale');
+    }
     return handleActionError(error);
   }
 
@@ -147,6 +167,11 @@ export async function addSaleAbonoAction(
   if (!idempotencyKey) {
     return { error: 'error.idempotencyKeyRequired' };
   }
+
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. Once the abono is persisted, the key stays
+  // consumed even if a post-commit task fails.
+  let committed = false;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -183,12 +208,19 @@ export async function addSaleAbonoAction(
         );
       },
     );
+    // Commit point: the abono and its movement are persisted (withAudit
+    // resolved). From here on the idempotency key MUST NOT be released on
+    // failure (R15.3.1 P1.2).
+    committed = true;
     revalidatePath('/pos/sales');
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
+    }
     return handleActionError(error);
   }
 

@@ -39,6 +39,9 @@ export function toMovementEntity(
         }
       : undefined,
     createdAt: doc.createdAt,
+    // R15.3.1 P2: CAS needs the persisted version (`__v` exists from creation —
+    // the movement schema keeps Mongoose's default versionKey).
+    version: doc.__v ?? 0,
   });
 }
 

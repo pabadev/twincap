@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CreditReceived } from '../../../../core/domain/credit-received';
+import { Money } from '../../../../core/domain/money';
 
 // Server-action wiring is unit-tested with every infrastructure edge mocked:
 // auth session, mongoose connection, mongo repositories, and next/cache
@@ -48,7 +50,52 @@ vi.mock('../../../../infrastructure/auth/idempotency', () => ({
   releaseIdempotency,
 }));
 
-const { createCreditReceivedAction } = await import('./actions');
+const { createCreditReceivedAction, addAbonoAction, markAsPaidAction } = await import('./actions');
+
+function makeCreditReceived(): CreditReceived {
+  return new CreditReceived({
+    id: 'cr-1',
+    workspaceId: 'user-1',
+    counterparty: 'Banco XYZ',
+    principal: new Money(100000, 'COP'),
+    accountId: 'acc-1',
+    date: new Date('2026-09-01'),
+    createdAt: new Date(),
+  });
+}
+
+function setupMutationMocks() {
+  connectDb.mockResolvedValue(undefined);
+  MongoOperationLogger.mockImplementation(() => ({
+    log: vi.fn().mockResolvedValue(undefined),
+  }));
+  MongoUnitOfWork.mockImplementation(() => ({
+    withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+  }));
+  MongoAccountRepository.mockImplementation(() => ({
+    findById: vi.fn().mockResolvedValue({
+      id: 'acc-1',
+      workspaceId: 'user-1',
+      name: 'Cash',
+      currency: 'COP',
+      isFixed: false,
+    }),
+    // R15.2: abonos touch the payment account doc inside the tx.
+    touch: vi.fn().mockResolvedValue(true),
+  }));
+  const addAbono = vi.fn().mockResolvedValue(undefined);
+  const createMovement = vi.fn().mockResolvedValue(undefined);
+  MongoCreditReceivedRepository.mockImplementation(() => ({
+    findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditReceived()]),
+    addAbono,
+  }));
+  MongoMovementRepository.mockImplementation(() => ({
+    create: createMovement,
+  }));
+  releaseIdempotency.mockResolvedValue(undefined);
+  revalidatePath.mockResolvedValue(undefined);
+  return { addAbono, createMovement };
+}
 
 describe('createCreditReceivedAction', () => {
   beforeEach(() => {
@@ -141,5 +188,94 @@ describe('createCreditReceivedAction', () => {
     expect(MongoCreditReceivedRepository).not.toHaveBeenCalled();
     expect(trackAnalytics).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('addAbonoAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+  let mutationSpies: ReturnType<typeof setupMutationMocks>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    claimIdempotency.mockReset();
+    mutationSpies = setupMutationMocks();
+  });
+
+  it('post-commit revalidatePath failure: abono commits, key is NOT released, retry replays as duplicate', async () => {
+    const { addAbono, createMovement } = mutationSpies;
+    claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const fd = new FormData();
+    fd.append('creditId', 'cr-1');
+    fd.append('amount', '50000');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-abono-post-commit');
+
+    const first = await addAbonoAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation executed exactly once (abono push + linked movement)
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    // (d) the key was NOT released after commit
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+
+    // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
+    const retry = await addAbonoAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+  });
+});
+
+describe('markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+  let mutationSpies: ReturnType<typeof setupMutationMocks>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    claimIdempotency.mockReset();
+    mutationSpies = setupMutationMocks();
+  });
+
+  it('post-commit revalidatePath failure: mark-as-paid commits, key is NOT released, retry replays as duplicate', async () => {
+    const { addAbono, createMovement } = mutationSpies;
+    claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const fd = new FormData();
+    fd.append('creditId', 'cr-1');
+    fd.append('idempotencyKey', 'key-mark-paid-post-commit');
+
+    const first = await markAsPaidAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation executed exactly once (closing abono push + linked movement)
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    // (d) the key was NOT released after commit
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+
+    // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
+    const retry = await markAsPaidAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
   });
 });

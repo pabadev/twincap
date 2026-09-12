@@ -15,6 +15,25 @@ export const GLOBAL_COOLDOWN_MS = 10 * 60 * 1000;
 export const MONITOR_GLOBAL_KEY = 'monitor:global';
 
 /**
+ * Max re-entries of the per-IP budget / global counter paths after a genuine
+ * E11000 duplicate-key create race. The bound guarantees the create-loser
+ * path terminates: 1 first attempt + up to 3 retries, then the last error
+ * falls through the fail-open boundary (R15.3.1 P1.1 — no unbounded
+ * recursion).
+ */
+const MAX_E11000_CREATE_RETRIES = 3;
+
+/**
+ * True only for a MongoDB duplicate-key error (error code 11000). Any other
+ * error — network, server selection, cast, validation — must NOT be treated
+ * as a benign retry condition (R15.3.1 P1.1): such an error skips the retry
+ * and reaches the documented fail-open boundary with its original message.
+ */
+function isDuplicateKeyError(error: unknown): boolean {
+  return (error as { code?: unknown })?.code === 11000;
+}
+
+/**
  * Injectable dependencies (tests substitute clock + models; production uses
  * the defaults). Mirrors the `MonitorDeps` pattern of error-monitor.ts.
  */
@@ -92,6 +111,23 @@ export class MongoMonitorGuard {
     ip: string,
     fingerprint: string,
   ): Promise<{ allowed: boolean; isNew: boolean }> {
+    return this.limitFingerprintsBounded(ip, fingerprint, MAX_E11000_CREATE_RETRIES);
+  }
+
+  /**
+   * Bounded variant of `limitFingerprints()`: `retriesLeft` limits how many
+   * times a genuine E11000 create race re-enters the method (the retry then
+   * finds the concurrent winner's bucket and classifies the fingerprint
+   * through the NORMAL path). Any non-duplicate error skips the retry and is
+   * rethrown into the fail-open boundary below — original message preserved,
+   * no retry. On E11000 persisting past the bound the last error falls
+   * through the same boundary, so the guard still NEVER throws publicly.
+   */
+  private async limitFingerprintsBounded(
+    ip: string,
+    fingerprint: string,
+    retriesLeft: number,
+  ): Promise<{ allowed: boolean; isNew: boolean }> {
     try {
       const now = this.now();
       const windowStartMs = this.bucketStartMs(
@@ -160,8 +196,10 @@ export class MongoMonitorGuard {
       // No active bucket (first fingerprint of the window): clean any lapsed
       // doc for the same key (defensive; TTL also sweeps it) and create the
       // fresh bucket. The unique index on `key` makes a concurrent create
-      // loser throw E11000 → retry once (the retry then finds the doc and
+      // loser throw E11000 → BOUNDED retry (the retry then finds the doc and
       // follows the normal path above) — same pattern as MongoRateLimiter.
+      // Any NON-duplicate create error skips the retry and falls through the
+      // fail-open boundary below with its original message.
       await this.fingerprintModel.deleteOne({
         key,
         windowStart: { $lt: new Date(windowStartMs) },
@@ -175,8 +213,14 @@ export class MongoMonitorGuard {
           expiresAt,
         });
         return { allowed: true, isNew: true };
-      } catch {
-        return this.limitFingerprints(ip, fingerprint);
+      } catch (error: unknown) {
+        if (!isDuplicateKeyError(error)) throw error;
+        if (retriesLeft <= 0) throw error;
+        return this.limitFingerprintsBounded(
+          ip,
+          fingerprint,
+          retriesLeft - 1,
+        );
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -229,6 +273,21 @@ export class MongoMonitorGuard {
    * MongoRateLimiter so concurrent registrations are never lost.
    */
   async registerGlobalFingerprint(): Promise<{ cooldownEntered: boolean }> {
+    return this.registerGlobalFingerprintBounded(MAX_E11000_CREATE_RETRIES);
+  }
+
+  /**
+   * Bounded variant of `registerGlobalFingerprint()`: `retriesLeft` limits
+   * how many times a genuine E11000 create race re-enters the method (the
+   * retry then hits the active-window `$inc` path of the concurrent winner).
+   * Any non-duplicate error skips the retry and is rethrown into the
+   * fail-open boundary below — original message preserved, no retry. On
+   * E11000 persisting past the bound the last error falls through the same
+   * boundary, so the guard still NEVER throws publicly.
+   */
+  private async registerGlobalFingerprintBounded(
+    retriesLeft: number,
+  ): Promise<{ cooldownEntered: boolean }> {
     try {
       const now = this.now();
       const threshold = this.cooldownThreshold;
@@ -263,10 +322,13 @@ export class MongoMonitorGuard {
       }
 
       // No active window: clean the lapsed doc (TTL also sweeps it) and create
-      // a fresh singleton with count 1. E11000 → retry once (the retry then
-      // hits the $inc path above). The route only ever registers while NO
-      // cooldown is active, so recreating the window cannot drop an active
-      // cooldown in practice (direct callers are tests).
+      // a fresh singleton with count 1. The unique index makes a concurrent
+      // create loser throw E11000 → BOUNDED retry (the retry then hits the
+      // $inc path above). Any NON-duplicate create error skips the retry and
+      // falls through the fail-open boundary below with its original message.
+      // The route only ever registers while NO cooldown is active, so
+      // recreating the window cannot drop an active cooldown in practice
+      // (direct callers are tests).
       await this.cooldownModel.deleteOne({
         key: MONITOR_GLOBAL_KEY,
         windowStart: { $lt: windowStart },
@@ -280,8 +342,10 @@ export class MongoMonitorGuard {
           expiresAt,
         });
         return { cooldownEntered: false };
-      } catch {
-        return this.registerGlobalFingerprint();
+      } catch (error: unknown) {
+        if (!isDuplicateKeyError(error)) throw error;
+        if (retriesLeft <= 0) throw error;
+        return this.registerGlobalFingerprintBounded(retriesLeft - 1);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

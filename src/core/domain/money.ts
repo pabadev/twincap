@@ -6,8 +6,11 @@ export class MoneyError extends DomainError {}
 
 /**
  * Guards arithmetic between Money values of different currencies.
- * Cross-currency operations are only allowed through an explicit,
- * user-entered FX rate (see transfers) — never implicitly.
+ * Money arithmetic is same-currency only; cross-currency conversion happens
+ * in transfers, where the effective FX rate is DERIVED from the movement's
+ * source and destination amounts (R15.3 §11) — never entered as a third,
+ * independent user input. This module is the numeric safety layer that
+ * validates every derived conversion.
  */
 export function assertSameCurrency(a: Money, b: Money): void {
   if (a.currency !== b.currency) {
@@ -126,6 +129,38 @@ export function assertSafeMinorUnits(value: number, context: string): void {
       `\`${context}\` produced an unsafe minor-units value: ${value}`,
     );
   }
+}
+
+/**
+ * Single shared, guarded aggregation for minor-units sums (R15.3.1 P1.3 §7).
+ *
+ * Every display/derived aggregation that sums monetary values — account
+ * balances (`signedAmount`), currency breakdowns, dashboard income/expenses,
+ * financing flows, category totals, financial position (activos/pasivos) —
+ * MUST go through this helper (or the same per-step guard) so no path can
+ * silently overflow the safe-integer range while another detects it.
+ *
+ * The guard runs on the RUNNING TOTAL at every step with the exact bound
+ * semantics of `computeAccountLiveBalance`'s historical per-step guard
+ * (R15.3 §18): `assertSafeMinorUnits(sum, context)` after each addition.
+ * Inputs that each came out of a Money constructor are still guarded here —
+ * the aggregation itself can overflow even when no individual input can
+ * (two MAX_SAFE_INTEGER amounts sum past 2^53).
+ *
+ * @throws MoneyError when any intermediate running total is not a safe
+ *         integer — the failure surfaces as a clear error (never a silent
+ *         wrap); server actions map MoneyError to `error.invalidAmount`.
+ */
+export function sumSafeMinorUnits(
+  values: readonly number[],
+  context: string,
+): number {
+  let sum = 0;
+  for (const value of values) {
+    sum += value;
+    assertSafeMinorUnits(sum, context);
+  }
+  return sum;
 }
 
 /**

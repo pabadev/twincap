@@ -38,8 +38,13 @@ function MultiCurrencyValue({
   locale: string;
   className?: string;
 }) {
-  const total = items.reduce((sum, i) => sum + i[field], 0);
   if (items.length <= 1) {
+    // R15.3.1 P1.3: the mono-currency path is the ONLY place a numeric sum is
+    // meaningful. Summing `items[field]` across multiple currencies would mix
+    // COP and USD minor units — a financially meaningless value that used to
+    // be computed dead (never displayed). Compute it only here, where there
+    // is at most one currency to sum.
+    const total = items.length === 1 ? items[0][field] : 0;
     return (
       <p className={`text-base sm:text-lg font-semibold leading-tight ${className ?? ''}`}>
         {sign}{formatAmount(total, items[0]?.currency ?? 'COP', locale)}

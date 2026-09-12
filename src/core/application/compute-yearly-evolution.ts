@@ -1,4 +1,5 @@
 import type { Movement } from '../domain/movement';
+import { sumSafeMinorUnits } from '../domain/money';
 import { countsTowardEconomicResult } from './economic-result';
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates. */
@@ -65,8 +66,18 @@ export function computeYearlyEvolution(input: {
 
     const key = utcMonthKey(m.date);
     const bucket = monthMap.get(key) ?? { income: 0, expenses: 0 };
-    if (m.type === 'income') bucket.income += m.amount.amount;
-    else bucket.expenses += m.amount.amount;
+    if (m.type === 'income') {
+      // R15.3.1 P1.3: guarded aggregation (year chart feeds EconomicResult).
+      bucket.income = sumSafeMinorUnits(
+        [bucket.income, m.amount.amount],
+        'Yearly evolution income',
+      );
+    } else {
+      bucket.expenses = sumSafeMinorUnits(
+        [bucket.expenses, m.amount.amount],
+        'Yearly evolution expenses',
+      );
+    }
     monthMap.set(key, bucket);
   }
 

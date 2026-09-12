@@ -341,6 +341,43 @@ describe('createSale', () => {
     expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
   });
 
+  it('rejects fractional line-item quantities — Sale aggregate integer rule (R15.3.1 P3)', async () => {
+    const product = makeProduct();
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(product),
+    });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+
+    await expect(
+      createSale(
+        'user-1',
+        {
+          items: [{ itemId: 'item-1', quantity: 1.5, unitPrice: 50000 }],
+          accountId: 'acc-1',
+          date: new Date('2025-06-01'),
+          paymentMode: 'paid-in-full',
+          currency: 'COP',
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        fakeIdGen(),
+        clientRepo,
+        creditRepo,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    // Rejected before ANY write: no sale, no movement, no stock decrement.
+    expect(saleRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+    expect(catalogRepo.decremented).toHaveLength(0);
+  });
+
   it('rejects a paid-in-full sale carrying an initial payment (H14)', async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();

@@ -122,7 +122,12 @@ describe('MongoRateLimiter', () => {
           expiresAt: new Date(Date.now() + 30_000),
         } as RateLimitDocument); // retry hits the active-window $inc path
       vi.mocked(RateLimitModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 0 });
-      vi.mocked(RateLimitModel.create).mockRejectedValue(new Error('E11000 duplicate key error'));
+      // Real MongoServerError shape: numeric `code` 11000 + message (R15.3.1 P1.1
+      // discriminates on `code`, so the fixture MUST carry it).
+      const duplicateKey = Object.assign(new Error('E11000 duplicate key error'), {
+        code: 11000,
+      });
+      vi.mocked(RateLimitModel.create).mockRejectedValue(duplicateKey);
 
       const result = await rateLimiter.check('test:key');
 
@@ -133,6 +138,55 @@ describe('MongoRateLimiter', () => {
       expect(RateLimitModel.create).toHaveBeenCalledTimes(1);
       expect(result.attempts).toBe(4);
       expect(result.allowed).toBe(false);
+    });
+
+    it('propagates a non-E11000 Mongo create error immediately — no retry, original error surfaces (R15.3.1 P1.1)', async () => {
+      vi.mocked(RateLimitModel.findOneAndUpdate).mockResolvedValue(null);
+      vi.mocked(RateLimitModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 0 });
+      // Any Mongo error that is NOT a duplicate key (e.g. network, server
+      // selection, bad cast) must fail fast instead of re-entering check().
+      const nonDuplicate = Object.assign(new Error('network partition'), {
+        code: 8000,
+      });
+      vi.mocked(RateLimitModel.create).mockRejectedValue(nonDuplicate);
+
+      await expect(rateLimiter.check('test:key')).rejects.toBe(nonDuplicate);
+
+      // The underlying operations ran EXACTLY once — no retry on this path.
+      expect(RateLimitModel.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(RateLimitModel.deleteOne).toHaveBeenCalledTimes(1);
+      expect(RateLimitModel.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates a plain Error (no code) from create immediately — no retry, original error surfaces (R15.3.1 P1.1)', async () => {
+      vi.mocked(RateLimitModel.findOneAndUpdate).mockResolvedValue(null);
+      vi.mocked(RateLimitModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 0 });
+      // Errors WITHOUT a Mongo `code` (e.g. Mongoose ValidationError) are not
+      // duplicate-key races either — same fail-fast rule.
+      const validationFailure = new Error('validation failed: attempts is required');
+      vi.mocked(RateLimitModel.create).mockRejectedValue(validationFailure);
+
+      await expect(rateLimiter.check('test:key')).rejects.toBe(validationFailure);
+
+      expect(RateLimitModel.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(RateLimitModel.deleteOne).toHaveBeenCalledTimes(1);
+      expect(RateLimitModel.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('exhausts the E11000 retry bound when create keeps losing the race and rejects (no infinite recursion) (R15.3.1 P1.1)', async () => {
+      vi.mocked(RateLimitModel.findOneAndUpdate).mockResolvedValue(null);
+      vi.mocked(RateLimitModel.deleteOne).mockResolvedValue({ acknowledged: true, deletedCount: 0 });
+      const duplicateKey = Object.assign(new Error('E11000 duplicate key error'), {
+        code: 11000,
+      });
+      vi.mocked(RateLimitModel.create).mockRejectedValue(duplicateKey);
+
+      await expect(rateLimiter.check('test:key')).rejects.toBe(duplicateKey);
+
+      // 1 first attempt + 3 bounded retries = 4 create calls, then it STOPS.
+      expect(RateLimitModel.create).toHaveBeenCalledTimes(4);
+      expect(RateLimitModel.findOneAndUpdate).toHaveBeenCalledTimes(4);
+      expect(RateLimitModel.deleteOne).toHaveBeenCalledTimes(4);
     });
   });
 

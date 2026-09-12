@@ -174,10 +174,19 @@ export interface MovementRepository {
   create(movement: Movement, tx?: TransactionHandle): Promise<Movement>;
   /**
    * Update an existing movement.
+   *
    * @param tx optional transaction handle (R15); the write joins the caller's
    *   transaction when present (used by transactional abono/edit/delete cascades).
+   * @param expectedVersion optional CAS version (R15.3.1 P2): when provided the
+   *   write filters `__v: expectedVersion`, bumps `__v` via `$inc` on success,
+   *   and aborts with ConflictError(MOVEMENT_MODIFIED_MSG) when the persisted
+   *   version moved concurrently (matchedCount 0 on a still-existing doc).
+   *   When absent, behavior is unchanged (plain `findOneAndUpdate`, no CAS) —
+   *   used by the system cascades (updateTransfer/editPrincipal/editAbono),
+   *   which rewrite movements of a parent aggregate whose OWN version is the
+   *   concurrency guard.
    */
-  update(movement: Movement, tx?: TransactionHandle): Promise<Movement>;
+  update(movement: Movement, tx?: TransactionHandle, expectedVersion?: number): Promise<Movement>;
   /**
    * Delete a single movement.
    * @param tx optional transaction handle (R15); joins the caller's transaction.

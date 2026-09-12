@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeActivosPasivos } from './compute-activos-pasivos';
+import { MoneyError } from '../domain/money';
 
 describe('computeActivosPasivos', () => {
   it('single currency: activos = account balance + credit granted pending', () => {
@@ -201,5 +202,58 @@ describe('computeActivosPasivos', () => {
     expect(result.positions[0].currency).toBe('COP');
     expect(result.positions[1].currency).toBe('EUR');
     expect(result.positions[2].currency).toBe('USD');
+  });
+
+  it('throws MoneyError when activos overflow — guarded like every aggregation (R15.3.1 P1.3)', () => {
+    expect(() =>
+      computeActivosPasivos({
+        accounts: [
+          { currency: 'COP', balance: 9_000_000_000_000_000 },
+          { currency: 'COP', balance: 9_000_000_000_000_000 },
+        ],
+        creditsGranted: [],
+        creditsReceived: [],
+        payables: [],
+      }),
+    ).toThrow(MoneyError);
+    expect(() =>
+      computeActivosPasivos({
+        accounts: [
+          { currency: 'COP', balance: 9_000_000_000_000_000 },
+          { currency: 'COP', balance: 9_000_000_000_000_000 },
+        ],
+        creditsGranted: [],
+        creditsReceived: [],
+        payables: [],
+      }),
+    ).toThrow(/Financial position activos \(COP\)/);
+  });
+
+  it('throws MoneyError when pasivos overflow', () => {
+    expect(() =>
+      computeActivosPasivos({
+        accounts: [],
+        creditsGranted: [],
+        creditsReceived: [
+          { principal: { currency: 'COP' }, pending: 9_000_000_000_000_000 },
+          { principal: { currency: 'COP' }, pending: 9_000_000_000_000_000 },
+        ],
+        payables: [],
+      }),
+    ).toThrow(/Financial position pasivos \(COP\)/);
+  });
+
+  it('throws MoneyError when the NET (activos − pasivos) leaves the safe range', () => {
+    // activos = -9e15 (negative account balance), pasivos = 9e15 → net = -1.8e16.
+    expect(() =>
+      computeActivosPasivos({
+        accounts: [{ currency: 'COP', balance: -9_000_000_000_000_000 }],
+        creditsGranted: [],
+        creditsReceived: [
+          { principal: { currency: 'COP' }, pending: 9_000_000_000_000_000 },
+        ],
+        payables: [],
+      }),
+    ).toThrow(/Financial position net \(COP\)/);
   });
 });

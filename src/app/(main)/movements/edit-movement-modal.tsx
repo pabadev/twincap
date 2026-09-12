@@ -64,6 +64,9 @@ export function EditMovementModal({
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
         <input type="hidden" name="movementId" value={movement.id} />
+        {/* R15.3.1 P2: the version read at render time; the action CAS-updates
+            against it so a concurrent edit becomes error.movementModified. */}
+        <input type="hidden" name="version" value={movement.version} />
 
         <Select
           id="edit-account"

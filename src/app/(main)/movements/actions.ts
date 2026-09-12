@@ -59,6 +59,12 @@ export async function createMovementAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
+  // mutation did NOT commit. Once the mutation resolves, the key stays
+  // consumed even if a post-commit task (revalidatePath, analytics) fails —
+  // a post-commit error must never re-arm the key for a re-execution.
+  let committed = false;
+
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
@@ -96,6 +102,9 @@ export async function createMovementAction(
         );
       },
     );
+    // Commit point: the movement is persisted (withAudit resolved). From here
+    // on the idempotency key MUST NOT be released on failure (R15.3.1 P1.2).
+    committed = true;
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
@@ -109,7 +118,10 @@ export async function createMovementAction(
     // deduplicated firstMovement above is capped at 1 per workspace forever.
     await trackAnalytics('movementCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
+    if (!committed) {
+      // Pre-commit failure only: re-arm the key so the user can retry.
+      await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
+    }
     return handleActionError(error);
   }
 
@@ -185,6 +197,15 @@ export async function updateMovementAction(
   if (contextRaw && isMovementContext(contextRaw)) {
     context = contextRaw;
   }
+  // R15.3.1 P2: the form carries the movement version it READ; the use case
+  // CAS-updates against it so a concurrent edit surfaces as a conflict
+  // (error.movementModified) instead of a silent overwrite. Missing/garbage
+  // values fall back to the freshly-loaded version inside the use case.
+  const versionRaw = formData.get('version');
+  const version =
+    typeof versionRaw === 'string' && versionRaw !== '' && Number.isFinite(Number(versionRaw))
+      ? Number(versionRaw)
+      : undefined;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -199,7 +220,7 @@ export async function updateMovementAction(
         const accountRepo = new MongoAccountRepository();
         return updateMovement(
           user.workspaceId!,
-          { movementId, amount, accountId, categoryId, date, note, context },
+          { movementId, amount, accountId, categoryId, date, note, context, version },
           movementRepo,
           categoryRepo,
           accountRepo,

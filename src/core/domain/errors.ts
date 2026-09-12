@@ -52,3 +52,11 @@ export interface InsufficientFundsWarning {
  * presentation language.
  */
 export const DEBT_MODIFIED_MSG = 'Debt was modified by another operation';
+
+/**
+ * Canonical message for optimistic-concurrency failures on Movement edits
+ * (R15.3.1 P2). Same class and mapping PATTERN as DEBT_MODIFIED_MSG
+ * (ConflictError → canonical English message → i18n key), kept as a separate
+ * constant so the user-facing copy can say "movement" instead of "debt".
+ */
+export const MOVEMENT_MODIFIED_MSG = 'Movement was modified by another operation';

@@ -50,7 +50,7 @@ vi.mock('../../../../infrastructure/auth/idempotency', () => ({
   releaseIdempotency,
 }));
 
-const { createCreditGrantedAction, writeOffCreditAction } = await import('./actions');
+const { createCreditGrantedAction, addAbonoAction, markAsPaidAction, writeOffCreditAction } = await import('./actions');
 
 function makeCreditGranted(): CreditGranted {
   return new CreditGranted({
@@ -71,11 +71,48 @@ function formData(creditId = 'cg-1'): FormData {
   return fd;
 }
 
+function setupGrantedMutationMocks() {
+  connectDb.mockResolvedValue(undefined);
+  MongoOperationLogger.mockImplementation(() => ({
+    log: vi.fn().mockResolvedValue(undefined),
+  }));
+  MongoUnitOfWork.mockImplementation(() => ({
+    withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+  }));
+  MongoAccountRepository.mockImplementation(() => ({
+    findById: vi.fn().mockResolvedValue({
+      id: 'acc-1',
+      workspaceId: 'user-1',
+      name: 'Cash',
+      currency: 'COP',
+      isFixed: false,
+    }),
+    // R15.2: abonos touch the credit's account doc inside the tx.
+    touch: vi.fn().mockResolvedValue(true),
+  }));
+  const addAbono = vi.fn().mockResolvedValue(undefined);
+  const createMovement = vi.fn().mockResolvedValue(undefined);
+  MongoCreditGrantedRepository.mockImplementation(() => ({
+    findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
+    addAbono,
+  }));
+  MongoMovementRepository.mockImplementation(() => ({
+    create: createMovement,
+  }));
+  releaseIdempotency.mockResolvedValue(undefined);
+  revalidatePath.mockResolvedValue(undefined);
+  return { addAbono, createMovement };
+}
+
 describe('writeOffCreditAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
     connectDb.mockResolvedValue(undefined);
+    // The duplicate branch logs through MongoOperationLogger unguarded.
+    MongoOperationLogger.mockImplementation(() => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }));
     MongoUnitOfWork.mockImplementation(() => ({
       withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
     }));
@@ -148,6 +185,127 @@ describe('writeOffCreditAction', () => {
 
     expect(result).toEqual({ error: 'error.notFound' });
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('§21 R15.3.1 post-commit failure: write-off commits, key is NOT released, retry replays as duplicate', async () => {
+    claimIdempotency.mockReset();
+    claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const markWrittenOff = vi.fn().mockResolvedValue(undefined);
+    MongoCreditGrantedRepository.mockImplementation(() => ({
+      findByWorkspaceId: vi.fn().mockResolvedValue([makeCreditGranted()]),
+      markWrittenOff,
+    }));
+    // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const fd = formData('cg-1');
+
+    const first = await writeOffCreditAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation executed exactly once (write-off expense + marker)
+    expect(markWrittenOff).toHaveBeenCalledTimes(1);
+    // (d) the key was NOT released after commit
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+
+    // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
+    const retry = await writeOffCreditAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(markWrittenOff).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+  });
+});
+
+describe('addAbonoAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+  let mutationSpies: ReturnType<typeof setupGrantedMutationMocks>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    claimIdempotency.mockReset();
+    mutationSpies = setupGrantedMutationMocks();
+  });
+
+  it('post-commit revalidatePath failure: abono commits, key is NOT released, retry replays as duplicate', async () => {
+    const { addAbono, createMovement } = mutationSpies;
+    claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const fd = new FormData();
+    fd.append('creditId', 'cg-1');
+    fd.append('amount', '50000');
+    fd.append('currency', 'COP');
+    fd.append('accountId', 'acc-1');
+    fd.append('date', '2026-09-01');
+    fd.append('tzOffset', '300');
+    fd.append('idempotencyKey', 'key-granted-abono-post-commit');
+
+    const first = await addAbonoAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation executed exactly once (abono push + capital movement)
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    // (d) the key was NOT released after commit
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+
+    // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
+    const retry = await addAbonoAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+  });
+});
+
+describe('markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+  let mutationSpies: ReturnType<typeof setupGrantedMutationMocks>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    claimIdempotency.mockReset();
+    mutationSpies = setupGrantedMutationMocks();
+  });
+
+  it('post-commit revalidatePath failure: mark-as-paid commits, key is NOT released, retry replays as duplicate', async () => {
+    const { addAbono, createMovement } = mutationSpies;
+    claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const fd = new FormData();
+    fd.append('creditId', 'cg-1');
+    fd.append('idempotencyKey', 'key-granted-mark-paid-post-commit');
+
+    const first = await markAsPaidAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation executed exactly once (closing abono push + capital movement)
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    // (d) the key was NOT released after commit
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+
+    // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
+    const retry = await markAsPaidAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(addAbono).toHaveBeenCalledTimes(1);
+    expect(createMovement).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
   });
 });
 

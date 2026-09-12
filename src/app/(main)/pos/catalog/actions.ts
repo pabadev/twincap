@@ -39,6 +39,13 @@ export async function createCatalogItemAction(
   const stockRaw = formData.get('stock');
   const stock = stockRaw !== null && stockRaw !== '' ? Number(stockRaw) : undefined;
 
+  // R15.3.1 P3: product stock is a discrete count — reject fractional stock
+  // here with a specific i18n key; the CatalogItem aggregate re-enforces the
+  // rule (non-negative integer) server-side.
+  if (stock !== undefined && !Number.isInteger(stock)) {
+    return { error: 'error.stockInteger' };
+  }
+
   try {
     await connectDb();
     const catalogRepo = new MongoCatalogItemRepository();
@@ -69,6 +76,11 @@ export async function updateCatalogItemAction(
   const currency = formData.get('currency') as Currency;
   const stockRaw = formData.get('stock');
   const stock = stockRaw !== null && stockRaw !== '' ? Number(stockRaw) : undefined;
+
+  // R15.3.1 P3: same integer-stock guard as create (see above).
+  if (stock !== undefined && !Number.isInteger(stock)) {
+    return { error: 'error.stockInteger' };
+  }
 
   try {
     await connectDb();

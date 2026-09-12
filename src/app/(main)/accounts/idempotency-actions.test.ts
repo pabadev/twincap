@@ -34,7 +34,7 @@ vi.mock('../../../infrastructure/db/connection', () => ({
 vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('../../../lib/track-analytics', () => ({ trackAnalytics }));
 
-const { createAccountAction } = await import('./actions');
+const { createAccountAction, setInitialBalanceAction } = await import('./actions');
 
 describe('createAccountAction idempotency — real Mongo (§37 R15.2)', () => {
   let mongod: MongoMemoryReplSet;
@@ -129,5 +129,75 @@ describe('createAccountAction idempotency — real Mongo (§37 R15.2)', () => {
     ]);
     expect(await AccountModel.countDocuments({ workspaceId: WS })).toBe(1);
     expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1);
+  });
+
+  it('§21 R15.3.1: post-commit revalidatePath failure never releases the key — retry replays as duplicate and commits NOTHING', async () => {
+    const fd = createAccountFormData('key-post-commit-failure');
+    // The financial mutation commits, then the FIRST post-commit task
+    // (revalidatePath) throws synchronously — exactly the P1.2
+    // release-after-commit defect.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const first = await createAccountAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation committed exactly once (one account + one opening movement)
+    expect(await AccountModel.countDocuments({ workspaceId: WS })).toBe(1);
+    expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1);
+    // (d) the claim was NOT released — the key stays consumed
+    expect(await IdempotencyModel.countDocuments({ userId: USER_ID, action: 'createAccount' })).toBe(1);
+
+    // (c) retry with the SAME key → deterministic duplicate, commits NOTHING
+    const retry = await createAccountAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(await AccountModel.countDocuments({ workspaceId: WS })).toBe(1);
+    expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1);
+  });
+
+  it('§21 R15.3.1 setInitialBalance: post-commit revalidatePath failure never releases the key — retry replays as duplicate and commits NOTHING', async () => {
+    const accountId = new mongoose.Types.ObjectId().toString();
+    await AccountModel.create({
+      _id: new mongoose.Types.ObjectId(accountId),
+      workspaceId: new mongoose.Types.ObjectId(WS),
+      name: 'Caja',
+      currency: 'COP',
+      isFixed: false,
+    });
+
+    const fd = new FormData();
+    fd.append('accountId', accountId);
+    fd.append('amount', '100000');
+    fd.append('idempotencyKey', 'key-post-commit-failure-balance');
+
+    // Opening movement commits, then the FIRST post-commit revalidatePath
+    // throws synchronously.
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error('post-commit revalidate boom');
+    });
+
+    const first = await setInitialBalanceAction(null, fd);
+    // (b) the surfaced error is the post-commit failure, not a success
+    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    // (a) the mutation committed exactly once (one opening movement)
+    expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1);
+    expect(
+      await OperationLogModel.countDocuments({ userId: USER_ID, action: 'setInitialBalance', result: 'success' }),
+    ).toBe(1);
+    // (d) the claim was NOT released — the key stays consumed
+    expect(await IdempotencyModel.countDocuments({ userId: USER_ID, action: 'setInitialBalance' })).toBe(1);
+
+    // (c) retry with the SAME key → deterministic duplicate, commits NOTHING
+    const retry = await setInitialBalanceAction(null, fd);
+    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(await MovementModel.countDocuments({ workspaceId: WS })).toBe(1);
+    expect(
+      await OperationLogModel.countDocuments({ userId: USER_ID, action: 'setInitialBalance', result: 'success' }),
+    ).toBe(1);
   });
 });

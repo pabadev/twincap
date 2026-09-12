@@ -120,6 +120,12 @@ export interface MovementInput {
   context?: MovementContext;
   link?: MovementLink;
   createdAt: Date;
+  /**
+   * Optimistic-concurrency version (R15.3.1 P2). Mirrors the persisted `__v`
+   * so the application layer can CAS-update the movement (concurrent-edit
+   * protection). Defaults to 0 for hand-built movements in tests.
+   */
+  version?: number;
 }
 
 export class Movement {
@@ -137,6 +143,8 @@ export class Movement {
   /** Present only for system-linked movements (opening/transfer/credit/sale). */
   readonly link?: MovementLink;
   readonly createdAt: Date;
+  /** Optimistic-concurrency version; mirrors the persisted `__v` (R15.3.1 P2). */
+  readonly version: number;
 
   constructor(input: MovementInput) {
     if (input.id.length === 0) {
@@ -181,6 +189,7 @@ export class Movement {
     this.context = input.context;
     this.link = input.link;
     this.createdAt = input.createdAt;
+    this.version = input.version ?? 0;
   }
 
   /** True when created by a parent operation and thus not directly editable (MOV-5). */
@@ -203,6 +212,7 @@ export class Movement {
       context: this.context,
       link: this.link,
       createdAt: this.createdAt,
+      version: this.version,
     };
   }
 }

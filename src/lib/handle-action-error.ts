@@ -1,5 +1,5 @@
 import { NotFoundError, ConflictError, ValidationError } from '../core/domain/errors';
-import { DEBT_MODIFIED_MSG } from '../core/domain/errors';
+import { DEBT_MODIFIED_MSG, MOVEMENT_MODIFIED_MSG } from '../core/domain/errors';
 import { MoneyError } from '../core/domain/money';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
 import { reportUnexpectedError } from './report-unexpected-error';
@@ -71,6 +71,8 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: 'error.unauthorized' };
       case DEBT_MODIFIED_MSG:
         return { error: 'error.debtModified' };
+      case MOVEMENT_MODIFIED_MSG:
+        return { error: 'error.movementModified' };
       default:
         return error instanceof ConflictError
           ? { error: 'error.conflict' }

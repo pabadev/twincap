@@ -151,4 +151,27 @@ describe("Movement mapper round-trip (R14-N §25-D)", () => {
     expect(doc.link?.saleId).toBe("sale-9");
     expect(entity.link?.opId).toBe("op-ghi");
   });
+
+  it("maps the persisted __v into the entity version and CI (R15.3.1 P2)", async () => {
+    const original = makeMovement(undefined);
+
+    const { doc, entity } = await roundTrip(original);
+
+    // Fresh documents start at __v 0 (Mongoose default versionKey).
+    expect(doc.__v).toBe(0);
+    expect(entity.version).toBe(0);
+
+    // A later concurrent write bumps __v — the mapper must surface it so the
+    // application layer can CAS against the CURRENT persisted version.
+    await MovementModel.updateOne(
+      { _id: movementId },
+      { $set: { note: "edited by someone else" }, $inc: { __v: 1 } },
+    ).exec();
+    const readBack = await MovementModel.findById(movementId).exec();
+    if (!readBack) throw new Error("movement not found after update");
+    const rebased = toMovementEntity(readBack, makeCategory(), currency);
+
+    expect(rebased.version).toBe(1);
+    expect(rebased.toJSON().version).toBe(1);
+  });
 });

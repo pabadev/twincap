@@ -2,7 +2,7 @@ import { Sale } from '../../domain/sale';
 import { CreditGranted } from '../../domain/credit-granted';
 import { Client } from '../../domain/client';
 import { Movement } from '../../domain/movement';
-import { Money, assertSafeMinorUnits } from '../../domain/money';
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
 import { ConflictError, NotFoundError, ValidationError } from '../../domain/errors';
 import type {
   SaleRepository,
@@ -52,9 +52,6 @@ export async function createSale(
   accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<Sale> {
-  const saleId = ids.generate();
-  const now = new Date();
-
   // D3: resolve the sale account — validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
@@ -68,21 +65,34 @@ export async function createSale(
 
   // Build line items and compute total before any write so input validation
   // (initialPayment ≤ total) can fail without side effects.
-  const lineItems = input.items.map(item => ({
-    itemId: item.itemId,
-    quantity: item.quantity,
-    unitPrice: new Money(item.unitPrice, input.currency),
-  }));
-  const total = lineItems.reduce((sum, li) => {
+  const lineItems = input.items.map(item => {
+    // R15.3.1 P3: quantity is a DISCRETE count — reject non-positive or
+    // fractional quantities BEFORE any read/write (the Sale aggregate
+    // re-enforces the same rule at its own boundary).
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new ValidationError(
+        `Sale line item quantity must be a positive whole number, got ${item.quantity}`,
+      );
+    }
+    return {
+      itemId: item.itemId,
+      quantity: item.quantity,
+      unitPrice: new Money(item.unitPrice, input.currency),
+    };
+  });
+  const total = sumSafeMinorUnits(
     // R15.3 §18: quantity × unitPrice and the running total must stay safe
     // integers — the total feeds Money and the Sale aggregate next, so an
-    // overflow here would corrupt the record before it is persisted.
-    const subtotal = li.quantity * li.unitPrice.amount;
-    assertSafeMinorUnits(subtotal, "Sale line item subtotal");
-    const running = sum + subtotal;
-    assertSafeMinorUnits(running, "Sale total");
-    return running;
-  }, 0);
+    // overflow here would corrupt the record before it is persisted. The
+    // shared helper keeps the per-step guard (identical semantics to the
+    // historical inline loop, R15.3.1 P1.3).
+    lineItems.map((li) => {
+      const subtotal = li.quantity * li.unitPrice.amount;
+      assertSafeMinorUnits(subtotal, "Sale line item subtotal");
+      return subtotal;
+    }),
+    "Sale total",
+  );
 
   // H14: validate on-credit preconditions up front.
   let client: Client | null = null;
@@ -125,7 +135,15 @@ export async function createSale(
 
   // R14-B: the whole write phase — stock decrements, sale, movements, credit —
   // is ONE atomic multi-document transaction. Reads/validations ran above.
+  // R15.3.1 P1.3: the sale id and `now` timestamp are generated INSIDE the
+  // callback (first statements) so id/timestamp/transaction failure are one
+  // unit: the id and createdAt that persist can never outlive their own
+  // transaction commit, and a month rollover between read and write cannot
+  // leave a sale dated with a stale clock.
   return uow.withTransaction(async (tx) => {
+    const saleId = ids.generate();
+    const now = new Date();
+
     // R15.2: shared-document write — touch the collection account inside this
     // transaction. deleteAccount deletes the SAME doc as its last write, so a
     // delete that commits between our reads and our inserts aborts THIS

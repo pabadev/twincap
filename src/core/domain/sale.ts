@@ -13,6 +13,7 @@ export function isPaymentMode(value: string): value is PaymentMode {
 export interface SaleLineItem {
   /** Reference to a CatalogItem. */
   itemId: string;
+  /** Discrete count — positive integer (R15.3.1 P3). */
   quantity: number;
   /** Unit price snapshot at the time of the sale (POS-7: may change independently). */
   unitPrice: Money;
@@ -65,6 +66,7 @@ export interface SaleInput {
 /** Input for a line item — subtotal is computed, not provided. */
 export interface SaleLineItemInput {
   itemId: string;
+  /** Discrete count — positive integer (R15.3.1 P3). */
   quantity: number;
   unitPrice: Money;
 }
@@ -136,8 +138,14 @@ export class Sale {
       if (raw.itemId.length === 0) {
         throw new ValidationError("Sale line item itemId must not be empty");
       }
-      if (raw.quantity <= 0) {
-        throw new ValidationError(`Sale line item quantity must be > 0, got ${raw.quantity}`);
+      // R15.3.1 P3: quantity is a DISCRETE count — positive integer only.
+      // Fractional quantities are rejected here (the same rule the
+      // catalog-repository decrementStock guard enforces); unitPrice is
+      // fixed-point minor units and may be an integer of any safe size.
+      if (!Number.isInteger(raw.quantity) || raw.quantity <= 0) {
+        throw new ValidationError(
+          `Sale line item quantity must be a positive whole number, got ${raw.quantity}`,
+        );
       }
       if (raw.unitPrice.amount <= 0) {
         throw new ValidationError("Sale line item unitPrice must be positive");

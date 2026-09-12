@@ -1,4 +1,5 @@
 import type { Movement } from "../domain/movement";
+import { sumSafeMinorUnits } from "../domain/money";
 import { countsTowardEconomicResult } from "./economic-result";
 
 export interface CategoryAmount {
@@ -53,9 +54,16 @@ export function computeCategorySummary(input: {
       byCategory = new Map();
       byCurrency.set(cur, byCategory);
     }
+    const prev = byCategory.get(m.categoryId) ?? 0;
+    // R15.3.1 P1.3: guarded aggregation — per-category rows and totals feed
+    // the movements breakdown; a silent overflow here would show wrong
+    // amounts while every other dashboard sum throws.
     byCategory.set(
       m.categoryId,
-      (byCategory.get(m.categoryId) ?? 0) + m.amount.amount,
+      sumSafeMinorUnits(
+        [prev, m.amount.amount],
+        `Category summary (${cur}, ${m.categoryId})`,
+      ),
     );
   }
 
@@ -79,7 +87,10 @@ export function computeCategorySummary(input: {
     Array.from(map.entries())
       .map(([currency, byCategory]) => ({
         currency,
-        value: Array.from(byCategory.values()).reduce((s, v) => s + v, 0),
+        value: sumSafeMinorUnits(
+          Array.from(byCategory.values()),
+          `Category total (${currency})`,
+        ),
       }))
       .filter((t) => t.value !== 0)
       .sort((a, b) => currencyComparator(a.currency, b.currency));

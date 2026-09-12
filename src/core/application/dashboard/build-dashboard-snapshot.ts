@@ -6,6 +6,7 @@ import { computeCategorySummary } from '../compute-category-summary';
 import { computeYearlyEvolution } from '../compute-yearly-evolution';
 import { computeContextSummary } from '../compute-context-summary';
 import { countsTowardEconomicResult } from '../economic-result';
+import { sumSafeMinorUnits } from '../../domain/money';
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
 function utcMonthKey(d: Date): string {
@@ -131,7 +132,13 @@ export function buildDashboardSnapshot(
       income: 0,
       expenses: 0,
     };
-    entry.balance += a.balance;
+    // R15.3.1 P1.3: per-currency breakdown sums are guarded the same way as
+    // every other monetary aggregation (silent overflow would corrupt the
+    // SummaryCards while the account-balance path throws).
+    entry.balance = sumSafeMinorUnits(
+      [entry.balance, a.balance],
+      `Dashboard balance breakdown (${a.currency})`,
+    );
     byCurrency.set(a.currency, entry);
   }
 
@@ -143,8 +150,17 @@ export function buildDashboardSnapshot(
       income: 0,
       expenses: 0,
     };
-    if (m.type === 'income') entry.income += m.amount.amount;
-    else entry.expenses += m.amount.amount;
+    if (m.type === 'income') {
+      entry.income = sumSafeMinorUnits(
+        [entry.income, m.amount.amount],
+        `Dashboard income breakdown (${cur})`,
+      );
+    } else {
+      entry.expenses = sumSafeMinorUnits(
+        [entry.expenses, m.amount.amount],
+        `Dashboard expenses breakdown (${cur})`,
+      );
+    }
     byCurrency.set(cur, entry);
   }
 

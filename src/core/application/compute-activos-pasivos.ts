@@ -1,3 +1,5 @@
+import { sumSafeMinorUnits } from '../domain/money';
+
 export interface CurrencyPosition {
   currency: string;
   /** Σ account balances (signed) + Σ CreditGranted.pending */
@@ -50,7 +52,11 @@ export function computeActivosPasivos(input: {
 
   for (const account of accounts) {
     ensureCurrency(account.currency);
-    currencyMap.get(account.currency)!.activos += account.balance;
+    const entry = currencyMap.get(account.currency)!;
+    entry.activos = sumSafeMinorUnits(
+      [entry.activos, account.balance],
+      `Financial position activos (${account.currency})`,
+    );
   }
 
   for (const credit of creditsGranted) {
@@ -58,27 +64,47 @@ export function computeActivosPasivos(input: {
     if (credit.pending <= 0) continue;
     if (credit.writtenOff) continue;
     ensureCurrency(ccy);
-    currencyMap.get(ccy)!.activos += credit.pending;
+    const entry = currencyMap.get(ccy)!;
+    entry.activos = sumSafeMinorUnits(
+      [entry.activos, credit.pending],
+      `Financial position activos (${ccy})`,
+    );
   }
 
   for (const credit of creditsReceived) {
     const ccy = credit.principal.currency;
     if (credit.pending <= 0) continue;
     ensureCurrency(ccy);
-    currencyMap.get(ccy)!.pasivos += credit.pending;
+    const entry = currencyMap.get(ccy)!;
+    entry.pasivos = sumSafeMinorUnits(
+      [entry.pasivos, credit.pending],
+      `Financial position pasivos (${ccy})`,
+    );
   }
 
   for (const payable of payables) {
     const ccy = payable.total.currency;
     if (payable.pending <= 0) continue;
     ensureCurrency(ccy);
-    currencyMap.get(ccy)!.pasivos += payable.pending;
+    const entry = currencyMap.get(ccy)!;
+    entry.pasivos = sumSafeMinorUnits(
+      [entry.pasivos, payable.pending],
+      `Financial position pasivos (${ccy})`,
+    );
   }
 
   const positions: CurrencyPosition[] = [];
   for (const [currency, { activos, pasivos }] of currencyMap) {
     if (activos === 0 && pasivos === 0) continue;
-    positions.push({ currency, activos, pasivos, net: activos - pasivos });
+    // activos/pasivos are individually safe integers, but the SUBTRACTION is
+    // a derived financial value on the safe range too: guard the net before
+    // exposing it (|a − b| ≤ max(|a|, |b|) for same-signed inputs, but a
+    // negative activos + large pasivos can still cross ±2^53).
+    const net = sumSafeMinorUnits(
+      [activos, -pasivos],
+      `Financial position net (${currency})`,
+    );
+    positions.push({ currency, activos, pasivos, net });
   }
 
   positions.sort((a, b) => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Movement } from "../../domain/movement";
 import type { Category } from "../../domain/category";
-import { Money } from "../../domain/money";
+import { Money, MoneyError } from "../../domain/money";
 import { saleCategory, transferCategory } from "../../domain/synthetic-categories";
 import { accountBalancesFromMovements } from "./balance-from-movements";
 import { filterMovementsWithLiveParents, type LiveParentIds } from "./filter-live-linked-movements";
@@ -123,5 +123,15 @@ describe("accountBalancesFromMovements (R7-A)", () => {
     const balance = accountBalancesFromMovements([{ id: "acc-1" }], liveMovements);
     // value reconciliation keeps it (accountId + date + amount mirror) → counted
     expect(balance.get("acc-1")).toBe(100000);
+  });
+
+  it("throws MoneyError when an account total overflows — same guard contract as computeAccountLiveBalance (R15.3.1 P1.3)", () => {
+    const accounts = [{ id: "acc-1" }];
+    const movements = [
+      makeMovement({ id: "m1", accountId: "acc-1", type: "income", amount: new Money(Number.MAX_SAFE_INTEGER, "COP") }),
+      makeMovement({ id: "m2", accountId: "acc-1", type: "income", amount: new Money(Number.MAX_SAFE_INTEGER, "COP") }),
+    ];
+    expect(() => accountBalancesFromMovements(accounts, movements)).toThrow(MoneyError);
+    expect(() => accountBalancesFromMovements(accounts, movements)).toThrow(/Account balance \(acc-1\)/);
   });
 });

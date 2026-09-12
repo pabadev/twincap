@@ -7,7 +7,7 @@ import { Movement } from '../../domain/movement';
 import { Category } from '../../domain/category';
 import { Account } from '../../domain/account';
 import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError } from '../../domain/errors';
+import { NotFoundError, ValidationError, ConflictError, MOVEMENT_MODIFIED_MSG } from '../../domain/errors';
 import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { IdGenerator, UnitOfWork } from '../ports';
@@ -811,6 +811,93 @@ describe('updateMovement', () => {
     expect(accountRepo.touch).not.toHaveBeenCalled();
     expect(categoryRepo.touch).not.toHaveBeenCalled();
     expect(movementRepo.updated).toHaveLength(1);
+  });
+
+  // ── Optimistic concurrency (R15.3.1 P2) ──────────────────────────
+
+  it('CAS-updates against the version the client read (R15.3.1 P2)', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+
+    await updateMovement(
+      'user-1',
+      { movementId: 'mov-1', note: 'Edited note', version: 3 },
+      movementRepo,
+      categoryRepo,
+      fakeAccountRepo(),
+      fakeUow(),
+    );
+
+    // The client version must reach the repository as the CAS expectedVersion.
+    const updateSpy = movementRepo.update as unknown as ReturnType<typeof vi.fn>;
+    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [
+      Movement,
+      unknown,
+      number,
+    ];
+    expect(expectedVersion).toBe(3);
+  });
+
+  it('falls back to the freshly-read version when the client sends none (R15.3.1 P2)', async () => {
+    const existing = makeMovement({ version: 7 });
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+
+    await updateMovement(
+      'user-1',
+      { movementId: 'mov-1', note: 'Edited note' },
+      movementRepo,
+      categoryRepo,
+      fakeAccountRepo(),
+      fakeUow(),
+    );
+
+    // No client version → the version just loaded guards the in-flight write.
+    const updateSpy = movementRepo.update as unknown as ReturnType<typeof vi.fn>;
+    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [
+      Movement,
+      unknown,
+      number,
+    ];
+    expect(expectedVersion).toBe(7);
+  });
+
+  it('propagates ConflictError when the movement was modified concurrently (R15.3.1 P2)', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    // The repository's CAS rejects the stale write (the client read an older
+    // version than the persisted one) — the use case must surface it, NOT
+    // swallow it and persist the stale edit.
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+      update: vi.fn().mockRejectedValue(new ConflictError(MOVEMENT_MODIFIED_MSG)),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+
+    await expect(
+      updateMovement(
+        'user-1',
+        { movementId: 'mov-1', note: 'Stale edit', version: 0 },
+        movementRepo,
+        categoryRepo,
+        fakeAccountRepo(),
+        fakeUow(),
+      ),
+    ).rejects.toThrow(MOVEMENT_MODIFIED_MSG);
+    expect(movementRepo.updated).toHaveLength(0);
   });
 });
 

@@ -1,5 +1,23 @@
 import { RateLimitModel } from '../models/rate-limit';
 
+/**
+ * Max re-entries of `check()` after a genuine E11000 duplicate-key create
+ * race. The bound guarantees the create-loser path terminates: 1 first
+ * attempt + up to 3 retries, then the last E11000 error propagates
+ * (R15.3.1 P1.1 — no unbounded recursion).
+ */
+const MAX_E11000_CREATE_RETRIES = 3;
+
+/**
+ * True only for a MongoDB duplicate-key error (error code 11000). Any other
+ * error — network, server selection, cast, validation — must NOT be treated
+ * as a benign retry condition (R15.3.1 P1.1): such an error propagates
+ * untouched instead of re-entering the check path.
+ */
+function isDuplicateKeyError(error: unknown): boolean {
+  return (error as { code?: unknown })?.code === 11000;
+}
+
 export interface RateLimitConfig {
   /** Max attempts allowed within the window. */
   maxAttempts: number;
@@ -30,6 +48,21 @@ export class MongoRateLimiter {
    * Returns `{ allowed: false }` when the limit is exceeded.
    */
   async check(key: string): Promise<RateLimitResult> {
+    return this.checkWithCreateRetry(key, MAX_E11000_CREATE_RETRIES);
+  }
+
+  /**
+   * Internal bounded variant of `check()`. `retriesLeft` limits how many
+   * times a genuine E11000 create race re-enters the FULL check path (which
+   * then hits the active-window `$inc` path of the concurrent winner). Any
+   * non-duplicate error is rethrown untouched — no retry, original error
+   * preserved. When E11000 persists past the bound, the last duplicate-key
+   * error propagates instead of looping.
+   */
+  private async checkWithCreateRetry(
+    key: string,
+    retriesLeft: number,
+  ): Promise<RateLimitResult> {
     const now = new Date();
     const windowStart = new Date(now.getTime() - this.config.windowMs);
     const expiresAt = new Date(now.getTime() + this.config.windowMs);
@@ -55,12 +88,21 @@ export class MongoRateLimiter {
     // for the same key, then create the fresh window. The conditional delete
     // only removes an expired doc, so a concurrent winner's fresh doc is never
     // wiped. The unique index makes a concurrent create loser throw E11000 →
-    // retry once, which now hits the active-window $inc path above.
+    // bounded retry, which now hits the active-window $inc path above. ANY
+    // non-duplicate create error propagates immediately (no retry, original
+    // error preserved) — a network/server/validation failure must never loop.
     await RateLimitModel.deleteOne({ key, windowStart: { $lt: windowStart } });
     try {
-      await RateLimitModel.create({ key, attempts: 1, windowStart: now, expiresAt });
-    } catch {
-      return this.check(key);
+      await RateLimitModel.create({
+        key,
+        attempts: 1,
+        windowStart: now,
+        expiresAt,
+      });
+    } catch (error: unknown) {
+      if (!isDuplicateKeyError(error)) throw error;
+      if (retriesLeft <= 0) throw error;
+      return this.checkWithCreateRetry(key, retriesLeft - 1);
     }
 
     return { allowed: true, attempts: 1, resetAt: expiresAt };

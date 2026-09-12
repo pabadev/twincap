@@ -51,7 +51,9 @@ export default defineConfig({
     command: 'pnpm e2e:server',
     port: 3000,
     reuseExistingServer: !CI,
-    timeout: 120_000,
+    // `next build && next start` on a loaded dev machine takes ~3-4 min
+    // (typecheck + Turbopack build + static gen); 120s was too tight.
+    timeout: 300_000,
   },
 
   globalSetup: './e2e/global-setup.ts',

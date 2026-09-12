@@ -1,5 +1,6 @@
 import type { Movement } from "../domain/movement";
 import type { Currency } from "../domain/currency";
+import { sumSafeMinorUnits } from "../domain/money";
 import { countsTowardEconomicResult } from "./economic-result";
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
@@ -83,8 +84,18 @@ export function computeContextSummary(input: {
       byContext.set(ctx, byCurrency);
     }
     const entry = byCurrency.get(cur) ?? { income: 0, expenses: 0 };
-    if (m.type === 'income') entry.income += m.amount.amount;
-    else entry.expenses += m.amount.amount;
+    if (m.type === 'income') {
+      // R15.3.1 P1.3: guarded aggregation (N1 split feeds SummaryCards).
+      entry.income = sumSafeMinorUnits(
+        [entry.income, m.amount.amount],
+        `Context summary income (${cur})`,
+      );
+    } else {
+      entry.expenses = sumSafeMinorUnits(
+        [entry.expenses, m.amount.amount],
+        `Context summary expenses (${cur})`,
+      );
+    }
     byCurrency.set(cur, entry);
   }
 

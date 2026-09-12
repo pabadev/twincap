@@ -50,6 +50,7 @@ export async function createCreditGrantedAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
@@ -84,6 +85,10 @@ export async function createCreditGrantedAction(
         );
       },
     );
+    // R15.3.1 (P1.2): the financial mutation has COMMITTED — the idempotency
+    // key stays consumed. A post-commit failure (revalidate/trackAnalytics)
+    // must NEVER release it or a retry would re-execute the mutation.
+    committed = true;
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
@@ -91,7 +96,9 @@ export async function createCreditGrantedAction(
     // R13-H: regular credit-granted creation event (APPENDED) for product analytics.
     await trackAnalytics('creditGrantedCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
+    }
     return handleActionError(error);
   }
 
@@ -116,6 +123,7 @@ export async function addAbonoAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
@@ -151,9 +159,15 @@ export async function addAbonoAction(
         );
       },
     );
+    // R15.3.1 (P1.2): the abono has COMMITTED — the idempotency key stays
+    // consumed. A post-commit failure (revalidate) must NEVER release it or a
+    // retry would re-execute the mutation.
+    committed = true;
     revalidateMovementData('/credits/granted');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+    }
     return handleActionError(error);
   }
 
@@ -313,6 +327,7 @@ export async function markAsPaidAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'markAsPaid');
@@ -338,9 +353,15 @@ export async function markAsPaidAction(
         return markAsPaid(user.workspaceId!, creditId, creditRepo, movementRepo, ids, accountRepo, new MongoUnitOfWork());
       },
     );
+    // R15.3.1 (P1.2): mark-as-paid has COMMITTED — the idempotency key stays
+    // consumed. A post-commit failure (revalidate) must NEVER release it or a
+    // retry would re-execute the mutation.
+    committed = true;
     revalidateMovementData('/credits/granted');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'markAsPaid');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'markAsPaid');
+    }
     return handleActionError(error);
   }
 
@@ -360,6 +381,7 @@ export async function writeOffCreditAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
@@ -393,9 +415,15 @@ export async function writeOffCreditAction(
         );
       },
     );
+    // R15.3.1 (P1.2): the write-off has COMMITTED — the idempotency key stays
+    // consumed. A post-commit failure (revalidate) must NEVER release it or a
+    // retry would re-execute the mutation.
+    committed = true;
     revalidateMovementData('/credits/granted');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
+    }
     return handleActionError(error);
   }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDashboardSnapshot } from './build-dashboard-snapshot';
 import { Movement, type MovementContext, type MovementLinkKind, type MovementType } from '../../domain/movement';
 import { Category } from '../../domain/category';
-import { Money } from '../../domain/money';
+import { Money, MoneyError } from '../../domain/money';
 import type { Currency } from '../../domain/currency';
 import type { SerializedCategory } from '../../domain/category';
 import type { DashboardFilters } from './dashboard-types';
@@ -543,5 +543,23 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     expect(snapshot.incomeTotals).toEqual([]);
     expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 80_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([curMonth.id]);
+  });
+
+  it('throws MoneyError when the per-currency balance breakdown overflows (R15.3.1 P1.3)', () => {
+    const hugeAccounts = [
+      { id: 'acc-1', name: 'Cash', currency: 'COP', isFixed: true, balance: 9_000_000_000_000_000 },
+      { id: 'acc-2', name: 'Ahorros', currency: 'COP', isFixed: false, balance: 9_000_000_000_000_000 },
+    ];
+    expect(() =>
+      buildDashboardSnapshot({ ...buildInput([]), accounts: hugeAccounts }),
+    ).toThrow(MoneyError);
+  });
+
+  it('throws MoneyError when the current-month income breakdown overflows', () => {
+    const movs = [
+      movement({ type: 'income', amount: Number.MAX_SAFE_INTEGER, categoryId: 'cat-salary-in' }),
+      movement({ type: 'income', amount: Number.MAX_SAFE_INTEGER, categoryId: 'cat-salary-in' }),
+    ];
+    expect(() => buildDashboardSnapshot(buildInput(movs))).toThrow(MoneyError);
   });
 });

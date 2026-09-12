@@ -5,6 +5,7 @@ import {
   assertSameCurrency,
   assertSafeMinorUnits,
   deriveExchangeRate,
+  sumSafeMinorUnits,
 } from "./money";
 import { ValidationError } from "./errors";
 import { CreditReceived } from "./credit-received";
@@ -213,6 +214,49 @@ describe("assertSafeMinorUnits (R15.3 §18)", () => {
     expect(() => assertSafeMinorUnits(1e21, "CreditReceived totalToPay")).toThrow(
       /`CreditReceived totalToPay` produced an unsafe minor-units value: 1e\+21/,
     );
+  });
+});
+
+describe("sumSafeMinorUnits (R15.3.1 P1.3)", () => {
+  it("sums ordinary positive values", () => {
+    expect(sumSafeMinorUnits([100, 200, 300], "x")).toBe(600);
+  });
+
+  it("sums signed values — balances can be negative (account 'signed')", () => {
+    expect(sumSafeMinorUnits([1000, -300, 50], "x")).toBe(750);
+  });
+
+  it("returns 0 for an empty list", () => {
+    expect(sumSafeMinorUnits([], "x")).toBe(0);
+  });
+
+  it("returns the single value for a one-element list", () => {
+    expect(sumSafeMinorUnits([Number.MAX_SAFE_INTEGER], "x")).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("throws MoneyError when the RUNNING TOTAL overflows even if inputs are individually safe (two MAX_SAFE_INTEGER amounts)", () => {
+    expect(() =>
+      sumSafeMinorUnits([Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], "Account balance (acc-1)"),
+    ).toThrow(MoneyError);
+  });
+
+  it("throws MoneyError mid-list — the second overflow step fails with the context name", () => {
+    expect(() =>
+      sumSafeMinorUnits([9_000_000_000_000_000, 9_000_000_000_000_000, 1], "Dashboard monthly income"),
+    ).toThrow(/`Dashboard monthly income` produced an unsafe minor-units value/);
+  });
+
+  it("throws MoneyError on unsafe INPUTS too (non-integer/too large)", () => {
+    expect(() => sumSafeMinorUnits([1.5], "x")).toThrow(MoneyError);
+    expect(() => sumSafeMinorUnits([1e16], "x")).toThrow(MoneyError);
+    expect(() => sumSafeMinorUnits([Number.NaN], "x")).toThrow(MoneyError);
+  });
+
+  it("accepts a full MAX_SAFE_INTEGER range sum that stays safe (negative + positive)", () => {
+    // MIN_SAFE_INTEGER + MAX_SAFE_INTEGER = 0 — inside the safe range.
+    expect(
+      sumSafeMinorUnits([Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], "x"),
+    ).toBe(0);
   });
 });
 

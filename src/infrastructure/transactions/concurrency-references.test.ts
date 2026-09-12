@@ -199,8 +199,16 @@ describe("concurrencia referencias (R15.3 P2)", () => {
 
       for (const r of ops) {
         if (r.status === "rejected") {
-          // The account was already gone when the edit (re)validated it.
-          expect(r.reason).toBeInstanceOf(NotFoundError);
+          // Two clean-abort classes, both legal outcomes of the race:
+          //  – NotFoundError: the account was already gone when the edit
+          //    (re)validated it;
+          //  – ConflictError(MOVEMENT_MODIFIED_MSG): the movement's `__v` was
+          //    bumped by a concurrent edit that committed (P2 CAS — the edit
+          //    loser is re-prompted, never silently overwritten).
+          const ok =
+            r.reason instanceof NotFoundError ||
+            r.reason instanceof ConflictError;
+          expect(ok, `unexpected rejection class: ${r.reason?.message ?? String(r.reason)}`).toBe(true);
         }
       }
       if (srcExists) {
@@ -225,22 +233,21 @@ describe("concurrencia referencias (R15.3 P2)", () => {
 
       const settled = await Promise.allSettled([
         ...Array.from({ length: 9 }, () =>
-          updateMovement(
-            WS,
-            { movementId: MOVEMENT, categoryId: CAT_B },
-            movementRepo(),
-            categoryRepo(),
-            accountRepo(),
-            uow(),
-          ),
+updateMovement(
+          WS,
+          { movementId: MOVEMENT, categoryId: CAT_B },
+          movementRepo(),
+          categoryRepo(),
+          accountRepo(),
+          uow(),
         ),
-        deleteCategory(WS, CAT_B, categoryRepo(), movementRepo(), uow()),
-      ]);
+      ),
+      deleteCategory(WS, CAT_B, categoryRepo(), movementRepo(), uow()),
+    ]);
 
-      assertNoTransactionErrors(settled);
-      assertCleanAborts(settled);
-      const ops = settled.slice(0, 9);
-      const deleteResult = settled[9];
+    assertNoTransactionErrors(settled);
+    assertCleanAborts(settled);
+    const deleteResult = settled[9];
       const catBExists = (await CategoryModel.countDocuments({ _id: CAT_B, workspaceId: WS })) > 0;
       const movementsOnCatB = await MovementModel.countDocuments({ workspaceId: WS, categoryId: CAT_B });
 

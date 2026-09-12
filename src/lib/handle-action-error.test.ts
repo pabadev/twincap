@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NotFoundError, ConflictError, ValidationError, DEBT_MODIFIED_MSG } from '../core/domain/errors';
+import { NotFoundError, ConflictError, ValidationError, DEBT_MODIFIED_MSG, MOVEMENT_MODIFIED_MSG } from '../core/domain/errors';
 import { MoneyError } from '../core/domain/money';
 import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
 import { handleActionError } from './handle-action-error';
@@ -68,6 +68,11 @@ describe('handleActionError', () => {
   it('maps a concurrently-modified debt to error.debtModified', () => {
     const result = handleActionError(new ConflictError(DEBT_MODIFIED_MSG));
     expect(result).toEqual({ error: 'error.debtModified' });
+  });
+
+  it('maps a concurrently-modified movement to error.movementModified (R15.3.1 P2)', () => {
+    const result = handleActionError(new ConflictError(MOVEMENT_MODIFIED_MSG));
+    expect(result).toEqual({ error: 'error.movementModified' });
   });
 
   it('maps future business dates to a descriptive key', () => {

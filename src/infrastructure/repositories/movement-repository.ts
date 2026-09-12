@@ -4,7 +4,7 @@ import type { Movement, BalanceMovement, MovementLinkKind } from "../../core/dom
 import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Category } from "../../core/domain/category";
 import type { Currency } from "../../core/domain/currency";
-import { NotFoundError, ConflictError } from "../../core/domain/errors";
+import { NotFoundError, ConflictError, MOVEMENT_MODIFIED_MSG } from "../../core/domain/errors";
 import { MovementModel, type MovementDocument } from "../models/movement";
 import { CategoryModel, type CategoryDocument } from "../models/category";
 import { AccountModel, type AccountDocument } from "../models/account";
@@ -12,6 +12,7 @@ import { toCategoryEntity } from "../mappers/category";
 import { toMovementEntity, toMovementDocData } from "../mappers/movement";
 import { resolveSyntheticCategory } from "../../core/domain/synthetic-categories";
 import { sessionOf } from "../transactions/mongo-unit-of-work";
+import { runVersionedUpdate } from "../transactions/versioned-update";
 
 export class MongoMovementRepository implements MovementRepository {
   async findById(workspaceId: string, id: string): Promise<Movement | null> {
@@ -220,23 +221,66 @@ export class MongoMovementRepository implements MovementRepository {
     }
   }
 
-  async update(movement: Movement, tx?: TransactionHandle): Promise<Movement> {
+  async update(
+    movement: Movement,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<Movement> {
     const session = sessionOf(tx);
-    const docData = toMovementDocData(movement);
-    const result = await MovementModel.findOneAndUpdate(
-      {
-        _id: movement.id,
-        workspaceId: new Types.ObjectId(movement.workspaceId),
-      },
-      { $set: docData },
-      { new: true, session },
-    ).exec();
-    if (!result) {
-      throw new NotFoundError(
-        `Movement ${movement.id} not found for user ${movement.workspaceId}`,
+    const filter = {
+      _id: movement.id,
+      workspaceId: new Types.ObjectId(movement.workspaceId),
+    };
+
+    if (expectedVersion === undefined) {
+      // Non-CAS path (legacy callers: updateTransfer/editPrincipal/editAbono
+      // cascades rewrite system-linked movements of a parent aggregate whose
+      // OWN version is the concurrency guard — R15.3.1 P2).
+      const result = await MovementModel.findOneAndUpdate(
+        filter,
+        { $set: toMovementDocData(movement) },
+        { new: true, session },
+      ).exec();
+      if (!result) {
+        throw new NotFoundError(
+          `Movement ${movement.id} not found for user ${movement.workspaceId}`,
+        );
+      }
+      const movementDoc = result as MovementDocument;
+      const { category, currency } = await this.resolveDependencies(
+        movement.workspaceId,
+        movementDoc.categoryId.toString(),
+        movementDoc.accountId.toString(),
+        movementDoc.type,
+        session,
       );
+      return toMovementEntity(movementDoc, category, currency);
     }
-    const movementDoc = result as MovementDocument;
+
+    // CAS path (R15.3.1 P2): the write applies only when the persisted `__v`
+    // still matches the version the client read; a success bumps `__v` via
+    // $inc (runVersionedUpdate is the only place a movement's `__v`
+    // increases). matchedCount 0 = concurrently modified or deleted.
+    const matched = await runVersionedUpdate(
+      MovementModel,
+      filter,
+      { $set: toMovementDocData(movement) },
+      expectedVersion,
+      session,
+    );
+    if (matched === 0) {
+      // Distinguish "deleted meanwhile" from "edited by someone else" (same
+      // session → same snapshot, so the re-read is consistent with the CAS).
+      const current = await MovementModel.findOne(filter, null, { session }).exec();
+      if (!current) {
+        throw new NotFoundError(
+          `Movement ${movement.id} not found for user ${movement.workspaceId}`,
+        );
+      }
+      throw new ConflictError(MOVEMENT_MODIFIED_MSG);
+    }
+    const fresh = await MovementModel.findOne(filter, null, { session }).exec();
+    const movementDoc = fresh as MovementDocument;
     const { category, currency } = await this.resolveDependencies(
       movement.workspaceId,
       movementDoc.categoryId.toString(),

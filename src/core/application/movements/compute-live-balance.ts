@@ -10,7 +10,7 @@ import type { BalanceMovement } from '../../domain/movement';
 import type { TransactionHandle } from '../../domain/transaction';
 import type { LiveParentIds } from './filter-live-linked-movements';
 import { filterMovementsWithLiveParents } from './filter-live-linked-movements';
-import { assertSafeMinorUnits } from '../../domain/money';
+import { sumSafeMinorUnits } from '../../domain/money';
 
 /** Parent repositories needed to resolve a movement's link.refId to a live
  *  parent. `Pick` keeps the contract minimal — callers pass whatever they have
@@ -174,12 +174,11 @@ export async function computeAccountLiveBalance(
   const liveMovements = filterMovementsWithLiveParents(movements, live);
   // R15.3 §18: the aggregated balance (Σ signedAmount) must stay a safe
   // integer — it feeds transfer fund checks inside transactions and derived
-  // queries, so an overflow here would corrupt the financial result. Fail
-  // fast per accumulation step.
-  let balance = 0;
-  for (const m of liveMovements) {
-    balance += m.signedAmount;
-    assertSafeMinorUnits(balance, `Account live balance (${accountId})`);
-  }
-  return balance;
+  // queries, so an overflow here would corrupt the financial result. The
+  // shared helper fails fast per accumulation step with the same context
+  // this site has used since R15.3 (identity semantics for the guard).
+  return sumSafeMinorUnits(
+    liveMovements.map((m) => m.signedAmount),
+    `Account live balance (${accountId})`,
+  );
 }

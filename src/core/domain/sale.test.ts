@@ -79,6 +79,15 @@ describe("Sale entity", () => {
     ).toThrow(ValidationError);
   });
 
+  it("rejects fractional quantities — discrete count semantics (R15.3.1 P3)", () => {
+    expect(() =>
+      sale({ items: [{ itemId: "i1", quantity: 1.5, unitPrice: new Money(50_000, "COP") }] }),
+    ).toThrow(ValidationError);
+    expect(() =>
+      sale({ items: [{ itemId: "i1", quantity: 2.0001, unitPrice: new Money(50_000, "COP") }] }),
+    ).toThrow(/positive whole number/);
+  });
+
   it("rejects line item with zero unitPrice (Money VO enforces > 0)", () => {
     expect(() =>
       sale({ items: [{ itemId: "i1", quantity: 1, unitPrice: new Money(0, "COP") }] }),

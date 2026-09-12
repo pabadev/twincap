@@ -37,6 +37,7 @@ export async function createAccountAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createAccount');
@@ -68,13 +69,19 @@ export async function createAccountAction(
         );
       },
     );
+    // R15.3.1 (P1.2): the financial mutation has COMMITTED — the idempotency
+    // key stays consumed. A post-commit failure (revalidate/trackAnalytics)
+    // must NEVER release it or a retry would re-execute the mutation.
+    committed = true;
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
     // R13-G: track account creation (analytics, best-effort).
     await trackAnalytics('accountCreated', user.workspaceId!, user.userId);
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'createAccount');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'createAccount');
+    }
     return handleActionError(error);
   }
 
@@ -163,6 +170,7 @@ export async function setInitialBalanceAction(
     return { error: 'error.idempotencyKeyRequired' };
   }
 
+  let committed = false;
   try {
     await connectDb();
     const claimed = await claimIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
@@ -194,11 +202,17 @@ export async function setInitialBalanceAction(
         );
       },
     );
+    // R15.3.1 (P1.2): the financial mutation has COMMITTED — the idempotency
+    // key stays consumed. A post-commit failure (revalidate) must NEVER
+    // release it or a retry would re-execute the mutation.
+    committed = true;
     revalidatePath('/accounts');
     revalidatePath('/dashboard');
     revalidatePath('/movements');
   } catch (error) {
-    await releaseIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
+    }
     return handleActionError(error);
   }
 

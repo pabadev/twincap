@@ -15,7 +15,7 @@ export interface CatalogItemInput {
   name: string;
   unitPrice: Money;
   type: CatalogItemType;
-  /** Only valid for products (stock >= 0). Must NOT be present on services. */
+  /** Only valid for products (integer stock >= 0). Must NOT be present on services. */
   stock?: number;
   createdAt: Date;
 }
@@ -26,7 +26,7 @@ export class CatalogItem {
   readonly name: string;
   readonly unitPrice: Money;
   readonly type: CatalogItemType;
-  /** Present only for products; >= 0 (POS-3). */
+  /** Present only for products; integer >= 0 (POS-3, R15.3.1 P3). */
   readonly stock: number | undefined;
   readonly createdAt: Date;
 
@@ -49,9 +49,16 @@ export class CatalogItem {
     }
 
     if (input.type === "product") {
-      // POS-1: product must have stock >= 0
-      if (input.stock === undefined || input.stock < 0) {
-        throw new ValidationError("Product must have stock >= 0");
+      // POS-1/R15.3.1 P3: product stock is a DISCRETE count — non-negative
+      // integer only (fractional stock cannot be decremented by whole
+      // quantities; same rule as the decrementStock guard in the
+      // catalog-repository adapter).
+      if (
+        input.stock === undefined ||
+        !Number.isInteger(input.stock) ||
+        input.stock < 0
+      ) {
+        throw new ValidationError("Product stock must be a non-negative whole number");
       }
       this.stock = input.stock;
     } else {
