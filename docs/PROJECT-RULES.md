@@ -129,30 +129,30 @@ src/
 
 ### 8.1. Matriz de cuentas afectadas (mínimo obligatorio)
 
-| Operación | Cuenta(s) afectada(s) |
-|---|---|
-| createMovement | cuenta |
-| updateMovement amount | cuenta |
-| updateMovement account A→B | **A + B** |
-| deleteMovement | cuenta |
-| createTransfer | origen + destino |
-| updateTransfer sourceAmount | origen |
-| updateTransfer destinationAmount | destino |
-| updateTransfer source + destination | origen + destino |
-| updateTransfer account change | no aplica al diseño actual (no se permite cambiar cuentas) |
-| deleteTransfer | origen + destino |
-| createSale | cuenta |
-| updateSale | no aplica (no existe use case updateSale) |
-| deleteSale | cuenta(s) de los movements eliminados (venta + abonos) |
-| createAbono | cuenta |
-| editAbono | cuenta |
-| deleteAbono | cuenta |
-| editPrincipal | cuenta |
-| deleteCreditReceived | cuenta(s) afectadas |
-| deleteCreditGranted | cuenta(s) afectadas |
-| deletePayable | cuenta(s) afectadas |
-| writeOff | cuenta afectada |
-| cualquier operación nueva | debe añadirse a la matriz |
+| Operación                           | Cuenta(s) afectada(s)                                      |
+| ----------------------------------- | ---------------------------------------------------------- |
+| createMovement                      | cuenta                                                     |
+| updateMovement amount               | cuenta                                                     |
+| updateMovement account A→B          | **A + B**                                                  |
+| deleteMovement                      | cuenta                                                     |
+| createTransfer                      | origen + destino                                           |
+| updateTransfer sourceAmount         | origen                                                     |
+| updateTransfer destinationAmount    | destino                                                    |
+| updateTransfer source + destination | origen + destino                                           |
+| updateTransfer account change       | no aplica al diseño actual (no se permite cambiar cuentas) |
+| deleteTransfer                      | origen + destino                                           |
+| createSale                          | cuenta                                                     |
+| updateSale                          | no aplica (no existe use case updateSale)                  |
+| deleteSale                          | cuenta(s) de los movements eliminados (venta + abonos)     |
+| createAbono                         | cuenta                                                     |
+| editAbono                           | cuenta                                                     |
+| deleteAbono                         | cuenta                                                     |
+| editPrincipal                       | cuenta                                                     |
+| deleteCreditReceived                | cuenta(s) afectadas                                        |
+| deleteCreditGranted                 | cuenta(s) afectadas                                        |
+| deletePayable                       | cuenta(s) afectadas                                        |
+| writeOff                            | cuenta afectada                                            |
+| cualquier operación nueva           | debe añadirse a la matriz                                  |
 
 ### 8.2. Prohibición de Promise.all con ClientSession
 
@@ -261,6 +261,7 @@ src/
 - Sin hook GGA (deshabilitado permanentemente, ver §17).
 - Máximo UNA dependencia nueva por fase (justificada). Preferir soluciones nativas.
 - Next.js 16: usar `src/proxy.ts` (NO `middleware.ts`) para intercepción request-level. Leer la doc en `node_modules/next/dist/docs/` antes de escribir código Next.
+- **Estilo de código — comillas dobles (OBLIGATORIO): todo código TS/TSX/JSON usa comillas dobles SIEMPRE** (`.prettierrc` → `singleQuote: false`). Prohibido escribir single quotes en código nuevo o modificado "porque el archivo legacy las usa". Todo archivo tocado DEBE quedar prettier-clean antes de commitear: `pnpm exec prettier --write <archivos tocados>` (o `pnpm format`) y verificar con `pnpm exec prettier --check <archivos>`; el orquestador normaliza si un agente usó single quotes. Los archivos legacy con single quotes NO se migran en masa (decisión 2026-09-04, mega-diff evitado — ver `docs/AUDIT-AND-PLAN-HISTORY.md` Fase 10); se normalizan naturalmente cuando se tocan. La fuente de verdad es el config del repo, NO el estilo local del archivo.
 - No usar `window.location.reload()`.
 - No modificar archivos sin relación con la ronda salvo razón documentada. No introducir temporales/logs/secretos/dumps/artefactos de build.
 
@@ -275,13 +276,13 @@ src/
 
 ## 19. Historial de versiones de este archivo
 
-| Fecha | Cambio |
-|---|---|
-| 2026-09-13 (inicio etapa UX) | §18 nueva: freeze formal del dominio financiero (por decisión del fundador 2026-09-13, auditoría externa aprobó R15.3.2) + procedimiento excepcional de reapertura. |
-|---|---|
-| 2026-09-13 | Versión inicial — consolidación de reglas vigentes (R1–R15.3.1) + reglas nuevas de R15.3.2 (regla fundamental de concurrencia, matriz de cuentas afectadas, Promise.all prohibido, dedupe de touch, idempotencia de deletes, sin fallbacks monetarios silenciosos). Pendiente de actualización al cierre de R15.3.2 con las reglas descubiertas durante la implementación. |
-| 2026-09-13 (cierre R15.3.2) | Reglas R15.3.2 F4/F5/F6/§26 incorporadas: touch como **última escritura** en los 11 use cases que mueven dinero (helper `touchAccounts`, dedupe + secuencial); **atomicidad consume+update** de tokens one-time (reset/verify con `uow.withTransaction`, puertos con `tx?`); **1 token activo por (user, purpose)** con índice partial unique + revoke-before-insert + retry E11000; **lockout por email** (5/60min → 30min desde el último fallo); prohibición de fallback de moneda reforzada (sale items/export-csv → `throw`); **write-skew §20** con pares concurrentes A–F (N=10–25). La fila previa ("pendiente de actualización") queda superada por esta. |
+| Fecha                        | Cambio                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-09-13 (inicio etapa UX) | §18 nueva: freeze formal del dominio financiero (por decisión del fundador 2026-09-13, auditoría externa aprobó R15.3.2) + procedimiento excepcional de reapertura.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---                          | ---                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 2026-09-13                   | Versión inicial — consolidación de reglas vigentes (R1–R15.3.1) + reglas nuevas de R15.3.2 (regla fundamental de concurrencia, matriz de cuentas afectadas, Promise.all prohibido, dedupe de touch, idempotencia de deletes, sin fallbacks monetarios silenciosos). Pendiente de actualización al cierre de R15.3.2 con las reglas descubiertas durante la implementación.                                                                                                                                                                                                                                                                                         |
+| 2026-09-13 (cierre R15.3.2)  | Reglas R15.3.2 F4/F5/F6/§26 incorporadas: touch como **última escritura** en los 11 use cases que mueven dinero (helper `touchAccounts`, dedupe + secuencial); **atomicidad consume+update** de tokens one-time (reset/verify con `uow.withTransaction`, puertos con `tx?`); **1 token activo por (user, purpose)** con índice partial unique + revoke-before-insert + retry E11000; **lockout por email** (5/60min → 30min desde el último fallo); prohibición de fallback de moneda reforzada (sale items/export-csv → `throw`); **write-skew §20** con pares concurrentes A–F (N=10–25). La fila previa ("pendiente de actualización") queda superada por esta. |
 
 ---
 
-*Regla de mantenimiento: toda regla nueva establecida durante el desarrollo DEBE incorporarse a este archivo (ver encabezado). La fuente maestra es este archivo; los informes de auditoría son históricos.*
+_Regla de mantenimiento: toda regla nueva establecida durante el desarrollo DEBE incorporarse a este archivo (ver encabezado). La fuente maestra es este archivo; los informes de auditoría son históricos._

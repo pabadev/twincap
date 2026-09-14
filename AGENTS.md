@@ -19,8 +19,8 @@ Every server entry point that touches Mongoose **must** call `await connectDb()`
 Do **not** instantiate repositories at module level — create them inside the function after `connectDb()` has resolved. The connection singleton is cached globally (survives HMR) so repeated calls are cheap no-ops.
 
 ```ts
-import { connectDb } from '@/infrastructure/db/connection';
-import { MongoUserRepository } from '@/infrastructure/repositories/user-repository';
+import { connectDb } from "@/infrastructure/db/connection";
+import { MongoUserRepository } from "@/infrastructure/repositories/user-repository";
 
 export async function myAction() {
   await connectDb();
@@ -38,6 +38,7 @@ Violating this pattern causes `buffering timed out after 10000ms` because Mongoo
 Next.js 16 **no longer uses `middleware.ts`**. The equivalent is `src/proxy.ts`.
 
 This project uses `src/proxy.ts` for:
+
 - DB connection on cold start
 - Locale detection and cookie setting
 
@@ -65,20 +66,20 @@ TwinCap es un **SaaS de finanzas personales y pequeños negocios** en etapa de p
 
 ## Stack
 
-| Capa | Tecnología |
-|------|------------|
-| Framework | Next.js 16 (App Router, React 19) |
-| Lenguaje | TypeScript |
-| Paquetes | **pnpm** (NUNCA npm ni yarn) |
-| Base de datos | MongoDB Atlas + Mongoose 8 |
-| Estilo | Tailwind CSS v4 |
-| UI | Componentes custom en `src/components/ui/` (sin librería externa) |
-| Auth | Jose (JWT encriptado A256GCM) + bcryptjs |
-| i18n | Custom en `src/i18n/` (no next-intl) — mensajes en `messages/es.json` y `messages/en.json` |
-| Testing | Vitest — ejecutar con `pnpm test` |
-| Estado | Sin librería global — React state + Server Actions |
-| Iconos | Lucide React (`lucide-react`) — wrapper en `src/components/ui/icon.tsx` |
-| Memoria | Engram MCP |
+| Capa          | Tecnología                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Framework     | Next.js 16 (App Router, React 19)                                                          |
+| Lenguaje      | TypeScript                                                                                 |
+| Paquetes      | **pnpm** (NUNCA npm ni yarn)                                                               |
+| Base de datos | MongoDB Atlas + Mongoose 8                                                                 |
+| Estilo        | Tailwind CSS v4                                                                            |
+| UI            | Componentes custom en `src/components/ui/` (sin librería externa)                          |
+| Auth          | Jose (JWT encriptado A256GCM) + bcryptjs                                                   |
+| i18n          | Custom en `src/i18n/` (no next-intl) — mensajes en `messages/es.json` y `messages/en.json` |
+| Testing       | Vitest — ejecutar con `pnpm test`                                                          |
+| Estado        | Sin librería global — React state + Server Actions                                         |
+| Iconos        | Lucide React (`lucide-react`) — wrapper en `src/components/ui/icon.tsx`                    |
+| Memoria       | Engram MCP                                                                                 |
 
 ## Arquitectura Hexagonal (inquebrantable)
 
@@ -111,6 +112,7 @@ src/
 ### Conexión a base de datos
 
 Cada server action o route handler DEBE:
+
 - Llamar `await connectDb()` antes de usar repositories
 - Crear repositories DESPUÉS de conectar
 - No instanciar repositories a nivel de módulo
@@ -118,18 +120,29 @@ Cada server action o route handler DEBE:
 ## Reglas de trabajo
 
 ### Gestor de paquetes
+
 **NUNCA usar npm o yarn.** El proyecto usa pnpm.
+
 - Instalar: `pnpm add [paquete]`
 - Desinstalar: `pnpm remove [paquete]`
 - Ejecutar: `pnpm [script]`
 
+### Estilo de código — comillas dobles (OBLIGATORIO)
+
+- **Todo código TS/TSX/JSON usa comillas dobles SIEMPRE** (`.prettierrc` → `singleQuote: false`). Está PROHIBIDO escribir single quotes en código nuevo o modificado "porque el archivo legacy las usa".
+- Todo archivo tocado DEBE quedar prettier-clean antes de commitear: correr `pnpm exec prettier --write <archivos tocados>` (o `pnpm format`) y verificar con `pnpm exec prettier --check <archivos>`.
+- Los archivos legacy con single quotes NO se migran en masa (decisión 2026-09-04, mega-diff evitado — ver `docs/AUDIT-AND-PLAN-HISTORY.md` Fase 10); se normalizan naturalmente cuando se tocan.
+- La fuente de verdad es el config del repo (`.prettierrc`), NO el estilo local del archivo. Si un agente usa single quotes, el orquestador DEBE normalizar con prettier antes de commitear (ver `docs/PROJECT-RULES.md` §18).
+
 ### Autenticación
+
 - NUNCA hardcodear tokens, secrets o credenciales.
 - NUNCA exponer datos de un usuario a otro.
 - Toda operación sensible DEBE validar JWT en backend.
 - NUNCA confiar solo en restricciones del frontend.
 
 ### i18n
+
 - Todo texto visible nuevo DEBE existir en `messages/es.json` y `messages/en.json`.
 - NUNCA escribir textos directamente en componentes.
 - Mantener el patrón i18n existente.
@@ -137,6 +150,7 @@ Cada server action o route handler DEBE:
 - Los textos que el dominio genera automáticamente (notas de movimientos sistema, nombres de categorías sintéticas) NUNCA deben persistirse como lenguaje humano acoplado a un idioma: se deriva su presentación en render vía `link.kind`/identificadores estructurados + i18n.
 
 ### Principios financieros (inquebrantables)
+
 1. **Transferencia interna ≠ ingreso ni gasto**: mover dinero entre cuentas propias cambia dónde está el dinero, no el resultado económico.
 2. **Saldo de cuenta ≠ resultado económico**: el flujo de dinero y el resultado financiero son cosas distintas.
 3. **Crédito recibido ≠ compra a crédito**: recibir financiamiento es deuda; adquirir un bien a crédito es una obligación (`Payable`). El total de un `Payable` NUNCA se recontabiliza como gasto cuando se registran sus pagos.
@@ -146,38 +160,45 @@ Cada server action o route handler DEBE:
 7. **Crédito otorgado: el abono amortiza primero el capital, solo el interés es ingreso**: en créditos otorgados standalone (Personal), cada abono recupera primero el capital prestado (`creditGrantedAbono`, NO económico); SOLO el excedente sobre el principal (`creditGrantedAbonoInterest`) es ingreso. La baja por incobrable (`creditGrantedWriteOff`) registra GASTO por el capital no recuperado (principal − Σ capital recuperado; el interés no realizado NO es pérdida) y excluye el crédito del activo en Posición Financiera. El pago inicial de una venta POS a crédito es un caso aparte: reusa el kind `creditGrantedAbono` con context Business y SÍ es ingreso (`salePayment`-equivalente), por lo que `countsTowardEconomicResult` es context-aware.
 
 ### Componentes UI
+
 - Antes de crear, verificar si `src/components/ui/` ya tiene uno equivalente.
 - Nuevos reutilizables → `src/components/ui/`.
 - Específicos de módulo → `src/components/[modulo]/`.
 
 ### Testing
+
 - Cada fase que agregue funcionalidad DEBE incluir tests.
 - Ejecutar `pnpm test` después de cada fase.
 - No suppressar tests que fallen.
 - **Timeout de la suite completa (REGLAMENTARIO)**: la suite Vitest tardó **~21 min** medida (2026-09-14; 131 archivos / 1439 tests, serial por replset). El timeout por defecto del runner de comandos (120s) NO alcanza: toda corrida completa DEBE especificar **timeout ≥ 45 min (2_700_000 ms)** de forma explícita. Nunca reintentar por vencimiento de timeout usando el default de 2 min — el reintento legítimo es con el timeout correcto y tras registrar el error real. Per-test ya configurado (60s en `vitest.config.ts`). Ver `docs/PROJECT-RULES.md` §14.
 
 ### Dependencias
+
 - No instalar nuevas sin documentar por qué.
 - Preferir soluciones nativas sobre librerías externas.
 - Máximo una librería nueva por fase.
 
 ### Git
+
 - Commits convencionales: `feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`.
 - Un commit por unidad de trabajo lógica.
 - No commitear secrets o datos sensibles.
 - El hook de pre-commit GGA (`gga run`) está **DESHABILITADO** permanentemente (guardado como `.git/hooks/pre-commit.disabled.gga`): su sesión de revisión hace staging masivo de archivos no solicitados y al morir por timeout del proveedor deja el índice corrupto (`invalid object ... Error building trees`). NO volver a habilitarlo sin corregir primero esos defectos. Los agentes NO deben confiar en él ni reintentar commits a través del hook; la verificación de calidad se hace con `pnpm test` + `tsc --noEmit`.
 
 ### Responsive
+
 - Mobile-first: diseñar primero para móvil.
 - No usar `overflow-x: auto` como única solución.
 - Verificar en 3 breakpoints: mobile (375px), tablet (768px), desktop (1280px).
 
 ### Seguridad
+
 - Validar datos en backend siempre.
 - Sanitizar inputs del usuario.
 - Verificar autorización antes de cada operación sobre datos.
 
 ### Frontera server→client (serialización)
+
 React solo acepta objetos planos y built-ins (`Date`, `Map`, `Set`) como props de un Server Component a un Client Component. Las instancias con prototipo de clase explotan en runtime (`Only plain objects... can be passed to Client Components`).
 
 - Dentro del `toJSON()` de una entidad, todo valor DEBE ser literal, primitivo, `Date` o una llamada explícita a `.toJSON()`.
