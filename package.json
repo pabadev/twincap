@@ -14,7 +14,9 @@
     "test:e2e": "node e2e/load-e2e-env.cjs test",
     "e2e:server": "next build && next start",
     "test:e2e:install": "playwright install chromium",
-    "migrate:workspace": "node scripts/migrate-workspace.mjs"
+    "migrate:workspace": "node scripts/migrate-workspace.mjs",
+    "indexes:verify": "node scripts/verify-all-indexes.mjs",
+    "indexes:ensure:auth-token": "node scripts/ensure-auth-token-indexes.mjs --apply"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

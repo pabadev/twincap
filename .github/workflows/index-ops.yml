@@ -1,0 +1,85 @@
+# Index Ops — TwinCap (R15.3.2, operativo Atlas)
+#
+# POLÍTICA: el CI normal (`.github/workflows/ci.yml`) NUNCA toca Atlas — los
+# jobs corren contra mongodb-memory-server local / placeholders y el secret
+# de producción jamás se inyecta allí. El contrato de índices de producción se
+# materializa y verifica por esta vía MANUAL (workflow_dispatch), típicamente
+# después de cada deploy, porque `autoIndex` está desactivado en producción
+# (R15.2-C1) y los scripts ensure/verify son el mecanismo.
+#
+#   - operation=verify (default): corre `verify-all-indexes.mjs` (read-only)
+#     — cubre dashboard + monitor + movement + idempotency + auth-token, cada
+#     uno con su propia conexión Mongoose. Exit 1 = CONTRACT VIOLATED.
+#   - operation=apply: materializa los índices de auth-token que falten
+#     (`ensure-auth-token-indexes.mjs --apply`, idempotente y fail-closed) y
+#     LUEGO corre el verificador completo. Exit 1 en apply = CONTRACT
+#     CONFLICT (índice existente con propiedades incorrectas) — el paso de
+#     verify no corre en ese caso.
+#
+# El secret `MONGODB_URI_ATLAS` se inyecta como variable de entorno
+# `MONGODB_URI` (los scripts la leen de `process.env`); NO se usa `--env-file`
+# aquí. El secret nunca se imprime ni se escribe en archivos.
+
+name: Index Ops (Atlas — manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: >-
+          verify = chequeo read-only de todos los contratos de índices;
+          apply = materializa índices auth-token faltantes y luego verifica todo.
+        required: true
+        type: choice
+        options:
+          - verify
+          - apply
+        default: verify
+      environment:
+        description: >-
+          Etiqueta del entorno objetivo (informativa; el secret proviene del
+          repositorio). No restringe entornos de GitHub.
+        required: false
+        type: string
+        default: production
+
+jobs:
+  index-contract:
+    name: Index contract (verify/apply)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # El secret del repositorio se inyecta tal cual; los scripts lo leen de
+      # process.env.MONGODB_URI. Nunca se imprime ni se persiste en el repo.
+      MONGODB_URI: ${{ secrets.MONGODB_URI_ATLAS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # pnpm 11.22.0 requiere Node >= 22.13; el dev local usa Node 24.
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify all index contracts
+        if: ${{ inputs.operation == 'verify' }}
+        run: node scripts/verify-all-indexes.mjs
+
+      - name: Apply auth-token indexes
+        if: ${{ inputs.operation == 'apply' }}
+        run: node scripts/ensure-auth-token-indexes.mjs --apply
+
+      - name: Verify all index contracts (post-apply)
+        if: ${{ inputs.operation == 'apply' }}
+        run: node scripts/verify-all-indexes.mjs
