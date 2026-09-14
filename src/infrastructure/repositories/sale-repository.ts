@@ -71,9 +71,13 @@ export class MongoSaleRepository implements SaleRepository {
       const session = sessionOf(tx);
       const docData = toSaleDocData(sale);
       const created = await SaleModel.create([{ ...docData, _id: sale.id }], { session });
+      // R15-F6: resolve the account currency WITH the transaction session so a
+      // concurrent deleteAccount cannot commit between this read and the insert
+      // above, leaving the entity mapped from a now-gone account.
       const currency = await this.resolveAccountCurrency(
         sale.workspaceId,
         sale.accountId,
+        session,
       );
       return toSaleEntity(created[0] as SaleDocument, currency);
     } catch (err: unknown) {

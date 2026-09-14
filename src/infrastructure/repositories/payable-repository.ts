@@ -79,9 +79,13 @@ export class MongoPayableRepository implements PayableRepository {
         [{ ...docData, _id: payable.id }],
         { session },
       );
+      // R15-F6: resolve the account currency WITH the transaction session so a
+      // concurrent deleteAccount cannot commit between this read and the insert
+      // above, leaving the entity mapped from a now-gone account.
       const currency = await this.resolveAccountCurrency(
         payable.workspaceId,
         payable.accountId,
+        session,
       );
       return toPayableEntity(created[0] as PayableDocument, currency);
     } catch (err: unknown) {

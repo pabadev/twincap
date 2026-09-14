@@ -39,8 +39,11 @@ export function filterSalesForCsv(
 
 /**
  * Pure: turns serialized sales + resolved name maps + localized labels into
- * CSV text. The currency comes from the first line item's unitPrice (matching
- * the sale-list UI behavior), falling back to 'COP'.
+ * CSV text. The currency comes from the first line item's unitPrice — the
+ * same canonical source as the sale-list UI. NO silent 'COP' fallback
+ * (R15.3.2 P2-2): a sale always has at least one line item, so a missing
+ * currency means the record is corrupt and the export fails LOUD instead of
+ * misreporting every amount.
  */
 export function buildSalesCsv(
   sales: SerializedSale[],
@@ -73,7 +76,11 @@ export function buildSalesCsv(
     labels.paymentMode,
   ];
   const rows = sales.map((s) => {
-    const currency = s.items[0]?.unitPrice.currency ?? 'COP';
+    // R15.3.2 P2-2: never a silent COP default — a sale always has >= 1 line
+    // item, so a missing currency is a corrupt record and must fail loudly.
+    const currency = s.items[0]?.unitPrice.currency ?? (() => {
+      throw new Error(`Sale ${s.id} has no line items — cannot resolve currency for CSV export`);
+    })();
     const itemsSummary = s.items
       .map((li) => `${li.quantity}× ${refs.itemNames[li.itemId] ?? li.itemId}`)
       .join(', ');

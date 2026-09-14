@@ -40,28 +40,30 @@ export async function createPayable(
     throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
   }
 
-  const payableId = ids.generate();
-  const totalMoney = new Money(input.total, input.currency);
-  const now = new Date();
-
-  // Entity construction validates total/initialPayment/counterparty BEFORE
-  // any write happens.
-  const payable = new Payable({
-    id: payableId,
-    workspaceId,
-    counterparty: input.counterparty,
-    total: totalMoney,
-    initialPayment: input.initialPayment ?? 0,
-    accountId: input.accountId,
-    date: input.date,
-    dueDate: input.dueDate,
-    note: input.note,
-    createdAt: now,
-  });
-
   // R15 Fase 2: payable + optional initial-payment movement are ONE atomic
   // unit — a failure on the movement rolls back the payable too.
   return uow.withTransaction(async (tx) => {
+    // R15.3.2 P2-4: mint the payable id and build the entity as the FIRST
+    // step of the transaction callback — every execution of the callback
+    // (including a transient-error replay) works from fresh ids instead of
+    // reusing values minted before the transaction started. Entity
+    // construction still validates total/initialPayment/counterparty BEFORE
+    // any write happens. Id order: payable → movement → op.
+    const payableId = ids.generate();
+    const now = new Date();
+    const payable = new Payable({
+      id: payableId,
+      workspaceId,
+      counterparty: input.counterparty,
+      total: new Money(input.total, input.currency),
+      initialPayment: input.initialPayment ?? 0,
+      accountId: input.accountId,
+      date: input.date,
+      dueDate: input.dueDate,
+      note: input.note,
+      createdAt: now,
+    });
+
     // R15.2: shared-document write — touch the payment account inside this
     // transaction so a concurrent deleteAccount cannot commit between our read
     // and the payable/initial-payment inserts, leaving an orphaned expense

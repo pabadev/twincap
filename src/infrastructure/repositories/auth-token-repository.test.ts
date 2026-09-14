@@ -112,3 +112,101 @@ describe(
   },
   60_000,
 );
+
+describe(
+  'MongoAuthTokenRepository.create — one active token per user+purpose (R15.3.2 P2-3)',
+  () => {
+    let mongod: MongoMemoryServer;
+    let repo: MongoAuthTokenRepository;
+
+    beforeAll(async () => {
+      mongod = await MongoMemoryServer.create();
+      await mongoose.connect(mongod.getUri('twincap_auth_token_invariant'));
+      await AuthTokenModel.init();
+      repo = new MongoAuthTokenRepository();
+    }, 60_000);
+
+    afterAll(async () => {
+      await mongoose.disconnect();
+      await mongod.stop();
+    }, 60_000);
+
+    beforeEach(async () => {
+      await AuthTokenModel.deleteMany({});
+    });
+
+    function recordFor(
+      userId: string,
+      purpose: 'password_reset' | 'email_verify',
+      tokenHash: string,
+      used = false,
+    ): Parameters<typeof repo.create>[0] {
+      return {
+        id: new mongoose.Types.ObjectId().toString(),
+        userId,
+        purpose,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        used,
+        createdAt: new Date(),
+      };
+    }
+
+    it('create revokes the previous active token for the same user+purpose (newest wins)', async () => {
+      const first = await repo.create(recordFor('user-1', 'password_reset', 'hash:first'));
+      const second = await repo.create(recordFor('user-1', 'password_reset', 'hash:second'));
+
+      const firstDoc = await AuthTokenModel.findById(first.id).exec();
+      expect(firstDoc?.used).toBe(true);
+      const secondDoc = await AuthTokenModel.findById(second.id).exec();
+      expect(secondDoc?.used).toBe(false);
+
+      const active = await repo.findActiveByUser('user-1', 'password_reset');
+      expect(active?.id).toBe(second.id);
+    });
+
+    it('create does not revoke tokens of OTHER purposes or users', async () => {
+      const otherPurpose = await repo.create(recordFor('user-1', 'email_verify', 'hash:verify'));
+      const otherUser = await repo.create(recordFor('user-2', 'password_reset', 'hash:user2'));
+
+      await repo.create(recordFor('user-1', 'password_reset', 'hash:new'));
+
+      const otherPurposeDoc = await AuthTokenModel.findById(otherPurpose.id).exec();
+      expect(otherPurposeDoc?.used).toBe(false);
+      const otherUserDoc = await AuthTokenModel.findById(otherUser.id).exec();
+      expect(otherUserDoc?.used).toBe(false);
+    });
+
+    it('a USED token does not block creating a new one (partial filter only covers used:false)', async () => {
+      const consumed = await repo.create(recordFor('user-1', 'password_reset', 'hash:consumed'));
+      await repo.consume(consumed.id);
+      await repo.create(recordFor('user-1', 'password_reset', 'hash:fresh'));
+
+      const active = await repo.findActiveByUser('user-1', 'password_reset');
+      expect(active?.tokenHash).toBe('hash:fresh');
+    });
+
+    it('index backstop: two direct used:false inserts for the same user+purpose → E11000', async () => {
+      // Bypass the repository to prove the CONSTRAINT itself rejects a second
+      // active token even if new code ever forgets the revoke-first call.
+      await AuthTokenModel.create({
+        userId: 'user-1',
+        purpose: 'password_reset',
+        tokenHash: 'hash:direct-a',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        used: false,
+      });
+
+      await expect(
+        AuthTokenModel.create({
+          userId: 'user-1',
+          purpose: 'password_reset',
+          tokenHash: 'hash:direct-b',
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+          used: false,
+        }),
+      ).rejects.toMatchObject({ code: 11000 });
+    });
+  },
+  60_000,
+);

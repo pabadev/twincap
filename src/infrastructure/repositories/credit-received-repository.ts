@@ -82,9 +82,13 @@ export class MongoCreditReceivedRepository implements CreditReceivedRepository {
         [{ ...docData, _id: credit.id }],
         { session },
       );
+      // R15-F6: resolve the account currency WITH the transaction session so a
+      // concurrent deleteAccount cannot commit between this read and the insert
+      // above, leaving the entity mapped from a now-gone account.
       const currency = await this.resolveAccountCurrency(
         credit.workspaceId,
         credit.accountId,
+        session,
       );
       return toCreditReceivedEntity(created[0] as CreditReceivedDocument, currency);
     } catch (err: unknown) {

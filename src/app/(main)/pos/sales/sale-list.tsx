@@ -212,8 +212,22 @@ export function SaleList({ sales, catalogItems, accounts, clients, creditPending
 
           <div className="space-y-3">
             {filtered.map((sale) => {
-              // FIXME(HR3-12-A8): silent COP fallback — currency should come from the sale's account
-              const currency = sale.items[0]?.unitPrice.currency ?? 'COP';
+              // R15.3.2 P2-2: currency resolution is NEVER silent. Canonical
+              // chain: 1) the first line item's unitPrice.currency (mirrors the
+              // receiving account's currency at sale time); 2) the sale's
+              // account lookup (defensive against legacy/malformed docs that
+              // carry no line items); 3) LAUNCH — a missing currency is a
+              // data-integrity breach, and rendering COP instead would silently
+              // misreport every amount on the row.
+              const currency = (() => {
+                const itemCurrency = sale.items[0]?.unitPrice.currency;
+                if (itemCurrency) return itemCurrency;
+                const accountCurrency = accounts.find((a) => a.id === sale.accountId)?.currency;
+                if (accountCurrency) return accountCurrency;
+                throw new Error(
+                  `Sale ${sale.id} currency unresolvable: no line-item currency and account ${sale.accountId ?? 'unknown'} not found`,
+                );
+              })();
               // H14: a linked credit owns the real pending of the sale.
               const hasLinkedCredit = Object.prototype.hasOwnProperty.call(creditPendingBySaleId ?? {}, sale.id);
               const effectivePending = hasLinkedCredit

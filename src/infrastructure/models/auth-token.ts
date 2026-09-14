@@ -5,9 +5,15 @@ import mongoose, { Schema, type InferSchemaType } from 'mongoose';
  * verification via the `purpose` discriminator.
  *
  * SECURITY: only the bcrypt HASH of the token is stored (`tokenHash`) — the
- * plain token never touches the database. `tokenHash` is unique. One active
- * token per user+purpose is enforced by the repository (revoke-on-use); a
- * TTL index auto-expires documents after `expiresAt`.
+ * plain token never touches the database. `tokenHash` is unique.
+ *
+ * ONE-ACTIVE invariant (R15.3.2 P2-3): at most ONE active (used:false) token
+ * per user+purpose, enforced at the DB level by the partial unique index on
+ * (userId, purpose) filtered to used:false — the repository revoke-before-
+ * insert is the happy path, and this index backstops concurrent creates
+ * (winner inserts, loser gets E11000 and retries the revoke once, newest
+ * wins). Consumed (used:true) and expired tokens accumulate freely. A TTL
+ * index auto-expires documents after `expiresAt`.
  *
  * This is an infrastructure record, NOT a domain entity.
  */
@@ -34,6 +40,17 @@ export const AuthTokenSchema = new Schema(
 
 // Compound index: active token lookup for a user+purpose (newest first).
 AuthTokenSchema.index({ userId: 1, purpose: 1, createdAt: -1 });
+
+// R15.3.2 P2-3: the ONE-ACTIVE-per-(user,purpose) invariant as a DB
+// constraint. The partial filter (used:false) keeps the unique window tight:
+// only active tokens compete for uniqueness, and consume()'s used:true flip
+// frees the slot — exactly one new token can be created per user+purpose at
+// any moment, even under concurrent creates (the repository revokes + retries
+// once on E11000).
+AuthTokenSchema.index(
+  { userId: 1, purpose: 1 },
+  { unique: true, partialFilterExpression: { used: false } },
+);
 
 // TTL index — MongoDB auto-deletes expired tokens.
 AuthTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
