@@ -154,6 +154,7 @@ Cada server action o route handler DEBE:
 - Cada fase que agregue funcionalidad DEBE incluir tests.
 - Ejecutar `pnpm test` después de cada fase.
 - No suppressar tests que fallen.
+- **Timeout de la suite completa (REGLAMENTARIO)**: la suite Vitest tardó **~21 min** medida (2026-09-14; 131 archivos / 1439 tests, serial por replset). El timeout por defecto del runner de comandos (120s) NO alcanza: toda corrida completa DEBE especificar **timeout ≥ 45 min (2_700_000 ms)** de forma explícita. Nunca reintentar por vencimiento de timeout usando el default de 2 min — el reintento legítimo es con el timeout correcto y tras registrar el error real. Per-test ya configurado (60s en `vitest.config.ts`). Ver `docs/PROJECT-RULES.md` §14.
 
 ### Dependencias
 - No instalar nuevas sin documentar por qué.

@@ -208,6 +208,7 @@ src/
 
 - Ejecutar con `pnpm test` (Vitest). **NUNCA npm/npx/yarn.**
 - Typecheck: `pnpm exec tsc --noEmit`. Lint: `pnpm lint`. Build: `pnpm build`. E2E: `pnpm test:e2e` (Playwright).
+- **Timeout de la suite completa (REGLAMENTARIO)**: la suite Vitest mide **~21 min** (2026-09-14, 131 archivos / 1439 tests, serial por replset `fileParallelism: false`). El timeout por defecto del runner de comandos (120s) NO alcanza y cualquier corrida completa sin timeout explícito muere a los 2 minutos. REGLA: toda corrida completa de `pnpm test` debe ejecutarse con **timeout ≥ 45 min (2_700_000 ms)** en el runner; el job CI `quality` corre con `timeout-minutes: 60` (cubre install + typegen + tsc + lint + tests + build, cf. `.github/workflows/ci.yml`). Reintentos: NUNCA reintentar con el default de 2 min — un reintento legítimo usa el timeout correcto y registra el error real antes. Per-test ya configurado (60s en `vitest.config.ts`); el wall-clock total no se gobierna en vitest.
 - Todo test de concurrencia/transacción real DEBE usar MongoDB real — `MongoMemoryReplSet` (pin 7.0.41, `launchTimeout: 45_000`, `vi.clearAllMocks()` primero en beforeEach, guarded `if (mongod) await mongod.stop()`).
 - Los tests deben demostrar INVARIANTES (saldo final = suma de movimientos válidos, sin movimientos parcialmente aplicados), no solo "normalmente funciona".
 - Los **write-skew sobre saldos derivados** se cubren con tests de pares concurrentes (grupos A–F, N=10–25) que reconcilian el ledger final tras las carreras (R15.3.2 F6 §20; `concurrency-write-skew-pairs.test.ts`).

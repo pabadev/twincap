@@ -22,8 +22,15 @@ export default defineConfig({
     // stable isolated AND as a full suite (1084/1084), with and without
     // parallelism.
     fileParallelism: false,
-    // Generous timeouts for mongod boot under load; the vitest defaults
-    // (10s hooks / 5s tests) are too tight once the replset is involved.
+    // Timeouts POR TEST/HOOK (60s): generosos para mongod boot bajo carga;
+    // los defaults de vitest (10s hooks / 5s tests) son demasiado ajustados
+    // una vez que interviene el replset. NO bajar.
+    //
+    // El tiempo TOTAL de la suite (medido 2026-09-14: 1265s ≈ 21,1 min con
+    // 131 archivos / 1439 tests) NO se gobierna aquí: vitest no tiene un
+    // límite de wall-clock global. La regla está en docs/PROJECT-RULES.md §14:
+    // toda corrida completa DEBE ejecutarse con timeout explícito ≥ 45 min
+    // (2_700_000 ms en el runner de comandos; CI quality = 60 min, cf. ci.yml).
     hookTimeout: 60_000,
     testTimeout: 60_000,
   },

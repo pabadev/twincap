@@ -31,7 +31,10 @@ jobs:
   quality:
     name: Quality (typecheck · lint · tests · build)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # La suite Vitest sola mide ~21 min (2026-09-14, 1439 tests, serial por
+    # replset). Este job además ejecuta install + typegen + tsc + lint + build:
+    # 60 min = tests + pipeline + margen de crecimiento. NO bajar por debajo.
+    timeout-minutes: 60
     env:
       # next build valida el entorno (MONGODB_URI + AUTH_SECRET). Se inyectan
       # valores de prueba no-secretos idénticos a los que usan los tests
