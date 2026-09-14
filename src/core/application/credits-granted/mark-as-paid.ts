@@ -1,8 +1,12 @@
-import { CreditGranted } from '../../domain/credit-granted';
-import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import { addAbono } from './add-abono';
+import { CreditGranted } from "../../domain/credit-granted";
+import { NotFoundError, ConflictError } from "../../domain/errors";
+import type {
+  CreditGrantedRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import { addAbono } from "./add-abono";
 
 /**
  * Mark a credit granted as fully paid (R5-C).
@@ -10,6 +14,11 @@ import { addAbono } from './add-abono';
  * Creates an abono for the exact remaining pending amount, reusing the regular
  * addAbono flow so the linked movement, account resolution and overpayment
  * guard stay in a single place. Rejected when the credit is already paid.
+ *
+ * The payment account is user-selected (H-06) and MANDATORY: the caller passes
+ * an explicit `accountId` — never an implicit fallback to the credit's own
+ * account. addAbono owns the validation: account existence and currency match
+ * with the abono/credit currency (ACC-1) are enforced there.
  *
  * R15 Fase 3: the "already paid" pre-read stays OUTSIDE the transaction
  * (cheap guard), and the unit of work is threaded into addAbono — NO second
@@ -20,6 +29,7 @@ import { addAbono } from './add-abono';
 export async function markAsPaid(
   workspaceId: string,
   creditId: string,
+  accountId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
   ids: IdGenerator,
@@ -27,11 +37,11 @@ export async function markAsPaid(
   uow: UnitOfWork,
 ): Promise<CreditGranted> {
   const credits = await creditRepo.findByWorkspaceId(workspaceId);
-  const credit = credits.find(c => c.id === creditId);
-  if (!credit) throw new NotFoundError('Credit not found');
+  const credit = credits.find((c) => c.id === creditId);
+  if (!credit) throw new NotFoundError("Credit not found");
 
   if (credit.pending <= 0) {
-    throw new ConflictError('Credit already paid');
+    throw new ConflictError("Credit already paid");
   }
 
   return addAbono(
@@ -40,7 +50,7 @@ export async function markAsPaid(
     {
       amount: credit.pending,
       date: new Date(),
-      accountId: credit.accountId,
+      accountId,
       currency: credit.principal.currency,
     },
     creditRepo,

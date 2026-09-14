@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   createCreditGranted,
@@ -9,22 +9,22 @@ import {
   deleteCreditGranted,
   markAsPaid,
   writeOffCreditGranted,
-} from '../../../../core/application/credits-granted';
-import type { Currency } from '../../../../core/domain/currency';
-import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
-import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
-import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
-import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
-import { connectDb } from '../../../../infrastructure/db/connection';
-import { MongoUnitOfWork } from '../../../../infrastructure/transactions/mongo-unit-of-work';
-import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
-import { assertBusinessDateNotFuture } from '../../../../lib/date';
-import { handleActionError } from '../../../../lib/handle-action-error';
-import { revalidateMovementData } from '../../../../lib/revalidate';
-import { withAudit } from '../../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
-import { trackAnalytics } from '../../../../lib/track-analytics';
+} from "../../../../core/application/credits-granted";
+import type { Currency } from "../../../../core/domain/currency";
+import { getCurrentUser } from "../../../../infrastructure/auth/getCurrentUser";
+import { MongoCreditGrantedRepository } from "../../../../infrastructure/repositories/credit-granted-repository";
+import { MongoMovementRepository } from "../../../../infrastructure/repositories/movement-repository";
+import { MongoAccountRepository } from "../../../../infrastructure/repositories/account-repository";
+import { connectDb } from "../../../../infrastructure/db/connection";
+import { MongoUnitOfWork } from "../../../../infrastructure/transactions/mongo-unit-of-work";
+import { claimIdempotency, releaseIdempotency } from "../../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../../infrastructure/config/id-generator";
+import { assertBusinessDateNotFuture } from "../../../../lib/date";
+import { handleActionError } from "../../../../lib/handle-action-error";
+import { revalidateMovementData } from "../../../../lib/revalidate";
+import { withAudit } from "../../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../../infrastructure/repositories/operation-log-repository";
+import { trackAnalytics } from "../../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -33,50 +33,64 @@ export async function createCreditGrantedAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const counterparty = formData.get('counterparty') as string;
-  const principal = Number(formData.get('principal') || '0');
-  const currency = formData.get('currency') as Currency;
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const installments = Number(formData.get('installments') || '0') || undefined;
-  const installmentValueValue = formData.get('installmentValue');
+  const counterparty = formData.get("counterparty") as string;
+  const principal = Number(formData.get("principal") || "0");
+  const currency = formData.get("currency") as Currency;
+  const accountId = formData.get("accountId") as string;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const installments = Number(formData.get("installments") || "0") || undefined;
+  const installmentValueValue = formData.get("installmentValue");
   const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
-  const frequency = (formData.get('frequency') as string) || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const frequency = (formData.get("frequency") as string) || undefined;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createCreditGranted");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createCreditGranted',
-        entityType: 'creditGranted',
-        result: 'duplicate',
+        action: "createCreditGranted",
+        entityType: "creditGranted",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createCreditGranted', entityType: 'creditGranted', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createCreditGranted",
+        entityType: "creditGranted",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
         return createCreditGranted(
           user.workspaceId!,
-          { counterparty, principal, currency, accountId, date, installments, installmentValue, frequency },
+          {
+            counterparty,
+            principal,
+            currency,
+            accountId,
+            date,
+            installments,
+            installmentValue,
+            frequency,
+          },
           creditRepo,
           movementRepo,
           ids,
@@ -92,17 +106,17 @@ export async function createCreditGrantedAction(
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
     // R13-H: regular credit-granted creation event (APPENDED) for product analytics.
-    await trackAnalytics('creditGrantedCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("creditGrantedCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'createCreditGranted');
+      await releaseIdempotency(user.userId, idempotencyKey, "createCreditGranted");
     }
     return handleActionError(error);
   }
 
-  return { success: 'creditCreated' };
+  return { success: "creditCreated" };
 }
 
 export async function addAbonoAction(
@@ -110,39 +124,44 @@ export async function addAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const currency = formData.get('currency') as Currency;
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const creditId = formData.get("creditId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const currency = formData.get("currency") as Currency;
+  const accountId = formData.get("accountId") as string;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "addAbono");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'addAbono',
-        entityType: 'creditGranted',
-        result: 'duplicate',
+        action: "addAbono",
+        entityType: "creditGranted",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'addAbono', entityType: 'creditGranted', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "addAbono",
+        entityType: "creditGranted",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
@@ -163,15 +182,15 @@ export async function addAbonoAction(
     // consumed. A post-commit failure (revalidate) must NEVER release it or a
     // retry would re-execute the mutation.
     committed = true;
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+      await releaseIdempotency(user.userId, idempotencyKey, "addAbono");
     }
     return handleActionError(error);
   }
 
-  return { success: 'abonoAdded' };
+  return { success: "abonoAdded" };
 }
 
 export async function editAbonoAction(
@@ -179,13 +198,13 @@ export async function editAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const abonoId = formData.get('abonoId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
+  const creditId = formData.get("creditId") as string;
+  const abonoId = formData.get("abonoId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -193,7 +212,7 @@ export async function editAbonoAction(
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'editAbono', entityType: 'creditGranted', userId: user.userId },
+      { action: "editAbono", entityType: "creditGranted", userId: user.userId },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
@@ -211,12 +230,12 @@ export async function editAbonoAction(
         );
       },
     );
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoUpdated' };
+  return { success: "abonoUpdated" };
 }
 
 export async function editCreditGrantedAction(
@@ -224,18 +243,18 @@ export async function editCreditGrantedAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const principal = Number(formData.get('principal') || '0');
-  const currency = formData.get('currency') as Currency;
+  const creditId = formData.get("creditId") as string;
+  const principal = Number(formData.get("principal") || "0");
+  const currency = formData.get("currency") as Currency;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'editCreditGranted', entityType: 'creditGranted', userId: user.userId },
+      { action: "editCreditGranted", entityType: "creditGranted", userId: user.userId },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
@@ -251,12 +270,12 @@ export async function editCreditGrantedAction(
         );
       },
     );
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'creditUpdated' };
+  return { success: "creditUpdated" };
 }
 
 export async function deleteAbonoAction(
@@ -264,30 +283,38 @@ export async function deleteAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const abonoId = formData.get('abonoId') as string;
+  const creditId = formData.get("creditId") as string;
+  const abonoId = formData.get("abonoId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteAbono', entityType: 'creditGranted', userId: user.userId },
+      { action: "deleteAbono", entityType: "creditGranted", userId: user.userId },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deleteAbono(
+          user.workspaceId!,
+          creditId,
+          abonoId,
+          creditRepo,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoDeleted' };
+  return { success: "abonoDeleted" };
 }
 
 export async function deleteCreditAction(
@@ -295,83 +322,116 @@ export async function deleteCreditAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
+  const creditId = formData.get("creditId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteCreditGranted', entityType: 'creditGranted', userId: user.userId },
+      { action: "deleteCreditGranted", entityType: "creditGranted", userId: user.userId },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteCreditGranted(user.workspaceId!, creditId, creditRepo, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deleteCreditGranted(
+          user.workspaceId!,
+          creditId,
+          creditRepo,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'creditDeleted' };
+  return { success: "creditDeleted" };
 }
 
+/**
+ * Mark a credit granted as fully paid (server-side, R5-C / H-06).
+ *
+ * The payment account is MANDATORY and enforced server-side: a missing
+ * accountId is rejected with the local 'accountRequired' marker BEFORE any
+ * idempotency claim or data access — never trust the UI (PROJECT-RULES §13).
+ * Account existence/currency are then validated by the use case (addAbono).
+ */
 export async function markAsPaidAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const creditId = formData.get("creditId") as string;
+  const accountId = formData.get("accountId") as string;
+  if (typeof accountId !== "string" || accountId.length === 0) {
+    return { error: "accountRequired" };
+  }
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'markAsPaid');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "markAsPaid");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'markAsPaid',
-        entityType: 'creditGranted',
-        result: 'duplicate',
+        action: "markAsPaid",
+        entityType: "creditGranted",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'markAsPaid', entityType: 'creditGranted', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "markAsPaid",
+        entityType: "creditGranted",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return markAsPaid(user.workspaceId!, creditId, creditRepo, movementRepo, ids, accountRepo, new MongoUnitOfWork());
+        return markAsPaid(
+          user.workspaceId!,
+          creditId,
+          accountId,
+          creditRepo,
+          movementRepo,
+          ids,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
     // R15.3.1 (P1.2): mark-as-paid has COMMITTED — the idempotency key stays
     // consumed. A post-commit failure (revalidate) must NEVER release it or a
     // retry would re-execute the mutation.
     committed = true;
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'markAsPaid');
+      await releaseIdempotency(user.userId, idempotencyKey, "markAsPaid");
     }
     return handleActionError(error);
   }
 
-  return { success: 'creditMarkedAsPaid' };
+  return { success: "creditMarkedAsPaid" };
 }
 
 export async function writeOffCreditAction(
@@ -379,33 +439,38 @@ export async function writeOffCreditAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const creditId = formData.get('creditId') as string;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const creditId = formData.get("creditId") as string;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "writeOffCredit");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'writeOffCredit',
-        entityType: 'creditGranted',
-        result: 'duplicate',
+        action: "writeOffCredit",
+        entityType: "creditGranted",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'writeOffCredit', entityType: 'creditGranted', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "writeOffCredit",
+        entityType: "creditGranted",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
@@ -425,13 +490,13 @@ export async function writeOffCreditAction(
     // consumed. A post-commit failure (revalidate) must NEVER release it or a
     // retry would re-execute the mutation.
     committed = true;
-    revalidateMovementData('/credits/granted');
+    revalidateMovementData("/credits/granted");
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'writeOffCredit');
+      await releaseIdempotency(user.userId, idempotencyKey, "writeOffCredit");
     }
     return handleActionError(error);
   }
 
-  return { success: 'creditWrittenOff' };
+  return { success: "creditWrittenOff" };
 }

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CreditReceived } from '../../../../core/domain/credit-received';
-import { Money } from '../../../../core/domain/money';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CreditReceived } from "../../../../core/domain/credit-received";
+import { Money } from "../../../../core/domain/money";
 
 // Server-action wiring is unit-tested with every infrastructure edge mocked:
 // auth session, mongoose connection, mongo repositories, and next/cache
@@ -26,40 +26,40 @@ const { MongoUnitOfWork } = vi.hoisted(() => ({ MongoUnitOfWork: vi.fn() }));
 const { claimIdempotency } = vi.hoisted(() => ({ claimIdempotency: vi.fn() }));
 const { releaseIdempotency } = vi.hoisted(() => ({ releaseIdempotency: vi.fn() }));
 
-vi.mock('../../../../infrastructure/auth/getCurrentUser', () => ({ getCurrentUser }));
-vi.mock('../../../../infrastructure/db/connection', () => ({ connectDb }));
-vi.mock('next/cache', () => ({ revalidatePath }));
-vi.mock('../../../../infrastructure/repositories/credit-received-repository', () => ({
+vi.mock("../../../../infrastructure/auth/getCurrentUser", () => ({ getCurrentUser }));
+vi.mock("../../../../infrastructure/db/connection", () => ({ connectDb }));
+vi.mock("next/cache", () => ({ revalidatePath }));
+vi.mock("../../../../infrastructure/repositories/credit-received-repository", () => ({
   MongoCreditReceivedRepository,
 }));
-vi.mock('../../../../infrastructure/repositories/movement-repository', () => ({
+vi.mock("../../../../infrastructure/repositories/movement-repository", () => ({
   MongoMovementRepository,
 }));
-vi.mock('../../../../infrastructure/repositories/account-repository', () => ({
+vi.mock("../../../../infrastructure/repositories/account-repository", () => ({
   MongoAccountRepository,
 }));
-vi.mock('../../../../lib/track-analytics', () => ({ trackAnalytics }));
-vi.mock('../../../../infrastructure/repositories/operation-log-repository', () => ({
+vi.mock("../../../../lib/track-analytics", () => ({ trackAnalytics }));
+vi.mock("../../../../infrastructure/repositories/operation-log-repository", () => ({
   MongoOperationLogger,
 }));
-vi.mock('../../../../infrastructure/transactions/mongo-unit-of-work', () => ({
+vi.mock("../../../../infrastructure/transactions/mongo-unit-of-work", () => ({
   MongoUnitOfWork,
 }));
-vi.mock('../../../../infrastructure/auth/idempotency', () => ({
+vi.mock("../../../../infrastructure/auth/idempotency", () => ({
   claimIdempotency,
   releaseIdempotency,
 }));
 
-const { createCreditReceivedAction, addAbonoAction, markAsPaidAction } = await import('./actions');
+const { createCreditReceivedAction, addAbonoAction, markAsPaidAction } = await import("./actions");
 
 function makeCreditReceived(): CreditReceived {
   return new CreditReceived({
-    id: 'cr-1',
-    workspaceId: 'user-1',
-    counterparty: 'Banco XYZ',
-    principal: new Money(100000, 'COP'),
-    accountId: 'acc-1',
-    date: new Date('2026-09-01'),
+    id: "cr-1",
+    workspaceId: "user-1",
+    counterparty: "Banco XYZ",
+    principal: new Money(100000, "COP"),
+    accountId: "acc-1",
+    date: new Date("2026-09-01"),
     createdAt: new Date(),
   });
 }
@@ -74,10 +74,10 @@ function setupMutationMocks() {
   }));
   MongoAccountRepository.mockImplementation(() => ({
     findById: vi.fn().mockResolvedValue({
-      id: 'acc-1',
-      workspaceId: 'user-1',
-      name: 'Cash',
-      currency: 'COP',
+      id: "acc-1",
+      workspaceId: "user-1",
+      name: "Cash",
+      currency: "COP",
       isFixed: false,
     }),
     // R15.2: abonos touch the payment account doc inside the tx.
@@ -97,24 +97,24 @@ function setupMutationMocks() {
   return { addAbono, createMovement };
 }
 
-describe('createCreditReceivedAction', () => {
+describe("createCreditReceivedAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUser.mockResolvedValue(null);
   });
 
-  it('rejects unauthenticated callers before any data access', async () => {
+  it("rejects unauthenticated callers before any data access", async () => {
     const fd = new FormData();
-    fd.append('counterparty', 'Banco XYZ');
-    fd.append('principal', '500000');
-    fd.append('currency', 'COP');
-    fd.append('accountId', 'acc-1');
-    fd.append('date', '2026-09-01');
-    fd.append('tzOffset', '300');
+    fd.append("counterparty", "Banco XYZ");
+    fd.append("principal", "500000");
+    fd.append("currency", "COP");
+    fd.append("accountId", "acc-1");
+    fd.append("date", "2026-09-01");
+    fd.append("tzOffset", "300");
 
     const result = await createCreditReceivedAction(null, fd);
 
-    expect(result).toEqual({ error: 'error.unauthorized' });
+    expect(result).toEqual({ error: "error.unauthorized" });
     expect(connectDb).not.toHaveBeenCalled();
     expect(MongoCreditReceivedRepository).not.toHaveBeenCalled();
     expect(MongoMovementRepository).not.toHaveBeenCalled();
@@ -122,8 +122,8 @@ describe('createCreditReceivedAction', () => {
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it('emits creditReceivedCreated scoped to the session user after a successful create', async () => {
-    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+  it("emits creditReceivedCreated scoped to the session user after a successful create", async () => {
+    getCurrentUser.mockResolvedValue({ userId: "user-1", workspaceId: "user-1" });
     connectDb.mockResolvedValue(undefined);
     trackAnalytics.mockResolvedValue(undefined);
     MongoOperationLogger.mockImplementation(() => ({
@@ -134,10 +134,10 @@ describe('createCreditReceivedAction', () => {
     }));
     MongoAccountRepository.mockImplementation(() => ({
       findById: vi.fn().mockResolvedValue({
-        id: 'acc-1',
-        workspaceId: 'user-1',
-        name: 'Cash',
-        currency: 'COP',
+        id: "acc-1",
+        workspaceId: "user-1",
+        name: "Cash",
+        currency: "COP",
         isFixed: false,
       }),
       // R15.2: createCreditReceived touches the account doc inside the tx.
@@ -153,36 +153,36 @@ describe('createCreditReceivedAction', () => {
     releaseIdempotency.mockResolvedValue(undefined);
 
     const fd = new FormData();
-    fd.append('counterparty', 'Banco XYZ');
-    fd.append('principal', '500000');
-    fd.append('currency', 'COP');
-    fd.append('accountId', 'acc-1');
-    fd.append('date', '2026-09-01');
-    fd.append('tzOffset', '300');
-    fd.append('idempotencyKey', 'key-credit-received-1');
+    fd.append("counterparty", "Banco XYZ");
+    fd.append("principal", "500000");
+    fd.append("currency", "COP");
+    fd.append("accountId", "acc-1");
+    fd.append("date", "2026-09-01");
+    fd.append("tzOffset", "300");
+    fd.append("idempotencyKey", "key-credit-received-1");
 
     const result = await createCreditReceivedAction(null, fd);
 
-    expect(result).toEqual({ success: 'creditCreated' });
+    expect(result).toEqual({ success: "creditCreated" });
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
-    expect(trackAnalytics).toHaveBeenCalledWith('creditReceivedCreated', 'user-1', 'user-1');
+    expect(trackAnalytics).toHaveBeenCalledWith("creditReceivedCreated", "user-1", "user-1");
     expect(revalidatePath).toHaveBeenCalledTimes(4);
   });
 
-  it('rejects a request without an idempotency key before any data access (R15.1 6a)', async () => {
-    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+  it("rejects a request without an idempotency key before any data access (R15.1 6a)", async () => {
+    getCurrentUser.mockResolvedValue({ userId: "user-1", workspaceId: "user-1" });
 
     const fd = new FormData();
-    fd.append('counterparty', 'Banco XYZ');
-    fd.append('principal', '500000');
-    fd.append('currency', 'COP');
-    fd.append('accountId', 'acc-1');
-    fd.append('date', '2026-09-01');
-    fd.append('tzOffset', '300');
+    fd.append("counterparty", "Banco XYZ");
+    fd.append("principal", "500000");
+    fd.append("currency", "COP");
+    fd.append("accountId", "acc-1");
+    fd.append("date", "2026-09-01");
+    fd.append("tzOffset", "300");
 
     const result = await createCreditReceivedAction(null, fd);
 
-    expect(result).toEqual({ error: 'error.idempotencyKeyRequired' });
+    expect(result).toEqual({ error: "error.idempotencyKeyRequired" });
     expect(connectDb).not.toHaveBeenCalled();
     expect(claimIdempotency).not.toHaveBeenCalled();
     expect(MongoCreditReceivedRepository).not.toHaveBeenCalled();
@@ -191,36 +191,36 @@ describe('createCreditReceivedAction', () => {
   });
 });
 
-describe('addAbonoAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+describe("addAbonoAction — R15.3.1 §21 post-commit failure (mocked)", () => {
   let mutationSpies: ReturnType<typeof setupMutationMocks>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: "user-1", workspaceId: "user-1" });
     claimIdempotency.mockReset();
     mutationSpies = setupMutationMocks();
   });
 
-  it('post-commit revalidatePath failure: abono commits, key is NOT released, retry replays as duplicate', async () => {
+  it("post-commit revalidatePath failure: abono commits, key is NOT released, retry replays as duplicate", async () => {
     const { addAbono, createMovement } = mutationSpies;
     claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
     revalidatePath.mockImplementationOnce(() => {
-      throw new Error('post-commit revalidate boom');
+      throw new Error("post-commit revalidate boom");
     });
 
     const fd = new FormData();
-    fd.append('creditId', 'cr-1');
-    fd.append('amount', '50000');
-    fd.append('currency', 'COP');
-    fd.append('accountId', 'acc-1');
-    fd.append('date', '2026-09-01');
-    fd.append('tzOffset', '300');
-    fd.append('idempotencyKey', 'key-abono-post-commit');
+    fd.append("creditId", "cr-1");
+    fd.append("amount", "50000");
+    fd.append("currency", "COP");
+    fd.append("accountId", "acc-1");
+    fd.append("date", "2026-09-01");
+    fd.append("tzOffset", "300");
+    fd.append("idempotencyKey", "key-abono-post-commit");
 
     const first = await addAbonoAction(null, fd);
     // (b) the surfaced error is the post-commit failure, not a success
-    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(first).toEqual({ error: "error.operationFailed" });
     expect(revalidatePath).toHaveBeenCalled();
 
     // (a) the mutation executed exactly once (abono push + linked movement)
@@ -231,38 +231,39 @@ describe('addAbonoAction — R15.3.1 §21 post-commit failure (mocked)', () => {
 
     // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
     const retry = await addAbonoAction(null, fd);
-    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(retry).toEqual({ error: "error.duplicateRequest" });
     expect(addAbono).toHaveBeenCalledTimes(1);
     expect(createMovement).toHaveBeenCalledTimes(1);
     expect(releaseIdempotency).not.toHaveBeenCalled();
   });
 });
 
-describe('markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)', () => {
+describe("markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)", () => {
   let mutationSpies: ReturnType<typeof setupMutationMocks>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ userId: 'user-1', workspaceId: 'user-1' });
+    getCurrentUser.mockResolvedValue({ userId: "user-1", workspaceId: "user-1" });
     claimIdempotency.mockReset();
     mutationSpies = setupMutationMocks();
   });
 
-  it('post-commit revalidatePath failure: mark-as-paid commits, key is NOT released, retry replays as duplicate', async () => {
+  it("post-commit revalidatePath failure: mark-as-paid commits, key is NOT released, retry replays as duplicate", async () => {
     const { addAbono, createMovement } = mutationSpies;
     claimIdempotency.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     // The FIRST post-commit revalidatePath (inside revalidateMovementData) throws.
     revalidatePath.mockImplementationOnce(() => {
-      throw new Error('post-commit revalidate boom');
+      throw new Error("post-commit revalidate boom");
     });
 
     const fd = new FormData();
-    fd.append('creditId', 'cr-1');
-    fd.append('idempotencyKey', 'key-mark-paid-post-commit');
+    fd.append("creditId", "cr-1");
+    fd.append("accountId", "acc-1");
+    fd.append("idempotencyKey", "key-mark-paid-post-commit");
 
     const first = await markAsPaidAction(null, fd);
     // (b) the surfaced error is the post-commit failure, not a success
-    expect(first).toEqual({ error: 'error.operationFailed' });
+    expect(first).toEqual({ error: "error.operationFailed" });
     expect(revalidatePath).toHaveBeenCalled();
 
     // (a) the mutation executed exactly once (closing abono push + linked movement)
@@ -273,9 +274,22 @@ describe('markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)', () =>
 
     // (c) retry with the SAME key → duplicate (claim returns false), no new mutation
     const retry = await markAsPaidAction(null, fd);
-    expect(retry).toEqual({ error: 'error.duplicateRequest' });
+    expect(retry).toEqual({ error: "error.duplicateRequest" });
     expect(addAbono).toHaveBeenCalledTimes(1);
     expect(createMovement).toHaveBeenCalledTimes(1);
+    expect(releaseIdempotency).not.toHaveBeenCalled();
+  });
+
+  it("rejects a request without an accountId BEFORE claiming idempotency (H-06)", async () => {
+    const fd = new FormData();
+    fd.append("creditId", "cr-1");
+    fd.append("idempotencyKey", "key-mark-paid-no-account");
+
+    const result = await markAsPaidAction(null, fd);
+
+    expect(result).toEqual({ error: "accountRequired" });
+    expect(claimIdempotency).not.toHaveBeenCalled();
+    expect(connectDb).not.toHaveBeenCalled();
     expect(releaseIdempotency).not.toHaveBeenCalled();
   });
 });

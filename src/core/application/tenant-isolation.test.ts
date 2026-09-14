@@ -20,17 +20,17 @@
  *
  * NO database. ALL fakes. NO product files modified.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
 // ── Domain ──────────────────────────────────────────────────────────
-import { Account } from '../domain/account';
-import { NotFoundError } from '../domain/errors';
-import { Client } from '../domain/client';
-import { Movement } from '../domain/movement';
-import { Category } from '../domain/category';
-import { CatalogItem } from '../domain/catalog';
-import { CreditGranted } from '../domain/credit-granted';
-import { Money } from '../domain/money';
+import { Account } from "../domain/account";
+import { NotFoundError } from "../domain/errors";
+import { Client } from "../domain/client";
+import { Movement } from "../domain/movement";
+import { Category } from "../domain/category";
+import { CatalogItem } from "../domain/catalog";
+import { CreditGranted } from "../domain/credit-granted";
+import { Money } from "../domain/money";
 import type {
   AccountRepository,
   MovementRepository,
@@ -42,81 +42,81 @@ import type {
   ClientRepository,
   CategoryRepository,
   CatalogItemRepository,
-} from '../domain/repositories';
-import type { TransactionHandle } from '../domain/transaction';
-import type { IdGenerator, UnitOfWork } from './ports';
+} from "../domain/repositories";
+import type { TransactionHandle } from "../domain/transaction";
+import type { IdGenerator, UnitOfWork } from "./ports";
 
 // ── Use cases ───────────────────────────────────────────────────────
-import { updateAccount } from './accounts/update-account';
-import { deleteAccount } from './accounts/delete-account';
-import { setInitialAccountBalance } from './accounts/set-initial-balance';
+import { updateAccount } from "./accounts/update-account";
+import { deleteAccount } from "./accounts/delete-account";
+import { setInitialAccountBalance } from "./accounts/set-initial-balance";
 
-import { updateMovement } from './movements/update-movement';
-import { deleteMovement } from './movements/delete-movement';
+import { updateMovement } from "./movements/update-movement";
+import { deleteMovement } from "./movements/delete-movement";
 
-import { updateTransfer } from './transfers/update-transfer';
-import { deleteTransfer } from './transfers/delete-transfer';
-import { createTransfer } from './transfers/create-transfer';
+import { updateTransfer } from "./transfers/update-transfer";
+import { deleteTransfer } from "./transfers/delete-transfer";
+import { createTransfer } from "./transfers/create-transfer";
 
-import { deleteCreditGranted } from './credits-granted/delete-credit-granted';
-import { addAbono as addAbonoCG } from './credits-granted/add-abono';
-import { editAbono as editAbonoCG } from './credits-granted/edit-abono';
-import { deleteAbono as deleteAbonoCG } from './credits-granted/delete-abono';
-import { editPrincipal as editPrincipalCG } from './credits-granted/edit-principal';
-import { writeOffCreditGranted } from './credits-granted/write-off-credit-granted';
-import { markAsPaid as markAsPaidCG } from './credits-granted/mark-as-paid';
+import { deleteCreditGranted } from "./credits-granted/delete-credit-granted";
+import { addAbono as addAbonoCG } from "./credits-granted/add-abono";
+import { editAbono as editAbonoCG } from "./credits-granted/edit-abono";
+import { deleteAbono as deleteAbonoCG } from "./credits-granted/delete-abono";
+import { editPrincipal as editPrincipalCG } from "./credits-granted/edit-principal";
+import { writeOffCreditGranted } from "./credits-granted/write-off-credit-granted";
+import { markAsPaid as markAsPaidCG } from "./credits-granted/mark-as-paid";
 
-import { deleteCreditReceived } from './credits-received/delete-credit-received';
-import { addAbono as addAbonoCR } from './credits-received/add-abono';
-import { editAbono as editAbonoCR } from './credits-received/edit-abono';
-import { deleteAbono as deleteAbonoCR } from './credits-received/delete-abono';
-import { editPrincipal as editPrincipalCR } from './credits-received/edit-principal';
-import { markAsPaid as markAsPaidCR } from './credits-received/mark-as-paid';
+import { deleteCreditReceived } from "./credits-received/delete-credit-received";
+import { addAbono as addAbonoCR } from "./credits-received/add-abono";
+import { editAbono as editAbonoCR } from "./credits-received/edit-abono";
+import { deleteAbono as deleteAbonoCR } from "./credits-received/delete-abono";
+import { editPrincipal as editPrincipalCR } from "./credits-received/edit-principal";
+import { markAsPaid as markAsPaidCR } from "./credits-received/mark-as-paid";
 
-import { deletePayable } from './payables/delete-payable';
-import { addAbono as addAbonoPay } from './payables/add-abono';
-import { editAbono as editAbonoPay } from './payables/edit-abono';
-import { deleteAbono as deleteAbonoPay } from './payables/delete-abono';
-import { editTotal } from './payables/edit-total';
+import { deletePayable } from "./payables/delete-payable";
+import { addAbono as addAbonoPay } from "./payables/add-abono";
+import { editAbono as editAbonoPay } from "./payables/edit-abono";
+import { deleteAbono as deleteAbonoPay } from "./payables/delete-abono";
+import { editTotal } from "./payables/edit-total";
 
-import { deleteSale } from './sales/delete-sale';
-import { addSaleAbono } from './sales/add-sale-abono';
-import { deleteSaleAbono } from './sales/delete-sale-abono';
-import { createSale } from './sales/create-sale';
+import { deleteSale } from "./sales/delete-sale";
+import { addSaleAbono } from "./sales/add-sale-abono";
+import { deleteSaleAbono } from "./sales/delete-sale-abono";
+import { createSale } from "./sales/create-sale";
 
-import { updateClient } from './clients/update-client';
-import { deleteClient } from './clients/delete-client';
+import { updateClient } from "./clients/update-client";
+import { deleteClient } from "./clients/delete-client";
 
-import { updateCategory } from './categories/update-category';
-import { deleteCategory } from './categories/delete-category';
+import { updateCategory } from "./categories/update-category";
+import { deleteCategory } from "./categories/delete-category";
 
-import { updateCatalogItem } from './catalog/update-catalog-item';
-import { deleteCatalogItem } from './catalog/delete-catalog-item';
+import { updateCatalogItem } from "./catalog/update-catalog-item";
+import { deleteCatalogItem } from "./catalog/delete-catalog-item";
 
 // ── Constants ───────────────────────────────────────────────────────
-const WORKSPACE_A = 'workspace-a';
+const WORKSPACE_A = "workspace-a";
 
 /** IDs belonging exclusively to workspace B. */
-const ACC_B = 'acc-b-1';
-const MOV_B = 'mov-b-1';
-const TRF_B = 'trf-b-1';
-const CRD_G_B = 'crd-g-b-1';
-const CRD_R_B = 'crd-r-b-1';
-const PAY_B = 'pay-b-1';
-const SALE_B = 'sale-b-1';
-const CLI_B = 'cli-b-1';
-const CAT_B = 'cat-b-1';
-const CATL_B = 'catl-b-1';
+const ACC_B = "acc-b-1";
+const MOV_B = "mov-b-1";
+const TRF_B = "trf-b-1";
+const CRD_G_B = "crd-g-b-1";
+const CRD_R_B = "crd-r-b-1";
+const PAY_B = "pay-b-1";
+const SALE_B = "sale-b-1";
+const CLI_B = "cli-b-1";
+const CAT_B = "cat-b-1";
+const CATL_B = "catl-b-1";
 
 /** ID belonging to workspace A (for createSale accountId on the on-credit path). */
-const ACC_A = 'acc-a-1';
+const ACC_A = "acc-a-1";
 
 /** IDs belonging to workspace A — used by the same-workspace sharing tests. */
-const MOV_A = 'mov-a-1';
-const CLI_A = 'cli-a-1';
-const CAT_A = 'cat-a-1';
-const CATL_A = 'catl-a-1';
-const CRD_G_A = 'crd-g-a-1';
+const MOV_A = "mov-a-1";
+const CLI_A = "cli-a-1";
+const CAT_A = "cat-a-1";
+const CATL_A = "catl-a-1";
+const CRD_G_A = "crd-g-a-1";
 
 /**
  * Sharing tests use a SECOND user whose identity differs from the actor used
@@ -126,12 +126,14 @@ const CRD_G_A = 'crd-g-a-1';
  */
 
 // ── Helpers ─────────────────────────────────────────────────────────
-function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Account {
+function makeAccount(
+  overrides: Partial<{ id: string; workspaceId: string; name: string }> = {},
+): Account {
   return new Account({
     id: ACC_A,
     workspaceId: WORKSPACE_A,
-    name: 'Account A',
-    currency: 'COP',
+    name: "Account A",
+    currency: "COP",
     isFixed: false,
     createdAt: new Date(),
     ...overrides,
@@ -139,21 +141,25 @@ function makeAccount(overrides: Partial<{ id: string; workspaceId: string; name:
 }
 
 /** A client that lives under WORKSPACE_A — used by the sharing tests. */
-function makeClient(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Client {
+function makeClient(
+  overrides: Partial<{ id: string; workspaceId: string; name: string }> = {},
+): Client {
   return new Client({
     id: CLI_A,
     workspaceId: WORKSPACE_A,
-    name: 'Client A',
-    phone: '',
-    email: '',
-    note: '',
+    name: "Client A",
+    phone: "",
+    email: "",
+    note: "",
     createdAt: new Date(),
     ...overrides,
   });
 }
 
 /** A manual (non-system-linked) movement under WORKSPACE_A — used by the sharing tests. */
-function makeMovement(overrides: Partial<{ id: string; workspaceId: string; accountId: string }> = {}): Movement {
+function makeMovement(
+  overrides: Partial<{ id: string; workspaceId: string; accountId: string }> = {},
+): Movement {
   return new Movement({
     id: MOV_A,
     workspaceId: WORKSPACE_A,
@@ -161,12 +167,12 @@ function makeMovement(overrides: Partial<{ id: string; workspaceId: string; acco
     category: new Category({
       id: CAT_A,
       workspaceId: WORKSPACE_A,
-      name: 'Category A',
-      type: 'income',
+      name: "Category A",
+      type: "income",
       createdAt: new Date(),
     }),
-    type: 'income',
-    amount: new Money(10000, 'COP'),
+    type: "income",
+    amount: new Money(10000, "COP"),
     date: new Date(),
     createdAt: new Date(),
     ...overrides,
@@ -174,25 +180,29 @@ function makeMovement(overrides: Partial<{ id: string; workspaceId: string; acco
 }
 
 /** A category that lives under WORKSPACE_A — used by the sharing tests. */
-function makeCategory(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): Category {
+function makeCategory(
+  overrides: Partial<{ id: string; workspaceId: string; name: string }> = {},
+): Category {
   return new Category({
     id: CAT_A,
     workspaceId: WORKSPACE_A,
-    name: 'Category A',
-    type: 'income',
+    name: "Category A",
+    type: "income",
     createdAt: new Date(),
     ...overrides,
   });
 }
 
 /** A catalog item that lives under WORKSPACE_A — used by the sharing tests. */
-function makeCatalogItem(overrides: Partial<{ id: string; workspaceId: string; name: string }> = {}): CatalogItem {
+function makeCatalogItem(
+  overrides: Partial<{ id: string; workspaceId: string; name: string }> = {},
+): CatalogItem {
   return new CatalogItem({
     id: CATL_A,
     workspaceId: WORKSPACE_A,
-    name: 'Item A',
-    unitPrice: new Money(10000, 'COP'),
-    type: 'product',
+    name: "Item A",
+    unitPrice: new Money(10000, "COP"),
+    type: "product",
     stock: 5,
     createdAt: new Date(),
     ...overrides,
@@ -205,8 +215,8 @@ function makeCreditGranted(): CreditGranted {
     {
       id: CRD_G_A,
       workspaceId: WORKSPACE_A,
-      counterparty: 'Debtor A',
-      principal: new Money(100000, 'COP'),
+      counterparty: "Debtor A",
+      principal: new Money(100000, "COP"),
       accountId: ACC_A,
       date: new Date(),
       createdAt: new Date(),
@@ -265,7 +275,9 @@ function fakeTransferRepo(overrides: Partial<TransferRepository> = {}): Transfer
   };
 }
 
-function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {}): CreditGrantedRepository {
+function fakeCreditGrantedRepo(
+  overrides: Partial<CreditGrantedRepository> = {},
+): CreditGrantedRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -280,7 +292,9 @@ function fakeCreditGrantedRepo(overrides: Partial<CreditGrantedRepository> = {})
   };
 }
 
-function fakeCreditReceivedRepo(overrides: Partial<CreditReceivedRepository> = {}): CreditReceivedRepository {
+function fakeCreditReceivedRepo(
+  overrides: Partial<CreditReceivedRepository> = {},
+): CreditReceivedRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -348,7 +362,9 @@ function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): Category
   };
 }
 
-function fakeCatalogItemRepo(overrides: Partial<CatalogItemRepository> = {}): CatalogItemRepository {
+function fakeCatalogItemRepo(
+  overrides: Partial<CatalogItemRepository> = {},
+): CatalogItemRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -362,14 +378,13 @@ function fakeCatalogItemRepo(overrides: Partial<CatalogItemRepository> = {}): Ca
 }
 
 function fakeIdGen(): IdGenerator {
-  return { generate: vi.fn().mockReturnValue('test-id') };
+  return { generate: vi.fn().mockReturnValue("test-id") };
 }
 
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
@@ -377,18 +392,18 @@ function fakeUow(): UnitOfWork {
 //  TEST SUITE
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Tenant isolation (B1)', () => {
+describe("Tenant isolation (B1)", () => {
   // ─── Accounts ───────────────────────────────────────────────────
-  describe('accounts', () => {
-    it('updateAccount with user-b accountId → NotFoundError', async () => {
+  describe("accounts", () => {
+    it("updateAccount with user-b accountId → NotFoundError", async () => {
       const repo = fakeAccountRepo();
-      await expect(
-        updateAccount(WORKSPACE_A, { accountId: ACC_B }, repo),
-      ).rejects.toThrow(NotFoundError);
+      await expect(updateAccount(WORKSPACE_A, { accountId: ACC_B }, repo)).rejects.toThrow(
+        NotFoundError,
+      );
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteAccount with user-b accountId → NotFoundError', async () => {
+    it("deleteAccount with user-b accountId → NotFoundError", async () => {
       const accountRepo = fakeAccountRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
@@ -398,7 +413,7 @@ describe('Tenant isolation (B1)', () => {
       expect(movementRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('setInitialBalance with user-b accountId → NotFoundError', async () => {
+    it("setInitialBalance with user-b accountId → NotFoundError", async () => {
       const accountRepo = fakeAccountRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
@@ -417,8 +432,8 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Movements ──────────────────────────────────────────────────
-  describe('movements', () => {
-    it('updateMovement with user-b movementId → NotFoundError', async () => {
+  describe("movements", () => {
+    it("updateMovement with user-b movementId → NotFoundError", async () => {
       const movementRepo = fakeMovementRepo();
       const categoryRepo = fakeCategoryRepo();
       await expect(
@@ -434,7 +449,7 @@ describe('Tenant isolation (B1)', () => {
       expect(movementRepo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteMovement with user-b movementId → NotFoundError', async () => {
+    it("deleteMovement with user-b movementId → NotFoundError", async () => {
       const repo = fakeMovementRepo();
       await expect(
         deleteMovement(WORKSPACE_A, MOV_B, repo, fakeAccountRepo(), fakeUow()),
@@ -444,26 +459,45 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Transfers ──────────────────────────────────────────────────
-  describe('transfers', () => {
-    it('updateTransfer with user-b transferId → NotFoundError', async () => {
+  describe("transfers", () => {
+    it("updateTransfer with user-b transferId → NotFoundError", async () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        updateTransfer(WORKSPACE_A, TRF_B, {}, transferRepo, movementRepo, fakeAccountRepo(), fakeCreditReceivedRepo(), fakeCreditGrantedRepo(), fakeSaleRepo(), fakePayableRepo(), fakeUow()),
+        updateTransfer(
+          WORKSPACE_A,
+          TRF_B,
+          {},
+          transferRepo,
+          movementRepo,
+          fakeAccountRepo(),
+          fakeCreditReceivedRepo(),
+          fakeCreditGrantedRepo(),
+          fakeSaleRepo(),
+          fakePayableRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteTransfer with user-b transferId → NotFoundError', async () => {
+    it("deleteTransfer with user-b transferId → NotFoundError", async () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteTransfer(WORKSPACE_A, TRF_B, transferRepo, movementRepo, fakeAccountRepo(), fakeUow()),
+        deleteTransfer(
+          WORKSPACE_A,
+          TRF_B,
+          transferRepo,
+          movementRepo,
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(transferRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('createTransfer with user-b sourceAccountId → NotFoundError', async () => {
+    it("createTransfer with user-b sourceAccountId → NotFoundError", async () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       const accountRepo = fakeAccountRepo();
@@ -472,9 +506,9 @@ describe('Tenant isolation (B1)', () => {
           WORKSPACE_A,
           {
             sourceAccountId: ACC_B,
-            destinationAccountId: 'acc-dest',
+            destinationAccountId: "acc-dest",
             sourceAmount: 1000,
-            sourceCurrency: 'COP',
+            sourceCurrency: "COP",
             date: new Date(),
           },
           transferRepo,
@@ -488,15 +522,11 @@ describe('Tenant isolation (B1)', () => {
           fakeUow(),
         ),
       ).rejects.toThrow(NotFoundError);
-      expect(accountRepo.findById).toHaveBeenCalledWith(
-        WORKSPACE_A,
-        ACC_B,
-        expect.anything(),
-      );
+      expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_B, expect.anything());
       expect(transferRepo.create).not.toHaveBeenCalled();
     });
 
-    it('createTransfer with user-b destinationAccountId → NotFoundError', async () => {
+    it("createTransfer with user-b destinationAccountId → NotFoundError", async () => {
       const transferRepo = fakeTransferRepo();
       const movementRepo = fakeMovementRepo();
       // Override: source account exists for user-a, but destination does not.
@@ -513,7 +543,7 @@ describe('Tenant isolation (B1)', () => {
             sourceAccountId: ACC_A,
             destinationAccountId: ACC_B,
             sourceAmount: 1000,
-            sourceCurrency: 'COP',
+            sourceCurrency: "COP",
             date: new Date(),
           },
           transferRepo,
@@ -532,61 +562,81 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Credits Granted ────────────────────────────────────────────
-  describe('credits-granted', () => {
-    it('deleteCreditGranted with user-b creditId → NotFoundError', async () => {
+  describe("credits-granted", () => {
+    it("deleteCreditGranted with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, movementRepo, fakeAccountRepo(), fakeUow()),
+        deleteCreditGranted(
+          WORKSPACE_A,
+          CRD_G_B,
+          creditRepo,
+          movementRepo,
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('addAbono with user-b creditId → NotFoundError', async () => {
+    it("addAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         addAbonoCG(
           WORKSPACE_A,
           CRD_G_B,
-          { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          { amount: 5000, currency: "COP", accountId: ACC_A, date: new Date() },
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
 
-    it('editAbono with user-b creditId → NotFoundError', async () => {
+    it("editAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         editAbonoCG(
           WORKSPACE_A,
           CRD_G_B,
-          'abono-b-1',
+          "abono-b-1",
           { amount: 3000 },
           creditRepo,
           fakeMovementRepo(),
-          fakeAccountRepo(), fakeIdGen(), fakeUow()),
+          fakeAccountRepo(),
+          fakeIdGen(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.editAbono).not.toHaveBeenCalled();
     });
 
-    it('deleteAbono with user-b creditId → NotFoundError', async () => {
+    it("deleteAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        deleteAbonoCG(WORKSPACE_A, CRD_G_B, 'abono-b-1', creditRepo, fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+        deleteAbonoCG(
+          WORKSPACE_A,
+          CRD_G_B,
+          "abono-b-1",
+          creditRepo,
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
 
-    it('editPrincipal with user-b creditId → NotFoundError', async () => {
+    it("editPrincipal with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
         editPrincipalCG(
           WORKSPACE_A,
           CRD_G_B,
-          { principal: 100000, currency: 'COP' },
+          { principal: 100000, currency: "COP" },
           creditRepo,
           fakeMovementRepo(),
           fakeAccountRepo(),
@@ -596,84 +646,115 @@ describe('Tenant isolation (B1)', () => {
       expect(creditRepo.update).not.toHaveBeenCalled();
     });
 
-    it('writeOffCreditGranted with user-b creditId → NotFoundError', async () => {
+    it("writeOffCreditGranted with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditGrantedRepo();
       await expect(
-        writeOffCreditGranted(WORKSPACE_A, CRD_G_B, creditRepo, fakeMovementRepo(), fakeIdGen(), fakeAccountRepo(), fakeUow()),
-      ).rejects.toThrow(NotFoundError);
-      expect(creditRepo.markWrittenOff).not.toHaveBeenCalled();
-    });
-
-    it('markAsPaid with user-b creditId → NotFoundError', async () => {
-      const creditRepo = fakeCreditGrantedRepo();
-      await expect(
-        markAsPaidCG(
+        writeOffCreditGranted(
           WORKSPACE_A,
           CRD_G_B,
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
+      ).rejects.toThrow(NotFoundError);
+      expect(creditRepo.markWrittenOff).not.toHaveBeenCalled();
+    });
+
+    it("markAsPaid with user-b creditId → NotFoundError", async () => {
+      const creditRepo = fakeCreditGrantedRepo();
+      await expect(
+        markAsPaidCG(
+          WORKSPACE_A,
+          CRD_G_B,
+          ACC_A,
+          creditRepo,
+          fakeMovementRepo(),
+          fakeIdGen(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
   });
 
   // ─── Credits Received ───────────────────────────────────────────
-  describe('credits-received', () => {
-    it('deleteCreditReceived with user-b creditId → NotFoundError', async () => {
+  describe("credits-received", () => {
+    it("deleteCreditReceived with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
-        deleteCreditReceived(WORKSPACE_A, CRD_R_B, creditRepo, movementRepo, fakeAccountRepo(), fakeUow()),
+        deleteCreditReceived(
+          WORKSPACE_A,
+          CRD_R_B,
+          creditRepo,
+          movementRepo,
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('addAbono with user-b creditId → NotFoundError', async () => {
+    it("addAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         addAbonoCR(
           WORKSPACE_A,
           CRD_R_B,
-          { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          { amount: 5000, currency: "COP", accountId: ACC_A, date: new Date() },
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
 
-    it('editAbono with user-b creditId → NotFoundError', async () => {
+    it("editAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         editAbonoCR(
           WORKSPACE_A,
           CRD_R_B,
-          'abono-b-1',
+          "abono-b-1",
           { amount: 3000 },
           creditRepo,
-          fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.editAbono).not.toHaveBeenCalled();
     });
 
-    it('deleteAbono with user-b creditId → NotFoundError', async () => {
+    it("deleteAbono with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
-        deleteAbonoCR(WORKSPACE_A, CRD_R_B, 'abono-b-1', creditRepo, fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+        deleteAbonoCR(
+          WORKSPACE_A,
+          CRD_R_B,
+          "abono-b-1",
+          creditRepo,
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.deleteAbono).not.toHaveBeenCalled();
     });
 
-    it('editPrincipal with user-b creditId → NotFoundError', async () => {
+    it("editPrincipal with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         editPrincipalCR(
           WORKSPACE_A,
           CRD_R_B,
-          { principal: 100000, currency: 'COP' },
+          { principal: 100000, currency: "COP" },
           creditRepo,
           fakeMovementRepo(),
           fakeAccountRepo(),
@@ -683,24 +764,27 @@ describe('Tenant isolation (B1)', () => {
       expect(creditRepo.update).not.toHaveBeenCalled();
     });
 
-    it('markAsPaid with user-b creditId → NotFoundError', async () => {
+    it("markAsPaid with user-b creditId → NotFoundError", async () => {
       const creditRepo = fakeCreditReceivedRepo();
       await expect(
         markAsPaidCR(
           WORKSPACE_A,
           CRD_R_B,
+          ACC_A,
           creditRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(creditRepo.addAbono).not.toHaveBeenCalled();
     });
   });
 
   // ─── Payables ───────────────────────────────────────────────────
-  describe('payables', () => {
-    it('deletePayable with user-b payableId → NotFoundError', async () => {
+  describe("payables", () => {
+    it("deletePayable with user-b payableId → NotFoundError", async () => {
       const payableRepo = fakePayableRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
@@ -709,61 +793,68 @@ describe('Tenant isolation (B1)', () => {
       expect(payableRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('addAbono with user-b payableId → NotFoundError', async () => {
+    it("addAbono with user-b payableId → NotFoundError", async () => {
       const payableRepo = fakePayableRepo();
       await expect(
         addAbonoPay(
           WORKSPACE_A,
           PAY_B,
-          { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          { amount: 5000, currency: "COP", accountId: ACC_A, date: new Date() },
           payableRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.addAbono).not.toHaveBeenCalled();
     });
 
-    it('editAbono with user-b payableId → NotFoundError', async () => {
+    it("editAbono with user-b payableId → NotFoundError", async () => {
       const payableRepo = fakePayableRepo();
       await expect(
         editAbonoPay(
           WORKSPACE_A,
           PAY_B,
-          'abono-b-1',
+          "abono-b-1",
           { amount: 3000 },
           payableRepo,
-          fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.editAbono).not.toHaveBeenCalled();
     });
 
-    it('deleteAbono with user-b payableId → NotFoundError', async () => {
+    it("deleteAbono with user-b payableId → NotFoundError", async () => {
       const payableRepo = fakePayableRepo();
       await expect(
-        deleteAbonoPay(WORKSPACE_A, PAY_B, 'abono-b-1', payableRepo, fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+        deleteAbonoPay(
+          WORKSPACE_A,
+          PAY_B,
+          "abono-b-1",
+          payableRepo,
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.deleteAbono).not.toHaveBeenCalled();
     });
 
-    it('editTotal with user-b payableId → NotFoundError', async () => {
+    it("editTotal with user-b payableId → NotFoundError", async () => {
       const payableRepo = fakePayableRepo();
       await expect(
-        editTotal(
-          WORKSPACE_A,
-          PAY_B,
-          { total: 200000, currency: 'COP' },
-          payableRepo,
-          fakeUow(),
-        ),
+        editTotal(WORKSPACE_A, PAY_B, { total: 200000, currency: "COP" }, payableRepo, fakeUow()),
       ).rejects.toThrow(NotFoundError);
       expect(payableRepo.update).not.toHaveBeenCalled();
     });
   });
 
   // ─── Sales ──────────────────────────────────────────────────────
-  describe('sales', () => {
-    it('deleteSale with user-b saleId → NotFoundError', async () => {
+  describe("sales", () => {
+    it("deleteSale with user-b saleId → NotFoundError", async () => {
       const saleRepo = fakeSaleRepo();
       await expect(
         deleteSale(
@@ -780,41 +871,51 @@ describe('Tenant isolation (B1)', () => {
       expect(saleRepo.delete).not.toHaveBeenCalled();
     });
 
-    it('addSaleAbono with user-b saleId → NotFoundError', async () => {
+    it("addSaleAbono with user-b saleId → NotFoundError", async () => {
       const saleRepo = fakeSaleRepo();
       await expect(
         addSaleAbono(
           WORKSPACE_A,
           SALE_B,
-          { amount: 10000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          { amount: 10000, currency: "COP", accountId: ACC_A, date: new Date() },
           saleRepo,
           fakeMovementRepo(),
           fakeIdGen(),
-          fakeAccountRepo(), fakeUow()),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.addAbono).not.toHaveBeenCalled();
     });
 
-    it('deleteSaleAbono with user-b saleId → NotFoundError', async () => {
+    it("deleteSaleAbono with user-b saleId → NotFoundError", async () => {
       const saleRepo = fakeSaleRepo();
       await expect(
-        deleteSaleAbono(WORKSPACE_A, SALE_B, 'abono-b-1', saleRepo, fakeMovementRepo(), fakeAccountRepo(), fakeUow()),
+        deleteSaleAbono(
+          WORKSPACE_A,
+          SALE_B,
+          "abono-b-1",
+          saleRepo,
+          fakeMovementRepo(),
+          fakeAccountRepo(),
+          fakeUow(),
+        ),
       ).rejects.toThrow(NotFoundError);
       expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
     });
 
-    it('createSale with user-b accountId → NotFoundError', async () => {
+    it("createSale with user-b accountId → NotFoundError", async () => {
       const saleRepo = fakeSaleRepo();
       const accountRepo = fakeAccountRepo(); // all findById → null
       await expect(
         createSale(
           WORKSPACE_A,
           {
-            items: [{ itemId: 'item-1', quantity: 1, unitPrice: 10000 }],
+            items: [{ itemId: "item-1", quantity: 1, unitPrice: 10000 }],
             accountId: ACC_B,
             date: new Date(),
-            paymentMode: 'paid-in-full',
-            currency: 'COP',
+            paymentMode: "paid-in-full",
+            currency: "COP",
           },
           saleRepo,
           fakeCatalogItemRepo(),
@@ -829,7 +930,7 @@ describe('Tenant isolation (B1)', () => {
       expect(saleRepo.create).not.toHaveBeenCalled();
     });
 
-    it('createSale with user-b clientId (on-credit) → NotFoundError', async () => {
+    it("createSale with user-b clientId (on-credit) → NotFoundError", async () => {
       const saleRepo = fakeSaleRepo();
       const clientRepo = fakeClientRepo(); // findById → null for CLI_B
       // User-a's account must resolve so the code reaches the client check.
@@ -843,12 +944,12 @@ describe('Tenant isolation (B1)', () => {
         createSale(
           WORKSPACE_A,
           {
-            items: [{ itemId: 'item-1', quantity: 1, unitPrice: 10000 }],
+            items: [{ itemId: "item-1", quantity: 1, unitPrice: 10000 }],
             accountId: ACC_A,
             clientId: CLI_B,
             date: new Date(),
-            paymentMode: 'on-credit',
-            currency: 'COP',
+            paymentMode: "on-credit",
+            currency: "COP",
           },
           saleRepo,
           fakeCatalogItemRepo(),
@@ -866,19 +967,19 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Clients ────────────────────────────────────────────────────
-  describe('clients', () => {
+  describe("clients", () => {
     // NOTE: updateClient throws NotFoundError consistently (same as every other
     // use case) — no plain-Error inconsistency here. findById still returns null
     // for a workspace-b clientId, so there is no data leak.
-    it('updateClient with workspace-b clientId → NotFoundError', async () => {
+    it("updateClient with workspace-b clientId → NotFoundError", async () => {
       const repo = fakeClientRepo();
-      await expect(
-        updateClient(WORKSPACE_A, CLI_B, { name: 'Hacked' }, repo),
-      ).rejects.toThrow(NotFoundError);
+      await expect(updateClient(WORKSPACE_A, CLI_B, { name: "Hacked" }, repo)).rejects.toThrow(
+        NotFoundError,
+      );
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteClient with user-b clientId → NotFoundError', async () => {
+    it("deleteClient with user-b clientId → NotFoundError", async () => {
       const repo = fakeClientRepo();
       await expect(
         deleteClient(WORKSPACE_A, CLI_B, repo, fakeSaleRepo(), fakeUow()),
@@ -888,16 +989,16 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Categories ─────────────────────────────────────────────────
-  describe('categories', () => {
-    it('updateCategory with user-b categoryId → NotFoundError', async () => {
+  describe("categories", () => {
+    it("updateCategory with user-b categoryId → NotFoundError", async () => {
       const repo = fakeCategoryRepo();
       await expect(
-        updateCategory(WORKSPACE_A, { categoryId: CAT_B, name: 'Renamed' }, repo),
+        updateCategory(WORKSPACE_A, { categoryId: CAT_B, name: "Renamed" }, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteCategory with user-b categoryId → NotFoundError', async () => {
+    it("deleteCategory with user-b categoryId → NotFoundError", async () => {
       const categoryRepo = fakeCategoryRepo();
       const movementRepo = fakeMovementRepo();
       await expect(
@@ -908,21 +1009,21 @@ describe('Tenant isolation (B1)', () => {
   });
 
   // ─── Catalog ────────────────────────────────────────────────────
-  describe('catalog', () => {
-    it('updateCatalogItem with user-b itemId → NotFoundError', async () => {
+  describe("catalog", () => {
+    it("updateCatalogItem with user-b itemId → NotFoundError", async () => {
       const repo = fakeCatalogItemRepo();
       await expect(
-        updateCatalogItem(WORKSPACE_A, CATL_B, { name: 'Renamed' }, repo),
+        updateCatalogItem(WORKSPACE_A, CATL_B, { name: "Renamed" }, repo),
       ).rejects.toThrow(NotFoundError);
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('deleteCatalogItem with user-b itemId → NotFoundError', async () => {
+    it("deleteCatalogItem with user-b itemId → NotFoundError", async () => {
       const catalogRepo = fakeCatalogItemRepo();
       const saleRepo = fakeSaleRepo();
-      await expect(
-        deleteCatalogItem(WORKSPACE_A, CATL_B, catalogRepo, saleRepo),
-      ).rejects.toThrow(NotFoundError);
+      await expect(deleteCatalogItem(WORKSPACE_A, CATL_B, catalogRepo, saleRepo)).rejects.toThrow(
+        NotFoundError,
+      );
       expect(catalogRepo.delete).not.toHaveBeenCalled();
     });
   });
@@ -935,12 +1036,12 @@ describe('Tenant isolation (B1)', () => {
   // though the "actor user" is a different, second user (WORKSPACE_A2_ACTOR).
   // Because the scope is the shared WORKSPACE_A, the data is found/mutated with
   // no NotFoundError.
-  describe('same-workspace sharing (R13-F)', () => {
+  describe("same-workspace sharing (R13-F)", () => {
     // A second user acting inside WORKSPACE_A (WORKSPACE_A2_ACTOR). Its own id
     // differs, but the workspaceId it passes to each use case is still
     // WORKSPACE_A.
 
-    it('updateAccount succeeds for a second user sharing the same workspace', async () => {
+    it("updateAccount succeeds for a second user sharing the same workspace", async () => {
       const repo = fakeAccountRepo({
         findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
           if (workspaceId === WORKSPACE_A && id === ACC_A) return makeAccount();
@@ -949,13 +1050,13 @@ describe('Tenant isolation (B1)', () => {
         update: vi.fn().mockImplementation(async (a: unknown) => a),
       });
       await expect(
-        updateAccount(WORKSPACE_A, { accountId: ACC_A, name: 'Shared' }, repo),
+        updateAccount(WORKSPACE_A, { accountId: ACC_A, name: "Shared" }, repo),
       ).resolves.toBeDefined();
       expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_A);
       expect(repo.update).toHaveBeenCalled();
     });
 
-    it('updateClient succeeds for a second user sharing the same workspace', async () => {
+    it("updateClient succeeds for a second user sharing the same workspace", async () => {
       const repo = fakeClientRepo({
         findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
           if (workspaceId === WORKSPACE_A && id === CLI_A) return makeClient();
@@ -964,13 +1065,13 @@ describe('Tenant isolation (B1)', () => {
         update: vi.fn().mockImplementation(async (c: unknown) => c),
       });
       await expect(
-        updateClient(WORKSPACE_A, CLI_A, { name: 'Shared' }, repo),
+        updateClient(WORKSPACE_A, CLI_A, { name: "Shared" }, repo),
       ).resolves.toBeDefined();
       expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CLI_A);
       expect(repo.update).toHaveBeenCalled();
     });
 
-    it('deleteMovement succeeds for a second user sharing the same workspace', async () => {
+    it("deleteMovement succeeds for a second user sharing the same workspace", async () => {
       const repo = fakeMovementRepo({
         findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
           if (workspaceId === WORKSPACE_A && id === MOV_A) return makeMovement();
@@ -985,7 +1086,7 @@ describe('Tenant isolation (B1)', () => {
       expect(repo.delete).toHaveBeenCalledWith(WORKSPACE_A, MOV_A, expect.anything());
     });
 
-    it('updateCategory succeeds for a second user sharing the same workspace', async () => {
+    it("updateCategory succeeds for a second user sharing the same workspace", async () => {
       const repo = fakeCategoryRepo({
         findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
           if (workspaceId === WORKSPACE_A && id === CAT_A) return makeCategory();
@@ -995,13 +1096,13 @@ describe('Tenant isolation (B1)', () => {
         update: vi.fn().mockImplementation(async (c: unknown) => c),
       });
       await expect(
-        updateCategory(WORKSPACE_A, { categoryId: CAT_A, name: 'Renamed' }, repo),
+        updateCategory(WORKSPACE_A, { categoryId: CAT_A, name: "Renamed" }, repo),
       ).resolves.toBeDefined();
       expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CAT_A);
       expect(repo.update).toHaveBeenCalled();
     });
 
-    it('updateCatalogItem succeeds for a second user sharing the same workspace', async () => {
+    it("updateCatalogItem succeeds for a second user sharing the same workspace", async () => {
       const repo = fakeCatalogItemRepo({
         findById: vi.fn().mockImplementation(async (workspaceId: string, id: string) => {
           if (workspaceId === WORKSPACE_A && id === CATL_A) return makeCatalogItem();
@@ -1010,13 +1111,13 @@ describe('Tenant isolation (B1)', () => {
         update: vi.fn().mockImplementation(async (i: unknown) => i),
       });
       await expect(
-        updateCatalogItem(WORKSPACE_A, CATL_A, { name: 'Shared' }, repo),
+        updateCatalogItem(WORKSPACE_A, CATL_A, { name: "Shared" }, repo),
       ).resolves.toBeDefined();
       expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CATL_A);
       expect(repo.update).toHaveBeenCalled();
     });
 
-    it('credit abono (multi-repo) succeeds for a second user sharing the same workspace', async () => {
+    it("credit abono (multi-repo) succeeds for a second user sharing the same workspace", async () => {
       // The credit AND the receiving account both live under WORKSPACE_A. The
       // use case exercises creditRepo + accountRepo + movementRepo together.
       const creditRepo = fakeCreditGrantedRepo({
@@ -1038,11 +1139,13 @@ describe('Tenant isolation (B1)', () => {
         addAbonoCG(
           WORKSPACE_A,
           CRD_G_A,
-          { amount: 5000, currency: 'COP', accountId: ACC_A, date: new Date() },
+          { amount: 5000, currency: "COP", accountId: ACC_A, date: new Date() },
           creditRepo,
           movementRepo,
           fakeIdGen(),
-          accountRepo, fakeUow()),
+          accountRepo,
+          fakeUow(),
+        ),
       ).resolves.toBeDefined();
       expect(creditRepo.findByWorkspaceId).toHaveBeenCalledWith(WORKSPACE_A, expect.anything());
       expect(accountRepo.findById).toHaveBeenCalledWith(WORKSPACE_A, ACC_A);

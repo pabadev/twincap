@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { Button } from './button';
-import { Modal } from './modal';
+import { type ReactNode } from "react";
+import { Button } from "./button";
+import { Modal } from "./modal";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -9,9 +10,11 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   title: string;
   description?: string;
+  /** Optional content rendered between the description and the action footer. */
+  children?: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
-  tone?: 'danger' | 'primary';
+  tone?: "danger" | "primary";
   loading?: boolean;
 }
 
@@ -25,9 +28,10 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
+  children,
   confirmLabel,
   cancelLabel,
-  tone = 'danger',
+  tone = "danger",
   loading = false,
 }: ConfirmDialogProps) {
   return (
@@ -38,17 +42,12 @@ export function ConfirmDialog({
       size="sm"
       actions={
         <>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={loading}
-          >
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
             {cancelLabel}
           </Button>
           <Button
             type="button"
-            variant={tone === 'primary' ? 'primary' : 'danger'}
+            variant={tone === "primary" ? "primary" : "danger"}
             onClick={onConfirm}
             loading={loading}
           >
@@ -58,6 +57,7 @@ export function ConfirmDialog({
       }
     >
       {description && <p className="text-sm text-zinc-600 dark:text-zinc-300">{description}</p>}
+      {children}
     </Modal>
   );
 }

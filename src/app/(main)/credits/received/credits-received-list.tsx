@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useT, useLocale } from '../../../../i18n/client';
-import type { SerializedAccount } from '../../../../core/domain/account';
-import type { SerializedCreditReceived } from '../../../../core/domain/credit-received';
-import { CreditForm } from './credit-form';
-import { AbonoForm } from './abono-form';
-import { EditAbonoForm } from './edit-abono-form';
-import { EditCreditForm } from './edit-credit-form';
-import { DeleteCreditButton } from './delete-credit-button';
-import { DeleteAbonoButton } from './delete-abono-button';
-import { MarkAsPaidButton } from './mark-as-paid-button';
-import { formatAmount, formatDate } from '../../../../lib/format';
-import { businessDateToInputValue } from '../../../../lib/date';
-import { Icon } from '../../../../components/ui/icon';
-import { EmptyState } from '../../../../components/ui/empty-state';
-import { Modal } from '../../../../components/ui/modal';
-import { ActionIconButton } from '../../../../components/ui/action-icon-button';
-import { Button } from '../../../../components/ui/button';
-import { BackButton } from '../../../../components/ui/back-button';
-import { Badge } from '../../../../components/ui/badge';
-import { Select } from '../../../../components/ui/select';
-import { Table } from '../../../../components/ui/table';
-import { ChevronDown, CreditCard, Pencil } from 'lucide-react';
+import { useState } from "react";
+import { useT, useLocale } from "../../../../i18n/client";
+import type { SerializedAccount } from "../../../../core/domain/account";
+import type { SerializedCreditReceived } from "../../../../core/domain/credit-received";
+import { CreditForm } from "./credit-form";
+import { AbonoForm } from "./abono-form";
+import { EditAbonoForm } from "./edit-abono-form";
+import { EditCreditForm } from "./edit-credit-form";
+import { DeleteCreditButton } from "./delete-credit-button";
+import { DeleteAbonoButton } from "./delete-abono-button";
+import { MarkAsPaidButton } from "./mark-as-paid-button";
+import { formatAmount, formatDate } from "../../../../lib/format";
+import { businessDateToInputValue } from "../../../../lib/date";
+import { Icon } from "../../../../components/ui/icon";
+import { EmptyState } from "../../../../components/ui/empty-state";
+import { Modal } from "../../../../components/ui/modal";
+import { ActionIconButton } from "../../../../components/ui/action-icon-button";
+import { Button } from "../../../../components/ui/button";
+import { BackButton } from "../../../../components/ui/back-button";
+import { Badge } from "../../../../components/ui/badge";
+import { Select } from "../../../../components/ui/select";
+import { Table } from "../../../../components/ui/table";
+import { ChevronDown, CreditCard, Pencil } from "lucide-react";
 
 export function CreditsReceivedList({
   accounts,
@@ -36,19 +36,20 @@ export function CreditsReceivedList({
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
   const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
   const [editingCredit, setEditingCredit] = useState<SerializedCreditReceived | null>(null);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all');
-  const [search, setSearch] = useState('');
-  const t = useT('CreditsReceived');
-  const tCommon = useT('Common');
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
+  const [search, setSearch] = useState("");
+  const t = useT("CreditsReceived");
+  const tCommon = useT("Common");
   const locale = useLocale();
 
   const filtered = credits.filter((credit) => {
     if (dateFrom && new Date(credit.date).getTime() < new Date(dateFrom).getTime()) return false;
-    if (dateTo && new Date(credit.date).getTime() > new Date(dateTo + 'T23:59:59.999Z').getTime()) return false;
-    if (statusFilter === 'pending' && credit.pending <= 0) return false;
-    if (statusFilter === 'paid' && credit.pending > 0) return false;
+    if (dateTo && new Date(credit.date).getTime() > new Date(dateTo + "T23:59:59.999Z").getTime())
+      return false;
+    if (statusFilter === "pending" && credit.pending <= 0) return false;
+    if (statusFilter === "paid" && credit.pending > 0) return false;
     if (search && !credit.counterparty.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -57,27 +58,17 @@ export function CreditsReceivedList({
     <div className="mx-auto max-w-6xl px-4 py-8">
       <BackButton />
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {t('title')}
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
-          {t('addCredit')}
+          {t("addCredit")}
         </Button>
       </div>
 
-      <Modal
-        open={showForm}
-        onClose={() => setShowForm(false)}
-        title={t('newCredit')}
-      >
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newCredit")}>
         <CreditForm accounts={accounts} onSuccess={() => setShowForm(false)} />
       </Modal>
 
-      <Modal
-        open={!!editingCredit}
-        onClose={() => setEditingCredit(null)}
-        title={t('editCredit')}
-      >
+      <Modal open={!!editingCredit} onClose={() => setEditingCredit(null)} title={t("editCredit")}>
         {editingCredit && (
           <EditCreditForm
             creditId={editingCredit.id}
@@ -91,15 +82,17 @@ export function CreditsReceivedList({
       {credits.length === 0 ? (
         <EmptyState
           icon={<Icon icon={CreditCard} size="xl" />}
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
         />
       ) : (
         <>
           {/* Filter bar */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateFrom')}</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t("filterDateFrom")}
+              </label>
               <input
                 type="date"
                 value={dateFrom}
@@ -108,7 +101,9 @@ export function CreditsReceivedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterDateTo')}</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t("filterDateTo")}
+              </label>
               <input
                 type="date"
                 value={dateTo}
@@ -117,25 +112,29 @@ export function CreditsReceivedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterStatus')}</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t("filterStatus")}
+              </label>
               <Select
                 options={[
-                  { value: 'all', label: t('filterAllStatus') },
-                  { value: 'pending', label: t('filterPending') },
-                  { value: 'paid', label: t('filterPaid') },
+                  { value: "all", label: t("filterAllStatus") },
+                  { value: "pending", label: t("filterPending") },
+                  { value: "paid", label: t("filterPaid") },
                 ]}
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'paid')}
+                onChange={(e) => setStatusFilter(e.target.value as "all" | "pending" | "paid")}
                 className="w-40"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">{t('filterSearch')}</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t("filterSearch")}
+              </label>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('filterSearch')}
+                placeholder={t("filterSearch")}
                 className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
@@ -143,187 +142,203 @@ export function CreditsReceivedList({
 
           {filtered.length === 0 && credits.length > 0 && (
             <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              {t('noResults')}
+              {t("noResults")}
             </p>
           )}
 
           <div className="space-y-3">
             {filtered.map((credit) => {
-            const isExpanded = expandedId === credit.id;
-            const pending = credit.pending;
-            const currency = credit.principal.currency;
-            const isPaid = pending <= 0;
-            const paidInstallments =
-              credit.installments && credit.installmentValue
-                ? Math.min(
-                    Math.floor(
-                      (credit.abonos?.reduce((sum, a) => sum + a.amount.amount, 0) ?? 0) /
-                        credit.installmentValue.amount,
-                    ),
-                    credit.installments,
-                  )
-                : undefined;
+              const isExpanded = expandedId === credit.id;
+              const pending = credit.pending;
+              const currency = credit.principal.currency;
+              const isPaid = pending <= 0;
+              const paidInstallments =
+                credit.installments && credit.installmentValue
+                  ? Math.min(
+                      Math.floor(
+                        (credit.abonos?.reduce((sum, a) => sum + a.amount.amount, 0) ?? 0) /
+                          credit.installmentValue.amount,
+                      ),
+                      credit.installments,
+                    )
+                  : undefined;
 
-            return (
-              <div
-                key={credit.id}
-                className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? 'opacity-60' : ''}`}
-              >
+              return (
                 <div
-                  className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
-                  onClick={() => setExpandedId(isExpanded ? null : credit.id)}
+                  key={credit.id}
+                  className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? "opacity-60" : ""}`}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
-                      {credit.counterparty}
-                      {isPaid && <Badge variant="success">{tCommon('paid')}</Badge>}
+                  <div
+                    className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    onClick={() => setExpandedId(isExpanded ? null : credit.id)}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
+                        {credit.counterparty}
+                        {isPaid && <Badge variant="success">{tCommon("paid")}</Badge>}
+                      </div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                        {formatDate(credit.date, locale)}
+                        {credit.installments &&
+                          ` · ${credit.installments} ${t("installmentCount")}`}
+                        {credit.frequency && ` · ${t(credit.frequency)}`}
+                        {credit.installments && credit.installmentValue && (
+                          <>
+                            {" · "}
+                            {t("totalToPayLabel")}:{" "}
+                            {formatAmount(credit.totalToPay, currency, locale)}
+                            {paidInstallments !== undefined &&
+                              paidInstallments < credit.installments && (
+                                <>
+                                  {" · "}
+                                  {t("installmentProgress", {
+                                    count: String(paidInstallments),
+                                    total: String(credit.installments),
+                                  })}
+                                </>
+                              )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {formatDate(credit.date, locale)}
-                      {credit.installments && ` · ${credit.installments} ${t('installmentCount')}`}
-                      {credit.frequency && ` · ${t(credit.frequency)}`}
-                      {credit.installments && credit.installmentValue && (
-                        <>
-                          {' · '}
-                          {t('totalToPayLabel')}: {formatAmount(credit.totalToPay, currency, locale)}
-                          {paidInstallments !== undefined && paidInstallments < credit.installments && (
-                            <>
-                              {' · '}
-                              {t('installmentProgress', { count: String(paidInstallments), total: String(credit.installments) })}
-                            </>
-                          )}
-                        </>
-                      )}
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                        {formatAmount(credit.principal.amount, currency, locale)}
+                      </div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {pending > 0
+                          ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
+                          : t("paidInFull")}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex items-center gap-2">
+                      <span className="text-xs text-zinc-400">
+                        {credit.abonos?.length}{" "}
+                        {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
+                      </span>
+                      <ActionIconButton
+                        icon={Pencil}
+                        label={tCommon("edit")}
+                        tone="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCredit(credit);
+                        }}
+                      />
+                      <Icon
+                        icon={ChevronDown}
+                        size="sm"
+                        className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      />
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatAmount(credit.principal.amount, currency, locale)}
-                    </div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {pending > 0
-                        ? `${t('pending')} ${formatAmount(pending, currency, locale)}`
-                        : t('paidInFull')}
-                    </div>
-                  </div>
-                  <div className="ml-4 flex items-center gap-2">
-                    <span className="text-xs text-zinc-400">
-                      {credit.abonos?.length} {credit.abonos?.length !== 1 ? t('abonoCount_plural') : t('abonoCount')}
-                    </span>
-                    <ActionIconButton
-                      icon={Pencil}
-                      label={tCommon('edit')}
-                      tone="primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCredit(credit);
-                      }}
-                    />
-                    <Icon
-                      icon={ChevronDown}
-                      size="sm"
-                      className={`text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                    />
-                  </div>
-                </div>
 
-                {isExpanded && (
-                  <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
-                    {credit.abonos?.length > 0 && (
-                      <div className="mb-3">
-                        <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                          {t('abonos')}
-                        </h4>
-                        {/* Compact expandable table: keeps its bespoke cells
+                  {isExpanded && (
+                    <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                      {credit.abonos?.length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            {t("abonos")}
+                          </h4>
+                          {/* Compact expandable table: keeps its bespoke cells
                             (pb-1 / py-1, text-xs header row) — only the
                             `<table>` element fits the ui/table contract here. */}
-                        <Table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                              <th className="pb-1 text-left">{tCommon('date')}</th>
-                              <th className="pb-1 text-right">{tCommon('amount')}</th>
-                              <th className="pb-1 text-right">{tCommon('actions')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {credit.abonos?.map((abono) => (
-                              <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
-                                <td className="py-1">{formatDate(abono.date, locale)}</td>
-                                <td className="py-1 text-right">
-                                  −{formatAmount(abono.amount.amount, currency, locale)}
-                                </td>
-                                <td className="py-1 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <ActionIconButton
-                                      icon={Pencil}
-                                      label={tCommon('edit')}
-                                      tone="primary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingAbonoId(editingAbonoId === abono.id ? null : abono.id);
-                                        setShowAbonoFormId(null);
-                                      }}
-                                    />
-                                    <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
-                                  </div>
-                                </td>
+                          <Table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                <th className="pb-1 text-left">{tCommon("date")}</th>
+                                <th className="pb-1 text-right">{tCommon("amount")}</th>
+                                <th className="pb-1 text-right">{tCommon("actions")}</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </Table>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      {pending > 0 && (
-                        <Button
-                          variant="success"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAbonoFormId(showAbonoFormId === credit.id ? null : credit.id);
-                            setEditingAbonoId(null);
-                          }}
-                        >
-                          {showAbonoFormId === credit.id ? tCommon('cancel') : t('addAbono')}
-                        </Button>
+                            </thead>
+                            <tbody>
+                              {credit.abonos?.map((abono) => (
+                                <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
+                                  <td className="py-1">{formatDate(abono.date, locale)}</td>
+                                  <td className="py-1 text-right">
+                                    −{formatAmount(abono.amount.amount, currency, locale)}
+                                  </td>
+                                  <td className="py-1 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <ActionIconButton
+                                        icon={Pencil}
+                                        label={tCommon("edit")}
+                                        tone="primary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingAbonoId(
+                                            editingAbonoId === abono.id ? null : abono.id,
+                                          );
+                                          setShowAbonoFormId(null);
+                                        }}
+                                      />
+                                      <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </Table>
+                        </div>
                       )}
-                      {pending > 0 && <MarkAsPaidButton creditId={credit.id} />}
-                      <DeleteCreditButton creditId={credit.id} />
+
+                      <div className="flex items-center gap-3">
+                        {pending > 0 && (
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAbonoFormId(showAbonoFormId === credit.id ? null : credit.id);
+                              setEditingAbonoId(null);
+                            }}
+                          >
+                            {showAbonoFormId === credit.id ? tCommon("cancel") : t("addAbono")}
+                          </Button>
+                        )}
+                        {pending > 0 && (
+                          <MarkAsPaidButton
+                            creditId={credit.id}
+                            pending={pending}
+                            currency={currency}
+                            accounts={accounts}
+                          />
+                        )}
+                        <DeleteCreditButton creditId={credit.id} />
+                      </div>
+
+                      {showAbonoFormId === credit.id && (
+                        <div className="mt-3">
+                          <AbonoForm
+                            creditId={credit.id}
+                            pending={pending}
+                            currency={currency}
+                            accounts={accounts}
+                          />
+                        </div>
+                      )}
+
+                      {editingAbonoId && (
+                        <div className="mt-3">
+                          {credit.abonos
+                            .filter((a) => a.id === editingAbonoId)
+                            .map((abono) => (
+                              <EditAbonoForm
+                                key={abono.id}
+                                creditId={credit.id}
+                                abonoId={abono.id}
+                                amount={abono.amount.amount}
+                                date={businessDateToInputValue(abono.date)}
+                                onCancel={() => setEditingAbonoId(null)}
+                              />
+                            ))}
+                        </div>
+                      )}
                     </div>
-
-                    {showAbonoFormId === credit.id && (
-                      <div className="mt-3">
-                        <AbonoForm
-                          creditId={credit.id}
-                          pending={pending}
-                          currency={currency}
-                          accounts={accounts}
-                        />
-                      </div>
-                    )}
-
-                    {editingAbonoId && (
-                      <div className="mt-3">
-                        {credit.abonos
-                          .filter((a) => a.id === editingAbonoId)
-                          .map((abono) => (
-                            <EditAbonoForm
-                              key={abono.id}
-                              creditId={credit.id}
-                              abonoId={abono.id}
-                              amount={abono.amount.amount}
-                              date={businessDateToInputValue(abono.date)}
-                              onCancel={() => setEditingAbonoId(null)}
-                            />
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
