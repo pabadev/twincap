@@ -1,7 +1,7 @@
 # TWINCAP — UX ROADMAP — PLAN MAESTRO DE LA ETAPA UX/UI (FASES UX-0…UX-12)
 
 > **Fecha:** 2026-09-13
-> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); UX-6…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
+> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
 > **Fuente normativa:** `docs/freeze + UX-UI.md` (prompt maestro §35/§40/§41/§46/§47/§48/§49/§52/§53/§56)
 > **Documentos relacionados:** `docs/FINANCIAL-DOMAIN-FREEZE.md`, `docs/UX-UI-AUDIT.md` (UX-1), `docs/UX-COMPETITIVE-RESEARCH.md` (UX-2), `docs/UX-INFORMATION-ARCHITECTURE.md` (UX-3), `docs/UX-DESIGN-SYSTEM.md` (UX-4), `docs/PROJECT-RULES.md` (§15/§18)
 
@@ -89,7 +89,7 @@
 - **Objetivo:** rediseñar los flujos transaccionales con fricción mínima (benchmark lección 2) y confirmación informada en toda acción que toca dinero.
 - **Alcance:** alta de movimientos, venta POS, transferencia, abonos/cobros, créditos (recibidos/otorgados), cuentas por pagar, escritura de saldo inicial.
 - **Criterios de aceptación:**
-  - **H-06 cerrado (P0):** "marcar como pagado" y operaciones equivalentes usan ConfirmDialog con monto pendiente + cuenta destino (patrón existente en write-off).
+  - **H-06 (P0):** "marcar como pagado" **CERRADO (2026-09-14)** — ConfirmDialog con monto pendiente + cuenta destino **obligatoria** en recibidos y otorgados (commit `46e967f`, tests financieros `credits-granted`/`tenant-isolation` + actions `accountRequired`, e2e `credits-pos` 7/7). Operaciones equivalentes restantes (abono manual, cobro, transferencia) siguen este patrón.
   - Confirmación informada de saldo negativo (junto al campo, saldo actual/operación/proyectado — F5).
   - Fórmulas sin jerga: abono de crédito explicado en lenguaje de negocio (benchmark oportunidad 3).
   - Gates §46 verdes + regresión financiera §47 CERO (checklist completo al final de la fase).
