@@ -292,8 +292,16 @@ export interface AuthTokenStore {
     userId: string,
     purpose: AuthTokenPurpose,
   ): Promise<AuthTokenRecord | null>;
-  /** Atomically consume (mark used) the token ONLY if it is still unused and unexpired. Returns true when THIS caller won (exactly one document updated); false when another caller already consumed it or it expired. */
-  consume(tokenId: string): Promise<boolean>;
+  /**
+   * Atomically consume (mark used) the token ONLY if it is still unused and
+   * unexpired. Returns true when THIS caller won (exactly one document
+   * updated); false when another caller already consumed it or it expired.
+   * @param tx optional transaction handle (R15.3.2 §26): when present, the
+   *   consume joins the caller's transaction so the token consumption and the
+   *   subsequent user update commit or roll back atomically (password reset /
+   *   email verify).
+   */
+  consume(tokenId: string, tx?: TransactionHandle): Promise<boolean>;
   /** Opportunistic cleanup of expired tokens (TTL index also handles it). */
   deleteExpired(): Promise<void>;
 }

@@ -32,12 +32,18 @@ export class MongoUserRepository implements UserRepository {
     }
   }
 
-  async update(user: User): Promise<User> {
+  /**
+   * Replace the full user document.
+   * @param tx optional transaction handle (R15.3.2 §26): the write joins the
+   *   caller's transaction — resetPassword/verifyEmail commit it atomically
+   *   with the one-time token consumption.
+   */
+  async update(user: User, tx?: TransactionHandle): Promise<User> {
     const docData = toUserDocData(user);
     const result = await UserModel.findByIdAndUpdate(
       user.id,
       { $set: docData },
-      { new: true },
+      { new: true, session: sessionOf(tx) },
     ).exec();
     if (!result) {
       throw new NotFoundError(`User ${user.id} not found`);

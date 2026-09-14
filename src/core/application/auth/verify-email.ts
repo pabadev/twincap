@@ -2,6 +2,7 @@ import { User } from '../../domain/user';
 import { ValidationError } from '../../domain/errors';
 import type { AuthEmailDeps, } from './email-deps';
 import { INVALID_TOKEN_MESSAGE } from './email-deps';
+import type { UnitOfWork } from '../ports';
 
 export interface VerifyEmailInput {
   email: string;
@@ -22,6 +23,7 @@ export interface VerifyEmailOutput {
 export async function verifyEmail(
   input: VerifyEmailInput,
   deps: AuthEmailDeps,
+  uow: UnitOfWork,
 ): Promise<VerifyEmailOutput> {
   const normalized = input.email.trim().toLowerCase();
   const user = await deps.userRepo.findByEmail(normalized);
@@ -39,27 +41,29 @@ export async function verifyEmail(
     throw new ValidationError(INVALID_TOKEN_MESSAGE);
   }
 
-  // One-time use: atomically consume THIS token (per-token-id conditional
-  // update). Exactly one concurrent caller can win; whoever loses the race
-  // gets the unified invalid-token error. Consumption is the proof of use and
-  // happens BEFORE applying the user update.
-  const consumed = await deps.tokenStore.consume(stored.id);
-  if (!consumed) {
-    throw new ValidationError(INVALID_TOKEN_MESSAGE);
-  }
+  // R15.3.2 §26: consume + user update MUST commit or roll back atomically.
+  // consume-first inside the tx keeps the one-time-token race winner
+  // semantics: a failing user update aborts the tx and the token stays
+  // unused instead of being burned.
+  return uow.withTransaction(async (tx) => {
+    const consumed = await deps.tokenStore.consume(stored.id, tx);
+    if (!consumed) {
+      throw new ValidationError(INVALID_TOKEN_MESSAGE);
+    }
 
-  const updated = new User({
-    id: user.id,
-    email: user.email,
-    passwordHash: user.passwordHash,
-    createdAt: user.createdAt,
-    name: user.name,
-    locale: user.locale,
-    emailVerified: true,
-    // VerifyEmail must NOT invalidate sessions — pass through unchanged.
-    sessionVersion: user.sessionVersion ?? 0,
+    const updated = new User({
+      id: user.id,
+      email: user.email,
+      passwordHash: user.passwordHash,
+      createdAt: user.createdAt,
+      name: user.name,
+      locale: user.locale,
+      emailVerified: true,
+      // VerifyEmail must NOT invalidate sessions — pass through unchanged.
+      sessionVersion: user.sessionVersion ?? 0,
+    });
+    await deps.userRepo.update(updated, tx);
+
+    return { ok: true };
   });
-  await deps.userRepo.update(updated);
-
-  return { ok: true };
 }

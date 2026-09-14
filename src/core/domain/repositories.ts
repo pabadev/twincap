@@ -43,7 +43,11 @@ export interface UserRepository {
   /** @param tx optional transaction handle (R15-F6): the write joins the
    *   caller's transaction (register onboarding). */
   create(user: User, tx?: TransactionHandle): Promise<User>;
-  update(user: User): Promise<User>;
+  /** @param tx optional transaction handle (R15.3.2 §26): the write joins the
+   *   caller's transaction — resetPassword/verifyEmail commit the one-time
+   *   token consumption and the user update atomically (either both persist
+   *   or the token stays unused). */
+  update(user: User, tx?: TransactionHandle): Promise<User>;
   delete(id: string): Promise<void>;
 }
 

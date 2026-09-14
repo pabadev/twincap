@@ -22,6 +22,11 @@ import {
   registerRateLimiter,
   forgotPasswordRateLimiter,
 } from '../../infrastructure/auth/rate-limiter';
+import {
+  recordLoginFailure,
+  resetLoginFailures,
+  isEmailLockedOut,
+} from '../../infrastructure/auth/login-attempts';
 import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
 import { MongoWorkspaceBootstrapper } from '../../infrastructure/seeding/user-bootstrap';
 import { MongoUnitOfWork } from '../../infrastructure/transactions/mongo-unit-of-work';
@@ -148,6 +153,19 @@ export async function loginAction(
     return { error: 'error.tooManyAttempts' };
   }
 
+  // R15.3.2 P2-5: the fixed-window limiter above is keyed by email+IP, so an
+  // attacker rotating IPs gets a fresh counter per IP. The per-EMAIL lockout
+  // (>= 5 failures in 60 min → 30 min from the last failure) closes that gap:
+  // it is keyed ONLY by the normalized email and applies regardless of
+  // source IP. NOTE: the remaining minutes are NOT interpolable through the
+  // {error: string} i18n-key contract (auth-form resolves keys statically,
+  // messages are static text), so the same error key is returned here;
+  // getLockoutRemaining() is available for a future UI enhancement.
+  const normalizedEmail = email.trim().toLowerCase();
+  if (await isEmailLockedOut(normalizedEmail)) {
+    return { error: 'error.tooManyAttempts' };
+  }
+
   try {
     await connectDb();
     const { userRepo, membershipRepo } = getRepos();
@@ -161,6 +179,10 @@ export async function loginAction(
     const workspaceId = memberships.find((m) => m.status === 'active')?.workspaceId;
     // Reset rate limit on successful login
     await loginRateLimiter.reset(rateLimitKey);
+    // R15.3.2 P2-5: a successful login also clears the per-email failure
+    // history — the lockout exists to stop brute force, not to punish the
+    // legitimate owner once they authenticate.
+    await resetLoginFailures(normalizedEmail);
     await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
     // Audit the successful login (no actor is known before this point).
     await new MongoOperationLogger().log({
@@ -176,6 +198,13 @@ export async function loginAction(
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    // R15.3.2 P2-5: count ONLY genuine credential failures (login throws
+    // ValidationError('Invalid email or password') for BOTH unknown email and
+    // wrong password — anti-enumeration). Unexpected errors are NOT user
+    // attempts and must not widen the lockout.
+    if (error instanceof ValidationError && error.message === 'Invalid email or password') {
+      await recordLoginFailure(normalizedEmail, ip);
+    }
     reportAuthError(error);
     return handleActionError(error);
   }
@@ -233,9 +262,12 @@ export async function resetPasswordAction(
   try {
     await connectDb();
     const userRepo = new MongoUserRepository();
+    // R15.3.2 §26: consume + user update commit atomically — a failed user
+    // update rolls the token consumption back (the user keeps their token).
     await resetPassword(
       { email, token, newPassword },
       buildAuthEmailDeps(userRepo),
+      new MongoUnitOfWork(),
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
@@ -256,7 +288,13 @@ export async function verifyEmailAction(
   try {
     await connectDb();
     const userRepo = new MongoUserRepository();
-    await verifyEmail({ email, token }, buildAuthEmailDeps(userRepo));
+    // R15.3.2 §26: consume + user update commit atomically — a failed user
+    // update rolls the token consumption back (the user keeps their token).
+    await verifyEmail(
+      { email, token },
+      buildAuthEmailDeps(userRepo),
+      new MongoUnitOfWork(),
+    );
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
     reportAuthError(error);

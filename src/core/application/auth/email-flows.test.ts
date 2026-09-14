@@ -18,11 +18,23 @@ import type {
   PasswordHasher,
   IdGenerator,
   Clock,
+  UnitOfWork,
 } from '../ports';
 import type { User } from '../../domain/user';
 import type { AuthEmailDeps } from './email-deps';
+import { transactionHandleBrand, type TransactionHandle } from '../../domain/transaction';
 
 // ─── Fakes ─────────────────────────────────────────────────────────
+
+/** Fake UnitOfWork that runs the callback on a no-op handle (the real
+ *  Mongo transaction/rollback is exercised by the integration suite
+ *  `infrastructure/transactions/auth-atomicity.test.ts`). */
+function fakeUow(): UnitOfWork {
+  return {
+    withTransaction: async <T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T> =>
+      fn({ [transactionHandleBrand]: true } as TransactionHandle),
+  };
+}
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -61,7 +73,7 @@ function fakeTokenStore(now: () => Date = () => new Date()): TokenRepo {
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
       return found ?? null;
     },
-    consume: async (tokenId) => {
+    consume: async (tokenId, _tx?) => {
       const rec = records.find((r) => r.id === tokenId);
       if (!rec || rec.used || rec.expiresAt.getTime() <= now().getTime()) {
         return false;
@@ -98,7 +110,7 @@ function fakeUserRepo(): UserRepo {
       users.push(user);
       return user;
     },
-    update: async (user) => {
+    update: async (user, _tx?) => {
       updated.push(user);
       const idx = users.findIndex((u) => u.id === user.id);
       if (idx >= 0) users[idx] = user;
@@ -224,6 +236,7 @@ describe('resetPassword', () => {
     const result = await resetPassword(
       { email: 'TEST@Example.com', token: 'reset-token', newPassword: 'new-pass-123' },
       deps,
+      fakeUow(),
     );
 
     expect(result.ok).toBe(true);
@@ -244,6 +257,7 @@ describe('resetPassword', () => {
     const result = await resetPassword(
       { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
       deps,
+      fakeUow(),
     );
 
     expect(result.ok).toBe(true);
@@ -264,6 +278,7 @@ describe('resetPassword', () => {
       resetPassword(
         { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
         deps,
+        fakeUow(),
       ),
     ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
   });
@@ -282,6 +297,7 @@ describe('resetPassword', () => {
       resetPassword(
         { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
         deps,
+        fakeUow(),
       ),
     ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
     // Loser must NOT modify the user record (no password change applied).
@@ -307,6 +323,7 @@ describe('resetPassword', () => {
       resetPassword(
         { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
         deps,
+        fakeUow(),
       ),
     ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
   });
@@ -322,6 +339,7 @@ describe('resetPassword', () => {
       resetPassword(
         { email: 'test@example.com', token: 'wrong-token', newPassword: 'new-pass-123' },
         deps,
+        fakeUow(),
       ),
     ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
   });
@@ -334,8 +352,33 @@ describe('resetPassword', () => {
     seedActiveResetToken(deps, user, 'reset-token');
 
     await expect(
-      resetPassword({ email: 'test@example.com', token: 'reset-token', newPassword: 'short' }, deps),
+      resetPassword({ email: 'test@example.com', token: 'reset-token', newPassword: 'short' }, deps, fakeUow()),
     ).rejects.toThrow(ValidationError);
+  });
+
+  it('when user update fails after consume, the exception propagates', async () => {
+    const repo = fakeUserRepo();
+    const user = makeUser();
+    repo.findByEmailResult = user;
+    const deps = fakeDeps(repo);
+    seedActiveResetToken(deps, user, 'reset-token');
+    // Simulate the user write failing AFTER the token was consumed — with a
+    // real UnitOfWork this aborts both writes (integration suite
+    // auth-atomicity.test.ts proves the rollback); here we assert the
+    // exception escapes the use case and the consume ran exactly once.
+    const failingUpdate = async () => {
+      throw new Error('simulated update failure');
+    };
+    repo.update = failingUpdate;
+
+    await expect(
+      resetPassword(
+        { email: 'test@example.com', token: 'reset-token', newPassword: 'new-pass-123' },
+        deps,
+        fakeUow(),
+      ),
+    ).rejects.toThrow('simulated update failure');
+    expect(deps.tokenStore.consumed).toEqual(['stored-1']);
   });
 });
 
@@ -364,7 +407,7 @@ describe('verifyEmail', () => {
     const deps = fakeDeps(repo);
     seedActiveVerifyToken(deps, user, 'verify-token');
 
-    const result = await verifyEmail({ email: 'test@example.com', token: 'verify-token' }, deps);
+    const result = await verifyEmail({ email: 'test@example.com', token: 'verify-token' }, deps, fakeUow());
 
     expect(result.ok).toBe(true);
     expect(deps.userRepo.updated).toHaveLength(1);
@@ -384,7 +427,7 @@ describe('verifyEmail', () => {
     seedActiveVerifyToken(deps, user, 'verify-token');
 
     await expect(
-      verifyEmail({ email: 'test@example.com', token: 'bogus' }, deps),
+      verifyEmail({ email: 'test@example.com', token: 'bogus' }, deps, fakeUow()),
     ).rejects.toThrow(INVALID_TOKEN_MESSAGE);
   });
 });
