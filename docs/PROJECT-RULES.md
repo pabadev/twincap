@@ -263,9 +263,20 @@ src/
 - No usar `window.location.reload()`.
 - No modificar archivos sin relación con la ronda salvo razón documentada. No introducir temporales/logs/secretos/dumps/artefactos de build.
 
+## 18. Freeze del dominio financiero (REGLA PERMANENTE — autorizado 2026-09-13)
+
+> **Desde R15.3.2, el dominio financiero de TwinCap se considera CONGELADO.** Las futuras etapas de UX/UI, crecimiento y producto DEBEN consumir sus contratos y reglas existentes. Cualquier reapertura del dominio financiero requiere evidencia de un defecto real y aprobación explícita.
+
+- **El dominio financiero está congelado. UX/UI puede modificar la forma en que las reglas se presentan, pero no las reglas mismas.** Documento de referencia: `docs/FINANCIAL-DOMAIN-FREEZE.md`.
+- Prohibido (por razones de UX/UI, estética, conveniencia de frontend, preferencia personal o similitud con competidores): rediseñar reglas financieras, cambiar la fuente de verdad, cambiar el modelo monetario, introducir floats, reintroducir `aggregateBalance`, modificar la semántica de saldos negativos, modificar reglas de transferencias, modificar reglas de multimoneda, modificar garantías de atomicidad/concurrencia, eliminar CAS, eliminar idempotencia, eliminar mecanismos de serialización, cambiar la semántica de movimientos, alterar la integridad referencial, alterar garantías de multi-tenancy, o alterar la lógica financiera para simplificar componentes visuales.
+- Procedimiento excepcional de reapertura: (1) detener la modificación; (2) documentar el hallazgo; (3) indicar exactamente qué regla del dominio afecta; (4) explicar por qué constituye un defecto real; (5) determinar impacto; (6) proponer la corrección mínima necesaria; (7) solicitar aprobación explícita antes de modificar el dominio congelado.
+- No se permite romper el freeze por: preferencias estéticas, comodidad del frontend, simplificación de componentes, reducción de código, cambios de nombres, preferencias personales del agente, similitud con un competidor, "me parece más intuitivo", o deseos de implementar una funcionalidad nueva.
+
 ## 19. Historial de versiones de este archivo
 
 | Fecha | Cambio |
+|---|---|
+| 2026-09-13 (inicio etapa UX) | §18 nueva: freeze formal del dominio financiero (por decisión del fundador 2026-09-13, auditoría externa aprobó R15.3.2) + procedimiento excepcional de reapertura. |
 |---|---|
 | 2026-09-13 | Versión inicial — consolidación de reglas vigentes (R1–R15.3.1) + reglas nuevas de R15.3.2 (regla fundamental de concurrencia, matriz de cuentas afectadas, Promise.all prohibido, dedupe de touch, idempotencia de deletes, sin fallbacks monetarios silenciosos). Pendiente de actualización al cierre de R15.3.2 con las reglas descubiertas durante la implementación. |
 | 2026-09-13 (cierre R15.3.2) | Reglas R15.3.2 F4/F5/F6/§26 incorporadas: touch como **última escritura** en los 11 use cases que mueven dinero (helper `touchAccounts`, dedupe + secuencial); **atomicidad consume+update** de tokens one-time (reset/verify con `uow.withTransaction`, puertos con `tx?`); **1 token activo por (user, purpose)** con índice partial unique + revoke-before-insert + retry E11000; **lockout por email** (5/60min → 30min desde el último fallo); prohibición de fallback de moneda reforzada (sale items/export-csv → `throw`); **write-skew §20** con pares concurrentes A–F (N=10–25). La fila previa ("pendiente de actualización") queda superada por esta. |
