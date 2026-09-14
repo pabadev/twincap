@@ -1,6 +1,7 @@
 import { NotFoundError } from '../../domain/errors';
-import type { TransferRepository, MovementRepository } from '../../domain/repositories';
+import type { TransferRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccounts } from '../financial/touch-accounts';
 
 /**
  * Delete a transfer and cascade-delete both linked movements (TRA-5).
@@ -14,12 +15,19 @@ import type { UnitOfWork } from '../ports';
  * is a cleanup of state that must not exist), but a transfer that references
  * NO live movements never exists either — the transfer read stays authoritative
  * and session-less, like the F2/F3 reads.
+ *
+ * R15.3.2 Fase 4: deleting a transfer changes BOTH accounts' derived balances
+ * (the expense leaves the source, the income leaves the destination), so both
+ * account docs are touched as the LAST write of the transaction (shared-
+ * document conflict points, R15.1-6e). The account ids come from the transfer
+ * read — captured BEFORE the delete, never from deleted state.
  */
 export async function deleteTransfer(
   userId: string,
   transferId: string,
   transferRepo: TransferRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<void> {
   return uow.withTransaction(async (tx) => {
@@ -43,5 +51,14 @@ export async function deleteTransfer(
       }
     }
     await transferRepo.delete(userId, transferId, tx);
+
+    // R15.3.2 Fase 4: both accounts change their derived balance on delete.
+    // The helper dedupes when source === destination and runs sequentially.
+    await touchAccounts(
+      accountRepo,
+      userId,
+      [transfer.sourceAccountId, transfer.destinationAccountId],
+      tx,
+    );
   });
 }

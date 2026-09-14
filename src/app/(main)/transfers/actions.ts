@@ -252,11 +252,13 @@ export async function deleteTransferAction(
       () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
         return deleteTransfer(
           user.workspaceId!,
           transferId,
           transferRepo,
           movementRepo,
+          accountRepo,
           new MongoUnitOfWork(),
         );
       },

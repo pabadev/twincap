@@ -1,7 +1,8 @@
 import { Sale } from '../../domain/sale';
 import { NotFoundError } from '../../domain/errors';
-import type { SaleRepository, MovementRepository } from '../../domain/repositories';
+import type { SaleRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccount } from '../financial/touch-accounts';
 
 /**
  * LEGACY FALLBACK — delete an embedded abono from an on-credit sale (POS-6).
@@ -19,6 +20,10 @@ import type { UnitOfWork } from '../ports';
  * and BOTH writes (movement delete + abono $pull, R5-B order) commit or roll
  * back atomically — a mid-way failure can no longer orphan a phantom movement
  * or leave the abono half-removed.
+ *
+ * R15.3.2 Fase 4: deleting the abono reverses its movement, so the account's
+ * derived balance changes — the account is touched as the LAST write of the
+ * transaction (shared-document conflict point, R15.1-6e).
  */
 export async function deleteSaleAbono(
   workspaceId: string,
@@ -26,6 +31,7 @@ export async function deleteSaleAbono(
   abonoId: string,
   saleRepo: SaleRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<Sale> {
   return uow.withTransaction(async (tx) => {
@@ -55,6 +61,9 @@ export async function deleteSaleAbono(
 
     // POS-6: remove abono (atomic $pull)
     await saleRepo.deleteAbono(workspaceId, saleId, abonoId, tx, sale.version);
+
+    // R15.3.2: touch the account as the LAST write (balance-affecting delete).
+    await touchAccount(accountRepo, workspaceId, abono.accountId, tx);
 
     return new Sale(
       {

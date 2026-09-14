@@ -1,11 +1,12 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
-import { Money, assertSafeMinorUnits } from '../../domain/money';
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import { isModernRecord } from '../../domain/modern-record';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { IdGenerator, UnitOfWork } from '../ports';
+import { touchAccount } from '../financial/touch-accounts';
 import type { EditAbonoInput } from './dto/credits-granted';
 import { splitAbonoCapitalInterest } from './split-abono';
 
@@ -35,6 +36,14 @@ import { splitAbonoCapitalInterest } from './split-abono';
  * create in R5-B order + abono $set) commit or roll back atomically. The
  * movement re-reads (movementRepo.findById) have no transaction handle — the
  * movements pre-exist and the reads only merge unchanged fields.
+ *
+ * R15.3.2 Fase 4: every ledger write changes the account's derived balance, so
+ * the account is touched as the LAST write of the transaction (shared-document
+ * conflict point, R15.1-6e) whenever a movement was actually written. Legacy
+ * aggregates with missing required movements never touch the ledger and are
+ * skipped. The amount is resolved with a strict `!== undefined` check so a
+ * `0` amount is a legal edit that flows consistently into the split
+ * recomputation, the movement writes and the abono persist.
  */
 export async function editAbono(
   workspaceId: string,
@@ -43,6 +52,7 @@ export async function editAbono(
   input: EditAbonoInput,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   ids: IdGenerator,
   uow: UnitOfWork,
 ): Promise<CreditGranted> {
@@ -59,10 +69,11 @@ export async function editAbono(
     // CRED-G-2: recalculate pending with new amount
     if (input.amount !== undefined) {
       const otherAbonos = credit.abonos.filter(a => a.id !== abonoId);
-      const totalOther = otherAbonos.reduce((sum, a) => sum + a.amount.amount, 0);
-      // R15.3 §18: the intermediate sum and the derived pending must stay safe
-      // integers before the overpayment comparison.
-      assertSafeMinorUnits(totalOther, "EditAbono other abonos sum");
+      // R15.3.2 P2-7: aggregate through sumSafeMinorUnits (per-step guard).
+      const totalOther = sumSafeMinorUnits(
+        otherAbonos.map((a) => a.amount.amount),
+        "EditAbono other abonos sum",
+      );
       const pending = credit.totalToPay - totalOther;
       assertSafeMinorUnits(pending, "EditAbono pending");
       if (input.amount > pending) {
@@ -70,11 +81,20 @@ export async function editAbono(
       }
     }
 
-    const updatedAmount = input.amount ? new Money(input.amount, abono.amount.currency) : abono.amount;
+    // R15.3.2: strictly `!== undefined` — a `0` amount is a legal edit and must
+    // resolve to a zero-value Money, never fall back to the persisted amount.
+    const updatedAmount =
+      input.amount !== undefined
+        ? new Money(input.amount, abono.amount.currency)
+        : abono.amount;
     // R15.3 §16: the abono keeps its original account — editing is amount/date
     // only, changing the account is not a product capability.
     const updatedAccountId = abono.accountId;
     const updatedDate = input.date ?? abono.date;
+    // R15.3.2: set whenever a ledger write (update/create/delete) actually
+    // happened — only then does the account's derived balance change and need
+    // a touch as the last write.
+    let movementChanged = false;
 
     const isSplitAbono =
       !credit.saleId &&
@@ -101,6 +121,7 @@ export async function editAbono(
       if (split.interestAmount === 0 && abono.interestMovementId) {
         try {
           await movementRepo.delete(workspaceId, abono.interestMovementId, tx);
+          movementChanged = true;
         } catch (err) {
           // tolerant: already-missing interest movement is fine
           if (!(err instanceof NotFoundError)) throw err;
@@ -138,6 +159,7 @@ export async function editAbono(
               }),
               tx,
             );
+            movementChanged = true;
           }
         } else if (split.capitalAmount > 0) {
           // A new interest portion appeared (full-capital abono edited upward):
@@ -161,6 +183,7 @@ export async function editAbono(
             }),
             tx,
           );
+          movementChanged = true;
         }
       }
 
@@ -195,6 +218,7 @@ export async function editAbono(
             }),
             tx,
           );
+          movementChanged = true;
         }
       } else if (abono.movementId) {
         // 100%-interest abono: the primary movement IS the interest movement.
@@ -226,6 +250,7 @@ export async function editAbono(
             }),
             tx,
           );
+          movementChanged = true;
         }
       }
 
@@ -238,6 +263,12 @@ export async function editAbono(
         interestAmount: split.interestAmount > 0 ? split.interestAmount : undefined,
         interestMovementId,
       }, tx, credit.version);
+
+      // R15.3.2: touch the account as the LAST write when any ledger write
+      // happened inside this transaction.
+      if (movementChanged) {
+        await touchAccount(accountRepo, workspaceId, updatedAccountId, tx);
+      }
 
       return new CreditGranted(
         {
@@ -315,6 +346,7 @@ export async function editAbono(
           createdAt: movement.createdAt,
         });
         await movementRepo.update(updatedMovement, tx);
+        movementChanged = true;
       }
     }
 
@@ -322,6 +354,12 @@ export async function editAbono(
       amount: updatedAmount.amount,
       date: updatedDate,
     }, tx, credit.version);
+
+    // R15.3.2: touch the account as the LAST write when any ledger write
+    // happened inside this transaction.
+    if (movementChanged) {
+      await touchAccount(accountRepo, workspaceId, updatedAccountId, tx);
+    }
 
     return new CreditGranted(
       {

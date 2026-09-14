@@ -624,6 +624,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
             existing.id,
             new MongoTransferRepository(),
             new MongoMovementRepository(),
+            new MongoAccountRepository(),
             new MongoUnitOfWork(),
           ),
         ]);
@@ -795,6 +796,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           transferDoc._id.toString(),
           new MongoTransferRepository(),
           new MongoMovementRepository(),
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).resolves.toBeUndefined();
@@ -838,6 +840,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           transferDoc._id.toString(),
           new MongoTransferRepository(),
           movementRepo,
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: income movement delete fails");
@@ -875,6 +878,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           { principal: 200_000, currency: "COP" },
           new MongoCreditReceivedRepository(),
           movementRepo,
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: principal movement update fails");
@@ -912,6 +916,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           { principal: 200_000, currency: "COP" },
           new MongoCreditGrantedRepository(),
           movementRepo,
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: principal movement update fails");
@@ -1056,6 +1061,7 @@ describe("R15 Fase 5 — transfer concurrency and transactional cascades", () =>
           transferId,
           new MongoTransferRepository(),
           new MongoMovementRepository(),
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ]);

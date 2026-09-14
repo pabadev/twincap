@@ -318,6 +318,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
             new MongoCatalogItemRepository(),
             new MongoMovementRepository(),
             new MongoCreditGrantedRepository(),
+            new MongoAccountRepository(),
             new MongoUnitOfWork(),
           ),
         ),
@@ -809,6 +810,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         new MongoCatalogItemRepository(),
         new MongoMovementRepository(),
         new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
         new MongoUnitOfWork(),
       );
 

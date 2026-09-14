@@ -1,6 +1,7 @@
 import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccounts } from '../financial/touch-accounts';
 
 /**
  * Human-readable reason an exported for callers/UI: a credit born from a POS
@@ -34,12 +35,21 @@ export const SALE_BORN_CREDIT_DELETE_MSG =
  * request races the first, its transaction re-executes after the winner
  * commits and the aggregate read inside it no longer finds the credit →
  * NotFoundError → clean abort with zero partial state.
+ *
+ * R15.3.2 Fase 4: deleting the credit reverses the principal and abono
+ * movements, so EVERY account they touch changes its derived balance. The
+ * account ids come from the aggregate snapshot read inside the transaction
+ * (credit.accountId + each abono's accountId — the movements are created
+ * against exactly those accounts), captured BEFORE the deletes. They are
+ * touched as the LAST writes of the transaction (shared-document conflict
+ * points, R15.1-6e).
  */
 export async function deleteCreditGranted(
   workspaceId: string,
   creditId: string,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<void> {
   return uow.withTransaction(async (tx) => {
@@ -63,5 +73,14 @@ export async function deleteCreditGranted(
     // throws NotFoundError and the whole transaction (including the movement
     // deletes) rolls back — movements are never deleted twice.
     await creditRepo.delete(workspaceId, creditId, tx);
+
+    // R15.3.2: touch every balance-affected account as the last write of the
+    // transaction (dedupes principal + abono accounts; sequential).
+    await touchAccounts(
+      accountRepo,
+      workspaceId,
+      [credit.accountId, ...credit.abonos.map(a => a.accountId)],
+      tx,
+    );
   });
 }

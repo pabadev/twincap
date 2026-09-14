@@ -177,7 +177,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
       const settled = await Promise.allSettled(
         Array.from({ length: 5 }, () =>
-          deletePayable(WS, payable.id, payableRepo(), movementRepo(), uow()),
+          deletePayable(WS, payable.id, payableRepo(), movementRepo(), accountRepo(), uow()),
         ),
       );
 
@@ -221,7 +221,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
       const settled = await Promise.allSettled(
         Array.from({ length: 5 }, () =>
-          deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), uow()),
+          deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), accountRepo(), uow()),
         ),
       );
 
@@ -265,7 +265,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
       const settled = await Promise.allSettled(
         Array.from({ length: 5 }, () =>
-          deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), uow()),
+          deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), accountRepo(), uow()),
         ),
       );
 
@@ -306,13 +306,13 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       );
 
       await expect(
-        deletePayable(WS, payable.id, payableRepo(), movementRepo(), uow()),
+        deletePayable(WS, payable.id, payableRepo(), movementRepo(), accountRepo(), uow()),
       ).resolves.toBeUndefined();
       expect(await linkedMovementCount(payable.id)).toBe(0);
 
       // Segunda ejecución: el abort de la transacción no deja estado parcial.
       await expect(
-        deletePayable(WS, payable.id, payableRepo(), movementRepo(), uow()),
+        deletePayable(WS, payable.id, payableRepo(), movementRepo(), accountRepo(), uow()),
       ).rejects.toThrow(NotFoundError);
       expect(await PayableModel.countDocuments({ _id: payable.id, workspaceId: WS })).toBe(0);
       expect(await linkedMovementCount(payable.id)).toBe(0);
@@ -335,7 +335,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const settled = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           i % 2 === 0
-            ? deletePayable(WS, payable.id, payableRepo(), movementRepo(), uow())
+            ? deletePayable(WS, payable.id, payableRepo(), movementRepo(), accountRepo(), uow())
             : addPayableAbono(
                 WS,
                 payable.id,
@@ -384,7 +384,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const settled = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           i % 2 === 0
-            ? deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), uow())
+            ? deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), accountRepo(), uow())
             : addCreditReceivedAbono(
                 WS,
                 credit.id,
@@ -433,7 +433,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const settled = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           i % 2 === 0
-            ? deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), uow())
+            ? deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), accountRepo(), uow())
             : addCreditGrantedAbono(
                 WS,
                 credit.id,
@@ -597,6 +597,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
                 new MongoCatalogItemRepository(),
                 movementRepo(),
                 creditGrantedRepo(),
+                accountRepo(),
                 uow(),
               )
             : addSaleAbono(

@@ -414,20 +414,24 @@ export class MongoMovementRepository implements MovementRepository {
     movementType?: string,
     session?: ClientSession,
   ): Promise<{ category: Category; currency: Currency }> {
-    const [catDoc, accDoc] = await Promise.all([
-      CategoryModel.findOne({
-        _id: categoryId,
-        workspaceId: new Types.ObjectId(workspaceId),
-      })
-        .session(session ?? null)
-        .exec(),
-      AccountModel.findOne({
-        _id: accountId,
-        workspaceId: new Types.ObjectId(workspaceId),
-      })
-        .session(session ?? null)
-        .exec(),
-    ]);
+    // R15.3.2: STRICTLY SEQUENTIAL session reads. The MongoDB driver forbids
+    // concurrent use of a ClientSession: parallel ops on the same session
+    // desync the internal txnNumber and the server rejects them with
+    // MongoServerError 251 (NoSuchTransaction → TransientTransactionError),
+    // which withTransaction replays in an infinite retry loop. Do NOT
+    // "optimize" back to Promise.all.
+    const catDoc = await CategoryModel.findOne({
+      _id: categoryId,
+      workspaceId: new Types.ObjectId(workspaceId),
+    })
+      .session(session ?? null)
+      .exec();
+    const accDoc = await AccountModel.findOne({
+      _id: accountId,
+      workspaceId: new Types.ObjectId(workspaceId),
+    })
+      .session(session ?? null)
+      .exec();
 
     // If not found in DB, try resolving as synthetic category
     if (!catDoc) {

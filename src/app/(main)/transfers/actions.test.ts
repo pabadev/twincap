@@ -180,6 +180,9 @@ describe('updateTransferAction', () => {
       // R15.3 §5: balance-affecting edits bump the source account version as
       // the last write — the mocked flow must accept it.
       bumpVersion: vi.fn().mockResolvedValue(true),
+      // R15.3.2 Fase 4: the destination account is touched when its amount
+      // changes (shared-document conflict point).
+      touch: vi.fn().mockResolvedValue(true),
     }));
     // R15.2 D1: live-parent resolution never reaches these in the mocked flow
     // (the seeded movements are unlinked), but the action instantiates them.

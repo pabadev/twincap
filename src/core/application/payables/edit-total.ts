@@ -1,5 +1,5 @@
 import { Payable } from '../../domain/payable';
-import { Money, assertSafeMinorUnits } from '../../domain/money';
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import type { PayableRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
@@ -38,10 +38,12 @@ export async function editTotal(
     }
 
     // PAY-R-4: pending must remain >= 0
-    const totalAbonos = payable.abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    // R15.3 §18: the paid-so-far aggregation must stay a safe integer before
-    // it is compared against the new total.
-    assertSafeMinorUnits(totalAbonos, "Payable edit-total abonos sum");
+    // R15.3.2 P2-7: aggregate through sumSafeMinorUnits — the running total is
+    // guarded after EVERY addition (same bound semantics, one helper).
+    const totalAbonos = sumSafeMinorUnits(
+      payable.abonos.map((a) => a.amount.amount),
+      "Payable edit-total abonos sum",
+    );
     const paidSoFar = payable.initialPayment + totalAbonos;
     assertSafeMinorUnits(paidSoFar, "Payable edit-total paid so far");
     if (input.total < paidSoFar) {

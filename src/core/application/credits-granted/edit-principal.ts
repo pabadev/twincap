@@ -1,11 +1,12 @@
 import { CreditGranted } from '../../domain/credit-granted';
 import { Movement } from '../../domain/movement';
-import { Money, assertSafeMinorUnits } from '../../domain/money';
+import { Money, sumSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
 import { isModernRecord } from '../../domain/modern-record';
 import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository } from '../../domain/repositories';
+import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccount } from '../financial/touch-accounts';
 import type { EditPrincipalInput } from './dto/credits-granted';
 
 /**
@@ -28,6 +29,7 @@ export async function editPrincipal(
   input: EditPrincipalInput,
   creditRepo: CreditGrantedRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<CreditGranted> {
   return uow.withTransaction(async (tx) => {
@@ -44,10 +46,12 @@ export async function editPrincipal(
     }
 
     // CRED-G-5: pending must remain ≥ 0
-    const totalAbonos = credit.abonos.reduce((sum, a) => sum + a.amount.amount, 0);
-    // R15.3 §18: the abono sum must stay a safe integer before it is compared
-    // against the incoming principal.
-    assertSafeMinorUnits(totalAbonos, "EditPrincipal abonos sum");
+    // R15.3.2 P2-7: aggregate through sumSafeMinorUnits — the running total is
+    // guarded after EVERY addition (same bound semantics, one helper).
+    const totalAbonos = sumSafeMinorUnits(
+      credit.abonos.map((a) => a.amount.amount),
+      "EditPrincipal abonos sum",
+    );
     if (input.principal < totalAbonos) {
       throw new ConflictError('New principal is less than total abonos');
     }
@@ -70,6 +74,10 @@ export async function editPrincipal(
       },
       [...credit.abonos],
     );
+
+    // R15.3.2: set when the principal movement was actually written — only then
+    // does the account's derived balance change and need a touch.
+    let movementWritten = false;
 
     // Find the principal movement (link.kind = creditGrantedPrincipal).
     // The lookup stays session-less (F3 convention: cheap existence source);
@@ -107,11 +115,20 @@ export async function editPrincipal(
         createdAt: principalMovement.createdAt,
       });
       await movementRepo.update(updatedMovement, tx);
+      movementWritten = true;
     }
 
     // CAS update: aborts with ConflictError(DEBT_MODIFIED_MSG) if a concurrent
     // mutation moved the version between the read and this write.
     await creditRepo.update(updatedCredit, tx, credit.version);
+
+    // R15.3.2 Fase 4: the principal-movement write changed the account's
+    // derived balance — touch it as the LAST write of the transaction
+    // (shared-document conflict point, R15.1-6e). The account id comes from
+    // the movement that was actually written.
+    if (movementWritten && principalMovement) {
+      await touchAccount(accountRepo, workspaceId, principalMovement.accountId, tx);
+    }
 
     return updatedCredit;
   });

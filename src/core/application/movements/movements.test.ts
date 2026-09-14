@@ -473,6 +473,52 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(1);
   });
 
+  it('R15.3.2 P2-6: amount=0 is rejected instead of silently keeping the old amount (0 is falsy)', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+
+    await expect(
+      updateMovement(
+        'user-1',
+        { movementId: 'mov-1', amount: 0 },
+        movementRepo,
+        categoryRepo,
+        fakeAccountRepo(),
+        fakeUow(),
+      ),
+    ).rejects.toThrow('Amount must be greater than zero');
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
+  it('R15.3.2 P2-6: negative amount is rejected', async () => {
+    const existing = makeMovement();
+    const category = makeCategory();
+    const movementRepo = fakeMovementRepo({
+      findById: vi.fn().mockResolvedValue(existing),
+    });
+    const categoryRepo = fakeCategoryRepo({
+      findById: vi.fn().mockResolvedValue(category),
+    });
+
+    await expect(
+      updateMovement(
+        'user-1',
+        { movementId: 'mov-1', amount: -100 },
+        movementRepo,
+        categoryRepo,
+        fakeAccountRepo(),
+        fakeUow(),
+      ),
+    ).rejects.toThrow('Amount must be greater than zero');
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
   it('updates note', async () => {
     const existing = makeMovement();
     const category = makeCategory();
@@ -904,25 +950,30 @@ describe('updateMovement', () => {
 // ─── Delete ────────────────────────────────────────────────────────
 
 describe('deleteMovement', () => {
-  it('deletes a manual movement', async () => {
+  it('deletes a manual movement and touches its account (R15.3.2)', async () => {
     const existing = makeMovement();
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
+    const accountRepo = fakeAccountRepo();
 
-    await deleteMovement('user-1', 'mov-1', movementRepo);
+    await deleteMovement('user-1', 'mov-1', movementRepo, accountRepo, fakeUow());
 
     expect(movementRepo.deleted).toContain('mov-1');
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledTimes(1);
   });
 
   it('throws NotFoundError when movement does not exist', async () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
+    const accountRepo = fakeAccountRepo();
 
     await expect(
-      deleteMovement('user-1', 'missing', movementRepo),
+      deleteMovement('user-1', 'missing', movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
+    expect(accountRepo.touch).not.toHaveBeenCalled();
   });
 
   it('throws ValidationError for system-linked movements (MOV-5)', async () => {
@@ -932,10 +983,12 @@ describe('deleteMovement', () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
+    const accountRepo = fakeAccountRepo();
 
     await expect(
-      deleteMovement('user-1', 'mov-1', movementRepo),
+      deleteMovement('user-1', 'mov-1', movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
+    expect(accountRepo.touch).not.toHaveBeenCalled();
   });
 });
 

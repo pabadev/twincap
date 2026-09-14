@@ -175,6 +175,7 @@ describe("R15 Fase 6 — use-case transactions: deleteSale, createAccount, regis
         new MongoCatalogItemRepository(),
         new MongoMovementRepository(),
         new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
         new MongoUnitOfWork(),
       );
 
@@ -202,6 +203,7 @@ describe("R15 Fase 6 — use-case transactions: deleteSale, createAccount, regis
           new MongoCatalogItemRepository(),
           new MongoMovementRepository(),
           new MongoCreditGrantedRepository(),
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow("boom: sale delete fails");
@@ -224,6 +226,7 @@ describe("R15 Fase 6 — use-case transactions: deleteSale, createAccount, regis
         new MongoCatalogItemRepository(),
         new MongoMovementRepository(),
         new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
         new MongoUnitOfWork(),
       );
       const itemAfterFirst = await CatalogItemModel.findById(CATALOG_ID);
@@ -239,6 +242,7 @@ describe("R15 Fase 6 — use-case transactions: deleteSale, createAccount, regis
           new MongoCatalogItemRepository(),
           new MongoMovementRepository(),
           new MongoCreditGrantedRepository(),
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ).rejects.toThrow(NotFoundError);
@@ -263,6 +267,7 @@ describe("R15 Fase 6 — use-case transactions: deleteSale, createAccount, regis
               new MongoCatalogItemRepository(),
               new MongoMovementRepository(),
               new MongoCreditGrantedRepository(),
+              new MongoAccountRepository(),
               new MongoUnitOfWork(),
             ),
           ),

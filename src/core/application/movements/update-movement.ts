@@ -5,6 +5,7 @@ import type { MovementRepository, CategoryRepository, AccountRepository } from '
 import type { Category } from '../../domain/category';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 import type { UnitOfWork } from '../ports';
+import { touchAccounts } from '../financial/touch-accounts';
 
 export interface UpdateMovementInput {
   movementId: string;
@@ -138,6 +139,16 @@ export async function updateMovement(
       }
     }
 
+    // R15.3.2 P2-6: validate the amount EXPLICITLY before building the
+    // entity. The old code picked `amount: input.amount ? ... : existing.amount`,
+    // so a caller sending amount=0 (falsy) silently kept the OLD amount — the
+    // edit "succeeded" without changing anything, and a zeroing edit was
+    // impossible by construction. Reject non-positive values early and use an
+    // explicit `!== undefined` check in the constructor below.
+    if (input.amount !== undefined && input.amount <= 0) {
+      throw new ValidationError('Amount must be greater than zero');
+    }
+
     // MOV-4: recalculate signedAmount if amount changes
     const updated = new Movement({
       id: existing.id,
@@ -145,7 +156,7 @@ export async function updateMovement(
       accountId,
       category: resolvedCategory,
       type: existing.type,
-      amount: input.amount
+      amount: input.amount !== undefined
         ? new Money(input.amount, existing.amount.currency)
         : existing.amount,
       date: input.date ?? existing.date,
@@ -163,6 +174,19 @@ export async function updateMovement(
     // re-reads and throws ConflictError(MOVEMENT_MODIFIED_MSG).
     const expectedVersion = input.version ?? existing.version;
     await movementRepo.update(updated, tx, expectedVersion);
+
+    // R15.3.2 Fase 4 — account-change edit: BOTH accounts' derived balances
+    // change (the movement leaves the old account and lands on the new one),
+    // so both docs must be touched as the LAST writes of the transaction.
+    // The pre-update touch above already guards the NEW account against a
+    // concurrent deleteAccount (write-write conflict); the post-CAS touch
+    // extends the same conflict point to the OLD account, whose balance
+    // calculation must never race this edit. The helper dedupes when both
+    // ids coincide and runs strictly sequentially (no concurrent session ops).
+    if (accountChanged) {
+      await touchAccounts(accountRepo, workspaceId, [existing.accountId, updated.accountId], tx);
+    }
+
     return updated;
   });
 }

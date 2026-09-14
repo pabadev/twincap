@@ -1137,6 +1137,7 @@ accountRepo, fakeUow()),
 // ─── Delete Sale Abono ─────────────────────────────────────────────
 
 describe('deleteSaleAbono', () => {
+  const accountRepo = fakeAccountRepo();
   it('removes abono and reverses linked movement (POS-6)', async () => {
     const sale = makeSale({}, [
       { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
@@ -1146,12 +1147,14 @@ describe('deleteSaleAbono', () => {
     });
     const movementRepo = fakeMovementRepo();
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
+    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
     expect(movementRepo.deleted).toContain('mov-1');
+    // R15.3.2 Fase 4: the abono account is touched as the last write.
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
   });
 
   it('deletes the linked movement BEFORE pulling the abono (R5-B atomicity)', async () => {
@@ -1166,7 +1169,7 @@ describe('deleteSaleAbono', () => {
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
 
-    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
+    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
 
     expect(deleteMovementMock.mock.invocationCallOrder[0])
       .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
@@ -1183,7 +1186,7 @@ describe('deleteSaleAbono', () => {
       delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
     });
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow());
+    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
 
     expect(result.abonos).toHaveLength(0);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
@@ -1202,7 +1205,7 @@ describe('deleteSaleAbono', () => {
     });
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, fakeUow()),
+      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow('db down');
 
     expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
@@ -1215,7 +1218,7 @@ describe('deleteSaleAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'missing', 'ab-1', saleRepo, movementRepo, fakeUow()),
+      deleteSaleAbono('user-1', 'missing', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -1227,7 +1230,7 @@ describe('deleteSaleAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo, fakeUow()),
+      deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -1235,6 +1238,7 @@ describe('deleteSaleAbono', () => {
 // ─── Delete Sale ───────────────────────────────────────────────────
 
 describe('deleteSale', () => {
+  const accountRepo = fakeAccountRepo();
   it('deletes sale, reverses movements, and restores stock (POS-8)', async () => {
     const product = makeProduct();
     const sale = makeSale({}, [
@@ -1250,7 +1254,7 @@ describe('deleteSale', () => {
     const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo();
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow());
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow());
 
     expect(catalogRepo.incremented).toHaveLength(1);
     expect(catalogRepo.incremented[0].quantity).toBe(2); // restore 2 units
@@ -1259,6 +1263,9 @@ describe('deleteSale', () => {
     expect(movementRepo.deleteByRefId).toHaveBeenCalled();
     expect(movementRepo.deleted).toHaveLength(0);
     expect(saleRepo.deleted).toContain('sale-1');
+    // R15.3.2 Fase 4: all accounts affected by the cascade are touched as the
+    // last write (sale account = abono account here, deduped to a single touch).
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
   });
 
   it('cascade-deletes the linked credit and ALL its movements when deleting an on-credit sale (R5-D0c)', async () => {
@@ -1293,7 +1300,7 @@ describe('deleteSale', () => {
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow());
+    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow());
 
     // deleteByRefId covers the sale (legacy salePayment) AND the credit
     // (initial payment + credit abonos) — both refIds.
@@ -1336,7 +1343,7 @@ describe('deleteSale', () => {
     });
 
     await expect(
-      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow()),
+      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow()),
     ).resolves.toBeUndefined();
 
     expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'sale-1', expect.anything());
@@ -1355,7 +1362,7 @@ describe('deleteSale', () => {
     const creditRepo = fakeCreditGrantedRepo();
 
     await expect(
-      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo, fakeUow()),
+      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });

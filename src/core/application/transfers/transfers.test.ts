@@ -1376,14 +1376,15 @@ describe('updateTransfer currency re-check', () => {
 // ─── Delete ────────────────────────────────────────────────────────
 
 describe('deleteTransfer', () => {
-  it('deletes both movements then the transfer', async () => {
+  it('deletes both movements then the transfer, touching both accounts (R15.3.2)', async () => {
     const existing = makeTransfer();
     const transferRepo = fakeTransferRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo();
 
-    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, fakeUow());
+    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, accountRepo, fakeUow());
 
     expect(movementRepo.deleted).toContain('mov-exp');
     expect(movementRepo.deleted).toContain('mov-inc');
@@ -1394,6 +1395,11 @@ describe('deleteTransfer', () => {
     const moveCallOrder = (movementRepo.delete as ReturnType<typeof vi.fn>).mock.invocationCallOrder;
     const transferCallOrder = (transferRepo.delete as ReturnType<typeof vi.fn>).mock.invocationCallOrder;
     expect(Math.max(...moveCallOrder)).toBeLessThan(Math.min(...transferCallOrder));
+    // R15.3.2 Fase 4: source AND destination accounts touched once each as the last write
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-src', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-dst', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledTimes(2);
+    expect(accountRepo.touch).toHaveBeenLastCalledWith('user-1', 'acc-dst', expect.anything());
   });
 
   it('throws NotFoundError when transfer does not exist', async () => {
@@ -1401,10 +1407,12 @@ describe('deleteTransfer', () => {
       findById: vi.fn().mockResolvedValue(null),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo();
 
     await expect(
-      deleteTransfer('user-1', 'missing', transferRepo, movementRepo, fakeUow()),
+      deleteTransfer('user-1', 'missing', transferRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
+    expect(accountRepo.touch).not.toHaveBeenCalled();
   });
 
   it('deletes transfer even without movementIds', async () => {
@@ -1413,10 +1421,12 @@ describe('deleteTransfer', () => {
       findById: vi.fn().mockResolvedValue(existing),
     });
     const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo();
 
-    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, fakeUow());
+    await deleteTransfer('user-1', 'tr-1', transferRepo, movementRepo, accountRepo, fakeUow());
 
     expect(movementRepo.deleted).toHaveLength(0);
     expect(transferRepo.deleted).toContain('tr-1');
+    expect(accountRepo.touch).toHaveBeenCalledTimes(2);
   });
 });

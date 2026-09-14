@@ -1,7 +1,8 @@
 import { Payable } from '../../domain/payable';
 import { NotFoundError } from '../../domain/errors';
-import type { PayableRepository, MovementRepository } from '../../domain/repositories';
+import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccount } from '../financial/touch-accounts';
 
 /**
  * Delete an embedded abono from a payable (PAY-R-3).
@@ -12,6 +13,13 @@ import type { UnitOfWork } from '../ports';
  * and BOTH writes (movement delete + abono $pull, R5-B order) commit or roll
  * back atomically — a mid-way failure can no longer orphan a phantom movement
  * or leave the abono half-removed.
+ *
+ * R15.3.2 Fase 4: deleting the abono reverses its movement, so the account's
+ * derived balance changes — the account is touched as the LAST write of the
+ * transaction (shared-document conflict point, R15.1-6e). Unconditional (the
+ * tolerant already-missing-movement path is a legacy edge; an account that
+ * holds the abono's movements is protected by the ACC-4 delete guard anyway,
+ * so the touch is a harmless no-op there).
  */
 export async function deleteAbono(
   workspaceId: string,
@@ -19,6 +27,7 @@ export async function deleteAbono(
   abonoId: string,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<Payable> {
   return uow.withTransaction(async (tx) => {
@@ -49,6 +58,9 @@ export async function deleteAbono(
 
     // Remove abono from embedded array (atomic $pull)
     await payableRepo.deleteAbono(workspaceId, payableId, abonoId, tx, payable.version);
+
+    // R15.3.2: touch the account as the LAST write (balance-affecting delete).
+    await touchAccount(accountRepo, workspaceId, abono.accountId, tx);
 
     return new Payable(
       {

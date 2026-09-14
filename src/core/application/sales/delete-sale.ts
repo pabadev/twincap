@@ -4,8 +4,10 @@ import type {
   CatalogItemRepository,
   MovementRepository,
   CreditGrantedRepository,
+  AccountRepository,
 } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccounts } from '../financial/touch-accounts';
 
 /**
  * Delete a sale and cascade (POS-8, R5-D0c).
@@ -37,6 +39,15 @@ import type { UnitOfWork } from '../ports';
  * races the first, its transaction re-executes after the winner commits and
  * `findByWorkspaceId(saleId)` inside it no longer finds the sale → NotFoundError
  * → clean abort, so stock is restored EXACTLY once (the winner's transaction).
+ *
+ * R15.3.2 Fase 4: deleting the sale reverses the sale payments AND the linked
+ * credit's movements (initial payment + abonos), so every account they touch
+ * changes its derived balance. The account ids come from the aggregate
+ * snapshots read inside the transaction (sale.accountId + each abono's
+ * accountId; linked credit accountId + its abonos' accountIds — the movements
+ * are created against exactly those accounts), captured BEFORE the deletes.
+ * They are touched as the LAST writes of the transaction (shared-document
+ * conflict points, R15.1-6e).
  */
 export async function deleteSale(
   workspaceId: string,
@@ -45,6 +56,7 @@ export async function deleteSale(
   catalogRepo: CatalogItemRepository,
   movementRepo: MovementRepository,
   creditRepo: CreditGrantedRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<void> {
   return uow.withTransaction(async (tx) => {
@@ -81,5 +93,15 @@ export async function deleteSale(
     // throws NotFoundError and the whole transaction (including the stock
     // restore) rolls back — stock is never restored twice.
     await saleRepo.delete(workspaceId, saleId, tx);
+
+    // R15.3.2: touch every balance-affected account as the last write of the
+    // transaction — sale account + sale abono accounts, plus the linked
+    // credit's account + its abono accounts when a credit exists. The helper
+    // dedupes overlapping ids and runs sequentially.
+    const accountIds = [sale.accountId, ...sale.abonos.map(a => a.accountId)];
+    if (linkedCredit) {
+      accountIds.push(linkedCredit.accountId, ...linkedCredit.abonos.map(a => a.accountId));
+    }
+    await touchAccounts(accountRepo, workspaceId, accountIds, tx);
   });
 }

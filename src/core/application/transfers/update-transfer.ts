@@ -15,6 +15,7 @@ import type {
 } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
 import { computeAccountLiveBalance } from '../movements/compute-live-balance';
+import { touchAccount } from '../financial/touch-accounts';
 
 export interface UpdateTransferInput {
   sourceAmount?: number;
@@ -240,6 +241,17 @@ export async function updateTransfer(
       if (!bumped) {
         throw new ConflictError(DEBT_MODIFIED_MSG);
       }
+    }
+
+    // R15.3.2 Fase 4 — destination-amount edit: the destination account's
+    // derived balance changes, so it must be protected with a shared-document
+    // write as the LAST write of the transaction (after the source bump
+    // above). Same conflict-point semantics as the source bump: a concurrent
+    // balance calculation on the destination serializes against this edit
+    // instead of reading a stale projection. Runtime conflict aborts the whole
+    // edit; the account was already read inside this transaction's snapshot.
+    if (newDestAmount !== existing.destinationAmount.amount) {
+      await touchAccount(accountRepo, userId, existing.destinationAccountId, tx);
     }
 
     return { transfer: updatedTransfer, warning: null };

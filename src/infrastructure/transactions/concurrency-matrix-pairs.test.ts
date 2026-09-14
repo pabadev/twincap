@@ -542,6 +542,7 @@ describe("R15.3.1 §10 — concurrency matrix cross-aggregate pairs", () => {
             { amount },
             new MongoPayableRepository(),
             new MongoMovementRepository(),
+            new MongoAccountRepository(),
             new MongoUnitOfWork(),
           ),
         );
@@ -552,6 +553,7 @@ describe("R15.3.1 §10 — concurrency matrix cross-aggregate pairs", () => {
             payable.id,
             new MongoPayableRepository(),
             new MongoMovementRepository(),
+            new MongoAccountRepository(),
             new MongoUnitOfWork(),
           ),
         );

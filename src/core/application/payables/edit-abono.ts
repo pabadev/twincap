@@ -1,11 +1,12 @@
 import { Payable } from '../../domain/payable';
 import { Movement } from '../../domain/movement';
-import { Money, assertSafeMinorUnits } from '../../domain/money';
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
 import { NotFoundError, ConflictError } from '../../domain/errors';
 import { isModernRecord } from '../../domain/modern-record';
 import { payableCategory } from '../../domain/synthetic-categories';
-import type { PayableRepository, MovementRepository } from '../../domain/repositories';
+import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
 import type { UnitOfWork } from '../ports';
+import { touchAccount } from '../financial/touch-accounts';
 import type { EditAbonoInput } from './dto/payables';
 
 /**
@@ -27,6 +28,7 @@ export async function editAbono(
   input: EditAbonoInput,
   payableRepo: PayableRepository,
   movementRepo: MovementRepository,
+  accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<Payable> {
   return uow.withTransaction(async (tx) => {
@@ -42,10 +44,11 @@ export async function editAbono(
     // PAY-R-2: recalculate pending with new amount
     if (input.amount !== undefined) {
       const otherAbonos = payable.abonos.filter(a => a.id !== abonoId);
-      const totalOther = otherAbonos.reduce((sum, a) => sum + a.amount.amount, 0);
-      // R15.3 §18: the intermediate sum and the derived pending must stay safe
-      // integers before the overpayment comparison.
-      assertSafeMinorUnits(totalOther, "EditAbono other abonos sum");
+      // R15.3.2 P2-7: aggregate through sumSafeMinorUnits (per-step guard).
+      const totalOther = sumSafeMinorUnits(
+        otherAbonos.map((a) => a.amount.amount),
+        "EditAbono other abonos sum",
+      );
       const pending = payable.total.amount - payable.initialPayment - totalOther;
       assertSafeMinorUnits(pending, "EditAbono pending");
       if (input.amount > pending) {
@@ -53,7 +56,9 @@ export async function editAbono(
       }
     }
 
-    const updatedAmount = input.amount ? new Money(input.amount, abono.amount.currency) : abono.amount;
+    const updatedAmount = input.amount !== undefined
+      ? new Money(input.amount, abono.amount.currency)
+      : abono.amount;
     // R15.3 §16: the abono keeps its original account — editing is amount/date
     // only, changing the account is not a product capability.
     const updatedAccountId = abono.accountId;
@@ -62,6 +67,7 @@ export async function editAbono(
     // Update linked movement (cascade via abono.movementId). The read happens
     // BEFORE the abono write so a missing required movement aborts the whole
     // transaction without any partial write (fail fast, same tx rollback).
+    let movementWritten = false;
     if (abono.movementId) {
       const movement = await movementRepo.findById(workspaceId, abono.movementId);
       if (!movement) {
@@ -90,13 +96,25 @@ export async function editAbono(
           createdAt: movement.createdAt,
         });
         await movementRepo.update(updatedMovement, tx);
+        movementWritten = true;
       }
     }
 
+    // R15.3.2 Fase 4: persist the abono with the SAME resolved amount that was
+    // written into the movement (fixes the amount=0 desync between aggregate
+    // and ledger, where the truthy check fell back to the old amount here).
     await payableRepo.editAbono(workspaceId, payableId, abonoId, {
-      amount: input.amount,
+      amount: updatedAmount.amount,
       date: input.date,
     }, tx, payable.version);
+
+    // R15.3.2: the movement write changed the account's derived balance — touch
+    // it as the LAST write of the transaction (shared-document conflict point,
+    // R15.1-6e). Legacy aggregates whose required movement is missing never
+    // touch the ledger, so they are skipped.
+    if (movementWritten) {
+      await touchAccount(accountRepo, workspaceId, updatedAccountId, tx);
+    }
 
     return new Payable(
       {

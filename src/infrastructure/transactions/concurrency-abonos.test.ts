@@ -467,6 +467,7 @@ describe("R15 Fase 4 — optimistic concurrency (CAS via __v)", () => {
           seedAbonoId,
           new MongoPayableRepository(),
           new MongoMovementRepository(),
+          new MongoAccountRepository(),
           new MongoUnitOfWork(),
         ),
       ]);
