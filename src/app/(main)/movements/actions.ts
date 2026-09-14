@@ -165,7 +165,8 @@ export async function deleteMovementAction(
       { action: 'deleteMovement', entityType: 'movement', userId: user.userId },
       () => {
         const movementRepo = new MongoMovementRepository();
-        return deleteMovement(user.workspaceId!, movementId, movementRepo);
+        const accountRepo = new MongoAccountRepository();
+        return deleteMovement(user.workspaceId!, movementId, movementRepo, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/movements');

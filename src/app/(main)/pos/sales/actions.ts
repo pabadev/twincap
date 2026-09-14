@@ -246,7 +246,8 @@ export async function deleteSaleAbonoAction(
       () => {
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo, new MongoUnitOfWork());
+        const accountRepo = new MongoAccountRepository();
+        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/pos/sales');
@@ -280,7 +281,8 @@ export async function deleteSaleAction(
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
         const creditRepo = new MongoCreditGrantedRepository();
-        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo, new MongoUnitOfWork());
+        const accountRepo = new MongoAccountRepository();
+        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidatePath('/pos/sales');

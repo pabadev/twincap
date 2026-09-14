@@ -196,6 +196,7 @@ export async function editAbonoAction(
       () => {
         const creditRepo = new MongoCreditReceivedRepository();
         const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
         return editAbono(
           user.workspaceId!,
           creditId,
@@ -203,6 +204,7 @@ export async function editAbonoAction(
           { amount, date },
           creditRepo,
           movementRepo,
+          accountRepo,
           new MongoUnitOfWork(),
         );
       },
@@ -235,12 +237,14 @@ export async function editCreditReceivedAction(
       () => {
         const creditRepo = new MongoCreditReceivedRepository();
         const movementRepo = new MongoMovementRepository();
+        const accountRepo = new MongoAccountRepository();
         return editPrincipal(
           user.workspaceId!,
           creditId,
           { principal, currency },
           creditRepo,
           movementRepo,
+          accountRepo,
           new MongoUnitOfWork(),
         );
       },
@@ -272,7 +276,8 @@ export async function deleteAbonoAction(
       () => {
         const creditRepo = new MongoCreditReceivedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo, new MongoUnitOfWork());
+        const accountRepo = new MongoAccountRepository();
+        return deleteAbono(user.workspaceId!, creditId, abonoId, creditRepo, movementRepo, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/credits/received');
@@ -301,7 +306,8 @@ export async function deleteCreditAction(
       () => {
         const creditRepo = new MongoCreditReceivedRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteCreditReceived(user.workspaceId!, creditId, creditRepo, movementRepo, new MongoUnitOfWork());
+        const accountRepo = new MongoAccountRepository();
+        return deleteCreditReceived(user.workspaceId!, creditId, creditRepo, movementRepo, accountRepo, new MongoUnitOfWork());
       },
     );
     revalidateMovementData('/credits/received');
