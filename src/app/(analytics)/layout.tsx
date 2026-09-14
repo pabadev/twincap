@@ -29,7 +29,7 @@ export default async function AnalyticsLayout({ children }: { children: React.Re
   if (!allowed) notFound();
 
   return (
-    <div className="flex min-h-screen bg-surface-bg lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
+    <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl bg-surface-bg lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
       <MainNav isLoggedIn={true} email={user.email ?? user.userId} canViewAnalytics={true} />
       <ToastProvider>
         <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">{children}</main>
