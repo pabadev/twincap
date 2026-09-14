@@ -250,8 +250,8 @@ describe('buildDashboardSnapshot', () => {
 
     // COP first, then USD; balances from accounts + economic flows
     expect(snapshot.currencyBreakdown).toEqual([
-      { currency: 'COP', balance: 2_000_000, income: 2_000_000, expenses: 0 },
-      { currency: 'USD', balance: 1500, income: 0, expenses: 400 },
+      { currency: 'COP', balance: 2_000_000, income: 2_000_000, expenses: 0, result: 2_000_000 },
+      { currency: 'USD', balance: 1500, income: 0, expenses: 400, result: -400 },
     ]);
   });
 
@@ -274,8 +274,8 @@ describe('buildDashboardSnapshot', () => {
     expect(snapshot.yearlyData.map((b) => b.month)).toEqual(currentYearMonths());
   });
 
-  it('recentMovements: top 5 with resolved categoryName and ISO date', () => {
-    const movements = Array.from({ length: 7 }, (_, i) =>
+  it('recentMovements: top 10 with resolved categoryName and ISO date (UX-5)', () => {
+    const movements = Array.from({ length: 12 }, (_, i) =>
       movement({
         type: i % 2 === 0 ? 'income' : 'expense',
         amount: (i + 1) * 100_000,
@@ -286,7 +286,8 @@ describe('buildDashboardSnapshot', () => {
 
     const snapshot = buildDashboardSnapshot(buildInput(movements));
 
-    expect(snapshot.recentMovements).toHaveLength(5);
+    // UX-5: the slice grew from 5 to 10.
+    expect(snapshot.recentMovements).toHaveLength(10);
     expect(snapshot.recentMovements[0].id).toBe(movements[0].id);
     expect(snapshot.recentMovements[0].categoryName).toBe('Salario');
     expect(snapshot.recentMovements[0].date).toBe(inCurrentMonth(1).toISOString());
@@ -561,5 +562,123 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
       movement({ type: 'income', amount: Number.MAX_SAFE_INTEGER, categoryId: 'cat-salary-in' }),
     ];
     expect(() => buildDashboardSnapshot(buildInput(movs))).toThrow(MoneyError);
+  });
+});
+
+describe('buildDashboardSnapshot — N4 attention (UX-5)', () => {
+  const oneWeekAgo = new Date(Date.now() - 7 * 86_400_000);
+
+  it('dataAsOf: ships the civil cut timestamp', () => {
+    const snapshot = buildDashboardSnapshot(buildInput([]));
+    expect(typeof snapshot.dataAsOf).toBe('string');
+    expect(() => new Date(snapshot.dataAsOf)).not.toThrow();
+  });
+
+  it('attentionTotals: sums receivables (credits granted, not written off) and payables (credits received + payables), per currency, COP-first', () => {
+    const baseInput = buildInput([]);
+    const snapshot = buildDashboardSnapshot({
+      ...baseInput,
+      creditsGranted: [
+        { pending: { amount: 900_000, currency: 'COP' }, writtenOff: false },
+        // Written-off credits must be excluded from receivables (R9/D9.4).
+        { pending: { amount: 5_000_000, currency: 'COP' }, writtenOff: true },
+        { pending: { amount: 200, currency: 'USD' }, writtenOff: false },
+      ],
+      creditsReceived: [
+        { pending: { amount: 350_000, currency: 'COP' } },
+      ],
+      payables: [
+        {
+          id: 'pay-1',
+          pending: { amount: 150_000, currency: 'COP' },
+          dueDate: oneWeekAgo,
+          description: 'Proveedor A',
+        },
+        {
+          id: 'pay-2',
+          pending: { amount: 100, currency: 'USD' },
+          dueDate: oneWeekAgo,
+          description: 'Proveedor B',
+        },
+      ],
+    });
+
+    expect(snapshot.attentionTotals).toEqual([
+      { currency: 'COP', receivables: 900_000, payables: 500_000 },
+      { currency: 'USD', receivables: 200, payables: 100 },
+    ]);
+  });
+
+  it('attentionTotals: empty when no credits/payables are passed', () => {
+    const snapshot = buildDashboardSnapshot(buildInput([]));
+    expect(snapshot.attentionTotals).toEqual([]);
+    expect(snapshot.overduePayables).toEqual([]);
+  });
+
+  it('overduePayables: keeps dueDate < now && pending > 0, oldest first, max 3', () => {
+    const baseInput = buildInput([]);
+    const snapshot = buildDashboardSnapshot({
+      ...baseInput,
+      payables: [
+        {
+          id: 'pay-old',
+          pending: { amount: 300_000, currency: 'COP' },
+          dueDate: new Date(Date.now() - 60 * 86_400_000),
+          description: 'Muy vencido',
+        },
+        {
+          id: 'pay-new',
+          pending: { amount: 100_000, currency: 'COP' },
+          dueDate: new Date(Date.now() - 7 * 86_400_000),
+          description: 'Reciente',
+        },
+        // Future dueDate → not overdue, even with pending.
+        {
+          id: 'pay-future',
+          pending: { amount: 50_000, currency: 'COP' },
+          dueDate: new Date(Date.now() + 10 * 86_400_000),
+          description: 'Futuro',
+        },
+        // paid off → not overdue even with a past dueDate.
+        {
+          id: 'pay-paid',
+          pending: { amount: 0, currency: 'COP' },
+          dueDate: oneWeekAgo,
+          description: 'Pagado',
+        },
+      ],
+    });
+
+    expect(snapshot.overduePayables).toHaveLength(2);
+    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(['pay-old', 'pay-new']);
+    expect(snapshot.overduePayables[0]).toMatchObject({
+      id: 'pay-old',
+      label: 'Muy vencido',
+      currency: 'COP',
+      pending: 300_000,
+    });
+    expect(snapshot.overduePayables[0].daysOverdue).toBeGreaterThan(
+      snapshot.overduePayables[1].daysOverdue,
+    );
+    expect(snapshot.overduePayables[1].daysOverdue).toBeGreaterThanOrEqual(7);
+  });
+
+  it('overduePayables: caps at 3 alerts, oldest first', () => {
+    const baseInput = buildInput([]);
+    const payables = Array.from({ length: 5 }, (_, i) => ({
+      id: `pay-${i}`,
+      pending: { amount: (i + 1) * 10_000, currency: 'COP' },
+      dueDate: new Date(Date.now() - (i + 1) * 86_400_000),
+      description: `Proveedor ${i}`,
+    }));
+
+    const snapshot = buildDashboardSnapshot({
+      ...baseInput,
+      payables,
+    });
+
+    expect(snapshot.overduePayables).toHaveLength(3);
+    // Oldest first = highest daysOverdue at index 0 (pay-4 is 5 days late).
+    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(['pay-4', 'pay-3', 'pay-2']);
   });
 });

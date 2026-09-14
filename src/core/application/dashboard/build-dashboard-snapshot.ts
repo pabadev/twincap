@@ -1,4 +1,10 @@
-import type { DashboardSnapshot, DashboardFilters, CurrencyBreakdown } from './dashboard-types';
+import type {
+  DashboardSnapshot,
+  DashboardFilters,
+  CurrencyBreakdown,
+  AttentionTotals,
+  OverduePayable,
+} from './dashboard-types';
 import type { SerializedCategory } from '../../domain/category';
 import type { Movement } from '../../domain/movement';
 import { computeDashboardSummary } from '../compute-dashboard-summary';
@@ -44,6 +50,22 @@ export interface BuildDashboardSnapshotInput {
    * early for west-of-UTC timezones. Default 0 = server's UTC clock.
    */
   tzOffsetMinutes?: number;
+  /** Payable entities for the attention section (pending totals + overdue). */
+  payables?: Array<{
+    id: string;
+    pending: { amount: number; currency: string };
+    dueDate?: string | Date;
+    description: string;
+  }>;
+  /** Credit granted entities for receivables (pending, not written off). */
+  creditsGranted?: Array<{
+    pending: { amount: number; currency: string };
+    writtenOff?: boolean;
+  }>;
+  /** Credit received entities for payables (pending). */
+  creditsReceived?: Array<{
+    pending: { amount: number; currency: string };
+  }>;
 }
 
 /**
@@ -123,7 +145,7 @@ export function buildDashboardSnapshot(
   // (mirrors the cards: "Ingresos este mes" / "Gastos este mes").
   const byCurrency = new Map<
     string,
-    { balance: number; income: number; expenses: number }
+    { balance: number; income: number; expenses: number; result: number }
   >();
 
   for (const a of accountBalances) {
@@ -131,6 +153,7 @@ export function buildDashboardSnapshot(
       balance: 0,
       income: 0,
       expenses: 0,
+      result: 0,
     };
     // R15.3.1 P1.3: per-currency breakdown sums are guarded the same way as
     // every other monetary aggregation (silent overflow would corrupt the
@@ -149,6 +172,7 @@ export function buildDashboardSnapshot(
       balance: 0,
       income: 0,
       expenses: 0,
+      result: 0,
     };
     if (m.type === 'income') {
       entry.income = sumSafeMinorUnits(
@@ -162,6 +186,13 @@ export function buildDashboardSnapshot(
       );
     }
     byCurrency.set(cur, entry);
+  }
+
+  // N1: per-currency period result (income − expenses), signed. Presentation
+  // only over the same economic buckets the cards already aggregate — the
+  // frontend never recomputes it.
+  for (const entry of byCurrency.values()) {
+    entry.result = entry.income - entry.expenses;
   }
 
   const currencyBreakdown: CurrencyBreakdown[] = Array.from(byCurrency.entries())
@@ -263,8 +294,9 @@ export function buildDashboardSnapshot(
   }
 
   // N2: recent movements stay scoped to the current civil month (consistent
-  // with the cards above), NOT the unfiltered set.
-  const recentMovements = monthlyMovements.slice(0, 5).map((m) => ({
+  // with the cards above), NOT the unfiltered set. UX-5: amplified from 5 to
+  // 10 rows for the Resumen N5 detail list.
+  const recentMovements = monthlyMovements.slice(0, 10).map((m) => ({
     id: m.id,
     type: m.type as 'income' | 'expense',
     amount: m.amount.amount,
@@ -275,6 +307,57 @@ export function buildDashboardSnapshot(
         : new Date(m.date).toISOString(),
     categoryName: resolveCategoryLabel(m.categoryId),
   }));
+
+  // N4 (UX-5): attention totals per currency — receivables = credits granted
+  // pending (not written off); payables = credits received pending + payables
+  // pending. Plain per-currency sums over derived pendings, no FX.
+  const attentionByCurrency = new Map<string, { receivables: number; payables: number }>();
+
+  for (const cg of input.creditsGranted ?? []) {
+    if (cg.writtenOff) continue;
+    const cur = cg.pending.currency;
+    const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
+    entry.receivables += cg.pending.amount;
+    attentionByCurrency.set(cur, entry);
+  }
+
+  for (const cr of input.creditsReceived ?? []) {
+    const cur = cr.pending.currency;
+    const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
+    entry.payables += cr.pending.amount;
+    attentionByCurrency.set(cur, entry);
+  }
+
+  for (const p of input.payables ?? []) {
+    const cur = p.pending.currency;
+    const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
+    entry.payables += p.pending.amount;
+    attentionByCurrency.set(cur, entry);
+  }
+
+  const attentionTotals: AttentionTotals[] = Array.from(attentionByCurrency.entries())
+    .map(([currency, data]) => ({ currency, ...data }))
+    .sort((a, b) =>
+      a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
+    );
+
+  // N4 (UX-5): overdue payables — dueDate before the civil now with pending
+  // still open. Oldest first (most days overdue first), max 3.
+  const overduePayables: OverduePayable[] = (input.payables ?? [])
+    .filter((p) => {
+      if (!p.dueDate) return false;
+      const due = new Date(p.dueDate);
+      return due < civilNow && p.pending.amount > 0;
+    })
+    .map((p) => ({
+      id: p.id,
+      label: p.description,
+      currency: p.pending.currency,
+      pending: p.pending.amount,
+      daysOverdue: Math.floor((civilNow.getTime() - new Date(p.dueDate!).getTime()) / 86_400_000),
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue)
+    .slice(0, 3);
 
   return {
     filters,
@@ -292,6 +375,9 @@ export function buildDashboardSnapshot(
     monthlyData,
     yearlyData: yearly.months,
     recentMovements,
+    dataAsOf: civilNow.toISOString(),
+    attentionTotals,
+    overduePayables,
     contextSummary,
     chartCurrencies,
     chartDataByCurrency,

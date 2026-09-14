@@ -124,6 +124,22 @@ export async function getDashboardSnapshotAction(
       primaryCurrency,
       resolveCategoryLabel,
       tzOffsetMinutes,
+      // N4 (UX-5): attention section — same entity→plain-data mapping as
+      // page.tsx (pending is a derived number getter; currency comes from the
+      // credit/payable principal or total).
+      payables: payables.map((p) => ({
+        id: p.id,
+        pending: { amount: p.pending, currency: p.total.currency },
+        dueDate: p.dueDate,
+        description: p.counterparty,
+      })),
+      creditsGranted: creditsGranted.map((c) => ({
+        pending: { amount: c.pending, currency: c.principal.currency },
+        writtenOff: Boolean(c.writtenOff),
+      })),
+      creditsReceived: creditsReceived.map((c) => ({
+        pending: { amount: c.pending, currency: c.principal.currency },
+      })),
     });
   } catch (error) {
     // Report the unexpected crash (fail-safe, never re-raises), then preserve

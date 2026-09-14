@@ -28,6 +28,24 @@ export interface CurrencyBreakdown {
   balance: number;
   income: number;
   expenses: number;
+  /** Result (income − expenses) for this currency and period. */
+  result: number;
+}
+
+/** Overdue payable alert data. */
+export interface OverduePayable {
+  id: string;
+  label: string;
+  currency: string;
+  pending: number;
+  daysOverdue: number;
+}
+
+/** Attention-section totals per currency. */
+export interface AttentionTotals {
+  currency: string;
+  receivables: number;
+  payables: number;
 }
 
 /** Row of the income/expense category summary tables. */
@@ -37,7 +55,7 @@ export interface SummaryTableRow {
   currency: string;
 }
 
-/** Serialized recent movement (the five most recent of the current civil month). */
+/** Serialized recent movement (the ten most recent of the current civil month). */
 export interface SerializedMovement {
   id: string;
   type: 'income' | 'expense';
@@ -60,7 +78,7 @@ export interface DashboardAccountSnapshot {
  * Serialized, aggregate view of the dashboard for a given filter set.
  * Produced server-side (initial page load and `getDashboardSnapshotAction`)
  * so the client never receives the full movement list — only this snapshot
- * plus the five most recent movements. Plain-data only, safe across the
+ * plus the ten most recent movements. Plain-data only, safe across the
  * server→client boundary.
  */
 export interface DashboardSnapshot {
@@ -80,6 +98,12 @@ export interface DashboardSnapshot {
   monthlyData: MonthBucket[];
   yearlyData: YearMonthBucket[];
   recentMovements: SerializedMovement[];
+  /** Data-as-of timestamp (civil date of the snapshot cut). */
+  dataAsOf: string;
+  /** Per-currency attention totals (receivables + payables). */
+  attentionTotals: AttentionTotals[];
+  /** Overdue payables (dueDate < now && pending > 0), oldest first. Max 3. */
+  overduePayables: OverduePayable[];
   /**
    * Personal/Business split of the current-month economic result, per
    * currency (N1, Fase 5 pre-beta audit): each context carries one entry

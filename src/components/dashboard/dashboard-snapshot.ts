@@ -7,6 +7,8 @@
  * types (no React, no client-only imports).
  */
 export type {
+  AttentionTotals,
   DashboardAccountSnapshot,
   DashboardSnapshot,
+  OverduePayable,
 } from '../../core/application/dashboard/dashboard-types';

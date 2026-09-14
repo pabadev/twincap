@@ -4,6 +4,8 @@ import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { DashboardFilterBar } from './dashboard-filters';
 import { SummaryCards } from './summary-cards';
+import { SummaryHero } from './summary-hero';
+import { SummaryAttention } from './summary-attention';
 import { MonthlyChart } from './monthly-chart';
 import { RecentMovements } from './recent-movements';
 import { PositionCards } from './position-cards';
@@ -12,7 +14,7 @@ import { SummaryTable, type SummaryTableRow } from './summary-table';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
-import { Wallet, MessageSquare } from 'lucide-react';
+import { Wallet, MessageSquare, SlidersHorizontal } from 'lucide-react';
 import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
 import { formatAmount } from '../../lib/format';
 import { useT } from '../../i18n/client';
@@ -83,6 +85,10 @@ export function DashboardContent({
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Filters live behind a toggle: the N1 hero reacts to them (the server
+  // rebuilds currencyBreakdown with the active filters), so the bar must not
+  // steal the first viewport. Collapsed by default.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // A11: chart currency selection — only meaningful when the snapshot ships
   // `chartCurrencies` (multi-currency); mono-currency renders no selector and
   // this stays equal to the snapshot's aggregation currency.
@@ -136,15 +142,38 @@ export function DashboardContent({
   }, [categories]);
 
   function handleFiltersChange(next: DashboardSnapshot['filters']) {
+    // Traveling-filter contract (UX-5 §4.3): persist filters in the URL so a
+    // reload or navigation restores them instead of resetting to 'all'.
+    // history.replaceState (NOT router.replace) keeps the URL in sync WITHOUT
+    // triggering an App Router navigation — no server re-render, no loading
+    // flash, no double refetch. The next hard reload/navigation reads the
+    // params in page.tsx.
+    const params = new URLSearchParams();
+    if (next.scope !== 'all') params.set('scope', next.scope);
+    if (next.accountId !== 'all') params.set('cuenta', next.accountId);
+    if (next.categoryId !== 'all') params.set('categoria', next.categoryId);
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${qs ? `?${qs}` : ''}`,
+    );
+
     startTransition(async () => {
       // A2: the server does not know the client's timezone — send the
       // offset so current-month/current-year derive from the civil date,
       // not the server's UTC clock.
-      const nextSnapshot = await getDashboardSnapshotAction(
-        next,
-        new Date().getTimezoneOffset(),
-      );
-      setSnapshot(nextSnapshot);
+      try {
+        const nextSnapshot = await getDashboardSnapshotAction(
+          next,
+          new Date().getTimezoneOffset(),
+        );
+        setSnapshot(nextSnapshot);
+      } catch {
+        // Keep the current snapshot on refetch failure; the filters are
+        // already persisted in the URL, so the next reload/navigation will
+        // restore them from searchParams. Never let a refetch crash the page.
+      }
     });
   }
 
@@ -172,6 +201,15 @@ export function DashboardContent({
   const topIncomeRows = incomeRows.slice(0, 3);
   const topExpenseRows = expenseRows.slice(0, 3);
 
+  // N1 hero: period result of the snapshot's aggregation currency plus
+  // per-currency available balances (never summed across currencies, R15.3.1 P1.3).
+  const heroEntry = currencyBreakdown.find((c) => c.currency === currency);
+  const heroResult = heroEntry?.result ?? 0;
+  const availableByCurrency = currencyBreakdown.map((c) => ({
+    currency: c.currency,
+    balance: c.balance,
+  }));
+
   // Chart currency: the initially selected currency is the snapshot's
   // aggregation currency. After a refetch the selection may no longer exist
   // (filters changed the data) — fall back to the fresh aggregation currency.
@@ -193,6 +231,11 @@ export function DashboardContent({
     ? t('welcomeUser', { name: userName })
     : userLabel;
 
+  const activeFilterCount =
+    (filters.scope !== 'all' ? 1 : 0) +
+    (filters.accountId !== 'all' ? 1 : 0) +
+    (filters.categoryId !== 'all' ? 1 : 0);
+
   // R5-E onboarding: shown only while the user still has just the seeded
   // fixed Cash account — uses the FULL account list (not the filtered
   // snapshot balances) so the banner reflects account count regardless of
@@ -202,6 +245,7 @@ export function DashboardContent({
 
   return (
     <div className="space-y-8" aria-busy={isPending}>
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {greeting}
@@ -216,6 +260,8 @@ export function DashboardContent({
         </button>
       </div>
 
+      {/* Onboarding banner — shown only while the user still has just the
+          seeded fixed Cash account. */}
       {showOnboarding && (
         <Card className="border-primary/30 bg-primary/5 dark:bg-primary/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -239,13 +285,53 @@ export function DashboardContent({
         </Card>
       )}
 
-      <DashboardFilterBar
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        accounts={accountOptions}
-        categories={categoryOptions}
+      {/* Filters — collapsed behind a toggle so the N1 hero owns the first
+          viewport (the hero DOES react to filters: server rebuilds the
+          currency breakdown with the active filter set). */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          aria-controls="dashboard-filters"
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {t('filters')}
+          {activeFilterCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {activeFilterCount > 0 && (
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {t('filtersActive')}
+          </span>
+        )}
+      </div>
+
+      {filtersOpen && (
+        <div id="dashboard-filters">
+          <DashboardFilterBar
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            accounts={accountOptions}
+            categories={categoryOptions}
+          />
+        </div>
+      )}
+
+      {/* ── N1 HERO ──────────────────────────────────────────────── */}
+      <SummaryHero
+        result={heroResult}
+        currency={currency}
+        available={availableByCurrency}
+        dataAsOf={snapshot.dataAsOf}
+        locale={locale}
       />
 
+      {/* ── N2 DESGLOSE ──────────────────────────────────────────── */}
       <SummaryCards
         currency={currency}
         monthlyIncome={monthlyIncome}
@@ -257,6 +343,10 @@ export function DashboardContent({
         contextSummary={filters.scope === 'all' ? snapshot.contextSummary : undefined}
       />
 
+      {/* Cuentas — justo debajo de las cards de resumen: responden "¿en qué
+          cuentas está?", la continuación natural de la Pregunta 1 de la Regla
+          de Oro, no el detalle de "¿qué pasó?" (N5). Orden validado en beta:
+          hero → cards → cuentas → categorías → evolución → atención → detalle. */}
       <div>
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
           {t('accounts')}
@@ -297,30 +387,6 @@ export function DashboardContent({
         )}
       </div>
 
-      <DashboardReportsGrid />
-
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('incomeExpenseSummary')}
-        </h2>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SummaryTable
-            title={t('incomeSummary')}
-            rows={incomeRows}
-            totals={incomeTotals}
-            locale={locale}
-            emptyMessage={t('noIncomeData')}
-          />
-          <SummaryTable
-            title={t('expenseSummary')}
-            rows={expenseRows}
-            totals={expenseTotals}
-            locale={locale}
-            emptyMessage={t('noExpenseData')}
-          />
-        </div>
-      </div>
-
       {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
@@ -350,6 +416,29 @@ export function DashboardContent({
       )}
 
       <div>
+        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+          {t('incomeExpenseSummary')}
+        </h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SummaryTable
+            title={t('incomeSummary')}
+            rows={incomeRows}
+            totals={incomeTotals}
+            locale={locale}
+            emptyMessage={t('noIncomeData')}
+          />
+          <SummaryTable
+            title={t('expenseSummary')}
+            rows={expenseRows}
+            totals={expenseTotals}
+            locale={locale}
+            emptyMessage={t('noExpenseData')}
+          />
+        </div>
+      </div>
+
+      {/* ── N3 EVOLUCIÓN ─────────────────────────────────────────── */}
+      <div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
             onClick={() => setChartView('monthly')}
@@ -371,9 +460,6 @@ export function DashboardContent({
           >
             {t('viewYearly')}
           </button>
-          {/* A11: currency selector — only when the server shipped per-currency
-              chart data (multi-currency). Switching swaps the series locally,
-              no server round-trip. */}
           {snapshot.chartCurrencies && (
             <label className="ml-auto flex items-center gap-2">
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
@@ -394,19 +480,28 @@ export function DashboardContent({
             </label>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <MonthlyChart
-            data={effectiveChartData}
-            currency={effectiveChartCurrency}
-            locale={locale}
-            title={chartTitle}
-          />
-          <RecentMovements
-            movements={recentMovements}
-            noMovementsMessage={noMovementsMessage}
-          />
-        </div>
+        <MonthlyChart
+          data={effectiveChartData}
+          currency={effectiveChartCurrency}
+          locale={locale}
+          title={chartTitle}
+        />
       </div>
+
+      {/* ── N4 ATENCIÓN ──────────────────────────────────────────── */}
+      <SummaryAttention
+        attentionTotals={snapshot.attentionTotals}
+        overduePayables={snapshot.overduePayables}
+        locale={locale}
+      />
+
+      {/* ── N5 DETALLE ───────────────────────────────────────────── */}
+      <RecentMovements
+        movements={recentMovements}
+        noMovementsMessage={noMovementsMessage}
+      />
+
+      <DashboardReportsGrid />
 
       <PositionCards positions={positionData} locale={locale} />
 
