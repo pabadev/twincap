@@ -1,7 +1,7 @@
 # TWINCAP — UX ROADMAP — PLAN MAESTRO DE LA ETAPA UX/UI (FASES UX-0…UX-12)
 
 > **Fecha:** 2026-09-13
-> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 ENTREGADAS; UX-5…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
+> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 IMPLEMENTADA (commits `34510ae`, `b679cb8`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); UX-6…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
 > **Fuente normativa:** `docs/freeze + UX-UI.md` (prompt maestro §35/§40/§41/§46/§47/§48/§49/§52/§53/§56)
 > **Documentos relacionados:** `docs/FINANCIAL-DOMAIN-FREEZE.md`, `docs/UX-UI-AUDIT.md` (UX-1), `docs/UX-COMPETITIVE-RESEARCH.md` (UX-2), `docs/UX-INFORMATION-ARCHITECTURE.md` (UX-3), `docs/UX-DESIGN-SYSTEM.md` (UX-4), `docs/PROJECT-RULES.md` (§15/§18)
 
@@ -14,9 +14,9 @@
 | UX-0 — Freeze y documentación | ✅ **COMPLETA** | `docs/FINANCIAL-DOMAIN-FREEZE.md` + `PROJECT-RULES.md` §18 |
 | UX-1 — Auditoría | ✅ **COMPLETA** | `docs/UX-UI-AUDIT.md` (19 hallazgos, H-01…H-19) |
 | UX-2 — Investigación competitiva | ✅ **COMPLETA** | `docs/UX-COMPETITIVE-RESEARCH.md` (Treinta, Wave, Alegra, QuickBooks + otras) |
-| UX-3 — Arquitectura de información | 📄 **ENTREGADA** (aprobación pendiente) | `docs/UX-INFORMATION-ARCHITECTURE.md` (DEC-IA-01…12) |
-| UX-4 — Design System | 📄 **ENTREGADO** (aprobación pendiente) | `docs/UX-DESIGN-SYSTEM.md` (DEC-DS-01…13) |
-| UX-5 — Rediseño del Resumen | ⏳ PLANIFICADA | Diseño conceptual + implementación |
+| UX-3 — Arquitectura de información | ✅ **APROBADA (2026-09-14)** | `docs/UX-INFORMATION-ARCHITECTURE.md` (DEC-IA-01…12) |
+| UX-4 — Design System | ✅ **APROBADO (2026-09-14)** | `docs/UX-DESIGN-SYSTEM.md` (DEC-DS-01…13) |
+| UX-5 — Rediseño del Resumen | 🟡 **IMPLEMENTADA** (falta cierre: TTI H-17) | Diseño conceptual `docs/UX-RESUMEN-DESIGN.md` + implementación 5 niveles (`b679cb8`) |
 | UX-6 — Flujos core | ⏳ PLANIFICADA | Rediseño de flujos transaccionales |
 | UX-7 — Responsive | ⏳ PLANIFICADA | Mobile-first deliberado |
 | UX-8 — Microcopy + estados + errores | ⏳ PLANIFICADA | Lenguaje y estados |
@@ -150,9 +150,9 @@
 | UX-0 | ✅ | Freeze + regla §18 | Freeze documentado y aprobado |
 | UX-1 | ✅ | Auditoría (19 hallazgos) | Evidencia file:line; severidad sin inflar |
 | UX-2 | ✅ | Benchmark | Lecciones + errores obligatorios; honestidad |
-| UX-3 | 📄 | Arquitectura de Información | DEC-IA aprobadas; Resumen en 5 niveles |
-| UX-4 | 📄 | Design System | Fundamentos→componentes→patrones→páginas |
-| UX-5 | ⏳ | Diseño conceptual + Resumen nuevo | Regla de Oro 10 s + TTI medido |
+| UX-3 | ✅ | Arquitectura de Información (aprobada 2026-09-14) | DEC-IA aprobadas; Resumen en 5 niveles |
+| UX-4 | ✅ | Design System (aprobado 2026-09-14) | Fundamentos→componentes→patrones→páginas |
+| UX-5 | 🟡 | Resumen 5 niveles implementado (`b679cb8`) | Regla de Oro 10 s + TTI medido (pendiente) |
 | UX-6 | ⏳ | Flujos core rediseñados | H-06 cerrado; confirmaciones financieras |
 | UX-7 | ⏳ | Responsive 375/768/1280 | H-09/H-11/H-15 cerrados |
 | UX-8 | ⏳ | Microcopy + estados + errores | H-08/H-03/H-04 cerrados; paridad es/en |
