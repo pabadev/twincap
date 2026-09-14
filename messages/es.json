@@ -26,7 +26,9 @@
     "back": "Atrás"
   },
   "Nav": {
-    "dashboard": "Informes",
+    "dashboard": "Resumen",
+    "switchToLightMode": "Cambiar a modo claro",
+    "switchToDarkMode": "Cambiar a modo oscuro",
     "accounts": "Cuentas",
     "categories": "Categorías",
     "movements": "Movimientos",

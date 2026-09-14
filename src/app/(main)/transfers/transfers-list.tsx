@@ -11,7 +11,6 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
-import { BackButton } from '../../../components/ui/back-button';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
 import { ArrowRightLeft, Pencil } from 'lucide-react';
@@ -50,8 +49,7 @@ export function TransfersList({
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <BackButton />
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}

@@ -151,7 +151,7 @@ export function CreditForm({ accounts, onSuccess }: { accounts: SerializedAccoun
             onChange={(e) => setInstallmentValue(Number(e.target.value) || 0)}
           />
           {totalToPay !== undefined && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-surface-muted">
               {t('totalToPayLabel')}: {formatAmount(totalToPay, currency, locale)}
             </p>
           )}

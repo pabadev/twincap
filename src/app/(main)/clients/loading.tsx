@@ -2,7 +2,7 @@ import { Skeleton } from '../../../components/ui/skeleton';
 
 export default function ClientsLoading() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-36" />

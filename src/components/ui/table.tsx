@@ -51,7 +51,7 @@ interface ThProps extends ComponentPropsWithoutRef<'th'> {
 export function Th({ align = 'left', className = '', ...props }: ThProps) {
   return (
     <th
-      className={`px-4 py-3 font-display text-sm font-semibold text-zinc-700 dark:text-zinc-300 ${align === 'right' ? 'text-right' : 'text-left'} ${className}`}
+      className={`px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300 ${align === 'right' ? 'text-right' : 'text-left'} ${className}`}
       {...props}
     />
   );

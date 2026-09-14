@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   const snapshot = user.toJSON();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-xl space-y-8">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
         {t('title')}
       </h1>

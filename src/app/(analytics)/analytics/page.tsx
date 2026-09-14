@@ -28,7 +28,7 @@ export default async function AnalyticsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">{t('title')}</h1>
-      <p className="mb-8 text-sm text-muted-foreground">{t('subtitle')}</p>
+      <p className="mb-8 text-sm text-surface-muted">{t('subtitle')}</p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard label={t('registered')} value={dashboard.totalRegistered} />
@@ -65,11 +65,11 @@ function MetricCard({
   description?: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="text-sm text-muted-foreground">{label}</p>
+    <div className="rounded-lg border bg-surface-card p-4 shadow-sm">
+      <p className="text-sm text-surface-muted">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
       {description && (
-        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        <p className="mt-1 text-xs text-surface-muted">{description}</p>
       )}
     </div>
   );

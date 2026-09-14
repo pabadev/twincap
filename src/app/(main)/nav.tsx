@@ -219,7 +219,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                     type="button"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    aria-label={theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')}
                   >
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
@@ -267,7 +267,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                     type="button"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    aria-label={theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')}
                   >
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
