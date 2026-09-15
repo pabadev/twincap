@@ -1,10 +1,10 @@
-import { expect, type Page } from '@playwright/test';
-import mongoose from 'mongoose';
-import { RateLimitModel } from '../src/infrastructure/models/rate-limit';
-import { UserModel } from '../src/infrastructure/models/user';
-import { MembershipModel } from '../src/infrastructure/models/membership';
-import { AccountModel } from '../src/infrastructure/models/account';
-import { MovementModel } from '../src/infrastructure/models/movement';
+import { expect, type Page } from "@playwright/test";
+import mongoose from "mongoose";
+import { RateLimitModel } from "../src/infrastructure/models/rate-limit";
+import { UserModel } from "../src/infrastructure/models/user";
+import { MembershipModel } from "../src/infrastructure/models/membership";
+import { AccountModel } from "../src/infrastructure/models/account";
+import { MovementModel } from "../src/infrastructure/models/movement";
 
 /**
  * R12-C3 E2E helpers (Slice 1).
@@ -23,10 +23,10 @@ async function ensureDb(): Promise<void> {
   if (mongoose.connection.readyState === 1) return;
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error('MONGODB_URI is not set in the E2E environment.');
+    throw new Error("MONGODB_URI is not set in the E2E environment.");
   }
   const host = new URL(uri).hostname;
-  if (host !== '127.0.0.1' && host !== 'localhost') {
+  if (host !== "127.0.0.1" && host !== "localhost") {
     throw new Error(
       `E2E DB host must be loopback, got "${host}". Refusing to touch Atlas from helpers.`,
     );
@@ -67,10 +67,7 @@ export async function workspaceIdOf(email: string): Promise<string> {
 }
 
 /** Resolve an account id by workspace + name (for DB-scoped assertions). */
-export async function accountIdOf(
-  workspaceId: string,
-  name: string,
-): Promise<string> {
+export async function accountIdOf(workspaceId: string, name: string): Promise<string> {
   await ensureDb();
   const account = await AccountModel.findOne({ workspaceId, name }).lean<{
     _id: mongoose.Types.ObjectId;
@@ -92,7 +89,7 @@ export async function openingMovementsOf(
   const docs = await MovementModel.find({
     workspaceId,
     accountId,
-    'link.kind': 'opening',
+    "link.kind": "opening",
   }).lean<Array<{ amount: number }>>();
   return docs.map((d) => ({ amount: d.amount }));
 }
@@ -104,21 +101,20 @@ export async function openingMovementsOf(
  */
 export async function registerUser(
   page: Page,
-  { email, password = 'Password123!' }: { email?: string; password?: string } = {},
+  { email, password = "Password123!" }: { email?: string; password?: string } = {},
 ): Promise<string> {
   await clearRateLimits();
   seq += 1;
-  const uniqueEmail =
-    email ?? `e2e-${Date.now()}-${seq}@test.local`;
+  const uniqueEmail = email ?? `e2e-${Date.now()}-${seq}@test.local`;
 
-  await page.goto('/register');
+  await page.goto("/register");
   await page.getByLabel(/^Email/i).fill(uniqueEmail);
   await page.getByLabel(/^Password/i).fill(password);
   await page.getByLabel(/^Confirm Password/i).fill(password);
-  await page.getByRole('button', { name: /Register/i }).click();
+  await page.getByRole("button", { name: /Register/i }).click();
 
   // Register redirects to / which lands authenticated users on /dashboard.
-  await page.waitForURL('**/dashboard');
+  await page.waitForURL("**/dashboard");
   return uniqueEmail;
 }
 
@@ -127,11 +123,11 @@ export async function login(
   page: Page,
   { email, password }: { email: string; password: string },
 ): Promise<void> {
-  await page.goto('/login');
+  await page.goto("/login");
   await page.getByLabel(/^Email/i).fill(email);
   await page.getByLabel(/^Password/i).fill(password);
-  await page.getByRole('button', { name: /Sign in/i }).click();
-  await page.waitForURL('**/dashboard');
+  await page.getByRole("button", { name: /Sign in/i }).click();
+  await page.waitForURL("**/dashboard");
 }
 
 /**
@@ -139,9 +135,9 @@ export async function login(
  * at /login. `confirmYes` is the Nav.confirmYes label ("Log out").
  */
 export async function logout(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /Log out/i }).click();
+  await page.getByRole("button", { name: /Log out/i }).click();
   await confirmDialog(page, { title: /Log out\?/i, confirm: /^Log out$/i });
-  await page.waitForURL('**/login');
+  await page.waitForURL("**/login");
 }
 
 /**
@@ -152,9 +148,28 @@ export async function confirmDialog(
   page: Page,
   { title, confirm }: { title: RegExp | string; confirm: RegExp | string },
 ): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: title });
+  const dialog = page.getByRole("dialog", { name: title });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: confirm }).click();
+  await dialog.getByRole("button", { name: confirm }).click();
+}
+
+/**
+ * UX-6 (H-06/R15.3.1): click through the informed-confirmation dialog when it
+ * is open. NO-OP when the dialog never appears (safe for flows or builds
+ * where the confirmation is not rendered — e.g. the initial-balance seeders
+ * and movements that don't confirm), and idempotent when called too early.
+ * The dialog titles ("Confirm abono", "Confirm initial balance") and the
+ * confirm button anchor on the EN catalog, which the E2E suite runs in.
+ */
+export async function confirmMoneyAction(page: Page): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: /^Confirm /i });
+  try {
+    await dialog.waitFor({ state: "visible", timeout: 3_000 });
+  } catch {
+    return;
+  }
+  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog).toBeHidden();
 }
 
 /**
@@ -163,13 +178,13 @@ export async function confirmDialog(
  */
 export async function waitForSnapshotValue(
   page: Page,
-  locator: ReturnType<Page['locator']>,
+  locator: ReturnType<Page["locator"]>,
   expected: string | RegExp,
 ): Promise<void> {
   await expect(async () => {
     await expect(locator).toBeVisible();
-    const text = (await locator.textContent()) ?? '';
-    if (typeof expected === 'string') {
+    const text = (await locator.textContent()) ?? "";
+    if (typeof expected === "string") {
       expect(text).toContain(expected);
     } else {
       expect(text).toMatch(expected);
@@ -199,8 +214,8 @@ export interface FinancialSeed {
 /** Local calendar date as YYYY-MM-DD (same convention as the movement form default). */
 function todayInputValue(): string {
   const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
@@ -218,29 +233,27 @@ async function createManualMovementInUI(
     date,
     note,
   }: {
-    type: 'income' | 'expense';
+    type: "income" | "expense";
     category: string;
     amount: string;
     date: string;
     note: string;
   },
 ): Promise<void> {
-  await page.goto('/movements');
-  await page.getByRole('button', { name: 'Add Movement' }).click();
-  const dialog = page.getByRole('dialog', { name: /New Movement/i });
+  await page.goto("/movements");
+  await page.getByRole("button", { name: "Add Movement" }).click();
+  const dialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(dialog).toBeVisible();
 
-  await dialog.getByLabel('Account').selectOption({ label: 'Efectivo (COP)' });
-  await dialog
-    .getByLabel('Type')
-    .selectOption({ label: type === 'income' ? 'Income' : 'Expense' });
-  await dialog.getByLabel('Category').selectOption({ label: category });
-  await dialog.getByLabel('Amount').fill(amount);
-  await dialog.getByLabel('Note').fill(note);
+  await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
+  await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
+  await dialog.getByLabel("Category").selectOption({ label: category });
+  await dialog.getByLabel("Amount").fill(amount);
+  await dialog.getByLabel("Note").fill(note);
   // Anchored so "Date" never substring-matches a sibling field label.
   await dialog.getByLabel(/^Date/).fill(date);
   // Dialog-scoped: the page header also has an "Add Movement" button.
-  await dialog.getByRole('button', { name: 'Add Movement' }).click();
+  await dialog.getByRole("button", { name: "Add Movement" }).click();
 
   await expect(dialog).toBeHidden();
 }
@@ -250,17 +263,14 @@ async function createManualMovementInUI(
  * expense movements on "Efectivo" (COP). Used by the dashboard aggregates and
  * filter re-fetch specs; notes carry `notePrefix` so lists stay traceable.
  */
-export async function seedFinancialData(
-  page: Page,
-  seed: FinancialSeed = {},
-): Promise<void> {
-  const prefix = seed.notePrefix ?? 'seed';
+export async function seedFinancialData(page: Page, seed: FinancialSeed = {}): Promise<void> {
+  const prefix = seed.notePrefix ?? "seed";
   const today = todayInputValue();
 
   if (seed.monthlyIncome) {
     await createManualMovementInUI(page, {
-      type: 'income',
-      category: 'Salario',
+      type: "income",
+      category: "Salario",
       amount: seed.monthlyIncome,
       date: today,
       note: `${prefix}-income`,
@@ -268,8 +278,8 @@ export async function seedFinancialData(
   }
   if (seed.monthlyExpense) {
     await createManualMovementInUI(page, {
-      type: 'expense',
-      category: 'Comida',
+      type: "expense",
+      category: "Comida",
       amount: seed.monthlyExpense,
       date: today,
       note: `${prefix}-expense`,
@@ -277,8 +287,8 @@ export async function seedFinancialData(
   }
   if (seed.datedIncome) {
     await createManualMovementInUI(page, {
-      type: 'income',
-      category: 'Salario',
+      type: "income",
+      category: "Salario",
       amount: seed.datedIncome.amount,
       date: seed.datedIncome.date,
       note: `${prefix}-income-${seed.datedIncome.date}`,
