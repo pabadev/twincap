@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { registerUser, waitForSnapshotValue, confirmMoneyAction } from "./helpers";
+import {
+  registerUser,
+  waitForSnapshotValue,
+  confirmMoneyAction,
+  confirmF5NegativeBalance,
+} from "./helpers";
 
 /**
  * R15.3 §11 — Saldo negativo (closing E2E).
@@ -78,9 +83,10 @@ async function createMovementInUI(
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Add Movement" }).click();
-  // UX-6: click through the confirmation dialog when the flow renders one
-  // (movements don't confirm in this batch — the helper is a NO-OP then).
-  await confirmMoneyAction(page);
+  // UX-6 F5: the negative-balance expense (10,000 > 5,000 opening) now renders
+  // the F5 confirmation — click it through ("Register anyway"). The helper is
+  // a NO-OP for movements that don't gate (income / sufficient balance).
+  await confirmF5NegativeBalance(page);
 
   await expect(dialog).toBeHidden();
 }

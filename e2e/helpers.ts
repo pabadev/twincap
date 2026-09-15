@@ -173,6 +173,27 @@ export async function confirmMoneyAction(page: Page): Promise<void> {
 }
 
 /**
+ * UX-6 F5 (movements): click through the negative-balance confirmation that
+ * opens when a manual expense projects a negative account balance. It uses
+ * different anchors than `confirmMoneyAction` (MoneyConfirmation namespace
+ * title "Insufficient balance in the account" + Transfers.registerAnyway
+ * label "Register anyway"), hence the dedicated helper. NO-OP when the dialog
+ * never appears (income / sufficient expenses / fail-open balance fetch).
+ */
+export async function confirmF5NegativeBalance(page: Page): Promise<void> {
+  const dialog = page.getByRole("dialog", {
+    name: /Insufficient balance in the account/i,
+  });
+  try {
+    await dialog.waitFor({ state: "visible", timeout: 3_000 });
+  } catch {
+    return;
+  }
+  await dialog.getByRole("button", { name: "Register anyway" }).click();
+  await expect(dialog).toBeHidden();
+}
+
+/**
  * Poll a locator until its text equals `expected` (or matches the regex), safe
  * against the dashboard's aria-busy transition re-fetching snapshots.
  */
