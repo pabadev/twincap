@@ -1,31 +1,31 @@
-import { redirect } from 'next/navigation';
-import { getT, getLocale } from '../../../i18n/server';
-import { listAccounts } from '../../../core/application/accounts';
-import { getUserBalances } from '../../../core/application/balance';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
-import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
-import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
-import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
-import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { AccountsPageClient } from './accounts-page-client';
-import { DeleteAccountButton } from './delete-account-button';
-import { InitialBalanceButton } from './initial-balance-button';
-import { RenameAccountButton } from './rename-account-button';
-import { formatAmount } from '../../../lib/format';
-import { EmptyState } from '../../../components/ui/empty-state';
-import { Icon } from '../../../components/ui/icon';
-import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
-import { Wallet } from 'lucide-react';
+import { redirect } from "next/navigation";
+import { getT, getLocale } from "../../../i18n/server";
+import { listAccounts } from "../../../core/application/accounts";
+import { getUserBalances } from "../../../core/application/balance";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoCreditReceivedRepository } from "../../../infrastructure/repositories/credit-received-repository";
+import { MongoCreditGrantedRepository } from "../../../infrastructure/repositories/credit-granted-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { AccountsPageClient } from "./accounts-page-client";
+import { DeleteAccountButton } from "./delete-account-button";
+import { InitialBalanceButton } from "./initial-balance-button";
+import { RenameAccountButton } from "./rename-account-button";
+import { formatAmount } from "../../../lib/format";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Icon } from "../../../components/ui/icon";
+import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
+import { Wallet } from "lucide-react";
 
 export default async function AccountsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
-  const t = await getT('Accounts');
+  const t = await getT("Accounts");
   const locale = await getLocale();
 
   await connectDb();
@@ -47,32 +47,24 @@ export default async function AccountsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {t('title')}
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <AccountsPageClient />
       </div>
 
       {accounts.length === 0 ? (
         <EmptyState
           icon={<Icon icon={Wallet} size="xl" />}
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
         />
       ) : (
         <TableShell>
           <Table className="min-w-[400px]">
             <THead>
               <tr>
-                <Th>
-                  {t('name')}
-                </Th>
-                <Th align="right">
-                  {t('balance')}
-                </Th>
-                <Th align="right">
-                  {t('actions')}
-                </Th>
+                <Th>{t("name")}</Th>
+                <Th align="right">{t("balance")}</Th>
+                <Th align="right">{t("actions")}</Th>
               </tr>
             </THead>
             <TBody>
@@ -86,19 +78,15 @@ export default async function AccountsPage() {
                       </span>
                       {account.isFixed && (
                         <span className="ml-2 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          {t('fixed')}
+                          {t("fixed")}
                         </span>
                       )}
-                      <span className="ml-2 text-xs text-zinc-400">
-                        {account.currency}
-                      </span>
+                      <span className="ml-2 text-xs text-zinc-400">{account.currency}</span>
                     </Td>
                     <Td align="right">
                       <span
                         className={`text-sm font-medium ${
-                          balance >= 0
-                            ? 'text-income'
-                            : 'text-expense'
+                          balance >= 0 ? "text-income" : "text-expense"
                         }`}
                       >
                         {formatAmount(balance, account.currency, locale)}
@@ -106,16 +94,14 @@ export default async function AccountsPage() {
                     </Td>
                     <Td align="right">
                       <div className="flex items-center justify-end gap-1">
-                        <RenameAccountButton
-                          accountId={account.id}
-                          accountName={account.name}
-                        />
+                        <RenameAccountButton accountId={account.id} accountName={account.name} />
                         {!balances.has(account.id) && (
-                          <InitialBalanceButton accountId={account.id} />
+                          <InitialBalanceButton
+                            accountId={account.id}
+                            currency={account.currency}
+                          />
                         )}
-                        {!account.isFixed && (
-                          <DeleteAccountButton accountId={account.id} />
-                        )}
+                        {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
                       </div>
                     </Td>
                   </tr>
