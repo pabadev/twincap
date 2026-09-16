@@ -26,6 +26,14 @@ export default async function AnalyticsPage() {
   const t = await getT('Analytics');
 
   return (
+    // Intentional content width (RSL-6): max-w-3xl (768px) keeps the metric
+    // cards and charts readable without redesigning them. Canonical mapping
+    // DEC-IA-06 ("the task defines the container") stays intact — lists use
+    // max-w-6xl, forms max-w-xl, dashboard max-w-screen-2xl — and this
+    // analytics dashboard is a deliberate narrower column for legibility.
+    // The shell margin change in (analytics)/layout.tsx (lg:max-w-[min(1536px,
+    // calc(100vw - 3rem))]) caps the OUTER shell; this inner content width is
+    // unchanged.
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">{t('title')}</h1>
       <p className="mb-8 text-sm text-surface-muted">{t('subtitle')}</p>
