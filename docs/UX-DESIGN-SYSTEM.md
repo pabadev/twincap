@@ -80,7 +80,7 @@ Reglas:
 |---|---|---|---|
 | **MetricCard** | NUEVO | Inline en analytics y dashboard (SummaryCards) | Cardinalidad: título + valor + período + contexto + estado vacío + focus/aria. Base del N1 del Resumen |
 | **SummaryCard** | NUEVO | Inline en `dashboard-content` | Variante con desglose (ingresos/gastos como sub-cifras) |
-| **MovementCard** | NUEVO | Filas de `movements-list` | Formato móvil <640px: QUÉ/CUÁNDO/DÓNDE/CUÁNTO/MONEDA/EFECTO (§12), saldo posterior, acción editar |
+| **MovementCard** | ✅ **IMPLEMENTADO (UX-7)** | `src/components/ui/movement-card.tsx` (field config API); card-list <640px en las 5 listas puras | Formato móvil <640px: QUÉ/CUÁNDO/DÓNDE/CUÁNTO/MONEDA/EFECTO (§12), saldo posterior, acción editar |
 | **DataTable** | EXISTE | `ui/table.tsx` (TableShell + Th + row) | Fix `th` tipografía (H-02); `scope="col"` conservado; footer por moneda (totales honestos, sin FX) |
 | **EmptyState** | EXISTE | `ui/empty-state.tsx` (usado en movements) | **Usar en todas partes** (H-10); variantes: sin datos / sin resultados de filtro / first-use |
 | **ErrorState** | NUEVO | `error.tsx` raíz por ruta existe; falta componente reutilizable | Retry + mensaje honesto + "tus datos no fueron modificados" donde aplique (§14) |
@@ -169,6 +169,7 @@ Cada estado responde 3 preguntas: **¿Qué ocurrió? ¿Los datos están seguros?
 - **La forma sigue a la tarea (§11):** DataTable en desktop ↔ MovementCard en <640px (Movimientos); formularios 1 columna en móvil con acción principal sticky; Resumen 1 columna (N1→N5 en orden) ↔ grid desktop (mismo orden visual — DEC-IA-08).
 - Sin `overflow-x: auto` como única solución (H-09); las tablas densas obligatorias usan `min-w` + card-list como alternativa móvil.
 - Módulos del sistema: **nada de "mobile-only"**: toda pantalla existe en ambos mundos con el mismo modelo mental (§27).
+- **Ancho canónico del shell (H-15/DEC-IA-06 — IMPLEMENTADO en UX-7, commits `a5fa8d8`/`9300fcd`/`6c601ed`):** clase `lg:max-w-[min(1536px,calc(100vw_-_3rem))]` en `src/app/(main)/layout.tsx` y `src/app/(analytics)/layout.tsx` (reemplaza `max-w-screen-2xl`). Efecto: margen **24px por lado en viewports 1024–1536px** (ej. shell 1318px @1366px) y **cap 1536px desde ≥1568px**; <1024px sin cambio (`lg:` inactiva). **Nota técnica Tailwind v4:** los espacios dentro del arbitrary value se escriben como **underscores** (`100vw_-_3rem`) — la variante literal con raw spaces (`calc(100vw - 3rem)`) tokeniza en whitespace y genera CSS inalcanzable (hallazgo CRÍTICO verificado con Tailwind v4.3.3, resuelto en el amendment RSL-1 y el commit `6c601ed`). `ContentContainer max-w-7xl` del dashboard NO se modifica (RSL-5); `max-w-3xl` de analytics es ancho de contenido intencional justificado (RSL-6).
 
 ## 12. Confianza visible (§14) — la UX hace visible la robustez del dominio
 
