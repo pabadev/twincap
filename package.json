@@ -9,6 +9,7 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "parity": "vitest run src/i18n/messages-parity.test.ts src/i18n/messages-usage.test.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node e2e/load-e2e-env.cjs test",
