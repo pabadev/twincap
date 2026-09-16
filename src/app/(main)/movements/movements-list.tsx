@@ -207,6 +207,7 @@ export function MovementsList({
           <Button
             variant="secondary"
             size="sm"
+            className="h-11"
             onClick={handleExportCsv}
             disabled={isExporting}
           >
@@ -226,6 +227,7 @@ export function MovementsList({
             <Button
               variant="primary"
               size="sm"
+              className="h-11"
               onClick={() =>
                 openQuickMovement(
                   selectedAccountId === 'all'
@@ -434,6 +436,7 @@ export function MovementsList({
                   <Button
                     variant="secondary"
                     size="sm"
+                    className="h-11"
                     onClick={handleLoadMore}
                     disabled={loadingMore}
                   >
