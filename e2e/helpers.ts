@@ -194,6 +194,27 @@ export async function confirmF5NegativeBalance(page: Page): Promise<void> {
 }
 
 /**
+ * UX-6 POS NO-OP (task 6.1): NEGATIVE assertion — registering a POS sale must
+ * NOT open any informed-confirmation dialog. POS sale creation has no debit
+ * path (`createSaleAction` only credits the account), so no projected-negative
+ * balance is possible and no F5 / confirmation exists (documented NO-OP,
+ * design §1 scenario "Venta POS — F5 es NO-OP"). Asserts that no
+ * MoneyActionConfirmation dialog is present: neither the "Confirm …" title
+ * family (abono / initial balance) nor the F5 title, and no bare "Confirm"
+ * button. If a confirmation ever appeared here, the spec fails — and so would
+ * the follow-up positive assertions (an intercepted submit never creates a
+ * sale). The helper is intentionally unconditional: POS sale creation is the
+ * documented NO-OP, so the absence assert must never be skipped.
+ */
+export async function expectNoSaleConfirmationDialog(page: Page): Promise<void> {
+  await expect(page.getByRole("dialog", { name: /^Confirm /i })).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: /Insufficient balance in the account/i }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Confirm", exact: true })).toHaveCount(0);
+}
+
+/**
  * Poll a locator until its text equals `expected` (or matches the regex), safe
  * against the dashboard's aria-busy transition re-fetching snapshots.
  */
