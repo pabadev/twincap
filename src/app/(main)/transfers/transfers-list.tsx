@@ -55,7 +55,7 @@ export function TransfersList({
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           {t('title')}
         </h1>
-        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+        <Button variant="primary" size="sm" className="h-11" onClick={() => setShowForm(true)}>
           {t('addTransfer')}
         </Button>
       </div>
