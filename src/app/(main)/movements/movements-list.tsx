@@ -14,6 +14,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { TouchTarget } from "../../../components/ui/touch-target";
 import { MovementCard } from "../../../components/ui/movement-card";
 import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
@@ -334,17 +335,20 @@ export function MovementsList({
                   <tr>
                     <Th scope="col">
                       <button type="button" onClick={() => toggleSort('date')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {tCommon('date')} <SortIcon active={sortField === 'date'} dir={sortDir} />
+                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
+                        <TouchTarget as="span">{tCommon('date')} <SortIcon active={sortField === 'date'} dir={sortDir} /></TouchTarget>
                       </button>
                     </Th>
                     <Th scope="col" align="right">
                       <button type="button" onClick={() => toggleSort('amount')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {tCommon('amount')} <SortIcon active={sortField === 'amount'} dir={sortDir} />
+                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
+                        <TouchTarget as="span">{tCommon('amount')} <SortIcon active={sortField === 'amount'} dir={sortDir} /></TouchTarget>
                       </button>
                     </Th>
                     <Th scope="col">
                       <button type="button" onClick={() => toggleSort('category')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {t('category')} <SortIcon active={sortField === 'category'} dir={sortDir} />
+                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
+                        <TouchTarget as="span">{t('category')} <SortIcon active={sortField === 'category'} dir={sortDir} /></TouchTarget>
                       </button>
                     </Th>
                     <Th scope="col">
@@ -406,10 +410,13 @@ export function MovementsList({
                               <button
                                 type="button"
                                 onClick={() => setEditingMovement(movement)}
-                                className="rounded p-1 text-zinc-400 hover:text-primary transition-colors"
+                                className="rounded text-zinc-400 hover:text-primary transition-colors"
                                 aria-label={tCommon('edit')}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                                <TouchTarget as="span">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                </TouchTarget>
                               </button>
                               <DeleteMovementButton movementId={movement.id} />
                             </>
@@ -501,10 +508,13 @@ export function MovementsList({
                         <button
                           type="button"
                           onClick={() => setEditingMovement(movement)}
-                          className="rounded p-1 text-zinc-400 hover:text-primary transition-colors"
+                          className="rounded text-zinc-400 hover:text-primary transition-colors"
                           aria-label={tCommon("edit")}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                          {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                          <TouchTarget as="span">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                          </TouchTarget>
                         </button>
                         <DeleteMovementButton movementId={movement.id} />
                       </div>

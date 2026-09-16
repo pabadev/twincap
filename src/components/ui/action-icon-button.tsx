@@ -6,6 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { type LucideIcon } from 'lucide-react';
+import { TouchTarget } from './touch-target';
 
 type ActionIconTone = 'neutral' | 'primary' | 'danger' | 'success' | 'warning';
 
@@ -63,32 +64,36 @@ export const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonPr
         title={label}
         aria-label={label}
         aria-busy={loading || undefined}
-        className={`inline-flex cursor-pointer items-center justify-center rounded-full p-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${toneClasses[tone]} ${className}`}
+        className={`inline-flex cursor-pointer items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${toneClasses[tone]} ${className}`}
       >
-        {loading ? (
-          <svg
-            className="h-4 w-4 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-        ) : (
-          <IconComponent size={16} strokeWidth={1.5} aria-hidden="true" />
-        )}
+        {/* TouchTarget gives the 32px (p-2 + 16px icon) button a >=44px hit
+            area (WCAG 2.5.8, RTT-1); icon size is untouched (SC-RTT-3). */}
+        <TouchTarget as="span">
+          {loading ? (
+            <svg
+              className="h-4 w-4 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+          ) : (
+            <IconComponent size={16} strokeWidth={1.5} aria-hidden="true" />
+          )}
+        </TouchTarget>
       </button>
     );
   },

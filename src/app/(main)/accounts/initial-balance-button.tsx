@@ -13,6 +13,7 @@ import { useMoneyActionConfirmation } from "../../../lib/use-money-action-confir
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { TouchTarget } from "../../../components/ui/touch-target";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
@@ -162,7 +163,8 @@ export function InitialBalanceButton({
           setShowForm(true);
         }}
       >
-        {t("setInitialBalance")}
+        {/* TouchTarget expands the Button sm hit area to >=44px (RTT-1). */}
+        <TouchTarget as="span">{t("setInitialBalance")}</TouchTarget>
       </Button>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("setInitialBalance")}>
