@@ -68,8 +68,21 @@ export function InitialBalanceButton({
   const [confirmDetails, setConfirmDetails] = useState<ConfirmationDetailRow[]>([]);
   const [confirmAmount, setConfirmAmount] = useState(0);
 
+  // UX-6 duplicate-opening contract (e2e/duplicate-opening.spec.ts §11): the
+  // confirmation dialog closes OPTIMISTICALLY on confirm — winner/loser
+  // semantics live on the OUTER modal (winner: success effect closes it;
+  // loser: stays open for retry). The a4719ba fix kept the dialog open during
+  // the pending window, so the losing tab's confirm dialog never closed
+  // (stuck open / stuck isPending) and `confirmMoneyAction` timed out on
+  // toBeHidden. This flag closes the dialog at confirm and keeps it closed
+  // until the action settles (reopens on error so the retry re-confirms); it
+  // is ORTHOGONAL to the R15.3.1 native re-submission below — dispatch
+  // machinery untouched.
+  const [awaitingResult, setAwaitingResult] = useState(false);
+
   useEffect(() => {
     if (state?.success) {
+      setAwaitingResult(false);
       addToast(tToast(state.success), "success");
       router.refresh();
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar. Refactorizar derivaría el estado en render y no es aplicable aquí.
@@ -79,6 +92,10 @@ export function InitialBalanceButton({
 
   useEffect(() => {
     if (state?.error) {
+      // Reset so a retry submits through the confirmation dialog again (UX-6:
+      // every submit confirms first). The inner dialog reopens with the
+      // previously confirmed details — cancel clears it and the form stays.
+      setAwaitingResult(false);
       addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
@@ -113,17 +130,30 @@ export function InitialBalanceButton({
   // R15.3.1: re-submit the form NATIVELY instead of dispatching captured
   // FormData imperatively (see the comment above). The mounted form still
   // carries exactly the fields the user confirmed (amount + accountId + the
-  // mount-scoped idempotency key — never regenerated). The dialog stays open
-  // while pending: loading disables its buttons and neutralizes its close.
+  // mount-scoped idempotency key — never regenerated). The confirmation
+  // dialog closes OPTIMISTICALLY on confirm (UX-6 duplicate-opening contract;
+  // awaitingResult above) and stays closed until the action settles — the
+  // outer modal carries the winner/loser semantics.
   const handleConfirm = () => {
-    if (isPending) return;
+    if (isPending || awaitingResult) return;
+    setAwaitingResult(true);
     confirmedRef.current = true;
     formRef.current?.requestSubmit();
   };
 
   return (
     <>
-      <Button type="button" variant="secondary" size="sm" onClick={() => setShowForm(true)}>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          // A fresh open always starts un-confirmed (UX-6: every submit
+          // confirms first), even if a previous dispatch never settled.
+          setAwaitingResult(false);
+          setShowForm(true);
+        }}
+      >
         {t("setInitialBalance")}
       </Button>
 
@@ -154,7 +184,9 @@ export function InitialBalanceButton({
           </Button>
 
           <MoneyActionConfirmation
-            open={isConfirmOpen}
+            // Closed on confirm (optimistic) and through the pending window;
+            // reopens when the action settles with an error (retry path).
+            open={isConfirmOpen && !awaitingResult}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
             title={tConfirm("setInitialBalanceTitle")}
