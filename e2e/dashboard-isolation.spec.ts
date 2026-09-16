@@ -1,5 +1,5 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
-import { registerUser, logout, seedFinancialData, waitForSnapshotValue } from './helpers';
+import { test, expect, type Page, type Locator } from "@playwright/test";
+import { registerUser, logout, seedFinancialData, waitForSnapshotValue } from "./helpers";
 
 /**
  * Slice 4 — Dashboard aggregates + logout + tenant isolation + i18n
@@ -12,7 +12,7 @@ import { registerUser, logout, seedFinancialData, waitForSnapshotValue } from '.
  * cards) — never full movement lists. Amounts render via `formatAmount`
  * ("COP 10,000" with a non-breaking space), asserted with whitespace-agnostic
  * regexes.
-  */
+ */
 
 /**
  * A civil date that is inside the current year but OUTSIDE the current month
@@ -30,11 +30,7 @@ function yearlyOutOfMonthDate(): string | null {
 
 /** The <p> value node that follows a summary-card label (single-currency path). */
 function summaryValue(page: Page, label: string): Locator {
-  return page
-    .getByText(label)
-    .first()
-    .locator('xpath=following-sibling::p')
-    .first();
+  return page.getByText(label).first().locator("xpath=following-sibling::p").first();
 }
 
 /**
@@ -47,24 +43,24 @@ function observeBusyTransition(page: Page): Promise<boolean> {
   return page.evaluate(
     () =>
       new Promise<boolean>((resolve) => {
-        const root = document.querySelector('div[aria-busy]');
+        const root = document.querySelector("div[aria-busy]");
         if (!root) {
           resolve(false);
           return;
         }
-        if (root.getAttribute('aria-busy') === 'true') {
+        if (root.getAttribute("aria-busy") === "true") {
           resolve(true);
           return;
         }
         const observer = new MutationObserver(() => {
-          if (root.getAttribute('aria-busy') === 'true') {
+          if (root.getAttribute("aria-busy") === "true") {
             observer.disconnect();
             resolve(true);
           }
         });
         observer.observe(root, {
           attributes: true,
-          attributeFilter: ['aria-busy'],
+          attributeFilter: ["aria-busy"],
         });
       }),
   );
@@ -79,82 +75,75 @@ async function freshUser(page: Page): Promise<string> {
 
 /** Create a new account via the /accounts "Add Account" dialog. */
 async function createAccountInUI(page: Page, name: string): Promise<void> {
-  await page.goto('/accounts');
-  await page.getByRole('button', { name: /Add Account/i }).click();
-  const dialog = page.getByRole('dialog', { name: /Add Account/i });
+  await page.goto("/accounts");
+  await page.getByRole("button", { name: /Add Account/i }).click();
+  const dialog = page.getByRole("dialog", { name: /Add Account/i });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Account Name').fill(name);
-  await dialog.getByLabel('Initial Balance').fill('0');
-  await dialog.getByRole('button', { name: /Create Account/i }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await dialog.getByLabel("Account Name").fill(name);
+  await dialog.getByLabel("Initial Balance").fill("0");
+  await dialog.getByRole("button", { name: /Create Account/i }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
 }
 
-test.describe('Slice 4 — Dashboard + Isolation', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe("Slice 4 — Dashboard + Isolation", () => {
+  test.describe.configure({ mode: "serial" });
 
-  test('dashboard summary cards show expected aggregates from seeded income and expense', async ({
+  test("dashboard summary cards show expected aggregates from seeded income and expense", async ({
     page,
   }) => {
     await freshUser(page);
     const dated = yearlyOutOfMonthDate();
     await seedFinancialData(page, {
-      monthlyIncome: '100000',
-      monthlyExpense: '30000',
-      datedIncome: dated ? { amount: '10000', date: dated } : undefined,
-      notePrefix: 'slice4-aggregates',
+      monthlyIncome: "100000",
+      monthlyExpense: "30000",
+      datedIncome: dated ? { amount: "10000", date: dated } : undefined,
+      notePrefix: "slice4-aggregates",
     });
 
-    await page.goto('/dashboard');
+    await page.goto("/dashboard");
 
     // Income this month: +COP 100,000 (the Jan-2 dated income is this-year,
     // not this-month, so it stays out of the current-month window).
-    await waitForSnapshotValue(
-      page,
-      summaryValue(page, 'Income this month'),
-      /\+COP\s+100,000/,
-    );
+    await waitForSnapshotValue(page, summaryValue(page, "Income this month"), /\+COP\s+100,000/);
     // Expenses this month: −COP 30,000.
-    await waitForSnapshotValue(
-      page,
-      summaryValue(page, 'Expenses this month'),
-      /COP\s+30,000/,
-    );
+    await waitForSnapshotValue(page, summaryValue(page, "Expenses this month"), /COP\s+30,000/);
     // Total balance (all-time): 100,000 + 10,000 − 30,000 = COP 80,000.
-    await waitForSnapshotValue(
-      page,
-      summaryValue(page, 'Total Balance'),
-      /COP\s+80,000/,
-    );
-    // Financing flows card: no credits seeded → received/granted COP 0.
+    await waitForSnapshotValue(page, summaryValue(page, "Total Balance"), /COP\s+80,000/);
+    // Loans this month card: no credits seeded → borrowed/lent COP 0.
     const financing = page
-      .getByText('Financing flows')
+      .getByText("Loans this month")
       .first()
-      .locator('xpath=following-sibling::p');
+      .locator("xpath=following-sibling::p");
     await expect(financing.first()).toContainText(/\+COP\s+0/);
     await expect(financing.nth(1)).toContainText(/COP\s+0/);
   });
 
-  test('changing a filter re-fetches the snapshot (aria-busy transition + new values)', async ({
+  test("changing a filter re-fetches the snapshot (aria-busy transition + new values)", async ({
     page,
   }) => {
     await freshUser(page);
     await seedFinancialData(page, {
-      monthlyIncome: '100000',
-      monthlyExpense: '30000',
-      notePrefix: 'slice4-filter',
+      monthlyIncome: "100000",
+      monthlyExpense: "30000",
+      notePrefix: "slice4-filter",
     });
 
-    await page.goto('/dashboard');
-    const incomeValue = summaryValue(page, 'Income this month');
+    await page.goto("/dashboard");
+    const incomeValue = summaryValue(page, "Income this month");
     await waitForSnapshotValue(page, incomeValue, /\+COP\s+100,000/);
 
-    // Start watching the transition flag, THEN switch a real filter. The
-    // dashboard no longer has a period filter (N2, Fase 5: fixed windows), so
-    // the re-fetch proof uses the Category filter instead: "Comida" is the
-    // seeded expense category, so the income-driven figures re-aggregate to 0.
+    // Start watching the transition flag, THEN switch a real filter.
+    // UX-5 collapsed the filter bar behind the "Filters" toggle, so open it
+    // first — otherwise the Category select never renders and no change can
+    // fire. Opening the panel is pure client state (no transition), so the
+    // watch order stays safe. The dashboard no longer has a period filter
+    // (N2, Fase 5: fixed windows), so the re-fetch proof uses the Category
+    // filter instead: "Comida" is the seeded expense category, so the
+    // income-driven figures re-aggregate to 0.
+    await page.getByRole("button", { name: /^Filters$/ }).click();
     const busySeen = observeBusyTransition(page);
-    await page.getByLabel(/^Category$/).selectOption({ label: 'Comida' });
+    await page.getByLabel(/^Category$/).selectOption({ label: "Comida" });
 
     // The container went aria-busy while the server re-aggregated.
     expect(await busySeen).toBe(true);
@@ -164,39 +153,29 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
     // "Income Summary" table empties (its Total renders "—") and the summary
     // card proves the re-fetch by dropping from +COP 100,000 to COP 0.
     const incomeSummaryTotal = page
-      .getByRole('heading', { name: /Income Summary/i })
-      .locator('xpath=../..')
-      .getByText('Total', { exact: true })
-      .locator('xpath=following-sibling::span');
+      .getByRole("heading", { name: /Income Summary/i })
+      .locator("xpath=../..")
+      .getByText("Total", { exact: true })
+      .locator("xpath=following-sibling::span");
     await waitForSnapshotValue(page, incomeSummaryTotal, /—/);
 
     // The re-fetched snapshot re-aggregated the summary cards with the filter
     // applied (income zeroed; the seeded expense stays).
-    await waitForSnapshotValue(
-      page,
-      summaryValue(page, 'Income this month'),
-      /COP\s+0/,
-    );
-    await waitForSnapshotValue(
-      page,
-      summaryValue(page, 'Expenses this month'),
-      /COP\s+30,000/,
-    );
+    await waitForSnapshotValue(page, summaryValue(page, "Income this month"), /COP\s+0/);
+    await waitForSnapshotValue(page, summaryValue(page, "Expenses this month"), /COP\s+30,000/);
 
     // The container settles out of the busy state once the snapshot lands.
     await expect
-      .poll(() => page.locator('div[aria-busy]').getAttribute('aria-busy'))
-      .not.toBe('true');
+      .poll(() => page.locator("div[aria-busy]").getAttribute("aria-busy"))
+      .not.toBe("true");
   });
 
-  test('logout clears the session cookie and lands on /login', async ({
-    page,
-  }) => {
+  test("logout clears the session cookie and lands on /login", async ({ page }) => {
     await freshUser(page);
 
     // Session cookie exists while authenticated.
     const sessionBefore = (await page.context().cookies()).filter(
-      (c) => c.name === 'twincap_session',
+      (c) => c.name === "twincap_session",
     );
     expect(sessionBefore).toHaveLength(1);
 
@@ -205,12 +184,12 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
 
     // Confirmed logout: the session cookie is gone.
     const sessionAfter = (await page.context().cookies()).filter(
-      (c) => c.name === 'twincap_session',
+      (c) => c.name === "twincap_session",
     );
     expect(sessionAfter).toHaveLength(0);
   });
 
-  test('tenant isolation: data created by one user never leaks into a second context', async ({
+  test("tenant isolation: data created by one user never leaks into a second context", async ({
     browser,
   }) => {
     const contextA = await browser.newContext();
@@ -224,59 +203,51 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
       expect(emailA).not.toBe(emailB);
 
       // Distinct sessions for distinct tenants.
-      const cookieA = (await contextA.cookies()).find(
-        (c) => c.name === 'twincap_session',
-      );
-      const cookieB = (await contextB.cookies()).find(
-        (c) => c.name === 'twincap_session',
-      );
+      const cookieA = (await contextA.cookies()).find((c) => c.name === "twincap_session");
+      const cookieB = (await contextB.cookies()).find((c) => c.name === "twincap_session");
       expect(cookieA).toBeDefined();
       expect(cookieB).toBeDefined();
       expect(cookieA!.value).not.toBe(cookieB!.value);
 
       // User A creates an account named "Solo-A" and a movement with a
       // distinctive note.
-      await createAccountInUI(pageA, 'Solo-A');
+      await createAccountInUI(pageA, "Solo-A");
       await seedFinancialData(pageA, {
-        monthlyIncome: '1000',
-        notePrefix: 'Solo-A',
+        monthlyIncome: "1000",
+        notePrefix: "Solo-A",
       });
 
       // User B (isolated context) must never see A's data.
-      await pageB.goto('/accounts');
-      await expect(pageB.getByText('Solo-A', { exact: true })).toHaveCount(0);
-      await pageB.goto('/dashboard');
-      await expect(pageB.getByText('Solo-A', { exact: true })).toHaveCount(0);
-      await pageB.goto('/movements');
-      await expect(pageB.getByText('Solo-A-income', { exact: true })).toHaveCount(
-        0,
-      );
+      await pageB.goto("/accounts");
+      await expect(pageB.getByText("Solo-A", { exact: true })).toHaveCount(0);
+      await pageB.goto("/dashboard");
+      await expect(pageB.getByText("Solo-A", { exact: true })).toHaveCount(0);
+      await pageB.goto("/movements");
+      await expect(pageB.getByText("Solo-A-income", { exact: true })).toHaveCount(0);
 
       // User B creates "Solo-B" + a distinctive note (and vice versa).
-      await createAccountInUI(pageB, 'Solo-B');
+      await createAccountInUI(pageB, "Solo-B");
       await seedFinancialData(pageB, {
-        monthlyIncome: '2000',
-        notePrefix: 'Solo-B',
+        monthlyIncome: "2000",
+        notePrefix: "Solo-B",
       });
 
       // User A must never see B's data either.
-      await pageA.goto('/accounts');
-      await expect(pageA.getByText('Solo-B', { exact: true })).toHaveCount(0);
+      await pageA.goto("/accounts");
+      await expect(pageA.getByText("Solo-B", { exact: true })).toHaveCount(0);
       // Positive control: A still sees its own "Solo-A" account.
-      await expect(pageA.getByText('Solo-A', { exact: true })).toBeVisible();
-      await pageA.goto('/dashboard');
-      await expect(pageA.getByText('Solo-B', { exact: true })).toHaveCount(0);
-      await pageA.goto('/movements');
-      await expect(pageA.getByText('Solo-B-income', { exact: true })).toHaveCount(
-        0,
-      );
+      await expect(pageA.getByText("Solo-A", { exact: true })).toBeVisible();
+      await pageA.goto("/dashboard");
+      await expect(pageA.getByText("Solo-B", { exact: true })).toHaveCount(0);
+      await pageA.goto("/movements");
+      await expect(pageA.getByText("Solo-B-income", { exact: true })).toHaveCount(0);
     } finally {
       await contextA.close();
       await contextB.close();
     }
   });
 
-  test('i18n: switching locale from es to en via the nav toggle updates dashboard labels without a hard refresh', async ({
+  test("i18n: switching locale from es to en via the nav toggle updates dashboard labels without a hard refresh", async ({
     browser,
   }) => {
     const context = await browser.newContext();
@@ -296,33 +267,30 @@ test.describe('Slice 4 — Dashboard + Isolation', () => {
       // before React hydration attaches the toggle's onClick (observed as a
       // flaky first attempt). Retry the click until the locale actually flips.
       await expect(async () => {
-        await page
-          .getByRole('button', { name: /Switch to Spanish/i })
-          .click();
-        await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+        await page.getByRole("button", { name: /Switch to Spanish/i }).click();
+        await expect(page.locator("html")).toHaveAttribute("lang", "es");
       }).toPass({ timeout: 20_000 });
 
       // GIVEN a logged-in user whose UI is in Spanish.
-      await expect(page.getByText('Ingresos este mes')).toBeVisible();
+      await expect(page.getByText("Ingresos este mes")).toBeVisible();
 
       // Marker survives a soft refresh but would be wiped by a hard reload.
       await page.evaluate(() => {
-        (window as unknown as { __slice4NoHardRefresh?: string }).__slice4NoHardRefresh =
-          'es-ok';
+        (window as unknown as { __slice4NoHardRefresh?: string }).__slice4NoHardRefresh = "es-ok";
       });
 
       // WHEN the locale is switched back to en via the nav toggle.
-      await page.getByRole('button', { name: /Cambiar a inglés/i }).click();
+      await page.getByRole("button", { name: /Cambiar a inglés/i }).click();
 
       // THEN dashboard labels update to English without a hard refresh.
-      await expect(page.getByText('Income this month')).toBeVisible();
-      await expect(page.getByText('Ingresos este mes')).toHaveCount(0);
-      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+      await expect(page.getByText("Income this month")).toBeVisible();
+      await expect(page.getByText("Ingresos este mes")).toHaveCount(0);
+      await expect(page.locator("html")).toHaveAttribute("lang", "en");
       await expect(page).toHaveURL(/\/dashboard$/);
       const marker = await page.evaluate(
         () =>
-          (window as unknown as { __slice4NoHardRefresh?: string })
-            .__slice4NoHardRefresh === 'es-ok',
+          (window as unknown as { __slice4NoHardRefresh?: string }).__slice4NoHardRefresh ===
+          "es-ok",
       );
       expect(marker).toBe(true);
     } finally {

@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { registerUser, confirmDialog, confirmMoneyAction } from "./helpers";
+import {
+  registerUser,
+  confirmDialog,
+  confirmMoneyAction,
+  expectNoSaleConfirmationDialog,
+} from "./helpers";
 
 /**
  * Slice 3 — Credits (received/granted) + POS (catalog/sales), spec
@@ -407,6 +412,11 @@ test.describe("Slice 3 — Credits + POS", () => {
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+20,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     await expect(dialog).toBeHidden();
+    // UX-6 task 6.1 (documented NO-OP): POS sale creation has no debit path,
+    // so no F5 / confirmation dialog may appear. Negative assertion — a
+    // regression that intercepts the submit would fail here (and the
+    // follow-up positive assertions below).
+    await expectNoSaleConfirmationDialog(page);
 
     // /pos/sales shows the sale.
     const saleCard = page.locator("div", { hasText: "Widget Test" }).first();
@@ -456,6 +466,10 @@ test.describe("Slice 3 — Credits + POS", () => {
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+10,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     await expect(dialog).toBeHidden();
+    // UX-6 task 6.1 (documented NO-OP): the POS on-credit sale creation is
+    // also confirmation-free (only the cobro via AbonoForm confirms, not the
+    // sale registration). Negative assertion — no F5 / confirmation dialog.
+    await expectNoSaleConfirmationDialog(page);
 
     // /pos/sales: on-credit badge, client, initial payment and pending.
     const saleCard = page.locator("div", { hasText: "Cliente POS" }).first();

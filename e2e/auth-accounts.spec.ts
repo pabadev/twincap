@@ -68,8 +68,18 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await page.getByLabel(/^Password/i).fill("WrongPassword999!");
     await page.getByRole("button", { name: /Sign in/i }).click();
 
-    // Auth form error div (bg-danger/10) with the credential error.
-    await expect(page.getByText("Invalid email or password")).toBeVisible();
+    // Auth form error div (bg-danger/10) with the credential error. The
+    // server action POST returns 200 with the error payload, but the UI only
+    // commits the action result once the post-action RSC refresh
+    // (GET /login?_rsc=) streams back. Under the serial suite that refresh can
+    // stall well past the default 15s expect window (trace evidence: POST 200,
+    // refresh left in-flight, form stuck on "Loading..." — a coin-flip load
+    // flake across full-suite runs). 60s absorbs the documented stall while
+    // still asserting the REAL behavior (error renders, no redirect); a
+    // permanent stall still fails the assertion honestly.
+    await expect(page.getByText("Invalid email or password")).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page).toHaveURL(/\/login$/);
   });
 
