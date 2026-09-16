@@ -82,11 +82,18 @@ export function InitialBalanceButton({
 
   useEffect(() => {
     if (state?.success) {
-      setAwaitingResult(false);
-      addToast(tToast(state.success), "success");
-      router.refresh();
+      // The outer modal closes on success (setShowForm below); the inner
+      // confirmation state does not need a reset here because reopening the
+      // modal always starts un-confirmed (the button's onClick resets
+      // awaitingResult on a fresh open). The eslint-disable is required by
+      // react-hooks/set-state-in-effect: reacting to a useActionState result
+      // is the one legitimate effect-to-state sync here — deriving the modal
+      // open state in render from useActionState is not applicable because
+      // the state spans multiple unrelated actions.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar. Refactorizar derivaría el estado en render y no es aplicable aquí.
       setShowForm(false);
+      addToast(tToast(state.success), "success");
+      router.refresh();
     }
   }, [state?.success, addToast, tToast, router]);
 
@@ -95,6 +102,7 @@ export function InitialBalanceButton({
       // Reset so a retry submits through the confirmation dialog again (UX-6:
       // every submit confirms first). The inner dialog reopens with the
       // previously confirmed details — cancel clears it and the form stays.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); reabre la confirmación al fallar. Derivable en render no aplicable: awaitingResult es transicional a un dispatch imperativo, no derivable del estado global.
       setAwaitingResult(false);
       addToast(translateError(state.error), "error");
     }
