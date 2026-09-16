@@ -795,5 +795,10 @@
     "contactBody": "If you didn't find the answer here, write to us and we'll help you shortly.",
     "contactButton": "Contact support",
     "backHome": "Back to TwinCap home"
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "description": "The page you are looking for does not exist or was moved. Check the address or go back home.",
+    "home": "Back to home"
   }
 }

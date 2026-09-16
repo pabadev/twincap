@@ -795,5 +795,10 @@
     "contactBody": "Si no encontraste respuesta aquí, escríbenos y te ayudaremos a la brevedad.",
     "contactButton": "Contactar soporte",
     "backHome": "Volver al inicio de TwinCap"
+  },
+  "NotFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o fue movida. Revisa la dirección o vuelve al inicio.",
+    "home": "Volver al inicio"
   }
 }
