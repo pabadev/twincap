@@ -26,6 +26,11 @@ export type Namespace =
   | 'Feedback'
   | 'Analytics'
   | 'Help'
-  | 'Legal';
+  | 'Legal'
+  | 'Toast'
+  | 'Errors'
+  | 'error'
+  | 'MoneyConfirmation'
+  | 'NotFound';
 
 export type Messages = Record<Namespace, Record<string, string>>;
