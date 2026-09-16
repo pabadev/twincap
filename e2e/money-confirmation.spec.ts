@@ -134,6 +134,18 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
     await expect(f5).toBeHidden();
     await expect(dialog).toBeHidden();
 
+    // Write barrier (load-root-caused 2026-09-16): the F5 dialog close is
+    // optimistic — the shared hook hides it on click, so "dialog hidden" is
+    // NOT proof the create POST completed. Under serial-suite load the
+    // dispatch can outlive the dialogs; the goto below then aborted the
+    // in-flight POST (Playwright network trace: status -1) and the movement
+    // was never persisted (fresh /movements render showed no row). The only
+    // reliable commit signal is the refreshed list on THIS page showing the
+    // row (success effect → router.refresh() → server re-render from the DB).
+    await expect(page.locator("tr", { hasText: "f5-confirm" })).toContainText(/[−-]COP\s+10,000/, {
+      timeout: 60_000,
+    });
+
     // Exactly one movement row with the traceable note.
     await page.goto("/movements");
     const row = page.locator("tr", { hasText: "f5-confirm" });
@@ -269,6 +281,12 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
     await confirmBtn.click();
     await confirmBtn.click({ timeout: 2_000 }).catch(() => {});
     await expect(f5).toBeHidden();
+
+    // Same write barrier as the confirm test: the F5 close is optimistic, so
+    // wait for the commit to land on THIS page before navigating away.
+    await expect(page.locator("tr", { hasText: "f5-double" })).toHaveCount(1, {
+      timeout: 60_000,
+    });
 
     await page.goto("/movements");
     await expect(page.getByText("f5-double", { exact: true })).toHaveCount(1);
