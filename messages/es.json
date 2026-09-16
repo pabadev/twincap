@@ -285,6 +285,14 @@
     "categoryOpening": "Saldo inicial",
     "categoryPayable": "Cuenta por pagar"
   },
+  "MoneyConfirmation": {
+    "confirm": "Confirmar",
+    "confirmAbonoTitle": "Confirmar abono",
+    "negativeBalanceTitle": "Saldo insuficiente en la cuenta",
+    "projectedNegativeWarning": "Este gasto dejará el saldo de la cuenta en negativo. Puedes continuar si lo deseas.",
+    "setInitialBalanceTitle": "Confirmar saldo inicial",
+    "setInitialBalanceDescription": "Se fijará el saldo inicial de la cuenta en {amount}."
+  },
   "Transfers": {
     "title": "Transferencias",
     "addTransfer": "Agregar transferencia",

@@ -285,6 +285,14 @@
     "categoryOpening": "Opening balance",
     "categoryPayable": "Payable"
   },
+  "MoneyConfirmation": {
+    "confirm": "Confirm",
+    "confirmAbonoTitle": "Confirm abono",
+    "negativeBalanceTitle": "Insufficient balance in the account",
+    "projectedNegativeWarning": "This expense will leave the account balance negative. You can continue if you want.",
+    "setInitialBalanceTitle": "Confirm initial balance",
+    "setInitialBalanceDescription": "The account initial balance will be set to {amount}."
+  },
   "Transfers": {
     "title": "Transfers",
     "addTransfer": "Add Transfer",
