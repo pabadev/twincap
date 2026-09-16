@@ -11,6 +11,7 @@ import { useTheme } from '../../components/theme-provider';
 import { Logo } from '../../components/ui/logo';
 import { Icon } from '../../components/ui/icon';
 import { Button } from '../../components/ui/button';
+import { TouchTarget } from '../../components/ui/touch-target';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { FeedbackDialog } from '../../components/feedback/feedback-widget';
 
@@ -109,11 +110,14 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
           ref={hamburgerRef}
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 p-2 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
           aria-label={tCommon('openMenu')}
           aria-controls="mobile-nav"
         >
-          <Menu className="h-5 w-5" />
+          {/* TouchTarget expands the 36px hamburger hit area to >=44px (RTT-1). */}
+          <TouchTarget as="span">
+            <Menu className="h-5 w-5" />
+          </TouchTarget>
         </button>
       )}
 
@@ -141,10 +145,13 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 hover:text-zinc-600 lg:hidden dark:hover:text-zinc-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-zinc-400 hover:text-zinc-600 lg:hidden dark:hover:text-zinc-200"
               aria-label={tCommon('close')}
             >
-              <X className="h-5 w-5" />
+              {/* TouchTarget expands the 28px close hit area to >=44px (RTT-1). */}
+              <TouchTarget as="span">
+                <X className="h-5 w-5" />
+              </TouchTarget>
             </button>
           </div>
 
@@ -172,14 +179,17 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                           ref={index === 0 ? firstLinkRef : undefined}
                           onClick={() => setOpen(false)}
                           aria-current={isActive ? 'page' : undefined}
-                          className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors lg:py-1.5 ${
+                          className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
                             isActive
                               ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                               : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white'
                           }`}
                         >
-                          <Icon icon={item.icon} size="sm" className={isActive ? '' : item.color} />
-                          {t(item.key)}
+                          {/* TouchTarget expands the ~30px nav link hit area to >=44px (RTT-1). */}
+                          <TouchTarget as="span" className="gap-2.5">
+                            <Icon icon={item.icon} size="sm" className={isActive ? '' : item.color} />
+                            {t(item.key)}
+                          </TouchTarget>
                         </Link>
                       </li>
                     );
@@ -197,10 +207,13 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                 <Link
                   href="/profile"
                   onClick={() => setOpen(false)}
-                  className="mb-2 flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  className="mb-2 flex items-center gap-2 rounded-md px-3 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                 >
-                  <User className="h-4 w-4" />
-                  <span>{t('profile')}</span>
+                  {/* TouchTarget expands the profile link hit area to >=44px (RTT-1). */}
+                  <TouchTarget as="span" className="gap-2">
+                    <User className="h-4 w-4" />
+                    <span>{t('profile')}</span>
+                  </TouchTarget>
                 </Link>
                 <button
                   type="button"
@@ -208,11 +221,14 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                     setOpen(false);
                     setFeedbackOpen(true);
                   }}
-                  className="mb-2 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  className="mb-2 flex w-full items-center gap-2 rounded-md px-3 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                   aria-label={t('feedback')}
                 >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{t('feedback')}</span>
+                  {/* TouchTarget expands the feedback item hit area to >=44px (RTT-1). */}
+                  <TouchTarget as="span" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span>{t('feedback')}</span>
+                  </TouchTarget>
                 </button>
                 <div className="flex gap-1.5">
                   <button
@@ -252,15 +268,17 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   onClick={() => setOpen(false)}
                 >
                   <Button variant="primary" size="sm" className="w-full">
-                    {t('login')}
+                    {/* TouchTarget expands the sm button hit area to >=44px (RTT-1). */}
+                    <TouchTarget as="span">{t('login')}</TouchTarget>
                   </Button>
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setOpen(false)}
-                  className="block rounded-md border border-zinc-300 px-3 py-1.5 text-center text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="block rounded-md border border-zinc-300 px-3 text-center text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
-                  {t('register')}
+                  {/* TouchTarget expands the ~30px link hit area to >=44px (RTT-1). */}
+                  <TouchTarget as="span">{t('register')}</TouchTarget>
                 </Link>
                 <div className="flex gap-1.5">
                   <button
