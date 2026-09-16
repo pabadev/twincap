@@ -7,7 +7,9 @@ import { resolve } from "node:path";
 // tablet behavior is unchanged (RSL-4). At >=1024px the shell measures
 // min(1536px, 100vw - 3rem): 24px guaranteed margin per side on 1024-1536px
 // viewports (1366px -> 1318px, RSL-2) and the 1536px cap above 1568px (RSL-3).
-const SHELL_WIDTH_CLASS = "lg:max-w-[min(1536px, calc(100vw - 3rem))]";
+// NOTE (Tailwind v4): underscores stand for spaces in the CSS declaration —
+// raw spaces produce an unmatchable class token (HTML splits on whitespace).
+const SHELL_WIDTH_CLASS = "lg:max-w-[min(1536px,calc(100vw_-_3rem))]";
 
 const SHELL_LAYOUTS = ["src/app/(main)/layout.tsx", "src/app/(analytics)/layout.tsx"];
 
