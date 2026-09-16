@@ -16,7 +16,6 @@ import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
-import type { Currency } from "../../../core/domain/currency";
 import { formatAmount } from "../../../lib/format";
 
 export function InitialBalanceButton({

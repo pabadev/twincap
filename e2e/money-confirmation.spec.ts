@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
-import { registerUser, confirmMoneyAction, confirmF5NegativeBalance } from "./helpers";
+import { registerUser, confirmMoneyAction } from "./helpers";
 
 /**
  * UX-6 F5 (movements) — informed confirmation for projected-negative expenses
