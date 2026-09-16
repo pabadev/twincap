@@ -1,36 +1,43 @@
-'use server';
+"use server";
 
 import {
   createMovement,
   deleteMovement,
   updateMovement,
   listMovementsPaged,
-} from '../../../core/application/movements';
-import type { CreateMovementInput } from '../../../core/application/movements';
-import type { MovementContext, SerializedMovement } from '../../../core/domain/movement';
-import { isMovementContext } from '../../../core/domain/movement';
-import { listAccounts } from '../../../core/application/accounts';
-import { listCategories } from '../../../core/application/categories';
-import type { SerializedAccount } from '../../../core/domain/account';
-import type { SerializedCategory } from '../../../core/domain/category';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { revalidatePath } from 'next/cache';
-import { assertBusinessDateNotFuture, businessDateToInputValue } from '../../../lib/date';
-import { handleActionError } from '../../../lib/handle-action-error';
-import { serializeEntities } from '../../../lib/serialize';
-import { withAudit } from '../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { trackAnalytics } from '../../../lib/track-analytics';
-import { getT } from '../../../i18n/server';
-import { buildMovementsCsv, filterMovementsForCsv } from './export-csv';
-import type { MovementCsvFilters } from './export-csv';
+} from "../../../core/application/movements";
+import type { CreateMovementInput } from "../../../core/application/movements";
+import { getUserBalances } from "../../../core/application/balance";
+import type { LiveBalanceDeps } from "../../../core/application/movements";
+import type { MovementContext, SerializedMovement } from "../../../core/domain/movement";
+import { isMovementContext } from "../../../core/domain/movement";
+import { listAccounts } from "../../../core/application/accounts";
+import { listCategories } from "../../../core/application/categories";
+import type { SerializedAccount } from "../../../core/domain/account";
+import type { SerializedCategory } from "../../../core/domain/category";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { MongoCreditReceivedRepository } from "../../../infrastructure/repositories/credit-received-repository";
+import { MongoCreditGrantedRepository } from "../../../infrastructure/repositories/credit-granted-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoCategoryRepository } from "../../../infrastructure/repositories/category-repository";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { claimIdempotency, releaseIdempotency } from "../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { revalidatePath } from "next/cache";
+import { assertBusinessDateNotFuture, businessDateToInputValue } from "../../../lib/date";
+import { handleActionError } from "../../../lib/handle-action-error";
+import { serializeEntities } from "../../../lib/serialize";
+import { withAudit } from "../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { trackAnalytics } from "../../../lib/track-analytics";
+import { getT } from "../../../i18n/server";
+import { buildMovementsCsv, filterMovementsForCsv } from "./export-csv";
+import type { MovementCsvFilters } from "./export-csv";
 
 const ids = objectIdGenerator;
 
@@ -39,24 +46,24 @@ export async function createMovementAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const accountId = formData.get('accountId') as string;
-  const type = formData.get('type') as CreateMovementInput['type'];
-  const amount = Number(formData.get('amount') || '0');
-  const currency = formData.get('currency') as CreateMovementInput['currency'];
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const note = (formData.get('note') as string) || undefined;
-  const categoryId = formData.get('categoryId') as string;
-  const contextRaw = formData.get('context') as string | null;
+  const accountId = formData.get("accountId") as string;
+  const type = formData.get("type") as CreateMovementInput["type"];
+  const amount = Number(formData.get("amount") || "0");
+  const currency = formData.get("currency") as CreateMovementInput["currency"];
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const note = (formData.get("note") as string) || undefined;
+  const categoryId = formData.get("categoryId") as string;
+  const contextRaw = formData.get("context") as string | null;
   let context: MovementContext | undefined;
   if (contextRaw && isMovementContext(contextRaw)) {
     context = contextRaw;
   }
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
@@ -70,23 +77,28 @@ export async function createMovementAction(
     await connectDb();
 
     // Idempotency: claim the client key before creating
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createMovement');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createMovement");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createMovement',
-        entityType: 'movement',
-        result: 'duplicate',
+        action: "createMovement",
+        entityType: "movement",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
 
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createMovement', entityType: 'movement', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createMovement",
+        entityType: "movement",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const movementRepo = new MongoMovementRepository();
         const categoryRepo = new MongoCategoryRepository();
@@ -108,24 +120,24 @@ export async function createMovementAction(
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
-    revalidatePath('/movements');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidatePath("/movements");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
     // R13-G: track first movement (deduplicated per workspace — only one doc ever).
-    await trackAnalytics('firstMovement', user.workspaceId!, user.userId);
+    await trackAnalytics("firstMovement", user.workspaceId!, user.userId);
     // R13-H: regular per-movement event (APPENDED, one doc per movement) so
     // activation can count real movement volume (≥3 in the first 2 days) — the
     // deduplicated firstMovement above is capped at 1 per workspace forever.
-    await trackAnalytics('movementCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("movementCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'createMovement');
+      await releaseIdempotency(user.userId, idempotencyKey, "createMovement");
     }
     return handleActionError(error);
   }
 
-  return { success: 'movementCreated' };
+  return { success: "movementCreated" };
 }
 
 export async function listAccountsAction(): Promise<SerializedAccount[]> {
@@ -148,35 +160,87 @@ export async function listCategoriesAction(): Promise<SerializedCategory[]> {
   return serializeEntities(categories);
 }
 
+/**
+ * F5 (movements) — read-only balance snapshot for the negative-balance
+ * expense preview. accountId → { balance (integer minor units), currency }.
+ *
+ * Sole additive exception of the financial freeze (§18 PROJECT-RULES): this
+ * wrapper only READS the canonical balance source (`getUserBalances`) — it
+ * does not duplicate balance math, mutates nothing, claims no idempotency
+ * and revalidates no path. The five `LiveBalanceDeps` repos are the exact
+ * `Pick<Repo, 'findById'>` set required by `resolveLiveParentsForMovements`
+ * (serial reads — the existing use case forbids `Promise.all` on a session).
+ */
+export async function listAccountBalancesAction(): Promise<
+  Record<string, { balance: number; currency: string }>
+> {
+  const user = await getCurrentUser();
+  if (!user) return {};
+
+  await connectDb();
+  const accountRepo = new MongoAccountRepository();
+  const accounts = await listAccounts(user.workspaceId!, accountRepo);
+
+  const deps: LiveBalanceDeps = {
+    transferRepo: new MongoTransferRepository(),
+    creditReceivedRepo: new MongoCreditReceivedRepository(),
+    creditGrantedRepo: new MongoCreditGrantedRepository(),
+    saleRepo: new MongoSaleRepository(),
+    payableRepo: new MongoPayableRepository(),
+  };
+  const balances = await getUserBalances(
+    user.workspaceId!,
+    accounts,
+    new MongoMovementRepository(),
+    deps,
+  );
+
+  // Plain numbers/strings only — JSON-safe across the server→client boundary.
+  const snapshot: Record<string, { balance: number; currency: string }> = {};
+  for (const account of accounts) {
+    snapshot[account.id] = {
+      balance: balances.get(account.id) ?? 0,
+      currency: account.currency,
+    };
+  }
+  return snapshot;
+}
+
 export async function deleteMovementAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const movementId = formData.get('movementId') as string;
+  const movementId = formData.get("movementId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteMovement', entityType: 'movement', userId: user.userId },
+      { action: "deleteMovement", entityType: "movement", userId: user.userId },
       () => {
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteMovement(user.workspaceId!, movementId, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deleteMovement(
+          user.workspaceId!,
+          movementId,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidatePath('/movements');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidatePath("/movements");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'movementDeleted' };
+  return { success: "movementDeleted" };
 }
 
 export async function updateMovementAction(
@@ -184,16 +248,16 @@ export async function updateMovementAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const movementId = formData.get('movementId') as string;
-  const accountId = formData.get('accountId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const note = (formData.get('note') as string) || undefined;
-  const categoryId = formData.get('categoryId') as string;
-  const contextRaw = formData.get('context') as string | null;
+  const movementId = formData.get("movementId") as string;
+  const accountId = formData.get("accountId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const note = (formData.get("note") as string) || undefined;
+  const categoryId = formData.get("categoryId") as string;
+  const contextRaw = formData.get("context") as string | null;
   let context: MovementContext | undefined;
   if (contextRaw && isMovementContext(contextRaw)) {
     context = contextRaw;
@@ -202,9 +266,9 @@ export async function updateMovementAction(
   // CAS-updates against it so a concurrent edit surfaces as a conflict
   // (error.movementModified) instead of a silent overwrite. Missing/garbage
   // values fall back to the freshly-loaded version inside the use case.
-  const versionRaw = formData.get('version');
+  const versionRaw = formData.get("version");
   const version =
-    typeof versionRaw === 'string' && versionRaw !== '' && Number.isFinite(Number(versionRaw))
+    typeof versionRaw === "string" && versionRaw !== "" && Number.isFinite(Number(versionRaw))
       ? Number(versionRaw)
       : undefined;
 
@@ -214,7 +278,7 @@ export async function updateMovementAction(
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'updateMovement', entityType: 'movement', userId: user.userId },
+      { action: "updateMovement", entityType: "movement", userId: user.userId },
       () => {
         const movementRepo = new MongoMovementRepository();
         const categoryRepo = new MongoCategoryRepository();
@@ -229,14 +293,14 @@ export async function updateMovementAction(
         );
       },
     );
-    revalidatePath('/movements');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
+    revalidatePath("/movements");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'movementUpdated' };
+  return { success: "movementUpdated" };
 }
 
 /** Serializable cursor for the server action boundary. */
@@ -263,15 +327,16 @@ export async function listMovementsPagedAction(
     user.workspaceId!,
     limit,
     movementRepo,
-    cursor
-      ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt) }
-      : undefined,
+    cursor ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt) } : undefined,
   );
 
   return {
     items: serializeEntities(result.items),
     nextCursor: result.nextCursor
-      ? { date: result.nextCursor.date.toISOString(), createdAt: result.nextCursor.createdAt.toISOString() }
+      ? {
+          date: result.nextCursor.date.toISOString(),
+          createdAt: result.nextCursor.createdAt.toISOString(),
+        }
       : null,
   };
 }
@@ -285,7 +350,7 @@ export async function exportMovementsCsvAction(
   filters: MovementCsvFilters,
 ): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: 'error.unauthorized' };
+  if (!user) return { ok: false, error: "error.unauthorized" };
 
   try {
     await connectDb();
@@ -303,26 +368,22 @@ export async function exportMovementsCsvAction(
     const categoryNames: Record<string, string> = {};
     for (const category of categories) categoryNames[category.id] = category.name;
 
-    const t = await getT('Export');
+    const t = await getT("Export");
     const labels = {
-      income: t('income'),
-      expense: t('expense'),
-      date: t('date'),
-      type: t('type'),
-      account: t('account'),
-      category: t('category'),
-      amount: t('amount'),
-      currency: t('currency'),
-      note: t('note'),
-      noCategory: t('noCategory'),
+      income: t("income"),
+      expense: t("expense"),
+      date: t("date"),
+      type: t("type"),
+      account: t("account"),
+      category: t("category"),
+      amount: t("amount"),
+      currency: t("currency"),
+      note: t("note"),
+      noCategory: t("noCategory"),
     };
 
     const filtered = filterMovementsForCsv(serializeEntities(movements), filters);
-    const csv = buildMovementsCsv(
-      filtered,
-      { accountNames, categoryNames },
-      labels,
-    );
+    const csv = buildMovementsCsv(filtered, { accountNames, categoryNames }, labels);
     const date = businessDateToInputValue(new Date());
     return { ok: true, csv, filename: `movements_${date}.csv` };
   } catch (error) {
