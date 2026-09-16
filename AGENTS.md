@@ -185,6 +185,13 @@ Cada server action o route handler DEBE:
 - No commitear secrets o datos sensibles.
 - El hook de pre-commit GGA (`gga run`) está **DESHABILITADO** permanentemente (guardado como `.git/hooks/pre-commit.disabled.gga`): su sesión de revisión hace staging masivo de archivos no solicitados y al morir por timeout del proveedor deja el índice corrupto (`invalid object ... Error building trees`). NO volver a habilitarlo sin corregir primero esos defectos. Los agentes NO deben confiar en él ni reintentar commits a través del hook; la verificación de calidad se hace con `pnpm test` + `tsc --noEmit`.
 
+### Rama y despliegue (REGLAS PERMANENTES — fundador, 2026-09-16)
+
+- **La rama del proyecto es `master`. NUNCA `main`.** Todo push, PR, workflow de CI y operación apunta a `master`. Prohibido renombrar la rama, crear configs con `main` o cambiar el default branch sin aprobación explícita del fundador (ver `docs/PROJECT-RULES.md` §20).
+- **NO desplegar ni configurar NADA bajo el nombre `globalmoney`.** El único proyecto Vercel es **`twincap`** (`twincap.vercel.app`, vinculado en `.vercel/project.json`). El proyecto Vercel legacy `globalmoney` fue desconectado (2026-09-16). Prohibido: crear workflows/scripts de deploy para `globalmoney`, `vercel.json` con ese proyecto, environments, webhooks o status checks con ese nombre.
+- **El chequeo "Vercel – globalmoney" NO es un gate válido.** Los gates válidos son CI Quality + E2E (`ci.yml`) y los deployments de `twincap`. Un status que mencione `globalmoney` es residuo legacy y NO bloquea merges.
+- No agregar un workflow de deploy sin aprobación explícita.
+
 ### Responsive
 
 - Mobile-first: diseñar primero para móvil.
