@@ -14,6 +14,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Button } from '../../../components/ui/button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { MovementCard } from "../../../components/ui/movement-card";
 import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useQuickMovement } from '../global-movement-provider';
 import { EditMovementModal } from './edit-movement-modal';
@@ -326,7 +327,8 @@ export function MovementsList({
               }
             />
           ) : (
-            <TableShell>
+            <>
+            <TableShell className="max-sm:hidden">
               <Table className="min-w-[700px]">
                 <THead>
                   <tr>
@@ -440,6 +442,78 @@ export function MovementsList({
                 </div>
               )}
             </TableShell>
+
+            {/* Card variant (<640px) — same rows, same actions */}
+            <div className="space-y-3 sm:hidden">
+              {sortedMovements.map((movement) => (
+                <MovementCard
+                  key={movement.id}
+                  id={movement.id}
+                  className="sm:hidden"
+                  fields={[
+                    {
+                      key: "date",
+                      label: tCommon("date"),
+                      value: formatDate(movement.date, locale),
+                    },
+                    {
+                      key: "amount",
+                      label: tCommon("amount"),
+                      value: `${movement.type === "income" ? "+" : "−"}${formatAmount(
+                        movement.amount.amount,
+                        movement.amount.currency,
+                        locale,
+                      )}`,
+                      className:
+                        movement.type === "income" ? "text-income" : "text-expense",
+                      primary: true,
+                    },
+                    {
+                      key: "category",
+                      label: t("category"),
+                      value:
+                        categoryMap.get(movement.categoryId) ??
+                        syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
+                        "—",
+                    },
+                    {
+                      key: "note",
+                      label: tCommon("note"),
+                      value: movement.link
+                        ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                            movement.note) || "—"
+                        : movement.note || "—",
+                    },
+                    {
+                      key: "type",
+                      label: t("type"),
+                      value: t(movement.type),
+                      className: `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        movement.type === "income"
+                          ? "bg-income/10 text-income"
+                          : "bg-expense/10 text-expense"
+                      }`,
+                    },
+                  ]}
+                  actions={
+                    !movement.link ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingMovement(movement)}
+                          className="rounded p-1 text-zinc-400 hover:text-primary transition-colors"
+                          aria-label={tCommon("edit")}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                        </button>
+                        <DeleteMovementButton movementId={movement.id} />
+                      </div>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+            </>
           )}
         </>
       )}
