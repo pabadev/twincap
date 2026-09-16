@@ -1,7 +1,7 @@
 # TWINCAP — UX ROADMAP — PLAN MAESTRO DE LA ETAPA UX/UI (FASES UX-0…UX-12)
 
 > **Fecha:** 2026-09-13
-> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
+> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7 **COMPLETA Y ARCHIVADA (2026-09-16)** — responsive mobile + desktop (SDD `ux-7-responsive`, HEAD `f39a9d7`, H-09/H-11/H-15 cerrados, verify PASS 1504/1504, pase visual RSL-8 pendiente fundador); UX-8…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
 > **Fuente normativa:** `docs/freeze + UX-UI.md` (prompt maestro §35/§40/§41/§46/§47/§48/§49/§52/§53/§56)
 > **Documentos relacionados:** `docs/FINANCIAL-DOMAIN-FREEZE.md`, `docs/UX-UI-AUDIT.md` (UX-1), `docs/UX-COMPETITIVE-RESEARCH.md` (UX-2), `docs/UX-INFORMATION-ARCHITECTURE.md` (UX-3), `docs/UX-DESIGN-SYSTEM.md` (UX-4), `docs/PROJECT-RULES.md` (§15/§18)
 
@@ -18,7 +18,7 @@
 | UX-4 — Design System | ✅ **APROBADO (2026-09-14)** | `docs/UX-DESIGN-SYSTEM.md` (DEC-DS-01…13) |
 | UX-5 — Rediseño del Resumen | ✅ **COMPLETA (2026-09-14)** | Diseño conceptual + implementación + TTI medido (`docs/UX-5-TTI-REPORT.md`) |
 | UX-6 — Flujos core | ✅ **COMPLETA (2026-09-16)** | Confirmación informada en flujos transaccionales (SDD `ux-6-core-flows`, HEAD `02e883f`) |
-| UX-7 — Responsive | ⏳ PLANIFICADA | Mobile-first deliberado |
+| UX-7 — Responsive | ✅ **COMPLETA (2026-09-16)** | Mobile-first deliberado — H-09/H-11/H-15 cerrados (SDD `ux-7-responsive`, HEAD `f39a9d7`) |
 | UX-8 — Microcopy + estados + errores | ⏳ PLANIFICADA | Lenguaje y estados |
 | UX-9 — Accesibilidad | ⏳ PLANIFICADA | A11y de componentes y páginas |
 | UX-10 — Implementación | ⏳ PLANIFICADA | Orden del §53 |
@@ -95,14 +95,15 @@
   - Gates §46 verdes + regresión financiera §47 CERO (checklist completo al final de la fase).
 - **Fases destinatarias:** UX-7, UX-8, UX-9, UX-10, UX-11.
 
-### UX-7 — RESPONSIVE MOBILE + DESKTOP ⏳ PLANIFICADA
+### UX-7 — RESPONSIVE MOBILE + DESKTOP ✅ COMPLETA (2026-09-16)
 
 - **Objetivo:** experiencia deliberada en 375/768/1280 (§19); mobile-first, no mobile-only; mismo modelo mental (§27).
-- **Criterios de aceptación:**
-  - **H-09 cerrado:** tablas densas tienen variante card-list <640px (MovementCard); `overflow-x` deja de ser la única solución.
-  - **H-11 cerrado (targets):** controles táctiles ≥44px.
-  - **H-15 cerrado:** anchos canónicos aplicados (DEC-IA-06).
-  - Verificación visual en los 3 breakpoints en las pantallas principales (Resumen, Movimientos, Ventas, Créditos).
+- **Criterios de aceptación — CERRADOS:**
+  - **H-09 cerrado:** las 5 tablas densas puras (movements, transfers, clients, accounts, categories) tienen variante card-list <640px (`MovementCard` — `src/components/ui/movement-card.tsx`); `overflow-x` deja de ser la única solución (TableShell condicional `max-sm:hidden`); tabla desktop ≥640px byte-idéntica.
+  - **H-11 cerrado (targets):** controles táctiles ≥44px — `TouchTarget` wrapper (`min-h-[44px] min-w-[44px]`) en ActionIconButton, BackButton, nav (hamburger/close/links/footer theme+lang+logout), sort headers, toolbars (Export CSV/Add movement/Load more) y Add transfer (RTT-1 remediation `f39a9d7`).
+  - **H-15 cerrado:** anchos canónicos aplicados (DEC-IA-06) — shell `lg:max-w-[min(1536px,calc(100vw_-_3rem))]` (underscore Tailwind v4) en `(main)`/`(analytics)`: margen 24px/lado 1024–1536px, cap 1536px ≥1568px; `max-w-3xl` de analytics justificado (RSL-6).
+  - Verificación visual en los 3 breakpoints en las pantallas principales (Resumen, Movimientos, Ventas, Créditos) — **pendiente fundador (RSL-8)**, no bloqueante (precedente UX-6).
+- **Evidencia:** SDD `ux-7-responsive` — verify **PASS con warnings** (0 CRITICAL): suite **138 archivos / 1504 tests / 1334.80 s**, tsc limpio; 20 commits conventionales; archive-report Engram `sdd/ux-7-responsive/archive-report`.
 - **Fases destinatarias:** UX-11 (validación visual).
 
 ### UX-8 — MICROCOPY + ESTADOS + ERRORES ⏳ PLANIFICADA
@@ -154,7 +155,7 @@
 | UX-4 | ✅ | Design System (aprobado 2026-09-14) | Fundamentos→componentes→patrones→páginas |
 | UX-5 | ✅ | Resumen 5 niveles implementado (`b679cb8`) + TTI medido | Regla de Oro 10 s → hero 2.3–2.4 s frío 375+3G |
 | UX-6 | ✅ | Flujos core rediseñados — `MoneyActionConfirmation` + F5 (HEAD `02e883f`) | H-06 cerrado; confirmaciones financieras implementadas |
-| UX-7 | ⏳ | Responsive 375/768/1280 | H-09/H-11/H-15 cerrados |
+| UX-7 | ✅ | Responsive 375/768/1280 — `MovementCard` + `TouchTarget` + shell viewport-relative (HEAD `f39a9d7`) | H-09/H-11/H-15 cerrados |
 | UX-8 | ⏳ | Microcopy + estados + errores | H-08/H-03/H-04 cerrados; paridad es/en |
 | UX-9 | ⏳ | A11y | H-05/H-11/H-12/H-13/H-16/H-18 cerrados |
 | UX-10 | ⏳ | Implementación (orden §53) | Gates §46 + regresión §47 en cada paso |
