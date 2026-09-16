@@ -234,7 +234,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <button
                     type="button"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')}
                   >
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -242,7 +242,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={tCommon('switchLang')}
                   >
                     <Languages className="h-4 w-4" />
@@ -251,7 +251,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <button
                     type="button"
                     onClick={() => setShowLogoutConfirm(true)}
-                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>{t('exit')}</span>
@@ -284,7 +284,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <button
                     type="button"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')}
                   >
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -292,7 +292,7 @@ export function MainNav({ isLoggedIn, email, canViewAnalytics }: { isLoggedIn: b
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-9 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     aria-label={tCommon('switchLang')}
                   >
                     <Languages className="h-4 w-4" />
