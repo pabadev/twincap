@@ -17,7 +17,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const canViewAnalytics = await authorizer.canView(user.userId, user.email ?? "");
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl bg-surface-bg lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
+    <div className="mx-auto flex min-h-screen w-full lg:max-w-[min(1536px,calc(100vw_-_3rem))] bg-surface-bg lg:h-screen lg:overflow-hidden dark:bg-zinc-950">
       <MainNav
         isLoggedIn={true}
         email={user.email ?? user.userId}
