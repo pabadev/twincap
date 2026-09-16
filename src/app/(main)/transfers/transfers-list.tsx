@@ -13,6 +13,7 @@ import { Modal } from '../../../components/ui/modal';
 import { Button } from '../../../components/ui/button';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { MovementCard } from "../../../components/ui/movement-card";
 import { ArrowRightLeft, Pencil } from 'lucide-react';
 
 function accountName(accounts: SerializedAccount[], id: string): string {
@@ -117,7 +118,7 @@ export function TransfersList({
             </p>
           )}
 
-          <TableShell>
+          <TableShell className="max-sm:hidden">
             <Table className="min-w-[700px]">
               <THead>
                 <tr>
@@ -188,6 +189,78 @@ export function TransfersList({
             </TBody>
             </Table>
           </TableShell>
+
+          {/* Card variant (<640px) */}
+          <div className="space-y-3 sm:hidden">
+            {filtered.map((transfer) => (
+              <MovementCard
+                key={transfer.id}
+                id={transfer.id}
+                className="sm:hidden"
+                fields={[
+                  {
+                    key: "date",
+                    label: tCommon("date"),
+                    value: formatDate(transfer.date, locale),
+                  },
+                  {
+                    key: "fromTo",
+                    label: t("fromTo"),
+                    value: `${accountName(accounts, transfer.sourceAccountId)} → ${accountName(accounts, transfer.destinationAccountId)}`,
+                  },
+                  {
+                    key: "amount",
+                    label: tCommon("amount"),
+                    value: formatAmount(
+                      transfer.sourceAmount.amount,
+                      transfer.sourceAmount.currency,
+                      locale,
+                    ),
+                    primary: true,
+                  },
+                  ...(transfer.sourceCurrency !== transfer.destinationCurrency
+                    ? [
+                        {
+                          key: "dest",
+                          label: t("destAmount", {
+                            currency: transfer.destinationCurrency,
+                          }),
+                          value: [
+                            formatAmount(
+                              transfer.destinationAmount.amount,
+                              transfer.destinationAmount.currency,
+                              locale,
+                            ),
+                            transfer.effectiveExchangeRate &&
+                              transfer.effectiveExchangeRate !== 1
+                              ? `(${t("effectiveRate")}: ${formatRate(transfer.effectiveExchangeRate, locale)})`
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" "),
+                        },
+                      ]
+                    : []),
+                  {
+                    key: "note",
+                    label: tCommon("note"),
+                    value: transfer.note || "—",
+                  },
+                ]}
+                actions={
+                  <div className="flex items-center gap-1">
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={tCommon("edit")}
+                      tone="primary"
+                      onClick={() => setEditingTransfer(transfer)}
+                    />
+                    <DeleteTransferButton transferId={transfer.id} />
+                  </div>
+                }
+              />
+            ))}
+          </div>
         </>
       )}
     </div>

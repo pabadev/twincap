@@ -10,6 +10,7 @@ import { RenameCategoryButton } from './rename-category-button';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Icon } from '../../../components/ui/icon';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { MovementCard } from "../../../components/ui/movement-card";
 import { Tags } from 'lucide-react';
 
 export default async function CategoriesPage() {
@@ -83,7 +84,7 @@ function CategorySection({
       <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">
         {title}
       </h2>
-      <TableShell>
+      <TableShell className="max-sm:hidden">
         <Table className="min-w-[300px]">
           <THead>
             <tr>
@@ -117,6 +118,34 @@ function CategorySection({
           </TBody>
         </Table>
       </TableShell>
+
+      {/* Card variant (<640px) */}
+      <div className="space-y-3 sm:hidden">
+        {categories.map((category) => (
+          <MovementCard
+            key={category.id}
+            id={category.id}
+            className="sm:hidden"
+            fields={[
+              {
+                key: "name",
+                label: nameLabel,
+                value: category.name,
+                primary: true,
+              },
+            ]}
+            actions={
+              <div className="flex items-center gap-1">
+                <RenameCategoryButton
+                  categoryId={category.id}
+                  categoryName={category.name}
+                />
+                <DeleteCategoryButton categoryId={category.id} />
+              </div>
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }

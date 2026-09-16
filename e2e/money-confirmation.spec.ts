@@ -150,7 +150,9 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
     await page.goto("/movements");
     const row = page.locator("tr", { hasText: "f5-confirm" });
     await expect(row).toContainText(/[−-]COP\s+10,000/);
-    await expect(page.getByText("f5-confirm", { exact: true })).toHaveCount(1);
+    // Visible-only: the mobile card variant duplicates the note hidden
+    // (display:none) beside the desktop table since UX-7 WU-1.
+    await expect(page.getByText("f5-confirm", { exact: true }).filter({ visible: true })).toHaveCount(1);
 
     // The derived account balance is negative — nothing was blocked.
     await page.goto("/accounts");
@@ -289,6 +291,8 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
     });
 
     await page.goto("/movements");
-    await expect(page.getByText("f5-double", { exact: true })).toHaveCount(1);
+    // Visible-only: the mobile card variant duplicates the note hidden
+    // (display:none) beside the desktop table since UX-7 WU-1.
+    await expect(page.getByText("f5-double", { exact: true }).filter({ visible: true })).toHaveCount(1);
   });
 });

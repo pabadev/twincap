@@ -234,11 +234,13 @@ test.describe("Slice 4 — Dashboard + Isolation", () => {
 
       // User A must never see B's data either.
       await pageA.goto("/accounts");
-      await expect(pageA.getByText("Solo-B", { exact: true })).toHaveCount(0);
+      // Visible-only: the mobile card variant duplicates account text hidden
+      // (display:none) beside the desktop table since UX-7 WU-1.
+      await expect(pageA.getByText("Solo-B", { exact: true }).filter({ visible: true })).toHaveCount(0);
       // Positive control: A still sees its own "Solo-A" account.
-      await expect(pageA.getByText("Solo-A", { exact: true })).toBeVisible();
+      await expect(pageA.getByText("Solo-A", { exact: true }).filter({ visible: true })).toBeVisible();
       await pageA.goto("/dashboard");
-      await expect(pageA.getByText("Solo-B", { exact: true })).toHaveCount(0);
+      await expect(pageA.getByText("Solo-B", { exact: true }).filter({ visible: true })).toHaveCount(0);
       await pageA.goto("/movements");
       await expect(pageA.getByText("Solo-B-income", { exact: true })).toHaveCount(0);
     } finally {

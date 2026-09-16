@@ -19,6 +19,7 @@ import { formatAmount } from "../../../lib/format";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Icon } from "../../../components/ui/icon";
 import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
+import { MovementCard } from "../../../components/ui/movement-card";
 import { Wallet } from "lucide-react";
 
 export default async function AccountsPage() {
@@ -58,7 +59,7 @@ export default async function AccountsPage() {
           description={t("emptyDescription")}
         />
       ) : (
-        <TableShell>
+        <TableShell className="max-sm:hidden">
           <Table className="min-w-[400px]">
             <THead>
               <tr>
@@ -110,6 +111,62 @@ export default async function AccountsPage() {
             </TBody>
           </Table>
         </TableShell>
+      )}
+
+      {/* Card variant (<640px) */}
+      {accounts.length > 0 && (
+        <div className="space-y-3 sm:hidden">
+          {accounts.map((account) => {
+            const balance = balances.get(account.id) ?? 0;
+            return (
+              <MovementCard
+                key={account.id}
+                id={account.id}
+                className="sm:hidden"
+                fields={[
+                  {
+                    key: "name",
+                    label: t("name"),
+                    value: account.name,
+                    primary: true,
+                  },
+                  {
+                    key: "currency",
+                    label: t("currency"),
+                    value: account.currency,
+                  },
+                  ...(account.isFixed
+                    ? [
+                        {
+                          key: "fixed",
+                          label: t("fixed"),
+                          value: t("fixed"),
+                          className:
+                            "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+                        },
+                      ]
+                    : []),
+                  {
+                    key: "balance",
+                    label: t("balance"),
+                    value: formatAmount(balance, account.currency, locale),
+                    className: balance >= 0 ? "text-income" : "text-expense",
+                    primary: true,
+                  },
+                ]}
+                actions={
+                  <div className="flex items-center gap-1">
+                    <RenameAccountButton accountId={account.id} accountName={account.name} />
+                    {!balances.has(account.id) && (
+                      <InitialBalanceButton accountId={account.id} currency={account.currency} />
+                    )}
+                    {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
+                  </div>
+                }
+              />
+            );
+          })}
+        </div>
       )}
     </div>
   );

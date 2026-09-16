@@ -10,7 +10,7 @@ export default defineConfig({
       TZ: "America/Bogota",
     },
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // R15-F2: the real multi-document transaction tests boot a
     // MongoMemoryReplSet. The ORIGINAL flakiness (ECONNREFUSED mid-file,
     // "Cannot cleanup because instance.mongodProcess is still defined") was

@@ -8,6 +8,7 @@ import { Icon } from '../../../components/ui/icon';
 import { Modal } from '../../../components/ui/modal';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { MovementCard } from "../../../components/ui/movement-card";
 import { Search, Pencil } from 'lucide-react';
 
 export interface SerializedClient {
@@ -82,7 +83,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         </div>
       )}
 
-      <TableShell>
+      <TableShell className="max-sm:hidden">
         <Table className="min-w-[500px]">
           <THead>
             <tr>
@@ -135,6 +136,45 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
           </TBody>
         </Table>
       </TableShell>
+
+      {/* Card variant (<640px) */}
+      <div className="space-y-3 sm:hidden">
+        {filteredClients.map((client) => (
+          <MovementCard
+            key={client.id}
+            id={client.id}
+            className="sm:hidden"
+            fields={[
+              {
+                key: "name",
+                label: t("name"),
+                value: client.name,
+                primary: true,
+              },
+              ...(client.phone
+                ? [{ key: "phone", label: t("phone"), value: client.phone }]
+                : []),
+              ...(client.email
+                ? [{ key: "email", label: t("email"), value: client.email }]
+                : []),
+              ...(client.note
+                ? [{ key: "note", label: t("note"), value: client.note }]
+                : []),
+            ]}
+            actions={
+              <div className="flex items-center gap-1">
+                <ActionIconButton
+                  icon={Pencil}
+                  label={tCommon("edit")}
+                  tone="primary"
+                  onClick={() => setEditingClient(client)}
+                />
+                <DeleteClientButton clientId={client.id} />
+              </div>
+            }
+          />
+        ))}
+      </div>
     </>
   );
 }

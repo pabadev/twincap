@@ -133,8 +133,10 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await dialog.getByRole("button", { name: /Save/i }).click();
 
     await expect(dialog).toBeHidden();
-    await expect(page.getByText("Ahorros Gamma", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ahorros Beta", { exact: true })).toHaveCount(0);
+    // Visible-only: the mobile card variant also carries the same text hidden
+    // (display:none) beside the desktop table since UX-7 WU-1.
+    await expect(page.getByText("Ahorros Gamma", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("Ahorros Beta", { exact: true }).filter({ visible: true })).toHaveCount(0);
   });
 
   test("set an initial balance on an existing account", async ({ page }) => {
