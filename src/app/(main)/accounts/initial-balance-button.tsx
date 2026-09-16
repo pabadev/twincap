@@ -38,15 +38,34 @@ export function InitialBalanceButton({
   const router = useRouter();
 
   // UX-6 informed confirmation (binding): the submit ALWAYS opens the
-  // confirmation dialog; confirming re-dispatches the captured FormData with
-  // the SAME idempotency key (never regenerated); cancel leaves the form
+  // confirmation dialog; confirming re-dispatches the SAME form data with the
+  // SAME idempotency key (never regenerated); cancel leaves the form
   // populated and dispatches nothing. The native `action={formAction}`
   // binding is preserved (R15.3.1 hybrid — dispatch happens ONLY from the
   // dialog's confirm button). The success effect below — closing the modal —
   // is untouched.
   const formRef = useRef<HTMLFormElement>(null);
-  const { isConfirmOpen, interceptSubmit, handleConfirm, handleCancel } =
-    useMoneyActionConfirmation(formRef, formAction, isPending);
+  const { isConfirmOpen, interceptSubmit, handleCancel } = useMoneyActionConfirmation(
+    formRef,
+    formAction,
+    isPending,
+  );
+
+  // R15.3.1 regression fix (same bug class transfer-form.tsx documents):
+  // an imperative `formAction(fd)` dispatch from the nested confirmation was
+  // the ONLY dispatch of this flow (UX-6 always confirms, so no native first
+  // submit ever ran). Such manual dispatch races the App Router: the router
+  // starts a route transition (loading.tsx + display:none on the old tree —
+  // the /accounts page segment goes display:none, so the outer modal asserts
+  // hidden SPURIOUSLY) and defers the action fetch (trace: POST created,
+  // send:-1; here measured at ~10s completion) — any navigation in that
+  // window aborts the POST and the initial balance is silently lost.
+  // Confirming via a NATIVE submission (requestSubmit) keeps the router in
+  // action context: the request is sent immediately and the write lands
+  // before any navigation can abort it. The one-shot guard lets the native
+  // action={formAction} binding run ONLY for the confirmed re-submission;
+  // any other submit is still intercepted and always re-confirmed (UX-6).
+  const confirmedRef = useRef(false);
   const [confirmDetails, setConfirmDetails] = useState<ConfirmationDetailRow[]>([]);
   const [confirmAmount, setConfirmAmount] = useState(0);
 
@@ -82,8 +101,25 @@ export function InitialBalanceButton({
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    if (confirmedRef.current) {
+      // Confirmed re-submission: one-shot guard consumed — do NOT intercept;
+      // the native `action={formAction}` binding dispatches (R15.3.1).
+      confirmedRef.current = false;
+      return;
+    }
     setConfirmDetails(buildConfirmDetails());
     interceptSubmit(e, true);
+  };
+
+  // R15.3.1: re-submit the form NATIVELY instead of dispatching captured
+  // FormData imperatively (see the comment above). The mounted form still
+  // carries exactly the fields the user confirmed (amount + accountId + the
+  // mount-scoped idempotency key — never regenerated). The dialog stays open
+  // while pending: loading disables its buttons and neutralizes its close.
+  const handleConfirm = () => {
+    if (isPending) return;
+    confirmedRef.current = true;
+    formRef.current?.requestSubmit();
   };
 
   return (
@@ -117,22 +153,22 @@ export function InitialBalanceButton({
           >
             {isPending ? t("saving") : t("setInitialBalance")}
           </Button>
-        </form>
 
-        <MoneyActionConfirmation
-          open={isConfirmOpen}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-          title={tConfirm("setInitialBalanceTitle")}
-          description={tConfirm("setInitialBalanceDescription", {
-            amount: formatAmount(confirmAmount, currency ?? DEFAULT_CURRENCY, locale),
-          })}
-          confirmLabel={tConfirm("confirm")}
-          cancelLabel={tCommon("cancel")}
-          variant="normal"
-          detailRows={confirmDetails}
-          loading={isPending}
-        />
+          <MoneyActionConfirmation
+            open={isConfirmOpen}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+            title={tConfirm("setInitialBalanceTitle")}
+            description={tConfirm("setInitialBalanceDescription", {
+              amount: formatAmount(confirmAmount, currency ?? DEFAULT_CURRENCY, locale),
+            })}
+            confirmLabel={tConfirm("confirm")}
+            cancelLabel={tCommon("cancel")}
+            variant="normal"
+            detailRows={confirmDetails}
+            loading={isPending}
+          />
+        </form>
       </Modal>
     </>
   );
