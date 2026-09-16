@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { registerUser, confirmDialog } from "./helpers";
+import { registerUser, confirmDialog, confirmMoneyAction } from "./helpers";
 
 /**
  * Slice 3 — Credits (received/granted) + POS (catalog/sales), spec
@@ -53,6 +53,8 @@ async function setInitialBalanceInUI(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Balance to set").fill(amount);
   await dialog.getByRole("button", { name: "Set Initial Balance" }).click();
+  // UX-6: the informed-confirmation dialog opens over the form — confirm it.
+  await confirmMoneyAction(page);
   await expect(dialog).toBeHidden();
 }
 
@@ -171,6 +173,10 @@ async function submitAbonoInUI(
   await creditCard.getByLabel(/^Account/).selectOption({ label: "Efectivo" });
   await creditCard.getByLabel(/^Date/).fill(todayInputValue());
   await creditCard.getByRole("button", { name: /^Add Abono$/ }).click();
+  // UX-6: the informed-confirmation dialog opens INSIDE the card. Its Cancel
+  // button collides with the header toggle ("Cancel") for strict-mode
+  // locators, so it MUST be confirmed BEFORE the toggle-count logic below.
+  await confirmMoneyAction(page);
   // The toggle label is "Cancel" while the form is open (auto-waits if it is
   // disabled during the in-flight submission). After the LAST abono the row
   // unmounts entirely (pending <= 0), so the click is conditional; closing
