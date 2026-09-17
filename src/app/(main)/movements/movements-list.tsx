@@ -1,47 +1,59 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useT, useLocale } from '../../../i18n/client';
-import type { SerializedAccount } from '../../../core/domain/account';
-import type { SerializedMovement } from '../../../core/domain/movement';
-import type { SerializedCategory } from '../../../core/domain/category';
-import { DeleteMovementButton } from './delete-movement-button';
-import { formatAmount, formatDate } from '../../../lib/format';
-import { deriveSystemNote } from '../../../lib/system-note';
-import { syntheticCategoryLabel } from '../../../lib/synthetic-category-label';
-import { Select } from '../../../components/ui/select';
-import { EmptyState } from '../../../components/ui/empty-state';
-import { Icon } from '../../../components/ui/icon';
-import { Button } from '../../../components/ui/button';
-import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useT, useLocale } from "../../../i18n/client";
+import type { SerializedAccount } from "../../../core/domain/account";
+import type { SerializedMovement } from "../../../core/domain/movement";
+import type { SerializedCategory } from "../../../core/domain/category";
+import { DeleteMovementButton } from "./delete-movement-button";
+import { formatAmount, formatDate } from "../../../lib/format";
+import { deriveSystemNote } from "../../../lib/system-note";
+import { syntheticCategoryLabel } from "../../../lib/synthetic-category-label";
+import { Select } from "../../../components/ui/select";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Icon } from "../../../components/ui/icon";
+import { Button } from "../../../components/ui/button";
+import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
 import { TouchTarget } from "../../../components/ui/touch-target";
 import { MovementCard } from "../../../components/ui/movement-card";
-import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react';
-import { useQuickMovement } from '../global-movement-provider';
-import { EditMovementModal } from './edit-movement-modal';
-import { listAccountsAction, listCategoriesAction, listMovementsPagedAction, exportMovementsCsvAction } from './actions';
-import type { SerializedCursor } from './actions';
-import { downloadCsv } from '../../../lib/download-csv';
-import { useToast } from '../../../lib/hooks/use-toast';
+import { ArrowLeftRight, ChevronUp, ChevronDown, Download, Loader2 } from "lucide-react";
+import { useQuickMovement } from "../global-movement-provider";
+import { EditMovementModal } from "./edit-movement-modal";
+import {
+  listAccountsAction,
+  listCategoriesAction,
+  listMovementsPagedAction,
+  exportMovementsCsvAction,
+} from "./actions";
+import type { SerializedCursor } from "./actions";
+import { downloadCsv } from "../../../lib/download-csv";
+import { useToast } from "../../../lib/hooks/use-toast";
 
-type SortField = 'date' | 'amount' | 'category';
-type SortDirection = 'asc' | 'desc';
+type SortField = "date" | "amount" | "category";
+type SortDirection = "asc" | "desc";
 
 const PAGE_SIZE = 50;
 
-function SortIcon({
-  active,
-  dir,
-}: {
-  active: boolean;
-  dir: SortDirection;
-}) {
+function SortIcon({ active, dir }: { active: boolean; dir: SortDirection }) {
   if (!active) return null;
-  return dir === 'asc' ? (
+  return dir === "asc" ? (
     <Icon icon={ChevronUp} size="sm" className="ml-0.5 inline" />
   ) : (
     <Icon icon={ChevronDown} size="sm" className="ml-0.5 inline" />
   );
+}
+
+/**
+ * aria-sort state of a sortable header (R-10): "ascending"/"descending" on the
+ * active column per the current direction, "none" on the rest.
+ */
+function sortAria(
+  field: SortField,
+  sortField: SortField,
+  sortDir: SortDirection,
+): "ascending" | "descending" | "none" {
+  if (sortField !== field) return "none";
+  return sortDir === "asc" ? "ascending" : "descending";
 }
 
 export function MovementsList({
@@ -88,18 +100,18 @@ export function MovementsList({
     listCategoriesAction().then(setCategories);
   }, []);
 
-  const [selectedAccountId, setSelectedAccountId] = useState('all');
+  const [selectedAccountId, setSelectedAccountId] = useState("all");
   /** D3 scope filter — only meaningful while 'all accounts' is active. */
-  const [selectedScope, setSelectedScope] = useState<'all' | 'Personal' | 'Business'>('all');
-  const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
-  const [sortField, setSortField] = useState<SortField>('date');
-  const [sortDir, setSortDir] = useState<SortDirection>('desc');
+  const [selectedScope, setSelectedScope] = useState<"all" | "Personal" | "Business">("all");
+  const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const t = useT('Movements');
-  const tCommon = useT('Common');
-  const tSystemNotes = useT('SystemNotes');
-  const tExport = useT('Export');
+  const t = useT("Movements");
+  const tCommon = useT("Common");
+  const tSystemNotes = useT("SystemNotes");
+  const tExport = useT("Export");
   const locale = useLocale();
   const { addToast } = useToast();
   const { openQuickMovement } = useQuickMovement();
@@ -115,10 +127,10 @@ export function MovementsList({
   const toggleSort = useCallback((field: SortField) => {
     setSortField((prev) => {
       if (prev === field) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
         return prev;
       }
-      setSortDir(field === 'date' ? 'desc' : 'desc');
+      setSortDir(field === "date" ? "desc" : "desc");
       return field;
     });
   }, []);
@@ -148,12 +160,12 @@ export function MovementsList({
       });
       if (res.ok) {
         downloadCsv(res.csv, res.filename);
-        addToast(tExport('done'), 'success');
+        addToast(tExport("done"), "success");
       } else {
-        addToast(tExport('failed'), 'error');
+        addToast(tExport("failed"), "error");
       }
     } catch {
-      addToast(tExport('failed'), 'error');
+      addToast(tExport("failed"), "error");
     } finally {
       setIsExporting(false);
     }
@@ -161,8 +173,8 @@ export function MovementsList({
 
   // D3: scope filter uses Movement.context (the source of truth).
   const allMovements = useMemo(() => {
-    if (selectedAccountId === 'all') {
-      return selectedScope === 'all'
+    if (selectedAccountId === "all") {
+      return selectedScope === "all"
         ? movements
         : movements.filter((m) => m.context === selectedScope);
     }
@@ -170,7 +182,7 @@ export function MovementsList({
   }, [movements, selectedAccountId, selectedScope]);
 
   const filteredMovements = useMemo(() => {
-    if (selectedType === 'all') return allMovements;
+    if (selectedType === "all") return allMovements;
     return allMovements.filter((m) => m.type === selectedType);
   }, [allMovements, selectedType]);
 
@@ -179,20 +191,26 @@ export function MovementsList({
     arr.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
-        case 'date':
+        case "date":
           cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
-        case 'amount':
+        case "amount":
           cmp = a.amount.amount - b.amount.amount;
           break;
-        case 'category': {
-          const labelA = categoryMap.get(a.categoryId) ?? syntheticCategoryLabel(a.categoryId, tSystemNotes) ?? '';
-          const labelB = categoryMap.get(b.categoryId) ?? syntheticCategoryLabel(b.categoryId, tSystemNotes) ?? '';
+        case "category": {
+          const labelA =
+            categoryMap.get(a.categoryId) ??
+            syntheticCategoryLabel(a.categoryId, tSystemNotes) ??
+            "";
+          const labelB =
+            categoryMap.get(b.categoryId) ??
+            syntheticCategoryLabel(b.categoryId, tSystemNotes) ??
+            "";
           cmp = labelA.localeCompare(labelB, locale);
           break;
         }
       }
-      return sortDir === 'asc' ? cmp : -cmp;
+      return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
   }, [filteredMovements, sortField, sortDir, categoryMap, tSystemNotes, locale]);
@@ -200,9 +218,7 @@ export function MovementsList({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {t('title')}
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
@@ -214,12 +230,12 @@ export function MovementsList({
             {isExporting ? (
               <span className="inline-flex items-center gap-2">
                 <Icon icon={Loader2} size="sm" className="animate-spin" />
-                {tExport('exporting')}
+                {tExport("exporting")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
                 <Icon icon={Download} size="sm" />
-                {tExport('button')}
+                {tExport("button")}
               </span>
             )}
           </Button>
@@ -230,13 +246,11 @@ export function MovementsList({
               className="h-11"
               onClick={() =>
                 openQuickMovement(
-                  selectedAccountId === 'all'
-                    ? undefined
-                    : { accountId: selectedAccountId },
+                  selectedAccountId === "all" ? undefined : { accountId: selectedAccountId },
                 )
               }
             >
-              {t('addMovement')}
+              {t("addMovement")}
             </Button>
           )}
         </div>
@@ -250,14 +264,14 @@ export function MovementsList({
               htmlFor="account-select"
               className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              {t('account')}
+              {t("account")}
             </label>
             <Select
               id="account-select"
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
               options={[
-                { value: 'all', label: t('allAccounts') },
+                { value: "all", label: t("allAccounts") },
                 ...accounts.map((a) => ({
                   value: a.id,
                   label: `${a.name} (${a.currency})`,
@@ -270,21 +284,19 @@ export function MovementsList({
               htmlFor="scope-select"
               className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              {t('scope')}
+              {t("scope")}
             </label>
             {/* D3: with a specific account selected its scope governs — the
                 Ámbito filter only applies while 'all accounts' is active. */}
             <Select
               id="scope-select"
               value={selectedScope}
-              disabled={selectedAccountId !== 'all'}
-              onChange={(e) =>
-                setSelectedScope(e.target.value as typeof selectedScope)
-              }
+              disabled={selectedAccountId !== "all"}
+              onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
               options={[
-                { value: 'all', label: t('scopeAll') },
-                { value: 'Personal', label: t('scopePersonal') },
-                { value: 'Business', label: t('scopeBusiness') },
+                { value: "all", label: t("scopeAll") },
+                { value: "Personal", label: t("scopePersonal") },
+                { value: "Business", label: t("scopeBusiness") },
               ]}
             />
           </div>
@@ -293,16 +305,16 @@ export function MovementsList({
               htmlFor="type-select"
               className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              {t('type')}
+              {t("type")}
             </label>
             <Select
               id="type-select"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
               options={[
-                { value: 'all', label: t('scopeAll') },
-                { value: 'income', label: t('income') },
-                { value: 'expense', label: t('expense') },
+                { value: "all", label: t("scopeAll") },
+                { value: "income", label: t("income") },
+                { value: "expense", label: t("expense") },
               ]}
             />
           </div>
@@ -312,220 +324,265 @@ export function MovementsList({
       {accounts.length === 0 && movements.length === 0 ? (
         <EmptyState
           icon={<Icon icon={ArrowLeftRight} size="xl" />}
-          title={t('emptyNoAccountsTitle')}
-          description={t('emptyNoAccountsDescription')}
+          title={t("emptyNoAccountsTitle")}
+          description={t("emptyNoAccountsDescription")}
         />
       ) : (
         <>
           {sortedMovements.length === 0 ? (
             <EmptyState
               icon={<Icon icon={ArrowLeftRight} size="xl" />}
-              title={t('emptyTitle')}
+              title={t("emptyTitle")}
               description={
-                selectedAccountId !== 'all'
-                  ? t('emptyDescription')
-                  : selectedScope !== 'all'
-                    ? t('noMovementsScope')
-                    : t('noMovementsAll')
+                selectedAccountId !== "all"
+                  ? t("emptyDescription")
+                  : selectedScope !== "all"
+                    ? t("noMovementsScope")
+                    : t("noMovementsAll")
               }
             />
           ) : (
             <>
-            <TableShell className="max-sm:hidden">
-              <Table className="min-w-[700px]">
-                <THead>
-                  <tr>
-                    <Th scope="col">
-                      <button type="button" onClick={() => toggleSort('date')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
-                        <TouchTarget as="span">{tCommon('date')} <SortIcon active={sortField === 'date'} dir={sortDir} /></TouchTarget>
-                      </button>
-                    </Th>
-                    <Th scope="col" align="right">
-                      <button type="button" onClick={() => toggleSort('amount')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
-                        <TouchTarget as="span">{tCommon('amount')} <SortIcon active={sortField === 'amount'} dir={sortDir} /></TouchTarget>
-                      </button>
-                    </Th>
-                    <Th scope="col">
-                      <button type="button" onClick={() => toggleSort('category')} className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
-                        <TouchTarget as="span">{t('category')} <SortIcon active={sortField === 'category'} dir={sortDir} /></TouchTarget>
-                      </button>
-                    </Th>
-                    <Th scope="col">
-                      {tCommon('note')}
-                    </Th>
-                    <Th scope="col">
-                      {t('type')}
-                    </Th>
-                    <Th scope="col" align="right">
-                      {tCommon('actions')}
-                    </Th>
-                  </tr>
-                </THead>
-                <TBody>
-                  {sortedMovements.map((movement) => (
-                    <tr key={movement.id}>
-                      <Td className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {formatDate(movement.date, locale)}
-                      </Td>
-                      <Td align="right">
-                        <span
-                          className={`text-sm font-medium ${
-                            movement.type === 'income'
-                              ? 'text-income'
-                              : 'text-expense'
-                          }`}
-                        >
-                          {movement.type === 'income' ? '+' : '−'}
-                          {formatAmount(
-                            movement.amount.amount,
-                            movement.amount.currency,
-                            locale,
-                          )}
-                        </span>
-                      </Td>
-                      <Td className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {categoryMap.get(movement.categoryId) ?? syntheticCategoryLabel(movement.categoryId, tSystemNotes) ?? '—'}
-                      </Td>
-                      <Td className="text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
-                        {movement.link
-                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ?? movement.note) || '—'
-                          : (movement.note || '—')}
-                      </Td>
-                      <Td>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            movement.type === 'income'
-                              ? 'bg-income/10 text-income'
-                              : 'bg-expense/10 text-expense'
-                          }`}
-                        >
-                          {t(movement.type)}
-                        </span>
-                      </Td>
-                      <Td align="right">
-                        <div className="flex items-center justify-end gap-1">
-                          {!movement.link && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setEditingMovement(movement)}
-                                className="rounded text-zinc-400 hover:text-primary transition-colors"
-                                aria-label={tCommon('edit')}
-                              >
-                                {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
-                                <TouchTarget as="span">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                                </TouchTarget>
-                              </button>
-                              <DeleteMovementButton movementId={movement.id} />
-                            </>
-                          )}
-                        </div>
-                      </Td>
-                    </tr>
-                  ))}
-                </TBody>
-              </Table>
-
-              {/* Load more */}
-              {nextCursor && (
-                <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 text-center">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="h-11"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Icon icon={Loader2} size="sm" className="animate-spin" />
-                        {tCommon('loading')}
-                      </span>
-                    ) : (
-                      tCommon('loadMore')
-                    )}
-                  </Button>
-                </div>
-              )}
-            </TableShell>
-
-            {/* Card variant (<640px) — same rows, same actions */}
-            <div className="space-y-3 sm:hidden">
-              {sortedMovements.map((movement) => (
-                <MovementCard
-                  key={movement.id}
-                  id={movement.id}
-                  className="sm:hidden"
-                  fields={[
-                    {
-                      key: "date",
-                      label: tCommon("date"),
-                      value: formatDate(movement.date, locale),
-                    },
-                    {
-                      key: "amount",
-                      label: tCommon("amount"),
-                      value: `${movement.type === "income" ? "+" : "−"}${formatAmount(
-                        movement.amount.amount,
-                        movement.amount.currency,
-                        locale,
-                      )}`,
-                      className:
-                        movement.type === "income" ? "text-income" : "text-expense",
-                      primary: true,
-                    },
-                    {
-                      key: "category",
-                      label: t("category"),
-                      value:
-                        categoryMap.get(movement.categoryId) ??
-                        syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
-                        "—",
-                    },
-                    {
-                      key: "note",
-                      label: tCommon("note"),
-                      value: movement.link
-                        ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
-                            movement.note) || "—"
-                        : movement.note || "—",
-                    },
-                    {
-                      key: "type",
-                      label: t("type"),
-                      value: t(movement.type),
-                      className: `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        movement.type === "income"
-                          ? "bg-income/10 text-income"
-                          : "bg-expense/10 text-expense"
-                      }`,
-                    },
-                  ]}
-                  actions={
-                    !movement.link ? (
-                      <div className="flex items-center gap-1">
+              <TableShell className="max-sm:hidden">
+                <Table className="min-w-[700px]">
+                  <THead>
+                    <tr>
+                      <Th scope="col" aria-sort={sortAria("date", sortField, sortDir)}>
                         <button
                           type="button"
-                          onClick={() => setEditingMovement(movement)}
-                          className="rounded text-zinc-400 hover:text-primary transition-colors"
-                          aria-label={tCommon("edit")}
+                          onClick={() => toggleSort("date")}
+                          className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors"
                         >
-                          {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                          {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
                           <TouchTarget as="span">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            {tCommon("date")}{" "}
+                            <SortIcon active={sortField === "date"} dir={sortDir} />
                           </TouchTarget>
                         </button>
-                        <DeleteMovementButton movementId={movement.id} />
-                      </div>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </div>
+                      </Th>
+                      <Th
+                        scope="col"
+                        align="right"
+                        aria-sort={sortAria("amount", sortField, sortDir)}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleSort("amount")}
+                          className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                          {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
+                          <TouchTarget as="span">
+                            {tCommon("amount")}{" "}
+                            <SortIcon active={sortField === "amount"} dir={sortDir} />
+                          </TouchTarget>
+                        </button>
+                      </Th>
+                      <Th scope="col" aria-sort={sortAria("category", sortField, sortDir)}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSort("category")}
+                          className="inline-flex items-center hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                          {/* TouchTarget expands the sort header hit area to >=44px (RTT-1). */}
+                          <TouchTarget as="span">
+                            {t("category")}{" "}
+                            <SortIcon active={sortField === "category"} dir={sortDir} />
+                          </TouchTarget>
+                        </button>
+                      </Th>
+                      <Th scope="col">{tCommon("note")}</Th>
+                      <Th scope="col">{t("type")}</Th>
+                      <Th scope="col" align="right">
+                        {tCommon("actions")}
+                      </Th>
+                    </tr>
+                  </THead>
+                  <TBody>
+                    {sortedMovements.map((movement) => (
+                      <tr key={movement.id}>
+                        <Td className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {formatDate(movement.date, locale)}
+                        </Td>
+                        <Td align="right">
+                          <span
+                            className={`text-sm font-medium ${
+                              movement.type === "income" ? "text-income" : "text-expense"
+                            }`}
+                          >
+                            {movement.type === "income" ? "+" : "−"}
+                            {formatAmount(movement.amount.amount, movement.amount.currency, locale)}
+                          </span>
+                        </Td>
+                        <Td className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {categoryMap.get(movement.categoryId) ??
+                            syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
+                            "—"}
+                        </Td>
+                        <Td className="text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
+                          {movement.link
+                            ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                                movement.note) ||
+                              "—"
+                            : movement.note || "—"}
+                        </Td>
+                        <Td>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              movement.type === "income"
+                                ? "bg-income/10 text-income"
+                                : "bg-expense/10 text-expense"
+                            }`}
+                          >
+                            {t(movement.type)}
+                          </span>
+                        </Td>
+                        <Td align="right">
+                          <div className="flex items-center justify-end gap-1">
+                            {!movement.link && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingMovement(movement)}
+                                  className="rounded text-zinc-400 hover:text-primary transition-colors"
+                                  aria-label={tCommon("edit")}
+                                >
+                                  {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                                  <TouchTarget as="span">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                      <path d="m15 5 4 4" />
+                                    </svg>
+                                  </TouchTarget>
+                                </button>
+                                <DeleteMovementButton movementId={movement.id} />
+                              </>
+                            )}
+                          </div>
+                        </Td>
+                      </tr>
+                    ))}
+                  </TBody>
+                </Table>
+
+                {/* Load more */}
+                {nextCursor && (
+                  <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 text-center">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-11"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Icon icon={Loader2} size="sm" className="animate-spin" />
+                          {tCommon("loading")}
+                        </span>
+                      ) : (
+                        tCommon("loadMore")
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </TableShell>
+
+              {/* Card variant (<640px) — same rows, same actions */}
+              <div className="space-y-3 sm:hidden">
+                {sortedMovements.map((movement) => (
+                  <MovementCard
+                    key={movement.id}
+                    id={movement.id}
+                    className="sm:hidden"
+                    fields={[
+                      {
+                        key: "date",
+                        label: tCommon("date"),
+                        value: formatDate(movement.date, locale),
+                      },
+                      {
+                        key: "amount",
+                        label: tCommon("amount"),
+                        value: `${movement.type === "income" ? "+" : "−"}${formatAmount(
+                          movement.amount.amount,
+                          movement.amount.currency,
+                          locale,
+                        )}`,
+                        className: movement.type === "income" ? "text-income" : "text-expense",
+                        primary: true,
+                      },
+                      {
+                        key: "category",
+                        label: t("category"),
+                        value:
+                          categoryMap.get(movement.categoryId) ??
+                          syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
+                          "—",
+                      },
+                      {
+                        key: "note",
+                        label: tCommon("note"),
+                        value: movement.link
+                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                              movement.note) ||
+                            "—"
+                          : movement.note || "—",
+                      },
+                      {
+                        key: "type",
+                        label: t("type"),
+                        value: t(movement.type),
+                        className: `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          movement.type === "income"
+                            ? "bg-income/10 text-income"
+                            : "bg-expense/10 text-expense"
+                        }`,
+                      },
+                    ]}
+                    actions={
+                      !movement.link ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingMovement(movement)}
+                            className="rounded text-zinc-400 hover:text-primary transition-colors"
+                            aria-label={tCommon("edit")}
+                          >
+                            {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                            <TouchTarget as="span">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                <path d="m15 5 4 4" />
+                              </svg>
+                            </TouchTarget>
+                          </button>
+                          <DeleteMovementButton movementId={movement.id} />
+                        </div>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </div>
             </>
           )}
         </>
