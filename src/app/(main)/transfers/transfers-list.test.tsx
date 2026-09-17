@@ -43,8 +43,7 @@ vi.mock("react", async (importOriginal) => {
   return {
     ...actual,
     useState: <T,>(initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>] => {
-      const resolvedInitial =
-        typeof initial === "function" ? (initial as () => T)() : initial;
+      const resolvedInitial = typeof initial === "function" ? (initial as () => T)() : initial;
       mockState.useStateCall += 1;
       if (mockState.useStateCall === 4) {
         // Force dateTo to a past date → the filter excludes every transfer.
