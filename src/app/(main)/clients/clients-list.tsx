@@ -5,6 +5,7 @@ import { useT } from '../../../i18n/client';
 import { DeleteClientButton } from './delete-client-button';
 import { ClientForm } from './client-form';
 import { Icon } from '../../../components/ui/icon';
+import { EmptyState } from '../../../components/ui/empty-state';
 import { Modal } from '../../../components/ui/modal';
 import { ActionIconButton } from '../../../components/ui/action-icon-button';
 import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
@@ -73,14 +74,18 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
               className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
             />
           </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {debouncedQuery.trim()
-              ? filteredClients.length > 0
+          {(!debouncedQuery.trim() || filteredClients.length > 0) && (
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              {debouncedQuery.trim()
                 ? t('showingResults', { filtered: String(filteredClients.length), total: String(clients.length) })
-                : t('noResults')
-              : t('showingResults', { filtered: String(clients.length), total: String(clients.length) })}
-          </p>
+                : t('showingResults', { filtered: String(clients.length), total: String(clients.length) })}
+            </p>
+          )}
         </div>
+      )}
+
+      {clients.length > 0 && debouncedQuery.trim() && filteredClients.length === 0 && (
+        <EmptyState icon={<Icon icon={Search} size="xl" />} title={t('noResults')} />
       )}
 
       <TableShell className="max-sm:hidden">
