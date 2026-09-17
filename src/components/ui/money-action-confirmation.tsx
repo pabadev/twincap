@@ -44,10 +44,10 @@ export interface MoneyActionConfirmationProps {
  * `f5-negative-balance` when `projectedNegative`. Purely presentational and
  * controlled, label-agnostic (ConfirmDialog precedent).
  *
- * Accessibility (design D3, local and additive — Modal behavior untouched):
- * initial focus lands on the confirm button when the dialog opens, Tab
- * cycles among the dialog's focusable elements, and focus is restored to
- * the previously focused element on close.
+ * Accessibility (design D3, consolidated in UX-9 R-4): Modal owns the focus
+ * trap (initial focus, Tab loop, restore). This component only keeps initial
+ * focus on the confirm button and the restore-to-trigger behavior; the local
+ * Tab loop was removed to avoid a second Tab handler (no double trap).
  */
 export function MoneyActionConfirmation({
   open,
@@ -66,9 +66,6 @@ export function MoneyActionConfirmation({
   tone = "primary",
 }: MoneyActionConfirmationProps) {
   const titleId = useId();
-  // Scope anchor inside the dialog: the trap walks up to [role="dialog"] so
-  // it covers the close button (Modal header) and the action buttons too.
-  const scopeRef = useRef<HTMLDivElement | null>(null);
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -81,33 +78,6 @@ export function MoneyActionConfirmation({
       previouslyFocusedRef.current?.focus();
       previouslyFocusedRef.current = null;
     };
-  }, [open]);
-
-  // Cyclic Tab among the focusable elements inside the dialog (local trap).
-  useEffect(() => {
-    if (!open) return;
-    const dialog = scopeRef.current?.closest<HTMLElement>('[role="dialog"]');
-    if (!dialog) return;
-    const handleTab = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", handleTab);
-    return () => document.removeEventListener("keydown", handleTab);
   }, [open]);
 
   const showDestinationRow = variant === "destination-account" && !!destinationAccountName;
@@ -145,7 +115,7 @@ export function MoneyActionConfirmation({
         </div>
       }
     >
-      <div ref={scopeRef} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {description && <p className="text-sm text-zinc-600 dark:text-zinc-300">{description}</p>}
 
         {showWarningBanner && (
