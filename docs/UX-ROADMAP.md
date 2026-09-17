@@ -1,7 +1,7 @@
 # TWINCAP — UX ROADMAP — PLAN MAESTRO DE LA ETAPA UX/UI (FASES UX-0…UX-12)
 
 > **Fecha:** 2026-09-13
-> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7 **COMPLETA Y ARCHIVADA (2026-09-16)** — responsive mobile + desktop (SDD `ux-7-responsive`, HEAD `f39a9d7`, H-09/H-11/H-15 cerrados, verify PASS 1504/1504, pase visual RSL-8 pendiente fundador); UX-8 **COMPLETA Y ARCHIVADA (2026-09-16)** — microcopy + estados + errores (SDD `ux-8-microcopy-states-errors`, HEAD `5dd8427`, H-08 con conteo real **30**/H-03/H-04 cerrados + DEC-DS-09, verify PASS WITH WARNINGS 19/19 req / 31/31 escenarios / 1513/1515 tests, freeze CERO, pendiente visual filter-zero 375/768/1280); UX-9…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
+> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7 **COMPLETA Y ARCHIVADA (2026-09-16)** — responsive mobile + desktop (SDD `ux-7-responsive`, HEAD `f39a9d7`, H-09/H-11/H-15 cerrados, verify PASS 1504/1504, pase visual RSL-8 pendiente fundador); UX-8 **COMPLETA Y ARCHIVADA (2026-09-16)** — microcopy + estados + errores (SDD `ux-8-microcopy-states-errors`, HEAD `5dd8427`, H-08 con conteo real **30**/H-03/H-04 cerrados + DEC-DS-09, verify PASS WITH WARNINGS 19/19 req / 31/31 escenarios / 1513/1515 tests, freeze CERO, pendiente visual filter-zero 375/768/1280); UX-9 **COMPLETA Y ARCHIVADA (2026-09-16)** — accesibilidad (SDD `ux-9-accessibility`, HEAD `7d0693d`, H-05/H-11/H-12/H-13/H-16/H-18 cerrados + R-11 cleanup + evidencia contraste R-12, verify PASS WITH WARNINGS 14/14 req / 34/34 escenarios / suite 1549/1549 ×2, freeze CERO, 3 criterios manuales pendientes fundador RSL-8); UX-10…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
 > **Fuente normativa:** `docs/freeze + UX-UI.md` (prompt maestro §35/§40/§41/§46/§47/§48/§49/§52/§53/§56)
 > **Documentos relacionados:** `docs/FINANCIAL-DOMAIN-FREEZE.md`, `docs/UX-UI-AUDIT.md` (UX-1), `docs/UX-COMPETITIVE-RESEARCH.md` (UX-2), `docs/UX-INFORMATION-ARCHITECTURE.md` (UX-3), `docs/UX-DESIGN-SYSTEM.md` (UX-4), `docs/PROJECT-RULES.md` (§15/§18)
 
@@ -20,7 +20,7 @@
 | UX-6 — Flujos core | ✅ **COMPLETA (2026-09-16)** | Confirmación informada en flujos transaccionales (SDD `ux-6-core-flows`, HEAD `02e883f`) |
 | UX-7 — Responsive | ✅ **COMPLETA (2026-09-16)** | Mobile-first deliberado — H-09/H-11/H-15 cerrados (SDD `ux-7-responsive`, HEAD `f39a9d7`) |
 | UX-8 — Microcopy + estados + errores | ✅ **COMPLETA (2026-09-16)** | H-08/H-03/H-04 + DEC-DS-09 cerrados (SDD `ux-8-microcopy-states-errors`, HEAD `5dd8427`) |
-| UX-9 — Accesibilidad | ⏳ PLANIFICADA | A11y de componentes y páginas |
+| UX-9 — Accesibilidad | ✅ **COMPLETA Y ARCHIVADA (2026-09-16)** | H-05/H-11/H-12/H-13/H-16/H-18 cerrados + R-11/R-12 (SDD `ux-9-accessibility`, HEAD `7d0693d`) |
 | UX-10 — Implementación | ⏳ PLANIFICADA | Orden del §53 |
 | UX-11 — Validación | ⏳ PLANIFICADA | Evidencia real de uso |
 | UX-12 — Polish | ⏳ PLANIFICADA | Condición de éxito §56 |
@@ -118,14 +118,22 @@
 - **Evidencia:** SDD `ux-8-microcopy-states-errors` — verify **PASS WITH WARNINGS** (0 CRITICAL): **19/19 requirements, 31/31 escenarios, 1513/1515 tests** (2 timeouts R15 flaky ajenos al diff, pasan aislados 44/44), tsc --noEmit limpio, parity 4/4, freeze financiero CERO; 16 commits conventionales (feat×4/test×3/refactor×3/style×5/chore×1); archive-report Engram `sdd/ux-8-microcopy-states-errors/archive-report`; pendiente no bloqueante: pase visual 375/768/1280 del estado filter-zero de las listas (client-side, `pnpm dev`, precedente RSL-8); **H-16 diferido a UX-9** (toast.tsx/toast-provider.tsx intactos).
 - **Fases destinatarias:** UX-9, UX-11.
 
-### UX-9 — ACCESIBILIDAD ⏳ PLANIFICADA
+### UX-9 — ACCESIBILIDAD ✅ COMPLETA Y ARCHIVADA (2026-09-16)
 
 - **Objetivo:** cerrar la deuda a11y en la base de componentes y verificar WCAG 2.1 AA en páginas clave.
-- **Criterios de aceptación:**
-  - **H-05/H-11 cerrados:** focus trap (modal + drawer), foco inicial y restauración.
-  - **H-12/H-13/H-16/H-18 cerrados:** naming de diálogos, `aria-required`, un canal de anuncio, toggles con estado.
-  - Navegación completa por teclado en las 5 pantallas principales; contraste AA; sin hallazgos P2 a11y pendientes al cierre.
-- **Fases destinatarias:** UX-11.
+- **Criterios de aceptación — CERRADOS:**
+  - **H-05/H-11 cerrados:** hook compartido `useFocusTrap` hand-rolled (`src/components/ui/focus-trap.ts`, sin dependencias) aplicado a `Modal` (cascada a 25 call sites) y al drawer `nav.tsx` (trap + `inert` condicional off-screen en móvil; sin inert en `lg+`); `MoneyActionConfirmation` delega el loop Tab al trap de Modal (sin doble trap); fix de bug latente restore-to-hamburger (ref leída en cleanup).
+  - **H-12 cerrado:** `title` OBLIGATORIO en la API de `Modal` (guardrail compile-time; 28/28 call sites intactos); nombre accesible = heading vía `aria-labelledby`.
+  - **H-13 cerrado:** `required` real en clientId de POS (`required={isOnCredit}`) + asterisco manual eliminado de Select/Input/PasswordInput + errores asociados al campo con `aria-describedby`/`aria-invalid` (DS §10).
+  - **H-16 cerrado (parte automatizable):** canal único de anuncio — `role="alert"` eliminado del ítem de toast, región `aria-live="polite"` del provider intacta; banner `role="alert"` del diálogo MAC conservado (S8.2).
+  - **H-18 cerrado:** `aria-pressed` en toggles Mensual/Anual + `TouchTarget` ≥44px (WCAG 2.5.8); bonus `aria-sort` en los sort headers de Movimientos (ascending/descending/none).
+  - Contraste AA: evidencia documental `docs/UX-9-CONTRAST-EVIDENCE.md` (11 ratios del explore reproducidos exactos + extras dark/badges; la afirmación del DS §2.1.5 de "garantiza AA" refutada con medición) — tokens globales `--tc-*` NO modificados (decisión D6 → UX-10, DEC-DS-01).
+  - Limpieza: `searchable-select.tsx` eliminado (0 importadores verificados; barrel `ui/index.ts` actualizado).
+  - Navegación por teclado: fixes de foco de R-2/R-3 verdes + base sin controles click-only (explore §1.7); checklist manual de teclado de las 5 pantallas pendiente fundador (S13.1).
+  - Cero diffs en `core/`, `infrastructure/`, models, repositories (freeze financiero); `globals.css` intocada.
+- **Evidencia:** SDD `ux-9-accessibility` — verify **PASS WITH WARNINGS** (0 CRITICAL): **14/14 requirements, 34/34 escenarios** (31 automatizables COMPLIANT + 3 MANUALES declarados no automatizables: S8.3, S12.2, S13.1), suite **149 archivos / 1549 tests verde en dos corridas consecutivas** (1353.69 s y 1352.92 s), tsc --noEmit exit 0, parity 4/4, prettier limpio en tocados, freeze CERO; 18 commits conventionales (17 apply en 5 slices chained stacked-to-main + 1 fix de verify `7d0693d` — guard de imports quote-agnostic, CRITICAL-1 del primer verify cerrado y probado); archive-report Engram `sdd/ux-9-accessibility/archive-report`; dependencia nueva documentada: `jsdom ^30.0.1` devDependency test-only (única de la fase, tests de componentes jsdom).
+- **Pendientes manuales del fundador (warnings NO bloqueantes, precedente RSL-8):** S8.3 prueba SR del anuncio único (cierre formal de H-16), S12.2 revisión de diseño del doc de contraste, S13.1 checklist de teclado sobre las 5 pantallas principales.
+- **Fases destinatarias:** UX-11 (validación a11y automatizada + manual); UX-10 (tokens de contraste y cierre SR de H-16).
 
 ### UX-10 — IMPLEMENTACIÓN ⏳ PLANIFICADA
 
@@ -158,7 +166,7 @@
 | UX-6 | ✅ | Flujos core rediseñados — `MoneyActionConfirmation` + F5 (HEAD `02e883f`) | H-06 cerrado; confirmaciones financieras implementadas |
 | UX-7 | ✅ | Responsive 375/768/1280 — `MovementCard` + `TouchTarget` + shell viewport-relative (HEAD `f39a9d7`) | H-09/H-11/H-15 cerrados |
 | UX-8 | ✅ | Microcopy + estados + errores — 30 toasts verbo+objeto, 404 localizado, noResults → EmptyState (HEAD `5dd8427`) | H-08 (30)/H-03/H-04 cerrados; DEC-DS-09; paridad es/en (`pnpm parity` gate) |
-| UX-9 | ⏳ | A11y | H-05/H-11/H-12/H-13/H-16/H-18 cerrados |
+| UX-9 | ✅ | A11y — focus trap, naming, aria-required, canal único toast, aria-pressed/sort, evidencia contraste (HEAD `7d0693d`) | H-05/H-11/H-12/H-13/H-16/H-18 cerrados; 1549/1549 tests ×2; 3 manuales pendientes RSL-8 |
 | UX-10 | ⏳ | Implementación (orden §53) | Gates §46 + regresión §47 en cada paso |
 | UX-11 | ⏳ | Validación | ≥5 usuarios; Regla de Oro; TTI; regresión 0 |
 | UX-12 | ⏳ | Polish | Condición de éxito §56 |
