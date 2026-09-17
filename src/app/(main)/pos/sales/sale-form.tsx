@@ -211,6 +211,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             id="clientId"
             label={t("client")}
             required={isOnCredit}
+            aria-describedby={needsClient ? "clientId-warning" : undefined}
             disabled={isPending}
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
@@ -223,7 +224,9 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             ]}
           />
           {needsClient && (
-            <p className="mt-1 text-xs text-warning">{t("clientRequiredForCredit")}</p>
+            <p id="clientId-warning" className="mt-1 text-xs text-warning">
+              {t("clientRequiredForCredit")}
+            </p>
           )}
         </div>
 

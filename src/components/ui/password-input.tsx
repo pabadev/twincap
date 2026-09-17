@@ -11,7 +11,19 @@ interface PasswordInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
-  function PasswordInput({ label, error, required, className = "", id, ...props }, ref) {
+  function PasswordInput(
+    {
+      label,
+      error,
+      required,
+      className = "",
+      id,
+      "aria-invalid": ariaInvalid,
+      "aria-describedby": ariaDescribedBy,
+      ...props
+    },
+    ref,
+  ) {
     const [visible, setVisible] = useState(false);
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
     const t = useT("Auth");
@@ -32,6 +44,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             id={inputId}
             type={visible ? "text" : "password"}
             required={required}
+            aria-invalid={error ? true : ariaInvalid}
+            aria-describedby={error ? `${inputId}-error` : ariaDescribedBy}
             className={`block h-10 w-full rounded-md border px-3 pr-10 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed dark:border-surface-border dark:bg-surface-input dark:text-white ${
               error ? "border-danger focus:border-danger focus:ring-danger" : "border-zinc-300"
             } ${className}`}
@@ -48,7 +62,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             <Icon icon={visible ? EyeOff : Eye} size="sm" />
           </button>
         </div>
-        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+        {error && (
+          <p id={`${inputId}-error`} className="mt-1 text-xs text-danger">
+            {error}
+          </p>
+        )}
       </div>
     );
   },

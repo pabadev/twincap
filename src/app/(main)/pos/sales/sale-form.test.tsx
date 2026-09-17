@@ -147,4 +147,19 @@ describe("SaleForm clientId required semantics (S6.1/S6.2)", () => {
     expect(label?.textContent).toBe("client");
     expect(label?.textContent).not.toContain("*");
   });
+
+  it("associates the missing-client warning with clientId via aria-describedby (S7.3)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    switchPaymentMode(container, "on-credit");
+    const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
+    expect(clientSelect?.getAttribute("aria-describedby")).toBe("clientId-warning");
+    const warning = container.querySelector<HTMLElement>("#clientId-warning");
+    expect(warning).not.toBeNull();
+    expect(warning?.textContent).toBe("clientRequiredForCredit");
+    // On a cash sale there is no warning and no described-by binding.
+    switchPaymentMode(container, "paid-in-full");
+    const cashSelect = container.querySelector<HTMLSelectElement>("#clientId");
+    expect(cashSelect?.getAttribute("aria-describedby")).toBeNull();
+    expect(container.querySelector("#clientId-warning")).toBeNull();
+  });
 });

@@ -14,7 +14,18 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, options, placeholder, error, required, className = "", id, ...props },
+  {
+    label,
+    options,
+    placeholder,
+    error,
+    required,
+    className = "",
+    id,
+    "aria-invalid": ariaInvalid,
+    "aria-describedby": ariaDescribedBy,
+    ...props
+  },
   ref,
 ) {
   const selectId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
@@ -33,6 +44,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           ref={ref}
           id={selectId}
           required={required}
+          aria-invalid={error ? true : ariaInvalid}
+          aria-describedby={error ? `${selectId}-error` : ariaDescribedBy}
           className={`block h-10 w-full cursor-pointer appearance-none rounded-md border py-0 pl-3 pr-9 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed dark:border-surface-border dark:bg-surface-input dark:text-white ${
             error ? "border-danger focus:border-danger focus:ring-danger" : "border-surface-border"
           } ${className}`}
@@ -51,7 +64,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"
         />
       </div>
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+      {error && (
+        <p id={`${selectId}-error`} className="mt-1 text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 });
