@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { useT } from '../../../i18n/client';
-import { DeleteClientButton } from './delete-client-button';
-import { ClientForm } from './client-form';
-import { Icon } from '../../../components/ui/icon';
-import { EmptyState } from '../../../components/ui/empty-state';
-import { Modal } from '../../../components/ui/modal';
-import { ActionIconButton } from '../../../components/ui/action-icon-button';
-import { Table, TableShell, THead, Th, TBody, Td } from '../../../components/ui/table';
+import { useState, useEffect, useMemo } from "react";
+import { useT } from "../../../i18n/client";
+import { DeleteClientButton } from "./delete-client-button";
+import { ClientForm } from "./client-form";
+import { Icon } from "../../../components/ui/icon";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Modal } from "../../../components/ui/modal";
+import { ActionIconButton } from "../../../components/ui/action-icon-button";
+import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
 import { MovementCard } from "../../../components/ui/movement-card";
-import { Search, Pencil } from 'lucide-react';
+import { Search, Pencil } from "lucide-react";
 
 export interface SerializedClient {
   id: string;
@@ -21,11 +21,11 @@ export interface SerializedClient {
 }
 
 export function ClientsList({ clients }: { clients: SerializedClient[] }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [editingClient, setEditingClient] = useState<SerializedClient | null>(null);
-  const t = useT('Clients');
-  const tCommon = useT('Common');
+  const t = useT("Clients");
+  const tCommon = useT("Common");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -47,16 +47,9 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
 
   return (
     <>
-      <Modal
-        open={!!editingClient}
-        onClose={() => setEditingClient(null)}
-        title={t('editTitle')}
-      >
+      <Modal open={!!editingClient} onClose={() => setEditingClient(null)} title={t("editTitle")}>
         {editingClient && (
-          <ClientForm
-            client={editingClient}
-            onSuccess={() => setEditingClient(null)}
-          />
+          <ClientForm client={editingClient} onSuccess={() => setEditingClient(null)} />
         )}
       </Modal>
 
@@ -68,7 +61,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
             </div>
             <input
               type="text"
-              placeholder={t('searchPlaceholder')}
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
@@ -77,33 +70,31 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
           {(!debouncedQuery.trim() || filteredClients.length > 0) && (
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               {debouncedQuery.trim()
-                ? t('showingResults', { filtered: String(filteredClients.length), total: String(clients.length) })
-                : t('showingResults', { filtered: String(clients.length), total: String(clients.length) })}
+                ? t("showingResults", {
+                    filtered: String(filteredClients.length),
+                    total: String(clients.length),
+                  })
+                : t("showingResults", {
+                    filtered: String(clients.length),
+                    total: String(clients.length),
+                  })}
             </p>
           )}
         </div>
       )}
 
       {clients.length > 0 && debouncedQuery.trim() && filteredClients.length === 0 && (
-        <EmptyState icon={<Icon icon={Search} size="xl" />} title={t('noResults')} />
+        <EmptyState icon={<Icon icon={Search} size="xl" />} title={t("noResults")} />
       )}
 
       <TableShell className="max-sm:hidden">
         <Table className="min-w-[500px]">
           <THead>
             <tr>
-              <Th>
-                {t('name')}
-              </Th>
-              <Th>
-                {t('phone')}
-              </Th>
-              <Th>
-                {t('email')}
-              </Th>
-              <Th align="right">
-                {tCommon('actions')}
-              </Th>
+              <Th>{t("name")}</Th>
+              <Th>{t("phone")}</Th>
+              <Th>{t("email")}</Th>
+              <Th align="right">{tCommon("actions")}</Th>
             </tr>
           </THead>
           <TBody>
@@ -113,23 +104,15 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                   <span className="text-sm font-medium text-zinc-900 dark:text-white">
                     {client.name}
                   </span>
-                  {client.note && (
-                    <span className="ml-2 text-xs text-zinc-400">
-                      {client.note}
-                    </span>
-                  )}
+                  {client.note && <span className="ml-2 text-xs text-zinc-400">{client.note}</span>}
                 </Td>
-                <Td className="text-sm text-zinc-600 dark:text-zinc-300">
-                  {client.phone || '—'}
-                </Td>
-                <Td className="text-sm text-zinc-600 dark:text-zinc-300">
-                  {client.email || '—'}
-                </Td>
+                <Td className="text-sm text-zinc-600 dark:text-zinc-300">{client.phone || "—"}</Td>
+                <Td className="text-sm text-zinc-600 dark:text-zinc-300">{client.email || "—"}</Td>
                 <Td align="right">
                   <div className="flex items-center justify-end gap-1">
                     <ActionIconButton
                       icon={Pencil}
-                      label={tCommon('edit')}
+                      label={tCommon("edit")}
                       tone="primary"
                       onClick={() => setEditingClient(client)}
                     />
@@ -156,15 +139,9 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                 value: client.name,
                 primary: true,
               },
-              ...(client.phone
-                ? [{ key: "phone", label: t("phone"), value: client.phone }]
-                : []),
-              ...(client.email
-                ? [{ key: "email", label: t("email"), value: client.email }]
-                : []),
-              ...(client.note
-                ? [{ key: "note", label: t("note"), value: client.note }]
-                : []),
+              ...(client.phone ? [{ key: "phone", label: t("phone"), value: client.phone }] : []),
+              ...(client.email ? [{ key: "email", label: t("email"), value: client.email }] : []),
+              ...(client.note ? [{ key: "note", label: t("note"), value: client.note }] : []),
             ]}
             actions={
               <div className="flex items-center gap-1">
