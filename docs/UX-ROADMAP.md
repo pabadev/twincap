@@ -1,7 +1,7 @@
 # TWINCAP — UX ROADMAP — PLAN MAESTRO DE LA ETAPA UX/UI (FASES UX-0…UX-12)
 
 > **Fecha:** 2026-09-13
-> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7 **COMPLETA Y ARCHIVADA (2026-09-16)** — responsive mobile + desktop (SDD `ux-7-responsive`, HEAD `f39a9d7`, H-09/H-11/H-15 cerrados, verify PASS 1504/1504, pase visual RSL-8 pendiente fundador); UX-8…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
+> **Estado:** PLAN MAESTRO — UX-0/UX-1/UX-2 COMPLETAS; UX-3/UX-4 APROBADAS (2026-09-14); UX-5 **COMPLETA** (commit `b679cb8` + TTI medido, regla de oro OK — see `docs/UX-5-TTI-REPORT.md`); UX-10 pasos 1-2 + H-15 parcial commiteados (`2960206`, `34510ae`); **H-06 (mark-as-paid) CERRADO (2026-09-14, commit `46e967f`)** — cuenta destino obligatoria + ConfirmDialog, ejecutado como prerequisito de UX-6; UX-6 **COMPLETA Y ARCHIVADA (2026-09-16)** — confirmación informada en flujos core (SDD `ux-6-core-flows`, HEAD `02e883f`, verify PASS 16/16 escenarios); UX-7 **COMPLETA Y ARCHIVADA (2026-09-16)** — responsive mobile + desktop (SDD `ux-7-responsive`, HEAD `f39a9d7`, H-09/H-11/H-15 cerrados, verify PASS 1504/1504, pase visual RSL-8 pendiente fundador); UX-8 **COMPLETA Y ARCHIVADA (2026-09-16)** — microcopy + estados + errores (SDD `ux-8-microcopy-states-errors`, HEAD `5dd8427`, H-08 con conteo real **30**/H-03/H-04 cerrados + DEC-DS-09, verify PASS WITH WARNINGS 19/19 req / 31/31 escenarios / 1513/1515 tests, freeze CERO, pendiente visual filter-zero 375/768/1280); UX-9…UX-12 PLANIFICADAS (requieren aprobación por fase, protocolo R3.13)
 > **Fuente normativa:** `docs/freeze + UX-UI.md` (prompt maestro §35/§40/§41/§46/§47/§48/§49/§52/§53/§56)
 > **Documentos relacionados:** `docs/FINANCIAL-DOMAIN-FREEZE.md`, `docs/UX-UI-AUDIT.md` (UX-1), `docs/UX-COMPETITIVE-RESEARCH.md` (UX-2), `docs/UX-INFORMATION-ARCHITECTURE.md` (UX-3), `docs/UX-DESIGN-SYSTEM.md` (UX-4), `docs/PROJECT-RULES.md` (§15/§18)
 
@@ -19,7 +19,7 @@
 | UX-5 — Rediseño del Resumen | ✅ **COMPLETA (2026-09-14)** | Diseño conceptual + implementación + TTI medido (`docs/UX-5-TTI-REPORT.md`) |
 | UX-6 — Flujos core | ✅ **COMPLETA (2026-09-16)** | Confirmación informada en flujos transaccionales (SDD `ux-6-core-flows`, HEAD `02e883f`) |
 | UX-7 — Responsive | ✅ **COMPLETA (2026-09-16)** | Mobile-first deliberado — H-09/H-11/H-15 cerrados (SDD `ux-7-responsive`, HEAD `f39a9d7`) |
-| UX-8 — Microcopy + estados + errores | ⏳ PLANIFICADA | Lenguaje y estados |
+| UX-8 — Microcopy + estados + errores | ✅ **COMPLETA (2026-09-16)** | H-08/H-03/H-04 + DEC-DS-09 cerrados (SDD `ux-8-microcopy-states-errors`, HEAD `5dd8427`) |
 | UX-9 — Accesibilidad | ⏳ PLANIFICADA | A11y de componentes y páginas |
 | UX-10 — Implementación | ⏳ PLANIFICADA | Orden del §53 |
 | UX-11 — Validación | ⏳ PLANIFICADA | Evidencia real de uso |
@@ -106,15 +106,16 @@
 - **Evidencia:** SDD `ux-7-responsive` — verify **PASS con warnings** (0 CRITICAL): suite **138 archivos / 1504 tests / 1334.80 s**, tsc limpio; 20 commits conventionales; archive-report Engram `sdd/ux-7-responsive/archive-report`.
 - **Fases destinatarias:** UX-11 (validación visual).
 
-### UX-8 — MICROCOPY + ESTADOS + ERRORES ⏳ PLANIFICADA
+### UX-8 — MICROCOPY + ESTADOS + ERRORES ✅ COMPLETA Y ARCHIVADA (2026-09-16)
 
 - **Objetivo:** lenguaje claro/humano/corto/neutro (§22) + estados explícitos (§15) sin implícitos.
-- **Criterios de aceptación:**
-  - **H-08 cerrado:** los 29 toasts "…exitosamente" migrados a verbo+objeto en es/en.
-  - **H-03 cerrado:** todos los `aria-label` (incluido toggle de tema) pasan por `messages/`.
-  - **H-04 cerrado:** `src/app/not-found.tsx` localizado es/en con shell y enlace al inicio.
-  - Los 12 estados del DS (DEC-DS-09) presentes donde aplican; cada uno responde qué ocurrió / datos seguros / qué hacer.
-  - Paridad es/en verificada por lint/script (sin claves faltantes).
+- **Criterios de aceptación — CERRADOS:**
+  - **H-08 cerrado:** los **30** toasts "…exitosamente" (conteo REAL medido; la auditoría decía 29 — corrección registrada en el archive) migrados a verbo+objeto en es/en; 34 claves Toast congeladas byte-idénticas (códigos analytics); guard `messages-toast-microcopy.test.ts` (3/3); cero cambios de componentes.
+  - **H-03 cerrado con evidencia:** sweep → 0 `aria-label` literales en `src/components|src/app` (toggle de tema ya i18n, `2960206`); guard `aria-literal-guard.test.ts` como red de regresión.
+  - **H-04 cerrado:** `src/app/not-found.tsx` localizado es/en vía `getT('NotFound')` (namespace `NotFound` + union types.ts 23→28) con shell de marca, enlace al inicio y noindex automático; cubre `notFound()` y URLs no matcheadas.
+  - Los 12 estados del DS (DEC-DS-09) presentes donde aplican: noResults unificado en `EmptyState` (6 listas, copy y triggers byte-idénticos); conflict re-presentado copy-only sobre superficies CAS existentes (cero semántica, freeze intacto); partial/stale/offline documentados como no-estados (cero código); sin componente Alert/ErrorState (pull-rule DEC-DS-06 = 0 sitios sin cubrir; diferido a UX-10/UX-12).
+  - Paridad es/en verificada por gate: `messages-parity` + `messages-usage` declarados como gate y script `pnpm parity` (4/4).
+- **Evidencia:** SDD `ux-8-microcopy-states-errors` — verify **PASS WITH WARNINGS** (0 CRITICAL): **19/19 requirements, 31/31 escenarios, 1513/1515 tests** (2 timeouts R15 flaky ajenos al diff, pasan aislados 44/44), tsc --noEmit limpio, parity 4/4, freeze financiero CERO; 16 commits conventionales (feat×4/test×3/refactor×3/style×5/chore×1); archive-report Engram `sdd/ux-8-microcopy-states-errors/archive-report`; pendiente no bloqueante: pase visual 375/768/1280 del estado filter-zero de las listas (client-side, `pnpm dev`, precedente RSL-8); **H-16 diferido a UX-9** (toast.tsx/toast-provider.tsx intactos).
 - **Fases destinatarias:** UX-9, UX-11.
 
 ### UX-9 — ACCESIBILIDAD ⏳ PLANIFICADA
@@ -156,7 +157,7 @@
 | UX-5 | ✅ | Resumen 5 niveles implementado (`b679cb8`) + TTI medido | Regla de Oro 10 s → hero 2.3–2.4 s frío 375+3G |
 | UX-6 | ✅ | Flujos core rediseñados — `MoneyActionConfirmation` + F5 (HEAD `02e883f`) | H-06 cerrado; confirmaciones financieras implementadas |
 | UX-7 | ✅ | Responsive 375/768/1280 — `MovementCard` + `TouchTarget` + shell viewport-relative (HEAD `f39a9d7`) | H-09/H-11/H-15 cerrados |
-| UX-8 | ⏳ | Microcopy + estados + errores | H-08/H-03/H-04 cerrados; paridad es/en |
+| UX-8 | ✅ | Microcopy + estados + errores — 30 toasts verbo+objeto, 404 localizado, noResults → EmptyState (HEAD `5dd8427`) | H-08 (30)/H-03/H-04 cerrados; DEC-DS-09; paridad es/en (`pnpm parity` gate) |
 | UX-9 | ⏳ | A11y | H-05/H-11/H-12/H-13/H-16/H-18 cerrados |
 | UX-10 | ⏳ | Implementación (orden §53) | Gates §46 + regresión §47 en cada paso |
 | UX-11 | ⏳ | Validación | ≥5 usuarios; Regla de Oro; TTI; regresión 0 |
