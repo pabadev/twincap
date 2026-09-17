@@ -9,7 +9,8 @@ type ModalSize = "sm" | "md" | "lg";
 interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title?: string;
+  /** Accessible dialog name, rendered as the heading and wired via aria-labelledby (UX-9 R-5). */
+  title: string;
   /** Optional id for the heading; when present the dialog is labeled via aria-labelledby (overrides aria-label). */
   titleId?: string;
   children: ReactNode;
@@ -76,11 +77,9 @@ export function Modal({
         aria-labelledby={titleId}
       >
         <div className="mb-4 flex shrink-0 items-center justify-between">
-          {title && (
-            <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-white">
-              {title}
-            </h2>
-          )}
+          <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-white">
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}
