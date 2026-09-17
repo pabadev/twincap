@@ -113,9 +113,7 @@ export function TransfersList({
           </div>
 
           {filtered.length === 0 && transfers.length > 0 && (
-            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              {tCommon('noResults')}
-            </p>
+            <EmptyState title={tCommon('noResults')} />
           )}
 
           <TableShell className="max-sm:hidden">
