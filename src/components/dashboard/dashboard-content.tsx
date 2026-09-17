@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { DashboardFilterBar } from './dashboard-filters';
-import { SummaryCards } from './summary-cards';
-import { SummaryHero } from './summary-hero';
-import { SummaryAttention } from './summary-attention';
-import { MonthlyChart } from './monthly-chart';
-import { RecentMovements } from './recent-movements';
-import { PositionCards } from './position-cards';
-import { DashboardReportsGrid } from './dashboard-reports-grid';
-import { SummaryTable, type SummaryTableRow } from './summary-table';
-import { Card } from '../ui/card';
-import { Button } from '../ui/button';
-import { Icon } from '../ui/icon';
-import { Wallet, MessageSquare, SlidersHorizontal } from 'lucide-react';
-import { isSyntheticCategoryId } from '../../core/domain/synthetic-categories';
-import { formatAmount } from '../../lib/format';
-import { useT } from '../../i18n/client';
-import type { SerializedCategory } from '../../core/domain/category';
-import type { CurrencyTotal } from '../../core/application/compute-category-summary';
-import type { DashboardSnapshot } from './dashboard-snapshot';
-import { getDashboardSnapshotAction } from '../../app/(main)/dashboard/actions';
-import { FeedbackDialog } from '../feedback/feedback-widget';
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
+import { DashboardFilterBar } from "./dashboard-filters";
+import { SummaryCards } from "./summary-cards";
+import { SummaryHero } from "./summary-hero";
+import { SummaryAttention } from "./summary-attention";
+import { MonthlyChart } from "./monthly-chart";
+import { RecentMovements } from "./recent-movements";
+import { PositionCards } from "./position-cards";
+import { DashboardReportsGrid } from "./dashboard-reports-grid";
+import { SummaryTable, type SummaryTableRow } from "./summary-table";
+import { Card } from "../ui/card";
+import { Button } from "../ui/button";
+import { Icon } from "../ui/icon";
+import { Wallet, MessageSquare, SlidersHorizontal } from "lucide-react";
+import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
+import { formatAmount } from "../../lib/format";
+import { useT } from "../../i18n/client";
+import type { SerializedCategory } from "../../core/domain/category";
+import type { CurrencyTotal } from "../../core/application/compute-category-summary";
+import type { DashboardSnapshot } from "./dashboard-snapshot";
+import { getDashboardSnapshotAction } from "../../app/(main)/dashboard/actions";
+import { FeedbackDialog } from "../feedback/feedback-widget";
 
 interface DashboardAccount {
   id: string;
@@ -64,7 +64,7 @@ function toTotals(rows: SummaryTableRow[]): CurrencyTotal[] {
     .map(([currency, value]) => ({ currency, value }))
     .filter((t) => t.value !== 0)
     .sort((a, b) =>
-      a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
+      a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
     );
 }
 
@@ -79,11 +79,11 @@ export function DashboardContent({
   positionData,
   initialSnapshot,
 }: DashboardContentProps) {
-  const t = useT('Dashboard');
-  const tFeedback = useT('Feedback');
+  const t = useT("Dashboard");
+  const tFeedback = useT("Feedback");
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
-  const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
+  const [chartView, setChartView] = useState<"monthly" | "yearly">("monthly");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Filters live behind a toggle: the N1 hero reacts to them (the server
   // rebuilds currencyBreakdown with the active filters), so the bar must not
@@ -141,7 +141,7 @@ export function DashboardContent({
       .map((c) => ({ value: c.id, label: c.name }));
   }, [categories]);
 
-  function handleFiltersChange(next: DashboardSnapshot['filters']) {
+  function handleFiltersChange(next: DashboardSnapshot["filters"]) {
     // Traveling-filter contract (UX-5 §4.3): persist filters in the URL so a
     // reload or navigation restores them instead of resetting to 'all'.
     // history.replaceState (NOT router.replace) keeps the URL in sync WITHOUT
@@ -149,25 +149,18 @@ export function DashboardContent({
     // flash, no double refetch. The next hard reload/navigation reads the
     // params in page.tsx.
     const params = new URLSearchParams();
-    if (next.scope !== 'all') params.set('scope', next.scope);
-    if (next.accountId !== 'all') params.set('cuenta', next.accountId);
-    if (next.categoryId !== 'all') params.set('categoria', next.categoryId);
+    if (next.scope !== "all") params.set("scope", next.scope);
+    if (next.accountId !== "all") params.set("cuenta", next.accountId);
+    if (next.categoryId !== "all") params.set("categoria", next.categoryId);
     const qs = params.toString();
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${qs ? `?${qs}` : ''}`,
-    );
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
 
     startTransition(async () => {
       // A2: the server does not know the client's timezone — send the
       // offset so current-month/current-year derive from the civil date,
       // not the server's UTC clock.
       try {
-        const nextSnapshot = await getDashboardSnapshotAction(
-          next,
-          new Date().getTimezoneOffset(),
-        );
+        const nextSnapshot = await getDashboardSnapshotAction(next, new Date().getTimezoneOffset());
         setSnapshot(nextSnapshot);
       } catch {
         // Keep the current snapshot on refetch failure; the filters are
@@ -218,45 +211,39 @@ export function DashboardContent({
     ? chartCurrency
     : snapshot.currency;
 
-  const chartTitle = chartView === 'monthly' ? undefined : t('yearlyTrend');
-  const chartData =
-    chartView === 'monthly' ? monthlyData : yearlyData;
+  const chartTitle = chartView === "monthly" ? undefined : t("yearlyTrend");
+  const chartData = chartView === "monthly" ? monthlyData : yearlyData;
   const chartDataBySelected = snapshot.chartDataByCurrency?.[effectiveChartCurrency];
   const effectiveChartData =
-    chartView === 'monthly'
+    chartView === "monthly"
       ? (chartDataBySelected?.monthly ?? chartData)
       : (chartDataBySelected?.yearly ?? chartData);
 
-  const greeting = userName
-    ? t('welcomeUser', { name: userName })
-    : userLabel;
+  const greeting = userName ? t("welcomeUser", { name: userName }) : userLabel;
 
   const activeFilterCount =
-    (filters.scope !== 'all' ? 1 : 0) +
-    (filters.accountId !== 'all' ? 1 : 0) +
-    (filters.categoryId !== 'all' ? 1 : 0);
+    (filters.scope !== "all" ? 1 : 0) +
+    (filters.accountId !== "all" ? 1 : 0) +
+    (filters.categoryId !== "all" ? 1 : 0);
 
   // R5-E onboarding: shown only while the user still has just the seeded
   // fixed Cash account — uses the FULL account list (not the filtered
   // snapshot balances) so the banner reflects account count regardless of
   // the active dashboard filters.
-  const showOnboarding =
-    accounts.length === 1 && accounts[0].isFixed;
+  const showOnboarding = accounts.length === 1 && accounts[0].isFixed;
 
   return (
     <div className="space-y-8" aria-busy={isPending}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {greeting}
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
         <button
           type="button"
           onClick={() => setFeedbackOpen(true)}
           className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           <MessageSquare className="h-4 w-4" />
-          {tFeedback('openFeedback')}
+          {tFeedback("openFeedback")}
         </button>
       </div>
 
@@ -269,16 +256,14 @@ export function DashboardContent({
               <Icon icon={Wallet} size="md" className="text-primary" />
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                  {t('onboardingTitle')}
+                  {t("onboardingTitle")}
                 </h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  {t('onboardingBody')}
-                </p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("onboardingBody")}</p>
               </div>
             </div>
             <Link href="/accounts" className="shrink-0">
               <Button variant="primary" size="sm">
-                {t('onboardingCta')}
+                {t("onboardingCta")}
               </Button>
             </Link>
           </div>
@@ -297,7 +282,7 @@ export function DashboardContent({
           className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           <SlidersHorizontal className="h-4 w-4" />
-          {t('filters')}
+          {t("filters")}
           {activeFilterCount > 0 && (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
               {activeFilterCount}
@@ -305,9 +290,7 @@ export function DashboardContent({
           )}
         </button>
         {activeFilterCount > 0 && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            {t('filtersActive')}
-          </span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("filtersActive")}</span>
         )}
       </div>
 
@@ -340,7 +323,7 @@ export function DashboardContent({
         financingOutflow={financingOutflow}
         locale={locale}
         currencyBreakdown={currencyBreakdown}
-        contextSummary={filters.scope === 'all' ? snapshot.contextSummary : undefined}
+        contextSummary={filters.scope === "all" ? snapshot.contextSummary : undefined}
       />
 
       {/* Cuentas — justo debajo de las cards de resumen: responden "¿en qué
@@ -349,7 +332,7 @@ export function DashboardContent({
           hero → cards → cuentas → categorías → evolución → atención → detalle. */}
       <div>
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('accounts')}
+          {t("accounts")}
         </h2>
 
         {accountBalances.length === 0 ? (
@@ -368,16 +351,14 @@ export function DashboardContent({
                   </span>
                   <span
                     className={`text-xl font-semibold ${
-                      account.balance < 0
-                        ? 'text-expense'
-                        : 'text-zinc-900 dark:text-white'
+                      account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
                     }`}
                   >
                     {formatAmount(account.balance, account.currency, locale)}
                   </span>
                   {account.isFixed && (
                     <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t('fixed')}
+                      {t("fixed")}
                     </span>
                   )}
                 </div>
@@ -390,25 +371,25 @@ export function DashboardContent({
       {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            {t('topCategories')}
+            {t("topCategories")}
           </h2>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {topIncomeRows.length > 0 && (
               <SummaryTable
-                title={t('topIncome')}
+                title={t("topIncome")}
                 rows={topIncomeRows}
                 totals={toTotals(topIncomeRows)}
                 locale={locale}
-                emptyMessage={t('noIncomeData')}
+                emptyMessage={t("noIncomeData")}
               />
             )}
             {topExpenseRows.length > 0 && (
               <SummaryTable
-                title={t('topExpense')}
+                title={t("topExpense")}
                 rows={topExpenseRows}
                 totals={toTotals(topExpenseRows)}
                 locale={locale}
-                emptyMessage={t('noExpenseData')}
+                emptyMessage={t("noExpenseData")}
               />
             )}
           </div>
@@ -417,22 +398,22 @@ export function DashboardContent({
 
       <div>
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t('incomeExpenseSummary')}
+          {t("incomeExpenseSummary")}
         </h2>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SummaryTable
-            title={t('incomeSummary')}
+            title={t("incomeSummary")}
             rows={incomeRows}
             totals={incomeTotals}
             locale={locale}
-            emptyMessage={t('noIncomeData')}
+            emptyMessage={t("noIncomeData")}
           />
           <SummaryTable
-            title={t('expenseSummary')}
+            title={t("expenseSummary")}
             rows={expenseRows}
             totals={expenseTotals}
             locale={locale}
-            emptyMessage={t('noExpenseData')}
+            emptyMessage={t("noExpenseData")}
           />
         </div>
       </div>
@@ -441,34 +422,36 @@ export function DashboardContent({
       <div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setChartView('monthly')}
+            onClick={() => setChartView("monthly")}
+            aria-pressed={chartView === "monthly"}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              chartView === 'monthly'
-                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+              chartView === "monthly"
+                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
-            {t('viewMonthly')}
+            {t("viewMonthly")}
           </button>
           <button
-            onClick={() => setChartView('yearly')}
+            onClick={() => setChartView("yearly")}
+            aria-pressed={chartView === "yearly"}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              chartView === 'yearly'
-                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+              chartView === "yearly"
+                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
-            {t('viewYearly')}
+            {t("viewYearly")}
           </button>
           {snapshot.chartCurrencies && (
             <label className="ml-auto flex items-center gap-2">
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                {t('chartCurrency')}
+                {t("chartCurrency")}
               </span>
               <select
                 value={effectiveChartCurrency}
                 onChange={(e) => setChartCurrency(e.target.value)}
-                aria-label={t('chartCurrency')}
+                aria-label={t("chartCurrency")}
                 className="h-9 rounded-md border border-surface-border bg-surface-input px-2 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               >
                 {snapshot.chartCurrencies.map((c) => (
@@ -496,19 +479,13 @@ export function DashboardContent({
       />
 
       {/* ── N5 DETALLE ───────────────────────────────────────────── */}
-      <RecentMovements
-        movements={recentMovements}
-        noMovementsMessage={noMovementsMessage}
-      />
+      <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
 
       <DashboardReportsGrid />
 
       <PositionCards positions={positionData} locale={locale} />
 
-      <FeedbackDialog
-        open={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-      />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }
