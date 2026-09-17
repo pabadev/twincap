@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useCallback, type ReactNode } from "react";
+import { useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useT } from "../../i18n/client";
+import { useFocusTrap } from "./focus-trap";
 
 type ModalSize = "sm" | "md" | "lg";
 
@@ -36,6 +37,11 @@ export function Modal({
 }: ModalProps) {
   const tCommon = useT("Common");
 
+  // Focus trap (UX-9 R-2): while open, focus enters the dialog, Tab/Shift+Tab
+  // stay inside it, and focus returns to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(dialogRef, { active: open });
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -62,6 +68,7 @@ export function Modal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
+        ref={dialogRef}
         className={`relative flex max-h-full w-full ${sizeClasses[size]} flex-col rounded-lg border border-surface-border bg-surface-card p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
         role="dialog"
         aria-modal="true"
