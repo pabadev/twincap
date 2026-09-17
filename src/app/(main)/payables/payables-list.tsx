@@ -142,9 +142,7 @@ export function PayablesList({
           </div>
 
           {filtered.length === 0 && payables.length > 0 && (
-            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              {t('noResults')}
-            </p>
+            <EmptyState title={t('noResults')} />
           )}
 
           <div className="space-y-3 overflow-x-auto">
