@@ -209,9 +209,7 @@ export function SaleList({
             </div>
           </div>
 
-          {filtered.length === 0 && sales.length > 0 && (
-            <EmptyState title={t("noResults")} />
-          )}
+          {filtered.length === 0 && sales.length > 0 && <EmptyState title={t("noResults")} />}
 
           <div className="space-y-3">
             {filtered.map((sale) => {

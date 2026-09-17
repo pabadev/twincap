@@ -147,9 +147,7 @@ export function CreditsGrantedList({
             </div>
           </div>
 
-          {filtered.length === 0 && credits.length > 0 && (
-            <EmptyState title={t("noResults")} />
-          )}
+          {filtered.length === 0 && credits.length > 0 && <EmptyState title={t("noResults")} />}
 
           <div className="space-y-3">
             {filtered.map((credit) => {
