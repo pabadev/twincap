@@ -14,6 +14,7 @@ import { SummaryTable, type SummaryTableRow } from "./summary-table";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
+import { TouchTarget } from "../ui/touch-target";
 import { Wallet, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
 import { formatAmount } from "../../lib/format";
@@ -430,7 +431,7 @@ export function DashboardContent({
                 : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
-            {t("viewMonthly")}
+            <TouchTarget as="span">{t("viewMonthly")}</TouchTarget>
           </button>
           <button
             onClick={() => setChartView("yearly")}
@@ -441,7 +442,7 @@ export function DashboardContent({
                 : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
-            {t("viewYearly")}
+            <TouchTarget as="span">{t("viewYearly")}</TouchTarget>
           </button>
           {snapshot.chartCurrencies && (
             <label className="ml-auto flex items-center gap-2">
