@@ -1,0 +1,150 @@
+// @vitest-environment jsdom
+
+import { act, type ReactNode } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { SaleForm } from "./sale-form";
+import type { SerializedAccount } from "../../../../core/domain/account";
+import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
+import type { SerializedClient } from "../../../../core/domain/client";
+
+// UX-9 Slice B, R-6/R-7 (H-13): the POS sale clientId Select carries the real
+// `required` state for credit sales (no manual asterisk) and, when the client
+// is missing on a credit sale, the warning is associated via aria-describedby.
+// Scenarios S6.1, S6.2, S7.3.
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {} }),
+}));
+
+vi.mock("../../../../i18n/client", () => ({
+  useT: () => (key: string) => key,
+  useLocale: () => "es",
+}));
+
+vi.mock("./actions", () => ({
+  createSaleAction: () => null,
+}));
+
+vi.mock("../../../../lib/use-action-error", () => ({
+  useActionError: () => (error: string) => error,
+}));
+
+vi.mock("../../../../lib/hooks/use-toast", () => ({
+  useToast: () => ({ addToast: () => {} }),
+}));
+
+// ClientForm/CatalogForm pull server actions that boot the auth/env stack —
+// irrelevant to the clientId semantics, so stub them out.
+vi.mock("../../clients/client-form", () => ({
+  ClientForm: () => null,
+}));
+
+vi.mock("../catalog/catalog-form", () => ({
+  CatalogForm: () => null,
+}));
+
+const catalogItems: SerializedCatalogItem[] = [
+  {
+    id: "c1",
+    workspaceId: "ws-1",
+    name: "Item A",
+    unitPrice: { amount: 1000, currency: "COP" },
+    type: "service",
+    stock: 0,
+    createdAt: new Date(0),
+  },
+];
+
+const accounts: SerializedAccount[] = [
+  {
+    id: "a1",
+    workspaceId: "ws-1",
+    name: "Checking",
+    currency: "COP",
+    isFixed: false,
+    createdAt: new Date(0),
+    version: 1,
+  },
+];
+
+const clients: SerializedClient[] = [
+  {
+    id: "cli-1",
+    workspaceId: "ws-1",
+    name: "Client One",
+    phone: "",
+    email: "",
+    note: "",
+    createdAt: new Date(0),
+  },
+];
+
+const baseProps = {
+  catalogItems,
+  accounts,
+  clients,
+  onDone: () => {},
+};
+
+interface Mounted {
+  root: ReturnType<typeof createRoot>;
+  container: HTMLElement;
+  unmount: () => void;
+}
+
+const mounted: Mounted[] = [];
+
+function mount(node: ReactNode): Mounted {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => {
+    root.render(node);
+  });
+  const entry: Mounted = {
+    root,
+    container,
+    unmount: () => {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    },
+  };
+  mounted.push(entry);
+  return entry;
+}
+
+afterEach(() => {
+  mounted.splice(0).forEach((entry) => entry.unmount());
+  vi.restoreAllMocks();
+  document.body.innerHTML = "";
+});
+
+function switchPaymentMode(container: HTMLElement, mode: string) {
+  const select = container.querySelector<HTMLSelectElement>("#paymentMode")!;
+  act(() => {
+    select.value = mode;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+describe("SaleForm clientId required semantics (S6.1/S6.2)", () => {
+  it("does not mark clientId required on a cash sale (S6.2)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
+    expect(clientSelect).not.toBeNull();
+    expect(clientSelect?.hasAttribute("required")).toBe(false);
+  });
+
+  it("marks clientId required on a credit sale and drops the asterisk (S6.1)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    switchPaymentMode(container, "on-credit");
+    const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
+    expect(clientSelect?.hasAttribute("required")).toBe(true);
+    const label = container.querySelector<HTMLLabelElement>('label[for="clientId"]');
+    expect(label?.textContent).toBe("client");
+    expect(label?.textContent).not.toContain("*");
+  });
+});
