@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Icon } from './icon';
-import { useT } from '../../i18n/client';
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Icon } from "./icon";
+import { useT } from "../../i18n/client";
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-export type ToastVariant = 'success' | 'error' | 'info' | 'warning';
+export type ToastVariant = "success" | "error" | "info" | "warning";
 
 interface ToastProps {
   id: string;
@@ -17,10 +17,10 @@ interface ToastProps {
 }
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: 'bg-success text-white',
-  error: 'bg-danger text-white',
-  info: 'bg-info text-white',
-  warning: 'bg-warning text-zinc-900',
+  success: "bg-success text-white",
+  error: "bg-danger text-white",
+  info: "bg-info text-white",
+  warning: "bg-warning text-zinc-900",
 };
 
 const variantIcons: Record<ToastVariant, LucideIcon> = {
@@ -30,16 +30,10 @@ const variantIcons: Record<ToastVariant, LucideIcon> = {
   warning: AlertTriangle,
 };
 
-export function Toast({
-  id,
-  message,
-  variant = 'info',
-  duration = 4000,
-  onDismiss,
-}: ToastProps) {
+export function Toast({ id, message, variant = "info", duration = 4000, onDismiss }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const tCommon = useT('Common');
+  const tCommon = useT("Common");
 
   useEffect(() => {
     // Trigger enter animation
@@ -61,12 +55,11 @@ export function Toast({
 
   return (
     <div
-      role="alert"
       className={`
         flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg
         transition-all duration-300 ease-in-out
         ${variantStyles[variant]}
-        ${isVisible && !isExiting ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}
+        ${isVisible && !isExiting ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}
       `}
     >
       <Icon icon={variantIcons[variant]} size="sm" />
@@ -74,7 +67,7 @@ export function Toast({
       <button
         onClick={handleDismiss}
         className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
-        aria-label={tCommon('dismiss')}
+        aria-label={tCommon("dismiss")}
       >
         <Icon icon={X} size="sm" />
       </button>
