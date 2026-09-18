@@ -314,7 +314,7 @@ export function MainNav({
               {/* User info + language toggle + logout */}
               <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-zinc-700">
                 {email && (
-                  <p className="mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <p className="mb-2 truncate text-[11px] text-zinc-600 dark:text-zinc-400">
                     {email}
                   </p>
                 )}

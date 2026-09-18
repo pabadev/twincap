@@ -40,7 +40,7 @@ export default async function NotFoundPage() {
         <div className="mx-auto w-full max-w-md text-center">
           <p
             aria-hidden="true"
-            className="font-display text-6xl font-bold tracking-tight text-cyan-700 dark:text-brand-gold"
+            className="font-display text-6xl font-bold tracking-tight text-cyan-800 dark:text-brand-gold"
           >
             404
           </p>

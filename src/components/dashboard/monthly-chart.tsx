@@ -35,7 +35,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
       <div className="space-y-3">
         {data.map((d) => (
           <div key={d.month} className="flex items-center gap-3">
-            <span className="w-8 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="w-8 text-xs text-zinc-600 dark:text-zinc-400">
               {formatMonth(d.month)}
             </span>
             <div className="min-w-0 flex-1 space-y-1">

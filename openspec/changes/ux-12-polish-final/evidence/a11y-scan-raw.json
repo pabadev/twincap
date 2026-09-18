@@ -1,0 +1,423 @@
+{
+  "scannedAt": "2026-09-18T22:35:12.209Z",
+  "combos": 20,
+  "totalViolations": 11,
+  "scanGaps": [],
+  "violations": [
+    {
+      "route": "/dashboard",
+      "viewport": "375",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".hover\\:text-zinc-700 > .min-h-\\[44px\\].min-w-\\[44px\\].touch-manipulation"
+          ],
+          "html": "<span class=\"inline-flex min-h-[44px] min-w-[44px] items-center justify-center touch-manipulation \">Yearly</span>"
+        },
+        {
+          "target": [
+            ".gap-3.flex.items-center:nth-child(1) > .w-8.text-zinc-500.text-xs"
+          ],
+          "html": "<span class=\"w-8 text-xs text-zinc-500 dark:text-zinc-400\">Apr</span>"
+        },
+        {
+          "target": [
+            ".gap-3.flex.items-center:nth-child(2) > .w-8.text-zinc-500.text-xs"
+          ],
+          "html": "<span class=\"w-8 text-xs text-zinc-500 dark:text-zinc-400\">May</span>"
+        },
+        {
+          "target": [
+            ".gap-3.flex.items-center:nth-child(3) > .w-8.text-zinc-500.text-xs"
+          ],
+          "html": "<span class=\"w-8 text-xs text-zinc-500 dark:text-zinc-400\">Jun</span>"
+        },
+        {
+          "target": [
+            ".gap-3.flex.items-center:nth-child(4) > .w-8.text-zinc-500.text-xs"
+          ],
+          "html": "<span class=\"w-8 text-xs text-zinc-500 dark:text-zinc-400\">Jul</span>"
+        }
+      ]
+    },
+    {
+      "route": "/movements",
+      "viewport": "375",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            "div[data-id=\"6aadbc0e78e4553afdbf3c1e\"] > dl > .items-start.justify-between.gap-3:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<dd class=\"text-right text-xs inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</dd>"
+        },
+        {
+          "target": [
+            "div[data-id=\"6aadbc0278e4553afdbf3be0\"] > dl > .items-start.justify-between.gap-3:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<dd class=\"text-right text-xs inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</dd>"
+        },
+        {
+          "target": [
+            "div[data-id=\"6aadbbf278e4553afdbf3aea\"] > dl > .items-start.justify-between.gap-3:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<dd class=\"text-right text-xs inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</dd>"
+        }
+      ]
+    },
+    {
+      "route": "/credits/granted",
+      "viewport": "375",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-zinc-400.text-xs"
+          ],
+          "html": "<span class=\"text-xs text-zinc-400\">0 abonos</span>"
+        }
+      ]
+    },
+    {
+      "route": "/help",
+      "viewport": "375",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        }
+      ]
+    },
+    {
+      "route": "/help",
+      "viewport": "375",
+      "theme": "dark",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".mt-3"
+          ],
+          "html": "<a href=\"mailto:soporte@twincap.app\" class=\"mt-3 inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover dark:text-primary\">Contact support<!-- --> — <!-- -->soporte@twincap.app</a>"
+        },
+        {
+          "target": [
+            ".text-primary.hover\\:text-primary-hover[href=\"/\"]"
+          ],
+          "html": "<a class=\"text-sm font-medium text-primary hover:text-primary-hover\" href=\"/\">Back to TwinCap home</a>"
+        }
+      ]
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "1280",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        },
+        {
+          "target": [
+            ".mb-2"
+          ],
+          "html": "<p class=\"mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400\">e2e-1789770706609-1@test.local</p>"
+        }
+      ]
+    },
+    {
+      "route": "/movements",
+      "viewport": "1280",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        },
+        {
+          "target": [
+            "p"
+          ],
+          "html": "<p class=\"mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400\">e2e-1789770706609-1@test.local</p>"
+        },
+        {
+          "target": [
+            "tr:nth-child(2) > .text-left:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<span class=\"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</span>"
+        },
+        {
+          "target": [
+            "tr:nth-child(3) > .text-left:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<span class=\"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</span>"
+        },
+        {
+          "target": [
+            "tr:nth-child(5) > .text-left:nth-child(5) > .bg-income\\/10.py-0\\.5.px-2"
+          ],
+          "html": "<span class=\"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-income/10 text-income\">Income</span>"
+        }
+      ]
+    },
+    {
+      "route": "/pos/sales",
+      "viewport": "1280",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        },
+        {
+          "target": [
+            "p"
+          ],
+          "html": "<p class=\"mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400\">e2e-1789770706609-1@test.local</p>"
+        }
+      ]
+    },
+    {
+      "route": "/credits/granted",
+      "viewport": "1280",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        },
+        {
+          "target": [
+            "p"
+          ],
+          "html": "<p class=\"mb-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400\">e2e-1789770706609-1@test.local</p>"
+        },
+        {
+          "target": [
+            ".text-zinc-400.text-xs"
+          ],
+          "html": "<span class=\"text-xs text-zinc-400\">0 abonos</span>"
+        }
+      ]
+    },
+    {
+      "route": "/help",
+      "viewport": "1280",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".text-cyan-700"
+          ],
+          "html": "<span class=\"text-cyan-700 dark:text-brand-teal\">Twin</span>"
+        }
+      ]
+    },
+    {
+      "route": "/help",
+      "viewport": "1280",
+      "theme": "dark",
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "nodes": [
+        {
+          "target": [
+            ".mt-3"
+          ],
+          "html": "<a href=\"mailto:soporte@twincap.app\" class=\"mt-3 inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover dark:text-primary\">Contact support<!-- --> — <!-- -->soporte@twincap.app</a>"
+        },
+        {
+          "target": [
+            ".text-primary.hover\\:text-primary-hover[href=\"/\"]"
+          ],
+          "html": "<a class=\"text-sm font-medium text-primary hover:text-primary-hover\" href=\"/\">Back to TwinCap home</a>"
+        }
+      ]
+    }
+  ]
+}

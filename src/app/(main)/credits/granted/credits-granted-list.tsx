@@ -233,7 +233,7 @@ export function CreditsGrantedList({
                       </div>
                     </div>
                     <div className="ml-4 flex items-center gap-2">
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">
                         {credit.abonos?.length}{" "}
                         {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
                       </span>

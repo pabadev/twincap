@@ -432,7 +432,7 @@ export function DashboardContent({
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               chartView === "monthly"
                 ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                : "text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
             <TouchTarget as="span">{t("viewMonthly")}</TouchTarget>
@@ -443,7 +443,7 @@ export function DashboardContent({
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               chartView === "yearly"
                 ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                : "text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
             <TouchTarget as="span">{t("viewYearly")}</TouchTarget>

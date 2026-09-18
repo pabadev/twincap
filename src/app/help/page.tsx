@@ -83,7 +83,7 @@ export default async function HelpPage() {
             </p>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="mt-3 inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover dark:text-primary"
+              className="mt-3 inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover dark:text-info"
             >
               {tHelp('contactButton')} — {SUPPORT_EMAIL}
             </a>
