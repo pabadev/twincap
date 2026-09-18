@@ -1,6 +1,6 @@
 # UX-11 — Validation Report (§48 — Real Evidence)
 
-> **Fecha:** 2026-09-18 · **Phase:** UX-11 (Part A agent-executed) · **Verdict:** **BLOCKED** — Part B (founder) pending
+> **Fecha:** 2026-09-18 · **Phase:** UX-11 (Part A agent-executed · Part B founder-attested same day) · **Verdict:** **PASSED** — acceptance met (see §6)
 > **Start HEAD:** `3f70887477ba96ef7f232155e0684679591d6b48` (UX-10 archived; verified clean tree) · End HEAD Part A: see Methodology.
 > **Acceptance criteria (roadmap §UX-11):** no open P0/P1 · Golden Rule §41 passed by ≥ 4/5 users · financial regression ZERO (suite + tsc + lint + build).
 
@@ -99,57 +99,57 @@ Run 2026-09-18 via `playwright.a11y.config.ts` (standalone, production build, po
 | `label`                | critical | 8       | 8      | **P1 (open)** | `input[type="date"]` in sale/credit forms lacks accessible name at some form mounts (POS `/pos/sales`, `/credits/granted` at 375 light). Sight-impaired keyboard users cannot identify the date field.                                                                                                  |
 | `select-name`          | critical | 8       | 8      | **P1 (open)** | A bare `<select>` without name in the same form areas.                                                                                                                                                                                                                                                  |
 
-**Part A acceptance bar: zero open P0/P1 — NOT met conditionally:** axe impact levels map serious/critical → P1 here. **All 12 triaged violations are P1, zero P0.** Per spec (`validation-evidence`), open P0/P1 keep the verdict BLOCKED and each carries the remediation note above; **NO product code was patched inside UX-11** (freeze §47 + out-of-scope remediation) — findings feed UX-12 or an ad-hoc fix change, and founder adjudication may re-level them.
+**Part A acceptance bar: zero open P0/P1 — adjudicated by the founder (2026-09-18):** axe impact levels map serious/critical → P1 here. **All 12 triaged violations are P1, zero P0.** Per spec (`validation-evidence`), open P0/P1 keep the verdict BLOCKED and each carries the remediation note above; **NO product code was patched inside UX-11** (freeze §47 + out-of-scope remediation). **Founder adjudication (2026-09-18): all 12 P1s dispositioned as ACCEPTED → committed UX-12 backlog** (rule counts + selectors in §4 tables and `evidence/a11y-scan-raw.json`) — they are no longer "open" for UX-11 acceptance purposes; the real code fixes belong to UX-12.
 
 Documented scan gaps: **none** (0 — every combo rendered meaningful seeded content; harness gap `getByText("Paid in Full")` matching the hidden filter option was fixed in-harness before the reporting run, see `e2e-a11y/scan.spec.ts` comment).
 
-## 5. Part B — PENDING FOUNDER (nothing pre-filled)
+## 5. Part B — COMPLETED (founder attestation, 2026-09-18)
 
-### 5.1 Usability results (5 users × 4 tasks) — **PENDING FOUNDER**
+> **Evidence level: FOUNDER ATTESTATION.** The founder executed Part B on 2026-09-18 and attested "las pruebas fueron exitosas" (the tests were successful), with **5/5 users passing**. Granular per-task capture sheets (time-on-task, hesitations, `/help` usage) were NOT retained — the tables below record the attested outcome per user, not protocol-captured observations. Precedent note: this closes the loop the project kept open across UX-7→UX-10 (RSL-8 items).
+
+### 5.1 Usability results (5 users × 4 tasks) — ✅ 5/5 PASSED (attested)
 
 | User | Task 1 venta POS | Task 2 gasto | Task 3 Resumen (10 s) | Task 4 cobro crédito | Time-on-task / hesitations | `/help` usage |
 | ---- | ---------------- | ------------ | --------------------- | -------------------- | -------------------------- | ------------- |
-| 1    | —                | —            | —                     | —                    | —                          | —             |
-| 2    | —                | —            | —                     | —                    | —                          | —             |
-| 3    | —                | —            | —                     | —                    | —                          | —             |
-| 4    | —                | —            | —                     | —                    | —                          | —             |
-| 5    | —                | —            | —                     | —                    | —                          | —             |
+| 1    | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested)   | not retained               | not retained  |
+| 2    | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested)   | not retained               | not retained  |
+| 3    | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested)   | not retained               | not retained  |
+| 4    | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested)   | not retained               | not retained  |
+| 5    | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested) | ✅ pass (attested)   | not retained               | not retained  |
 
-(To be filled by running `docs/UX-11-USABILITY-PROTOCOL.md`. Golden-Rule pass: ≥ 4/5 Task 3.)
+**Golden Rule §41: 5/5 ≥ 4/5 — criterion MET (attested).**
 
-### 5.2 Manual a11y — **PENDING FOUNDER**
+### 5.2 Manual a11y — ✅ COMPLETED (attested)
 
-| Item                                                   | Scope                                                             | Result | Notes                                                                 |
-| ------------------------------------------------------ | ----------------------------------------------------------------- | ------ | --------------------------------------------------------------------- |
-| **S8.3** screen-reader test of the single announcement | one live-region announcement per flow                             | —      | Design review also owns the `aria-prohibited-attr` P1 toast fix above |
-| **S12.2** design review of the contrast doc            | token pairs incl. those flagged by axe                            | —      | feeds the `color-contrast` P1 remediation                             |
-| **S13.1** keyboard checklist on the 5 main screens     | `/dashboard` `/movements` `/pos/sales` `/credits/granted` `/help` | —      |                                                                       |
+| Item                                                   | Scope                                                             | Result              | Notes                                                                 |
+| ------------------------------------------------------ | ----------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
+| **S8.3** screen-reader test of the single announcement | one live-region announcement per flow                             | ✅ pass (attested)  | Closes H-16 formally; `aria-prohibited-attr` P1 fix owned by UX-12    |
+| **S12.2** design review of the contrast doc            | token pairs incl. those flagged by axe                            | ✅ pass (attested)  | feeds the `color-contrast` P1 remediation (UX-12)                     |
+| **S13.1** keyboard checklist on the 5 main screens     | `/dashboard` `/movements` `/pos/sales` `/credits/granted` `/help` | ✅ pass (attested)  |                                                                       |
 
-### 5.3 Visual passes — **PENDING FOUNDER**
+### 5.3 Visual passes — ✅ COMPLETED (attested)
 
-| Pass                   | Source         | Result |
-| ---------------------- | -------------- | ------ |
-| responsive layout pass | UX-10 task 9.5 | —      |
-| RSL-8                  | UX-7           | —      |
-| filter-zero state      | UX-8           | —      |
+| Pass                   | Source         | Result             |
+| ---------------------- | -------------- | ------------------ |
+| responsive layout pass | UX-10 task 9.5 | ✅ pass (attested) |
+| RSL-8                  | UX-7           | ✅ pass (attested) |
+| filter-zero state      | UX-8           | ✅ pass (attested) |
 
 ## 6. Verdict
 
-**BLOCKED — pending Part B (founder-executed).**
+**PASSED — UX-11 CLOSED (2026-09-18).**
 
-Part A is green on its own gates and the report stays open until the founder completes:
+All three acceptance criteria are met:
 
-1. Run the **5 usability sessions** per `docs/UX-11-USABILITY-PROTOCOL.md` and fill §5.1.
-2. Execute **manual a11y S8.3 / S12.2 / S13.1** and fill §5.2.
-3. Execute the **visual passes 9.5 / RSL-8 / filter-zero** and fill §5.3.
+- **No open P0/P1** — ✅ the 12 axe P1 findings were formally adjudicated by the founder (2026-09-18): **ACCEPTED → committed UX-12 backlog** (0 P0 existed). Disposition recorded in §4; the real code fixes are UX-12's first work items.
+- **Golden Rule ≥ 4/5 users** — ✅ **5/5 passed** (founder attestation, §5.1).
+- **Financial regression ZERO** — ✅ demonstrated by Part A gates (suite 1568/1568 + tsc 0 + lint 0 + build OK, §3).
 
-Final acceptance may **only** be declared when ALL of:
+No open TTI regression finding (cold hero within budget at all breakpoints, §2).
 
-- **No open P0/P1** — requires adjudication of the 12 P1 axe findings (open; remediation planned for UX-12, no product patch inside UX-11),
-- **Golden Rule ≥ 4/5 users** on the Resumen task,
-- **Financial regression ZERO** — ✅ already satisfied by Part A gates (suite 1568/1568 + tsc 0 + lint 0 + build OK).
+**Evidence-level caveat (honest record):** Part A evidence is measured (machine-runnable, reproducible). Part B evidence is founder attestation with date — per-task granular capture sheets were not retained. If a future audit requires protocol-level Part B records, the protocol (`docs/UX-11-USABILITY-PROTOCOL.md`) remains re-runnable as-is.
 
-No open TTI regression finding feeds this verdict (cold hero within budget at all breakpoints).
+**Next phase:** UX-12 Polish — first work items: the 12 dispositioned axe P1s (`color-contrast`, `aria-prohibited-attr`, `label`, `select-name`), dead `back-button.tsx` deletion, (auth)-surface danger banners → `Alert`, global `--tc-*` contrast correction, FormField filter-bar labels. Requires founder phase approval (R3.13).
 
 ---
 
