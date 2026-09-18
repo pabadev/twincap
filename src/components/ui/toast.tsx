@@ -19,7 +19,7 @@ interface ToastProps {
 const variantStyles: Record<ToastVariant, string> = {
   success: "bg-success text-white",
   error: "bg-danger text-white",
-  info: "bg-info text-white",
+  info: "bg-blue-700 text-white",
   warning: "bg-warning text-zinc-900",
 };
 

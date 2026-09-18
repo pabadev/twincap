@@ -83,7 +83,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto cursor-pointer rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            className="ml-auto cursor-pointer rounded-md p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
             aria-label={closeLabel || tCommon("close")}
           >
             <svg

@@ -15,7 +15,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover focus:ring-primary",
   secondary:
     "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700",
-  success: "bg-success text-white hover:bg-success/90 focus:ring-success",
+  success: "bg-teal-700 text-white hover:bg-teal-800 focus:ring-success",
   danger: "bg-danger text-white hover:bg-danger/90 focus:ring-danger",
   ghost:
     "bg-transparent text-zinc-700 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800",
