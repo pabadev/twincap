@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT, useLocale } from '../../../i18n/client';
-import { createTransferAction, updateTransferAction } from './actions';
-import { IdempotencyField } from '../../../components/ui/idempotency-field';
-import type { SerializedAccount } from '../../../core/domain/account';
-import type { SerializedTransfer } from '../../../core/domain/transfer';
-import { Input } from '../../../components/ui/input';
-import { Select } from '../../../components/ui/select';
-import { Button } from '../../../components/ui/button';
-import { Modal } from '../../../components/ui/modal';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { useActionError } from '../../../lib/use-action-error';
-import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
-import { formatAmount } from '../../../lib/format';
-import { exponentOf } from '../../../core/domain/currency';
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useT, useLocale } from "../../../i18n/client";
+import { createTransferAction, updateTransferAction } from "./actions";
+import { IdempotencyField } from "../../../components/ui/idempotency-field";
+import type { SerializedAccount } from "../../../core/domain/account";
+import type { SerializedTransfer } from "../../../core/domain/transfer";
+import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
+import { Modal } from "../../../components/ui/modal";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { useActionError } from "../../../lib/use-action-error";
+import { businessDateToInputValue, toDateInputValue } from "../../../lib/date";
+import { formatAmount } from "../../../lib/format";
+import { exponentOf } from "../../../core/domain/currency";
 
 /**
  * Action-state shape shared by the create/edit transfer actions.
@@ -28,7 +28,12 @@ import { exponentOf } from '../../../core/domain/currency';
 type TransferFormState = {
   error?: string;
   success?: string;
-  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
+  warning?: {
+    type: "insufficient_funds";
+    currentBalance: number;
+    projectedBalance: number;
+    currency: string;
+  };
 };
 
 export function TransferForm({
@@ -48,9 +53,9 @@ export function TransferForm({
     isEdit ? updateTransferAction : createTransferAction,
     null,
   );
-  const t = useT('Transfers');
-  const tCommon = useT('Common');
-  const tToast = useT('Toast');
+  const t = useT("Transfers");
+  const tCommon = useT("Common");
+  const tToast = useT("Toast");
   const locale = useLocale();
   const translateError = useActionError();
   const { addToast } = useToast();
@@ -67,10 +72,10 @@ export function TransferForm({
   const showWarning = !!warning && !warningDismissed;
 
   const [sourceCurrency, setSourceCurrency] = useState(
-    transfer?.sourceCurrency ?? accounts[0]?.currency ?? 'COP',
+    transfer?.sourceCurrency ?? accounts[0]?.currency ?? "COP",
   );
   const [destCurrency, setDestCurrency] = useState(
-    transfer?.destinationCurrency ?? accounts[0]?.currency ?? 'COP',
+    transfer?.destinationCurrency ?? accounts[0]?.currency ?? "COP",
   );
   const isCrossCurrency = sourceCurrency !== destCurrency;
 
@@ -79,23 +84,23 @@ export function TransferForm({
   const [mirroredDest, setMirroredDest] = useState(
     transfer && transfer.sourceCurrency === transfer.destinationCurrency
       ? String(transfer.sourceAmount.amount)
-      : '',
+      : "",
   );
 
   // R15.1 Fase 4 — live derived-rate display: the form is uncontrolled
   // (defaultValue), so the two amounts are tracked in lightweight state and
   // the effective rate is recomputed on every change, read-only.
   const [sourceAmountStr, setSourceAmountStr] = useState(
-    transfer ? String(transfer.sourceAmount.amount) : '',
+    transfer ? String(transfer.sourceAmount.amount) : "",
   );
   const [destAmountStr, setDestAmountStr] = useState(
-    transfer ? String(transfer.destinationAmount.amount) : '',
+    transfer ? String(transfer.destinationAmount.amount) : "",
   );
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       router.refresh();
       onSuccess?.();
     }
@@ -103,7 +108,7 @@ export function TransferForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(translateError(state.error), 'error');
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
@@ -157,7 +162,7 @@ export function TransferForm({
     for (const [key, value] of firstSubmitDataRef.current.entries()) {
       fd.append(key, value);
     }
-    fd.set('confirmNegativeBalance', 'true');
+    fd.set("confirmNegativeBalance", "true");
     formAction(fd);
   };
 
@@ -183,8 +188,7 @@ export function TransferForm({
   const derivedRateDisplay =
     isCrossCurrency && sourceAmt > 0 && destAmt > 0
       ? new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(
-          (sourceAmt / 10 ** exponentOf(sourceCurrency)) /
-            (destAmt / 10 ** exponentOf(destCurrency)),
+          sourceAmt / 10 ** exponentOf(sourceCurrency) / (destAmt / 10 ** exponentOf(destCurrency)),
         )
       : null;
 
@@ -196,11 +200,11 @@ export function TransferForm({
       <Select
         id="sourceAccountId"
         name="sourceAccountId"
-        label={t('fromAccount')}
+        label={t("fromAccount")}
         required
         disabled={isPending || isEdit}
         defaultValue={transfer?.sourceAccountId}
-        placeholder={tCommon('select')}
+        placeholder={tCommon("select")}
         onChange={(e) => {
           const acc = accounts.find((a) => a.id === e.target.value);
           if (acc) setSourceCurrency(acc.currency);
@@ -214,11 +218,11 @@ export function TransferForm({
       <Select
         id="destinationAccountId"
         name="destinationAccountId"
-        label={t('toAccount')}
+        label={t("toAccount")}
         required
         disabled={isPending || isEdit}
         defaultValue={transfer?.destinationAccountId}
-        placeholder={tCommon('select')}
+        placeholder={tCommon("select")}
         onChange={(e) => {
           const acc = accounts.find((a) => a.id === e.target.value);
           if (acc) setDestCurrency(acc.currency);
@@ -234,7 +238,7 @@ export function TransferForm({
           id="sourceAmount"
           name="sourceAmount"
           type="number"
-          label={t('sourceAmount', { currency: sourceCurrency })}
+          label={t("sourceAmount", { currency: sourceCurrency })}
           min="1"
           required
           disabled={isPending}
@@ -252,7 +256,7 @@ export function TransferForm({
               id="destinationAmount"
               name="destinationAmount"
               type="number"
-              label={t('destAmount', { currency: destCurrency })}
+              label={t("destAmount", { currency: destCurrency })}
               min="1"
               required
               disabled={isPending}
@@ -273,8 +277,8 @@ export function TransferForm({
           amounts; the user never enters one. Read-only, live-recalculated. */}
       {derivedRateDisplay !== null && (
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {t('effectiveRate')}:{' '}
-          {t('effectiveRateDescription', {
+          {t("effectiveRate")}:{" "}
+          {t("effectiveRateDescription", {
             destCurrency,
             rate: derivedRateDisplay,
             sourceCurrency,
@@ -286,13 +290,11 @@ export function TransferForm({
         id="date"
         name="date"
         type="date"
-        label={t('date')}
+        label={t("date")}
         required
         disabled={isPending}
         defaultValue={
-          isEdit
-            ? businessDateToInputValue(new Date(transfer.date))
-            : toDateInputValue()
+          isEdit ? businessDateToInputValue(new Date(transfer.date)) : toDateInputValue()
         }
         max={toDateInputValue()}
       />
@@ -301,9 +303,9 @@ export function TransferForm({
         id="note"
         name="note"
         type="text"
-        label={t('note')}
+        label={t("note")}
         disabled={isPending}
-        defaultValue={transfer?.note ?? ''}
+        defaultValue={transfer?.note ?? ""}
       />
 
       <div className="flex items-center gap-3">
@@ -316,11 +318,11 @@ export function TransferForm({
         >
           {isPending
             ? isEdit
-              ? t('updating')
-              : t('creating')
+              ? t("updating")
+              : t("creating")
             : isEdit
-              ? t('updateTransfer')
-              : t('addTransfer')}
+              ? t("updateTransfer")
+              : t("addTransfer")}
         </Button>
         {isEdit && (
           <Button
@@ -329,7 +331,7 @@ export function TransferForm({
             disabled={isPending}
             onClick={() => onSuccess?.()}
           >
-            {tCommon('cancel')}
+            {tCommon("cancel")}
           </Button>
         )}
       </div>
@@ -338,14 +340,25 @@ export function TransferForm({
         <Modal
           open
           onClose={dismissWarning}
-          title={t('insufficientFundsTitle')}
+          title={t("insufficientFundsTitle")}
           actions={
             <>
-              <Button type="button" variant="primary" disabled={isPending} loading={isPending} onClick={handleConfirmNegativeBalance}>
-                {t('registerAnyway')}
+              <Button
+                type="button"
+                variant="primary"
+                disabled={isPending}
+                loading={isPending}
+                onClick={handleConfirmNegativeBalance}
+              >
+                {t("registerAnyway")}
               </Button>
-              <Button type="button" variant="secondary" disabled={isPending} onClick={dismissWarning}>
-                {tCommon('cancel')}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isPending}
+                onClick={dismissWarning}
+              >
+                {tCommon("cancel")}
               </Button>
             </>
           }
@@ -354,26 +367,31 @@ export function TransferForm({
               hidden input is the ONLY extra field on the confirmed attempt. */}
           <input type="hidden" name="confirmNegativeBalance" value="true" />
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
-            {t('insufficientFundsDescription', {
+            {t("insufficientFundsDescription", {
               projected: formatAmount(warning.projectedBalance, warning.currency, locale),
             })}
           </p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningCurrentBalance')}</dt>
+              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningCurrentBalance")}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
                 {formatAmount(warning.currentBalance, warning.currency, locale)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningOperation')}</dt>
+              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningOperation")}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
-                −{formatAmount(warning.currentBalance - warning.projectedBalance, warning.currency, locale)}
+                −
+                {formatAmount(
+                  warning.currentBalance - warning.projectedBalance,
+                  warning.currency,
+                  locale,
+                )}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t('warningProjectedBalance')}</dt>
-              <dd className="font-medium text-red-600 dark:text-red-400">
+              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningProjectedBalance")}</dt>
+              <dd className="font-medium text-danger">
                 {formatAmount(warning.projectedBalance, warning.currency, locale)}
               </dd>
             </div>

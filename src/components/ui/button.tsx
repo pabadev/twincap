@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { type ButtonHTMLAttributes, forwardRef } from 'react';
+import { type ButtonHTMLAttributes, forwardRef } from "react";
 
-type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'inverse';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = "primary" | "secondary" | "success" | "danger" | "ghost" | "inverse";
+type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -12,70 +12,61 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    'bg-primary text-white hover:bg-primary-hover focus:ring-primary',
+  primary: "bg-primary text-white hover:bg-primary-hover focus:ring-primary",
   secondary:
-    'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700',
-  success:
-    'bg-success text-white hover:bg-success/90 focus:ring-success',
-  danger:
-    'bg-danger text-white hover:bg-danger/90 focus:ring-danger',
+    "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700",
+  success: "bg-success text-white hover:bg-success/90 focus:ring-success",
+  danger: "bg-danger text-white hover:bg-danger/90 focus:ring-danger",
   ghost:
-    'bg-transparent text-zinc-700 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800',
+    "bg-transparent text-zinc-700 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800",
   inverse:
-    'bg-white text-primary hover:bg-indigo-50 focus:ring-primary dark:bg-white dark:text-primary',
+    "bg-white text-primary hover:bg-primary/10 focus:ring-primary dark:bg-white dark:text-primary",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-xs',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
+  sm: "px-3 py-1.5 text-xs",
+  md: "px-4 py-2 text-sm",
+  lg: "px-6 py-3 text-base",
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  function Button(
-    {
-      variant = 'primary',
-      size = 'md',
-      loading = false,
-      disabled,
-      className = '',
-      children,
-      ...props
-    },
-    ref,
-  ) {
-    const isDisabled = disabled || loading;
-    return (
-      <button
-        ref={ref}
-        disabled={isDisabled}
-        className={`inline-flex items-center justify-center rounded-md font-medium shadow-sm transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
-        {...props}
-      >
-        {loading && (
-          <svg
-            className="mr-2 h-4 w-4 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-        )}
-        {children}
-      </button>
-    );
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "primary",
+    size = "md",
+    loading = false,
+    disabled,
+    className = "",
+    children,
+    ...props
   },
-);
+  ref,
+) {
+  const isDisabled = disabled || loading;
+  return (
+    <button
+      ref={ref}
+      disabled={isDisabled}
+      className={`inline-flex items-center justify-center rounded-md font-medium shadow-sm transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      {...props}
+    >
+      {loading && (
+        <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+      )}
+      {children}
+    </button>
+  );
+});
