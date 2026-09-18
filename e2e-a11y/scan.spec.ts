@@ -216,11 +216,6 @@ test("UX-11 a11y scan — matrix isolation proof and axe scan of 20 combos", asy
       const page = await context.newPage();
 
       for (const route of ROUTES) {
-        const combo = {
-          route: route.path,
-          viewport: vp.label,
-          theme,
-        };
         const comboTag = `${route.path}/${vp.label}/${theme}`;
         try {
           await page.goto(route.path, { waitUntil: "domcontentloaded" });
