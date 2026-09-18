@@ -11,14 +11,14 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
-vi.mock("next/link", () => {
-  const { createElement, forwardRef } = require("react");
+vi.mock("next/link", async () => {
+  const { createElement, forwardRef } = await import("react");
   return {
     default: forwardRef(function MockLink(
-      { href, children, ...rest }: Record<string, unknown>,
+      { href, children, ...rest }: { href?: unknown; children?: ReactNode; [key: string]: unknown },
       ref: unknown,
     ) {
-      return createElement("a", { href: String(href), ref, ...rest }, children);
+      return createElement("a", { href: String(href), ref, ...rest }, children as ReactNode);
     }),
   };
 });
@@ -40,7 +40,8 @@ vi.mock("../../../app/(auth)/actions", () => ({
 // stack (getCurrentUser + env parsing) — irrelevant to the drawer trap, so
 // replace it with a stub that renders nothing.
 vi.mock("../../../components/feedback/feedback-widget", () => ({
-  FeedbackDialog: () => null,
+  FeedbackDialog: (props: { open?: boolean }) =>
+    props?.open ? <div data-testid="feedback-dialog-open" /> : null,
 }));
 
 // Mobile drawer focus trap + inert behavior (UX-9 Slice A, R-3).
@@ -168,5 +169,121 @@ describe("MainNav mobile drawer (R-3)", () => {
     const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={false} />);
     const aside = container.querySelector("#mobile-nav")!;
     expect(aside.hasAttribute("inert")).toBe(false);
+  });
+});
+
+// Four-tier IA structure (UX-10, DEC-IA-02/03/04/10). `useT` returns the key,
+// so header spans assert key names and stay locale-independent.
+
+/** Flattens the authenticated nav <ul> into an ordered sequence of entries. */
+function navSequence(container: HTMLElement): Array<{ kind: "link" | "header"; value: string }> {
+  const listItems = container.querySelectorAll("#mobile-nav nav > ul > li");
+  const seq: Array<{ kind: "link" | "header"; value: string }> = [];
+  listItems.forEach((li) => {
+    const link = li.querySelector("a[href]");
+    if (link) {
+      seq.push({ kind: "link", value: link.getAttribute("href")! });
+      return;
+    }
+    const span = li.querySelector("span");
+    if (span && span.textContent) {
+      seq.push({ kind: "header", value: span.textContent });
+    }
+  });
+  return seq;
+}
+
+describe("MainNav four-tier structure (UX-10)", () => {
+  it("renders Tier 1 links before any group header and headers lead their groups", () => {
+    stubMatchMedia(true);
+    const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={false} />);
+    const seq = navSequence(container);
+
+    // (a) Resumen + Movimientos come first, no header precedes them (a+c).
+    expect(seq[0]).toEqual({ kind: "link", value: "/dashboard" });
+    expect(seq[1]).toEqual({ kind: "link", value: "/movements" });
+    expect(seq.slice(0, 2).some((e) => e.kind === "header")).toBe(false);
+
+    // (b) Each header is immediately followed by its group's first link.
+    const opIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupOperation");
+    expect(seq[opIndex + 1]).toEqual({ kind: "link", value: "/pos/sales" });
+    const comIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupCommitments");
+    expect(seq[comIndex + 1]).toEqual({ kind: "link", value: "/credits/granted" });
+    const setIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupSettings");
+    expect(seq[setIndex + 1]).toEqual({ kind: "link", value: "/pos/catalog" });
+
+    // (f) Analytics ABSENT when canViewAnalytics=false.
+    expect(seq.some((e) => e.kind === "link" && e.value === "/analytics")).toBe(false);
+
+    // (e) /transfers leaves the nav (route reachable via Movimientos).
+    expect(seq.some((e) => e.kind === "link" && e.value === "/transfers")).toBe(false);
+  });
+
+  it("appends analytics as the last Compromisos item only when authorized", () => {
+    stubMatchMedia(true);
+    const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={true} />);
+    const seq = navSequence(container);
+    const links = seq.filter((e) => e.kind === "link").map((e) => e.value);
+    const analyticsIdx = links.indexOf("/analytics");
+    expect(analyticsIdx).toBeGreaterThan(-1);
+    // Analytics sits between the Compromisos group's first link and the
+    // Configuración group's first link.
+    const grantedIdx = links.indexOf("/credits/granted");
+    const catalogIdx = links.indexOf("/pos/catalog");
+    expect(analyticsIdx).toBeGreaterThan(grantedIdx);
+    expect(analyticsIdx).toBeLessThan(catalogIdx);
+    // Analytics is the LAST item of Compromisos: no links after it inside the
+    // group (the Configuración header + /pos/catalog follow immediately).
+    expect(links.slice(analyticsIdx + 1, catalogIdx)).toEqual([]);
+  });
+
+  it("keeps /help and the feedback button inside Configuración; footer drops profile/feedback", () => {
+    stubMatchMedia(true);
+    const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={false} />);
+    const seq = navSequence(container);
+    const setIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupSettings");
+    const settingsHrefs = seq
+      .slice(setIndex + 1)
+      .filter((e) => e.kind === "link")
+      .map((e) => e.value);
+    // (d) /help belongs to Configuración; profile moved into the group.
+    expect(settingsHrefs).toContain("/help");
+    expect(settingsHrefs).toContain("/profile");
+
+    // (h) Feedback button lives inside the group and still opens the dialog.
+    const feedbackBtn = container.querySelector<HTMLButtonElement>('[aria-label="feedback"]')!;
+    expect(feedbackBtn).toBeTruthy();
+    expect(container.querySelector("#mobile-nav nav")!.contains(feedbackBtn)).toBe(true);
+    act(() => feedbackBtn.click());
+    expect(container.querySelector('[data-testid="feedback-dialog-open"]')).toBeTruthy();
+
+    // (g) Footer: email + theme + lang + logout only — no profile, no feedback.
+    const footer = container.querySelector("#mobile-nav div.mt-auto")!;
+    expect(footer.querySelector('a[href="/profile"]')).toBe(null);
+    expect(footer.querySelectorAll('[aria-label="feedback"]').length).toBe(0);
+    expect(footer.textContent).toContain("a@b.c");
+    const logoutBtn = Array.from(footer.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("exit"),
+    );
+    expect(logoutBtn).toBeTruthy();
+  });
+
+  it("marks only the active route with aria-current and keeps headers non-focusable", () => {
+    stubMatchMedia(true);
+    const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={false} />);
+    // (i) aria-current only on the active-route item (mocked pathname=/dashboard).
+    const current = container.querySelectorAll('[aria-current="page"]');
+    expect(current.length).toBe(1);
+    expect(current[0].getAttribute("href")).toBe("/dashboard");
+
+    // (k) Header spans are non-focusable and no <hr> remains.
+    container.querySelectorAll("#mobile-nav nav > ul > li > span").forEach((span) => {
+      expect(span.tagName).toBe("SPAN");
+    });
+    expect(container.querySelector("#mobile-nav hr")).toBe(null);
+
+    // (j) First focusable anchor in the nav is /dashboard.
+    const firstAnchor = container.querySelector<HTMLAnchorElement>("#mobile-nav nav a[href]")!;
+    expect(firstAnchor.getAttribute("href")).toBe("/dashboard");
   });
 });

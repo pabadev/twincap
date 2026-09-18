@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../i18n/client";
@@ -17,7 +17,7 @@ import {
   LayoutDashboard,
   Tag,
   List,
-  ArrowLeftRight,
+  LifeBuoy,
   CreditCard,
   Landmark,
   Receipt,
@@ -36,41 +36,65 @@ import { useFocusTrap } from "../../components/ui/focus-trap";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { FeedbackDialog } from "../../components/feedback/feedback-widget";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, color: "text-primary" },
-  "separator",
-  { href: "/accounts", key: "accounts", icon: Landmark, color: "text-info" },
-  { href: "/categories", key: "categories", icon: Tag, color: "text-brand-gold" },
-  { href: "/movements", key: "movements", icon: List, color: "text-zinc-600 dark:text-zinc-400" },
-  { href: "/transfers", key: "transfers", icon: ArrowLeftRight, color: "text-primary" },
-  "separator",
-  { href: "/credits/received", key: "creditsReceived", icon: CreditCard, color: "text-income" },
-  { href: "/credits/granted", key: "creditsGranted", icon: Landmark, color: "text-expense" },
-  { href: "/payables", key: "payables", icon: Receipt, color: "text-warning" },
-  "separator",
-  { href: "/clients", key: "clients", icon: Users, color: "text-info" },
-  { href: "/pos/catalog", key: "posCatalog", icon: Package, color: "text-brand-gold" },
-  { href: "/pos/sales", key: "posSales", icon: ShoppingCart, color: "text-income" },
-] as const;
+interface NavItem {
+  href: string;
+  key: string;
+  icon: typeof LayoutDashboard;
+  color: string;
+}
+
+// Four-tier IA (DEC-IA-02/03/04/10): Tier 1 Comprensión renders without a
+// header; Tiers 2-4 lead with a group header span. `/transfers` leaves the
+// nav on purpose (route stays reachable via Movimientos).
+const NAV_GROUPS: readonly { headerKey: string | null; items: readonly NavItem[] }[] = [
+  {
+    headerKey: null,
+    items: [
+      { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, color: "text-primary" },
+      {
+        href: "/movements",
+        key: "movements",
+        icon: List,
+        color: "text-zinc-600 dark:text-zinc-400",
+      },
+    ],
+  },
+  {
+    headerKey: "groupOperation",
+    items: [
+      { href: "/pos/sales", key: "posSales", icon: ShoppingCart, color: "text-income" },
+      { href: "/accounts", key: "accounts", icon: Landmark, color: "text-info" },
+      { href: "/clients", key: "clients", icon: Users, color: "text-info" },
+    ],
+  },
+  {
+    headerKey: "groupCommitments",
+    items: [
+      { href: "/credits/granted", key: "creditsGranted", icon: Landmark, color: "text-expense" },
+      { href: "/credits/received", key: "creditsReceived", icon: CreditCard, color: "text-income" },
+      { href: "/payables", key: "payables", icon: Receipt, color: "text-warning" },
+    ],
+  },
+  {
+    headerKey: "groupSettings",
+    items: [
+      { href: "/pos/catalog", key: "posCatalog", icon: Package, color: "text-brand-gold" },
+      { href: "/categories", key: "categories", icon: Tag, color: "text-brand-gold" },
+      { href: "/profile", key: "profile", icon: User, color: "text-zinc-600 dark:text-zinc-400" },
+      { href: "/help", key: "help", icon: LifeBuoy, color: "text-info" },
+    ],
+  },
+];
 
 // R13-G: product analytics nav item is CONDITIONAL — only rendered for users
 // authorized by the AnalyticsAuthorizer policy (founder-only today). Kept
-// separate from NAV_ITEMS so it stays hidden for everyone else.
-const ANALYTICS_NAV_ITEM = {
+// separate from NAV_GROUPS so it stays hidden for everyone else.
+const ANALYTICS_NAV_ITEM: NavItem = {
   href: "/analytics",
   key: "analytics",
   icon: BarChart3,
   color: "text-violet-500",
-} as const;
-
-/**
- * Builds the full nav item list, conditionally appending the analytics entry
- * (with its leading separator) only for users authorized to view it.
- */
-function buildNavItems(canViewAnalytics: boolean | undefined) {
-  if (!canViewAnalytics) return NAV_ITEMS;
-  return [...NAV_ITEMS, "separator", ANALYTICS_NAV_ITEM] as const;
-}
+};
 
 export function MainNav({
   isLoggedIn,
@@ -207,44 +231,83 @@ export function MainNav({
               {/* Nav links — authenticated */}
               <nav className="flex-1 overflow-y-auto px-2 py-3 lg:px-2 lg:py-2">
                 <ul className="space-y-0.5 lg:space-y-0">
-                  {buildNavItems(canViewAnalytics).map((item, index) => {
-                    if (item === "separator") {
-                      return (
-                        <li key={`sep-${index}`}>
-                          <hr className="my-0.5 border-surface-border dark:border-zinc-700" />
-                        </li>
-                      );
-                    }
-                    const isActive =
-                      item.href === "/dashboard"
-                        ? pathname === "/dashboard"
-                        : pathname.startsWith(item.href);
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          ref={index === 0 ? firstLinkRef : undefined}
-                          onClick={() => setOpen(false)}
-                          aria-current={isActive ? "page" : undefined}
-                          className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
-                            isActive
-                              ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
-                              : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
-                          }`}
-                        >
-                          {/* TouchTarget expands the ~30px nav link hit area to >=44px (RTT-1). */}
-                          <TouchTarget as="span" className="gap-2.5">
-                            <Icon
-                              icon={item.icon}
-                              size="sm"
-                              className={isActive ? "" : item.color}
-                            />
-                            {t(item.key)}
-                          </TouchTarget>
-                        </Link>
-                      </li>
+                  {(() => {
+                    const groups: { headerKey: string | null; items: NavItem[] }[] = NAV_GROUPS.map(
+                      (g) => ({ ...g, items: [...g.items] }),
                     );
-                  })}
+                    if (canViewAnalytics) {
+                      // Analytics is the LAST item of the Compromisos group
+                      // (R13-G conditional, appended instead of separated).
+                      groups[2].items.push(ANALYTICS_NAV_ITEM);
+                    }
+                    let rendered = 0;
+                    return groups.map((group) => (
+                      <Fragment key={group.headerKey ?? "tier1"}>
+                        {group.headerKey && (
+                          <li>
+                            <span className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 lg:pt-3 dark:text-zinc-500">
+                              {t(group.headerKey)}
+                            </span>
+                          </li>
+                        )}
+                        {group.items.map((item) => {
+                          const isActive =
+                            item.href === "/dashboard"
+                              ? pathname === "/dashboard"
+                              : pathname.startsWith(item.href);
+                          const isFirst = rendered++ === 0;
+                          return (
+                            <li key={item.href}>
+                              <Link
+                                href={item.href}
+                                ref={isFirst ? firstLinkRef : undefined}
+                                onClick={() => setOpen(false)}
+                                aria-current={isActive ? "page" : undefined}
+                                className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
+                                  isActive
+                                    ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
+                                    : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                                }`}
+                              >
+                                {/* TouchTarget expands the ~30px nav link hit area to >=44px (RTT-1). */}
+                                <TouchTarget as="span" className="gap-2.5">
+                                  <Icon
+                                    icon={item.icon}
+                                    size="sm"
+                                    className={isActive ? "" : item.color}
+                                  />
+                                  {t(item.key)}
+                                </TouchTarget>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                        {group.headerKey === "groupSettings" && (
+                          <li>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpen(false);
+                                setFeedbackOpen(true);
+                              }}
+                              className="flex w-full items-center gap-2.5 rounded-md px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                              aria-label={t("feedback")}
+                            >
+                              {/* TouchTarget expands the ~30px hit area to >=44px (RTT-1). */}
+                              <TouchTarget as="span" className="gap-2.5">
+                                <Icon
+                                  icon={MessageSquare}
+                                  size="sm"
+                                  className="text-zinc-600 dark:text-zinc-400"
+                                />
+                                {t("feedback")}
+                              </TouchTarget>
+                            </button>
+                          </li>
+                        )}
+                      </Fragment>
+                    ));
+                  })()}
                 </ul>
               </nav>
 
@@ -255,32 +318,9 @@ export function MainNav({
                     {email}
                   </p>
                 )}
-                <Link
-                  href="/profile"
-                  onClick={() => setOpen(false)}
-                  className="mb-2 flex items-center gap-2 rounded-md px-3 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
-                >
-                  {/* TouchTarget expands the profile link hit area to >=44px (RTT-1). */}
-                  <TouchTarget as="span" className="gap-2">
-                    <User className="h-4 w-4" />
-                    <span>{t("profile")}</span>
-                  </TouchTarget>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    setFeedbackOpen(true);
-                  }}
-                  className="mb-2 flex w-full items-center gap-2 rounded-md px-3 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
-                  aria-label={t("feedback")}
-                >
-                  {/* TouchTarget expands the feedback item hit area to >=44px (RTT-1). */}
-                  <TouchTarget as="span" className="gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>{t("feedback")}</span>
-                  </TouchTarget>
-                </button>
+                {/* Profile and Comentarios live in the Configuración group now
+                    (DEC-IA-10); the footer keeps only email, theme, language
+                    and Salir (DEC-IA-11 closed-state invariant). */}
                 <div className="flex gap-1.5">
                   <button
                     type="button"
