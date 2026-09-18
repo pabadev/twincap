@@ -82,9 +82,9 @@ All five units fit ONE PR today (single-pr strategy); the split above applies on
 
 ## Phase 6: Final audit (verification only — no commit)
 
-- [ ] 6.1 Frozen-scope audit: `git diff <start-HEAD>..HEAD -- src/` is EMPTY (both `src/product-code` and `src/core`+`src/infrastructure`; hard boundary); confirm `e2e-tti/**` and `playwright.tti.config.ts` appear unmodified; confirm the full changed-file inventory contains ONLY `package.json`, `pnpm-lock.yaml`, `e2e-a11y/**`, `playwright.a11y.config.ts`, `docs/UX-11-VALIDATION-REPORT.md`, `docs/UX-11-USABILITY-PROTOCOL.md`, `openspec/changes/ux-11-validation/**`.
-- [ ] 6.2 Verify Review Workload Forecast against the real diff (`git diff --stat`); if the real count differs materially from the ~950–1,300 estimate, update the forecast table above with the actual number before hand-off.
-- [ ] 6.3 Confirm zero commits pushed (`git log origin/master..HEAD` shows the 5 unit commits; no push action taken anywhere).
+- [x] 6.1 Frozen-scope audit: `git diff <start-HEAD>..HEAD -- src/` is EMPTY (both `src/product-code` and `src/core`+`src/infrastructure`; hard boundary); confirm `e2e-tti/**` and `playwright.tti.config.ts` appear unmodified; confirm the full changed-file inventory contains ONLY `package.json`, `pnpm-lock.yaml`, `e2e-a11y/**`, `playwright.a11y.config.ts`, `docs/UX-11-VALIDATION-REPORT.md`, `docs/UX-11-USABILITY-PROTOCOL.md`, `openspec/changes/ux-11-validation/**`.
+- [x] 6.2 Verify Review Workload Forecast against the real diff (`git diff --stat`); if the real count differs materially from the ~950–1,300 estimate, update the forecast table above with the actual number before hand-off.
+- [x] 6.3 Confirm zero commits pushed (`git log origin/master..HEAD` shows the 5 unit commits; no push action taken anywhere).
 
 ## Phase 6 outcome (2026-09-18)
 
