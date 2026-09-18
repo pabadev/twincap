@@ -6,6 +6,7 @@ import { MessageSquare, MessageCircle, Bug, Lightbulb } from "lucide-react";
 import { useT } from "@/i18n/client";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { FormField } from "@/components/ui/form-field";
 import { submitFeedbackAction } from "@/app/(main)/feedback/actions";
@@ -68,13 +69,13 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
         <form action={handleSubmit} className="flex flex-col gap-4">
           {/* Error display */}
           {state.error && (
-            <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+            <Alert variant="danger">
               {state.error === "error.validation"
                 ? t("errorValidation")
                 : state.error === "error.unauthorized"
                   ? translateError(state.error)
                   : t("errorFailed")}
-            </div>
+            </Alert>
           )}
 
           {/* Kind selector */}

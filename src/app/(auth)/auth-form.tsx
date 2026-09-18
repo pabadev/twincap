@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useActionState } from 'react';
-import { useT } from '../../i18n/client';
-import { Input } from '../../components/ui/input';
-import { PasswordInput } from '../../components/ui/password-input';
-import { Button } from '../../components/ui/button';
+import { useActionState } from "react";
+import { useT } from "../../i18n/client";
+import { Input } from "../../components/ui/input";
+import { PasswordInput } from "../../components/ui/password-input";
+import { Button } from "../../components/ui/button";
+import { Alert } from "../../components/ui/alert";
 
 type ActionFn = (
   prev: { error: string } | null,
@@ -28,15 +29,15 @@ export function AuthForm({
   alternateText: string;
   alternateHref: string;
   alternateLabel: string;
-  authMode: 'login' | 'register';
+  authMode: "login" | "register";
   forgotLabel?: string;
   forgotHref?: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
-  const t = useT('Auth');
+  const t = useT("Auth");
   // I8: server actions return i18n keys under "error.*"; strip the prefix so
   // the "error" namespace resolves (same pattern as entity-delete-button).
-  const tError = useT('error');
+  const tError = useT("error");
 
   return (
     <>
@@ -45,15 +46,13 @@ export function AuthForm({
       </h2>
       <form action={formAction} className="mt-8 space-y-5">
         {state?.error && (
-          <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-            {tError(state.error.replace(/^error\./, ''))}
-          </div>
+          <Alert variant="danger">{tError(state.error.replace(/^error\./, ""))}</Alert>
         )}
         <Input
           id="email"
           name="email"
           type="email"
-          label={t('email')}
+          label={t("email")}
           required
           autoComplete="email"
           disabled={isPending}
@@ -61,13 +60,13 @@ export function AuthForm({
         <PasswordInput
           id="password"
           name="password"
-          label={t('password')}
+          label={t("password")}
           required
           minLength={8}
-          autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+          autoComplete={authMode === "login" ? "current-password" : "new-password"}
           disabled={isPending}
         />
-        {authMode === 'login' && forgotLabel && forgotHref && (
+        {authMode === "login" && forgotLabel && forgotHref && (
           <div className="-mt-2 text-right">
             <a
               href={forgotHref}
@@ -77,11 +76,11 @@ export function AuthForm({
             </a>
           </div>
         )}
-        {authMode === 'register' && (
+        {authMode === "register" && (
           <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            label={t('confirmPassword')}
+            label={t("confirmPassword")}
             required
             minLength={8}
             autoComplete="new-password"
@@ -95,10 +94,10 @@ export function AuthForm({
           disabled={isPending}
           loading={isPending}
         >
-          {isPending ? t('loading') : submitLabel}
+          {isPending ? t("loading") : submitLabel}
         </Button>
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-          {alternateText}{' '}
+          {alternateText}{" "}
           <a
             href={alternateHref}
             className="font-medium text-primary hover:text-primary-hover dark:text-primary"

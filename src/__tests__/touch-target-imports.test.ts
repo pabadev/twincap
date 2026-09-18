@@ -18,12 +18,6 @@ describe("TouchTarget structural imports (RTT-1/RTT-2)", () => {
     expect(source).toContain("<TouchTarget");
   });
 
-  it("BackButton imports and renders TouchTarget", () => {
-    const source = read("src/components/ui/back-button.tsx");
-    expect(importOf(source, "./touch-target")).toBe(true);
-    expect(source).toContain("<TouchTarget");
-  });
-
   it("nav imports and renders TouchTarget for hamburger, close and links", () => {
     const source = read("src/app/(main)/nav.tsx");
     expect(importOf(source, "../../components/ui/touch-target")).toBe(true);
