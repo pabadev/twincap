@@ -1,0 +1,12 @@
+# SDD change state (optional recovery hint)
+change: ux-11-validation
+status: archived
+updated: 2026-09-18
+artifact_store: openspec
+execution_mode: auto
+delivery_strategy: single-pr
+branch: master
+dependsOn: []
+notes: spec written 2026-09-18 (sdd-spec) — one new FULL capability spec specs/validation-evidence/spec.md (7 requirements, 19 scenarios, no MODIFIED blocks; openspec/specs/ untouched — archive promotes it as the 7th capability dir).applyPhase0: 2026-09-18 — HEAD 3f70887 verified, tree clean (untracked openspec folder only), replset binary mongod-x64-win32-7.0.41.exe present in .cache. TTI isolation mechanism is testDir: './e2e' in main playwright.config.ts — NOT a testMatch glob; task 2.5's negative check therefore targets testDir (structurally stricter: a non-matching testDir cannot match anything).
+tasks: written 2026-09-18 (sdd-tasks) — U1–U5 one commit each + Phase 0 preconditions + Phase 6 audit. Forecast HIGH (new-file-heavy ~950–1300 added lines) → decision needed before apply (size:exception on single PR vs 3-PR chain). TTI isolation check targets testDir ./e2e (not testMatch glob). Gate/TTI/a11y raw evidence to openspec/changes/ux-11-validation/evidence/.
+archived: 2026-09-18 — Part A COMPLETE, archived to openspec/changes/archive/2026-09-18-ux-11-validation/. NOTE: phase verdict BLOCKED pending founder Part B — 5 usability sessions, manual a11y S8.3/S12.2/S13.1, visual passes (UX-10 9.5 / UX-7 RSL-8 / UX-8 filter-zero), and adjudication of the 12 open axe P1s. Reopen criteria: founder delivers Part B results per docs/UX-11-USABILITY-PROTOCOL.md and docs/UX-11-VALIDATION-REPORT.md.
