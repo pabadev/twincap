@@ -1,5 +1,0 @@
-change: ux-10-implementation
-created: 2026-09-18
-status: tasks complete
-notes: Proposal written 2026-09-18 (sdd-propose). Delta specs written 2026-09-18 (sdd-spec) — six new full specs under openspec/changes/ux-10-implementation/specs/. Founder decisions resolved 2026-09-18 and encoded as fixed requirements: D6 APPROVED (contrast AA local sub-set only), D7 APPROVED (POS sale creation gets NO informed confirmation), D8 APPROVED (EXTRACT FormField now). design.md written 2026-09-18 (sdd-design) — paths re-anchored to real tree; 9 open items resolved. tasks.md written 2026-09-18 (sdd-tasks) — 9 work units (C1..C9) mapping the design commit plan; C9 is the designated docs unit committing the change folder in-tree (D7/D8 decision records + H-10 exclusion register). Review Workload Forecast: est. code+tests ~1,100-1,700 lines vs 2,500 budget — single-PR holds with size:exception (Decision needed before apply: Yes); per-unit commits provide independent revert boundaries. Pending: founder approval of size:exception before sdd-apply. C1 (chore i18n) gates C2 (nav restructure).
-dependsOn: []

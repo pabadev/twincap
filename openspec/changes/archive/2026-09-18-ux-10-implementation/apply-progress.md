@@ -11,16 +11,16 @@
 | Unit | Commit | Status | Tests added/updated |
 |------|--------|--------|---------------------|
 | C1 | `b704181` chore(i18n) | ✅ complete | gate: parity 4 passed |
-| C2 | `feat(nav)` | ✅ complete | +4 structure tests (nav.test.tsx), all 7 green |
-| C3 | `refactor(nav)` | ✅ complete | existing list suites stay green (45 passed) |
-| C4 | `refactor(empty-states)` | ✅ complete | 12 passed (3 surfaces + dashboard) |
-| C5 | `refactor(tokens)` | ✅ complete | 63 passed |
-| C6 | `fix(contrast)` | ✅ complete | 64 passed (u/i18n incl. toast-microcopy untouched green) |
-| C7 | `feat(ui)` | ✅ complete | +5 alert tests; 77 passed filtered pos/profile/ui |
-| C8 | `feat(ui)` | ✅ complete | +10 form-field tests; sale-form S7.3 test updated (paragraph id moved to clientId-hint); 85 passed |
-| C9 | this commit `docs(ux-10)` | ✅ complete | full suite 151 files / 1568 tests green (~24 min, timeout 2.7M ms) |
+| C2 | `207e027` feat(nav) | ✅ complete | +4 structure tests (nav.test.tsx), all 7 green |
+| C3 | `6b0674f` refactor(nav) | ✅ complete | existing list suites stay green (45 passed) |
+| C4 | `f544160` refactor(empty-states) | ✅ complete | 12 passed (3 surfaces + dashboard) |
+| C5 | `4494b1f` refactor(tokens) | ✅ complete | 63 passed |
+| C6 | `fd84e27` fix(contrast) | ✅ complete | 64 passed (u/i18n incl. toast-microcopy untouched green) |
+| C7 | `d17f0e5` feat(ui) | ✅ complete | +5 alert tests; 77 passed filtered pos/profile/ui |
+| C8 | `06459b8` feat(ui) | ✅ complete | +10 form-field tests; sale-form S7.3 test updated (paragraph id moved to clientId-hint); 85 passed |
+| C9 | `43f7492` docs(ux-10) | ✅ complete | full suite 151 files / 1568 tests green (~24 min, timeout 2.7M ms) |
 
-NOTE: get exact hashes per unit via `git log --oneline -9`. C1 = b704181; C2..C9 hashes are recorded in the working log and retrievable from git.
+NOTE: hash backfill verified by sdd-verify (2026-09-18) from `git log --oneline -9`.
 
 ## TDD Cycle Evidence
 
@@ -64,4 +64,4 @@ NOTE: get exact hashes per unit via `git log --oneline -9`. C1 = b704181; C2..C9
 
 ## Result
 
-9/9 units complete (C1..C9), 26/26 tasks `[x]`. Status: **success — ready for sdd-verify → sdd-archive**.
+9/9 units complete (C1..C9). Task count corrected by sdd-verify (2026-09-18): **32/33 tasks `[x]`; task 9.5 (responsive + a11y phase-level manual pass) is `[ ]` — deferred as MANUAL pending founder (RSL-8 precedent from UX-7/UX-8/UX-9)**. Status: **success — ready for sdd-verify → sdd-archive**.
