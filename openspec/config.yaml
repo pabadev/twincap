@@ -1,0 +1,69 @@
+# openspec/config.yaml
+schema: spec-driven
+
+project: twincap
+workspace_root: C:\ProyectosApp\globalmoney
+initialized: 2026-09-18
+
+context: |
+  Tech stack: Next.js 16 (App Router, React 19) + TypeScript, pnpm (never npm/yarn),
+  MongoDB Atlas + Mongoose 8, Tailwind CSS v4, custom i18n (src/i18n, messages/es.json + en.json).
+  Architecture: Hexagonal (src/core/domain + application, src/infrastructure, src/components, src/app).
+  Testing: Vitest (unit/integration, ~1549 tests / ~149 files, full run ~21+ min), Playwright (E2E).
+  Auth: Jose JWT (A256GCM) + bcryptjs. Route protection in app tree + src/proxy.ts (NOT middleware).
+  Style: double quotes ALWAYS (.prettierrc singleQuote: false); touched files must be prettier-clean.
+  Branch: master (NEVER main). Single Vercel project: twincap.
+
+strict_tdd: true
+
+projects:
+  - path: "."
+    stack: Next.js 16 + React 19 + TypeScript (pnpm, Next.js 16 App Router)
+    test_command: "pnpm test"
+    framework: vitest
+    e2e_command: "pnpm test:e2e"
+    e2e_framework: playwright
+    lint_command: "pnpm lint"
+    type_check_command: "pnpm exec tsc --noEmit"
+    format_command: "pnpm format"
+    parity_command: "pnpm parity"
+    build_command: "pnpm build"
+    coverage: "pnpm exec vitest run --coverage (available via vitest, not part of CI gates)"
+
+testing:
+  unit: { tool: vitest, command: "pnpm test", per_test_timeout_ms: 60000 }
+  integration: { tool: vitest (mongodb-memory-server replset, serial) }
+  e2e: { tool: playwright, command: "pnpm test:e2e" }
+  coverage: { available: true, command: "pnpm exec vitest run --coverage" }
+  full_suite_timeout_ms: 2700000  # regulatory: full suite ~21+ min; never use default 120s timeout
+  parity_gate: "pnpm parity (messages/es.json vs en.json paridad + usage)"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - UX-10 is UI-ONLY; state the frozen-domain boundary explicitly in scope
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - New visible text MUST exist in messages/es.json and messages/en.json (neutral Spanish, no voseo)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Respect server->client serialization frontier (plain objects/Date only; entities must toJSON())
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns; reuse src/components/ui/ before creating new components
+      - FROZEN DOMAIN: zero changes in src/core/, src/infrastructure/, Mongoose models (UX-10 is UI-only)
+      - Mobile-first responsive; verify 375px / 768px / 1280px
+    tdd: true
+    test_command: "pnpm test"
+  verify:
+    test_command: "pnpm test"
+    build_command: "pnpm build"
+    additional_gates: ["pnpm exec tsc --noEmit", "pnpm lint", "pnpm parity"]
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
