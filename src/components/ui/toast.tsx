@@ -66,7 +66,7 @@ export function Toast({ id, message, variant = "info", duration = 4000, onDismis
       <span className="flex-1 text-sm font-medium">{message}</span>
       <button
         onClick={handleDismiss}
-        className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
+        className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         aria-label={tCommon("dismiss")}
       >
         <Icon icon={X} size="sm" />

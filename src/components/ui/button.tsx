@@ -12,15 +12,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-white hover:bg-primary-hover focus:ring-primary",
+  primary: "bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary",
   secondary:
-    "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700",
-  success: "bg-teal-700 text-white hover:bg-teal-800 focus:ring-success",
-  danger: "bg-danger text-white hover:bg-danger/90 focus:ring-danger",
+    "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 focus-visible:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700",
+  success: "bg-teal-700 text-white hover:bg-teal-800 focus-visible:ring-success",
+  danger: "bg-danger text-white hover:bg-danger/90 focus-visible:ring-danger",
   ghost:
-    "bg-transparent text-zinc-700 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800",
+    "bg-transparent text-zinc-700 hover:bg-zinc-100 focus-visible:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800",
   inverse:
-    "bg-white text-primary hover:bg-primary/10 focus:ring-primary dark:bg-white dark:text-primary",
+    "bg-white text-primary hover:bg-primary/10 focus-visible:ring-primary dark:bg-white dark:text-primary",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       disabled={isDisabled}
-      className={`inline-flex items-center justify-center rounded-md font-medium shadow-sm transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md font-medium shadow-sm transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
       {loading && (
