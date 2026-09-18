@@ -16,6 +16,7 @@ import { PAYMENT_MODES } from "../../../../core/domain/sale";
 import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
+import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { Modal } from "../../../../components/ui/modal";
@@ -157,11 +158,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       >
         <IdempotencyField />
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
-        {state?.error && (
-          <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-            {translateError(state.error)}
-          </div>
-        )}
+        {state?.error && <Alert variant="danger">{translateError(state.error)}</Alert>}
 
         <input type="hidden" name="lineItems" value={JSON.stringify(lineItems)} />
         <input type="hidden" name="currency" value={currency} />

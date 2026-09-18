@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useTransition } from 'react';
-import { useT } from '../../../i18n/client';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { resendVerificationAction } from './actions';
+import { useTransition } from "react";
+import { useT } from "../../../i18n/client";
+import { Button } from "../../../components/ui/button";
+import { Alert } from "../../../components/ui/alert";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { resendVerificationAction } from "./actions";
 
 /**
  * Non-blocking "email not verified" banner (R13-B2). Shown only when the user
@@ -20,28 +21,39 @@ export function VerifyBanner({
   description: string;
   resend: string;
 }) {
-  const t = useT('Auth');
+  const t = useT("Auth");
   const { addToast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function handleResend() {
     startTransition(async () => {
       const result = await resendVerificationAction();
-      if (result.success) addToast(t('verificationSent'), 'success');
-      else if (result.error === 'tooManyAttempts') addToast(t('tooManyAttempts'), 'error');
-      else addToast(t('errorGeneric'), 'error');
+      if (result.success) addToast(t("verificationSent"), "success");
+      else if (result.error === "tooManyAttempts") addToast(t("tooManyAttempts"), "error");
+      else addToast(t("errorGeneric"), "error");
     });
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-      <div>
-        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{title}</p>
-        <p className="text-sm text-amber-800 dark:text-amber-200">{description}</p>
-      </div>
-      <Button variant="secondary" size="sm" onClick={handleResend} disabled={isPending} loading={isPending} className="shrink-0">
-        {resend}
-      </Button>
-    </div>
+    // Info variant via shared Alert (UX-10 S5): amber → info token palette is
+    // a spec-mandated appearance change; copy, trigger and handlers unchanged.
+    <Alert
+      variant="info"
+      title={title}
+      action={
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleResend}
+          disabled={isPending}
+          loading={isPending}
+          className="shrink-0"
+        >
+          {resend}
+        </Button>
+      }
+    >
+      {description}
+    </Alert>
   );
 }

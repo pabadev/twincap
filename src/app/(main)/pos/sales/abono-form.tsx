@@ -16,6 +16,7 @@ import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { formatAmount, formatDate } from "../../../../lib/format";
 import { Input } from "../../../../components/ui/input";
+import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
@@ -99,11 +100,7 @@ export function AbonoForm({ saleId, accounts, pending, onDone }: AbonoFormProps)
       <input type="hidden" name="saleId" value={saleId} />
       <input type="hidden" name="currency" value={currency} />
 
-      {state?.error && (
-        <div className="rounded-md bg-danger/10 p-3 text-sm text-danger">
-          {translateError(state.error)}
-        </div>
-      )}
+      {state?.error && <Alert variant="danger">{translateError(state.error)}</Alert>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Input

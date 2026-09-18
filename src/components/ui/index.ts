@@ -14,5 +14,6 @@ export {
 export { ActionIconButton } from "./action-icon-button";
 export { Skeleton } from "./skeleton";
 export { EmptyState } from "./empty-state";
+export { Alert } from "./alert";
 export { Toast, type ToastVariant } from "./toast";
 export { ToastProvider, useToastContext } from "./toast-provider";
