@@ -83,7 +83,7 @@ export function DashboardFilterBar({
       </div>
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
             {t('filterScope')}:
           </span>
           {filters.scope !== 'all' && (

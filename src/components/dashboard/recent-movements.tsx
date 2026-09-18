@@ -23,7 +23,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
         <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t('recentMovements')}
         </h3>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{noMovementsMessage}</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{noMovementsMessage}</p>
       </Card>
     );
   }
@@ -43,7 +43,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
               <p className="text-sm text-zinc-900 dark:text-zinc-100">
                 {m.categoryName || t('uncategorized')}
               </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
                 {formatDate(m.date, locale)}
               </p>
             </div>

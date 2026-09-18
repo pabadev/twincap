@@ -27,7 +27,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
         <h3 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t('position')}
         </h3>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {t('noPositionData')}
         </p>
       </Card>
@@ -53,7 +53,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                   <Icon icon={TrendingUp} size="sm" className="text-income" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('activos')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('activos')}</p>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {formatAmount(pos.activos, pos.currency, locale)}
                   </p>
@@ -64,7 +64,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                   <Icon icon={TrendingDown} size="sm" className="text-expense" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('pasivos')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('pasivos')}</p>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {formatAmount(pos.pasivos, pos.currency, locale)}
                   </p>
@@ -76,7 +76,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                     <Icon icon={Scale} size="sm" className="text-info" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('netPosition')}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('netPosition')}</p>
                     <p
                       className={`text-sm font-semibold ${
                         pos.net >= 0

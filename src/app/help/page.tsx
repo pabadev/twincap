@@ -93,7 +93,7 @@ export default async function HelpPage() {
           <div className="mt-8 text-center">
             <Link
               href="/"
-              className="text-sm font-medium text-primary hover:text-primary-hover"
+              className="text-sm font-medium text-primary hover:text-primary-hover dark:text-info"
             >
               {tHelp('backHome')}
             </Link>
