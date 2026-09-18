@@ -148,18 +148,20 @@ describe("SaleForm clientId required semantics (S6.1/S6.2)", () => {
     expect(label?.textContent).not.toContain("*");
   });
 
-  it("associates the missing-client warning with clientId via aria-describedby (S7.3)", () => {
+  it("associates the missing-client hint with clientId via aria-describedby (S7.3)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     switchPaymentMode(container, "on-credit");
+    // UX-10 D8: the hint wiring is centralized in FormField; the paragraph id
+    // moved from `clientId-warning` to `clientId-hint`.
     const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
-    expect(clientSelect?.getAttribute("aria-describedby")).toBe("clientId-warning");
-    const warning = container.querySelector<HTMLElement>("#clientId-warning");
+    expect(clientSelect?.getAttribute("aria-describedby")).toBe("clientId-hint");
+    const warning = container.querySelector<HTMLElement>("#clientId-hint");
     expect(warning).not.toBeNull();
     expect(warning?.textContent).toBe("clientRequiredForCredit");
-    // On a cash sale there is no warning and no described-by binding.
+    // On a cash sale there is no hint and no described-by binding.
     switchPaymentMode(container, "paid-in-full");
     const cashSelect = container.querySelector<HTMLSelectElement>("#clientId");
     expect(cashSelect?.getAttribute("aria-describedby")).toBeNull();
-    expect(container.querySelector("#clientId-warning")).toBeNull();
+    expect(container.querySelector("#clientId-hint")).toBeNull();
   });
 });

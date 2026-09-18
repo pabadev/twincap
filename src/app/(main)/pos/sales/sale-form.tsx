@@ -16,6 +16,7 @@ import { PAYMENT_MODES } from "../../../../core/domain/sale";
 import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
+import { FormField } from "../../../../components/ui/form-field";
 import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
@@ -204,51 +205,49 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
               {t("createClient")}
             </button>
           </div>
-          <Select
+          <FormField
             id="clientId"
             label={t("client")}
-            required={isOnCredit}
-            aria-describedby={needsClient ? "clientId-warning" : undefined}
-            disabled={isPending}
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            options={[
-              { value: "", label: t("generalClient") },
-              ...clients.map((c) => ({
-                value: c.id,
-                label: c.name,
-              })),
-            ]}
-          />
-          {needsClient && (
-            <p id="clientId-warning" className="mt-1 text-xs text-warning">
-              {t("clientRequiredForCredit")}
-            </p>
-          )}
+            hint={needsClient ? t("clientRequiredForCredit") : undefined}
+          >
+            <Select
+              required={isOnCredit}
+              disabled={isPending}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              options={[
+                { value: "", label: t("generalClient") },
+                ...clients.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                })),
+              ]}
+            />
+          </FormField>
         </div>
 
         {isOnCredit && (
-          <div>
+          <FormField
+            id="initialPayment"
+            label={`${t("initialPayment")} (${currency})`}
+            error={
+              initialPaymentInvalid
+                ? parsedInitialPayment > total
+                  ? t("initialPaymentExceedsTotal")
+                  : tError("invalidData")
+                : undefined
+            }
+          >
             <Input
-              id="initialPayment"
               name="initialPayment"
               type="number"
-              label={`${t("initialPayment")} (${currency})`}
               min="0"
               required
               disabled={isPending}
               value={initialPayment}
               onChange={(e) => setInitialPayment(e.target.value)}
-              aria-invalid={initialPaymentInvalid || undefined}
             />
-            {initialPaymentInvalid && (
-              <p className="mt-1 text-xs text-danger">
-                {parsedInitialPayment > total
-                  ? t("initialPaymentExceedsTotal")
-                  : tError("invalidData")}
-              </p>
-            )}
-          </div>
+          </FormField>
         )}
 
         <Input
@@ -291,52 +290,40 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
             {lineItems.map((li, idx) => (
               <div key={idx} className="flex items-end gap-2">
                 <div className="flex-1">
-                  {idx === 0 && (
-                    <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      {t("item")}
-                    </label>
-                  )}
-                  <Select
-                    id={`item-${idx}`}
-                    value={li.itemId}
-                    onChange={(e) => handleItemSelect(idx, e.target.value)}
-                    disabled={isPending}
-                    placeholder={tCommon("select")}
-                    options={catalogItems.map((item) => ({
-                      value: item.id,
-                      label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
-                    }))}
-                  />
+                  <FormField id={`item-${idx}`} label={t("item")} showLabel={idx === 0}>
+                    <Select
+                      value={li.itemId}
+                      onChange={(e) => handleItemSelect(idx, e.target.value)}
+                      disabled={isPending}
+                      placeholder={tCommon("select")}
+                      options={catalogItems.map((item) => ({
+                        value: item.id,
+                        label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
+                      }))}
+                    />
+                  </FormField>
                 </div>
                 <div className="w-16 sm:w-20">
-                  {idx === 0 && (
-                    <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      {t("qty")}
-                    </label>
-                  )}
-                  <Input
-                    id={`qty-${idx}`}
-                    type="number"
-                    min="1"
-                    value={li.quantity}
-                    onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
-                    disabled={isPending}
-                  />
+                  <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={li.quantity}
+                      onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
+                      disabled={isPending}
+                    />
+                  </FormField>
                 </div>
                 <div className="w-20 sm:w-28">
-                  {idx === 0 && (
-                    <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      {t("unitPrice")}
-                    </label>
-                  )}
-                  <Input
-                    id={`price-${idx}`}
-                    type="number"
-                    min="1"
-                    value={li.unitPrice}
-                    onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
-                    disabled={isPending}
-                  />
+                  <FormField id={`price-${idx}`} label={t("unitPrice")} showLabel={idx === 0}>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={li.unitPrice}
+                      onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
+                      disabled={isPending}
+                    />
+                  </FormField>
                 </div>
                 {lineItems.length > 1 && (
                   <button
