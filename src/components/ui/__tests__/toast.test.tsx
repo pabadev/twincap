@@ -67,16 +67,20 @@ function ToastHarness() {
 }
 
 describe("Toast single announcement channel (R-8, S8.1)", () => {
-  it("keeps exactly one polite live region with an accessible label", () => {
+  it("keeps exactly one polite live region with NO aria-label (axe aria-prohibited-attr)", () => {
     const { container } = mount(
       <ToastProvider>
         <ToastHarness />
       </ToastProvider>,
     );
 
+    // UX-12: aria-label on a region container is prohibited (axe
+    // aria-prohibited-attr, 16 findings); the region stays silent and
+    // announcements derive from the inner toast items.
     const regions = container.querySelectorAll('[aria-live="polite"]');
     expect(regions.length).toBe(1);
-    expect(regions[0].getAttribute("aria-label")).toBe("notifications");
+    expect(regions[0].getAttribute("aria-label")).toBeNull();
+    expect(regions[0].getAttribute("role")).toBeNull();
   });
 
   it("renders toast items WITHOUT a nested role=alert inside the polite region", () => {

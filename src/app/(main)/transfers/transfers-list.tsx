@@ -88,10 +88,14 @@ export function TransfersList({
           {/* Filter bar */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="transfers-filter-date-from"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateFrom")}
               </label>
               <input
+                id="transfers-filter-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -99,10 +103,14 @@ export function TransfersList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="transfers-filter-date-to"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateTo")}
               </label>
               <input
+                id="transfers-filter-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}

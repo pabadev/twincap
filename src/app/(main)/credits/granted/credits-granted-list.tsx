@@ -92,10 +92,14 @@ export function CreditsGrantedList({
           {/* Filter bar */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-granted-filter-date-from"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateFrom")}
               </label>
               <input
+                id="credits-granted-filter-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -103,10 +107,14 @@ export function CreditsGrantedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-granted-filter-date-to"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateTo")}
               </label>
               <input
+                id="credits-granted-filter-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -114,10 +122,14 @@ export function CreditsGrantedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-granted-filter-status"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterStatus")}
               </label>
               <Select
+                id="credits-granted-filter-status"
                 options={[
                   { value: "all", label: t("filterAllStatus") },
                   { value: "pending", label: t("filterPending") },
@@ -132,10 +144,14 @@ export function CreditsGrantedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-granted-filter-search"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterSearch")}
               </label>
               <input
+                id="credits-granted-filter-search"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

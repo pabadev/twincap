@@ -88,10 +88,14 @@ export function CreditsReceivedList({
           {/* Filter bar */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-received-filter-date-from"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateFrom")}
               </label>
               <input
+                id="credits-received-filter-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -99,10 +103,14 @@ export function CreditsReceivedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-received-filter-date-to"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateTo")}
               </label>
               <input
+                id="credits-received-filter-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -110,10 +118,14 @@ export function CreditsReceivedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-received-filter-status"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterStatus")}
               </label>
               <Select
+                id="credits-received-filter-status"
                 options={[
                   { value: "all", label: t("filterAllStatus") },
                   { value: "pending", label: t("filterPending") },
@@ -125,10 +137,14 @@ export function CreditsReceivedList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="credits-received-filter-search"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterSearch")}
               </label>
               <input
+                id="credits-received-filter-search"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

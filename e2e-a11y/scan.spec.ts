@@ -23,7 +23,7 @@ import { registerUser, seedFinancialData } from "../e2e/helpers";
  *
  * Output: every axe violation is collected with route/viewport/theme/rule
  * id/impact/selectors and (a) logged to the console and (b) written to
- * openspec/changes/ux-11-validation/evidence/a11y-scan-raw.json for the
+ * openspec/changes/ux-12-polish-final/evidence/a11y-scan-raw.json for the
  * report triage. Nothing under src/ is fixed by this spec — findings are
  * evidence for the UX-11 report (triage P0/P1/other by Part B adjudication).
  */
@@ -251,7 +251,7 @@ test("UX-11 a11y scan — matrix isolation proof and axe scan of 20 combos", asy
   }
 
   // Write the raw artifact for the report triage (task 2.4).
-  const outDir = path.join(__dirname, "..", "openspec", "changes", "ux-11-validation", "evidence");
+  const outDir = path.join(__dirname, "..", "openspec", "changes", "ux-12-polish-final", "evidence");
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(
     path.join(outDir, "a11y-scan-raw.json"),

@@ -157,10 +157,14 @@ export function SaleList({
           {/* Filter bar */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="sale-filter-dateFrom"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateFrom")}
               </label>
               <input
+                id="sale-filter-dateFrom"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -168,10 +172,14 @@ export function SaleList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="sale-filter-dateTo"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterDateTo")}
               </label>
               <input
+                id="sale-filter-dateTo"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -179,10 +187,14 @@ export function SaleList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="sale-filter-status"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterStatus")}
               </label>
               <Select
+                id="sale-filter-status"
                 options={[
                   { value: "all", label: t("filterAllStatus") },
                   { value: "paid", label: t("filterPaid") },
@@ -194,10 +206,14 @@ export function SaleList({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <label
+                htmlFor="sale-filter-search"
+                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              >
                 {t("filterSearch")}
               </label>
               <input
+                id="sale-filter-search"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
