@@ -50,7 +50,7 @@ export function SummaryAttention({
 
       {!hasContent && (
         <Card className="p-4">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {t('attentionEmpty')}
           </p>
         </Card>
@@ -60,7 +60,7 @@ export function SummaryAttention({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {receivablesRows.length > 0 && (
             <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                 {t('receivables')}
               </p>
               <div className="mt-2 flex flex-col gap-1">
@@ -69,7 +69,7 @@ export function SummaryAttention({
                     key={r.currency}
                     className="flex items-baseline justify-between gap-3"
                   >
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
                       {r.currency}
                     </span>
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -83,7 +83,7 @@ export function SummaryAttention({
 
           {payablesRows.length > 0 && (
             <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                 {t('payables')}
               </p>
               <div className="mt-2 flex flex-col gap-1">
@@ -92,7 +92,7 @@ export function SummaryAttention({
                     key={p.currency}
                     className="flex items-baseline justify-between gap-3"
                   >
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
                       {p.currency}
                     </span>
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -112,7 +112,7 @@ export function SummaryAttention({
                   size="sm"
                   className="text-warning"
                 />
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                   {t('overduePayment')}
                 </p>
               </div>
@@ -120,7 +120,7 @@ export function SummaryAttention({
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   {p.label}
                 </span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="text-xs text-zinc-600 dark:text-zinc-400">
                   {t('overdueDays', { days: String(p.daysOverdue) })}
                 </span>
               </div>

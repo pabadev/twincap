@@ -29,7 +29,7 @@ import {
 function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
         {title}
       </legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-4">{children}</div>

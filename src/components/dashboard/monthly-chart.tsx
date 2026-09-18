@@ -46,7 +46,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                     style={{ width: `${(d.income / maxValue) * 100}%`, minWidth: d.income > 0 ? '4px' : '0' }}
                   />
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-600 dark:text-zinc-400">
                   {d.income > 0 ? `+${formatAmount(d.income, currency, locale)}` : '—'}
                 </span>
               </div>
@@ -57,7 +57,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                     style={{ width: `${(d.expenses / maxValue) * 100}%`, minWidth: d.expenses > 0 ? '4px' : '0' }}
                   />
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="shrink-0 whitespace-nowrap text-xs text-zinc-600 dark:text-zinc-400">
                   {d.expenses > 0 ? `−${formatAmount(d.expenses, currency, locale)}` : '—'}
                 </span>
               </div>
@@ -65,7 +65,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
           </div>
         ))}
       </div>
-      <div className="mt-3 flex gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mt-3 flex gap-4 text-xs text-zinc-600 dark:text-zinc-400">
         <span className="flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-full bg-income" /> {t('income')}
         </span>
