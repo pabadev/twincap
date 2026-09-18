@@ -1,6 +1,6 @@
 # SDD change state (optional recovery hint)
 change: ux-12-polish-final
-status: tasks
+status: applied
 updated: 2026-09-18
 artifact_store: openspec
 execution_mode: auto
@@ -11,3 +11,4 @@ dependsOn: [ux-11-validation]
 notes: proposal written 2026-09-18 (sdd-propose) — P1 a11y structural fixes, P2 HYBRID contrast (DEC-DS-01 executed), P3 cleanup + Alert success variant, P4 bounded polish, P5 close-out report. Frozen domain (zero src/core, src/infrastructure, models). Capabilities contract: 2 new (filter-bar-a11y, ux-stage-closeout), 3 modified (ui-token-compliance, alert-component, navigation-ia).
 specs: written 2026-09-18 (sdd-spec) — filter-bar-a11y (new, full), ui-token-compliance (delta: 4 ADDED reqs incl. superseding DEC-DS-01 execution), alert-component (delta: ADDED success variant + 4/2 banner migrations), navigation-ia (delta: ADDED back-button file deletion + focus-visible unification + CC-3/CC-7 single-home rule), ux-stage-closeout (new, full). Next: design.
 tasks: written 2026-09-18 (sdd-tasks) — Phase 0 preconditions + units U1-U5 as conventional commits + Phase 6 close mechanics. 4 deferred design decisions resolved IN tasks: DD-T1 CC-3/CC-7 home = U2 ui-token-compliance (NOT navigation-ia); DD-T2 token two-step darkening with ratio pre-check (2.1) before commit, axe re-scan as arbiter; DD-T3 FormField-vs-htmlFor per-file choice with byte-layout acceptance; DD-T4 scan.spec.ts:254 path re-point belongs to U1 scan unit. Forecast: ~1,500-2,000 lines vs 2,500 budget; Decision needed before apply: No; Chain: size-exception (single-pr + approved budget). Next: apply.
+applied: written 2026-09-18 (sdd-apply, STRICT TDD) — U1 e538341 (labels assoc + toast aria-label + scan path), U2 846fd37 (DEC-DS-01 hybrid tokens CC-6 via token + CC-1/2/3/4/5/7 per-site), U3 7cc2a71 (back-button deleted + test block same commit, Alert success variant, 4+2 banner migrations byte-identical), U4 1f554b5 (focus-visible unification), U5 report + gates + re-scan. Axe re-scan bounded iterations: 8463e96, 6355e50, f18c230; assertion fix bfa690d. FINAL: 0 violations x 4 triaged rules x 20/20 combos; full suite 1577/1577 (timeout >=2,900,000 ms); tsc/lint/parity/build green; frozen-domain diff EMPTY; no push. Light --tc-primary bumped #1447E6; day final values in evidence/contrast-ratio-precheck.md.
