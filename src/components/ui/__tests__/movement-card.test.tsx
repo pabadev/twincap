@@ -40,8 +40,8 @@ describe("MovementCard", () => {
     // primary fields: text-sm font-medium + color class from the field
     expect(html).toContain("text-sm font-medium");
     expect(html).toContain("text-income");
-    // secondary fields: text-xs + zinc color
-    expect(html).toContain("text-xs text-zinc-500 dark:text-zinc-400");
+    // secondary fields: text-xs + zinc color (UX-12 CC-1: zinc-600 meets AA on card)
+    expect(html).toContain("text-xs text-zinc-600 dark:text-zinc-400");
     // custom className (badge) is preserved
     expect(html).toContain("bg-income/10");
     expect(html).toContain("rounded-full");
