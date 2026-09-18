@@ -151,12 +151,16 @@
 - **Pendiente fundador (no bloqueante, precedente RSL-8):** tarea 9.5 — pase visual 375/768/1280 (drawer+headers nav, listas sin BackButton, empty states, tokens light+dark, banners, labels/errores de form) + spot checks AT.
 - **Fases destinatarias:** UX-11, UX-12.
 
-### UX-11 — VALIDACIÓN ⏳ PLANIFICADA
+### UX-11 — VALIDACIÓN 🟡 PARTE A COMPLETA (2026-09-18) — PARTE B PENDIENTE FUNDADOR
 
 - **Objetivo:** evidencia real, no "el agente terminó" (§48).
-- **Entregables:** informe de validación con (1) test de usabilidad: ≥5 usuarios, tareas: registrar venta, registrar gasto, entender el Resumen en 10 s (Regla de Oro §41), cobrar un crédito; (2) medición de TTI (H-17) antes/después; (3) auditoría a11y automatizada + manual; (4) checklist §47 completo.
-- **Criterios de aceptación:** sin P0/P1 abiertos; Regla de Oro superada por ≥4/5 usuarios; regresión financiera CERO (suite + tsc + lint + build).
-- **Fases destinatarias:** UX-12.
+- **Entregables — PARTE A CERRADA (evidencia real, SDD `ux-11-validation`, 9 commits `130ae2b..c11bdc5`, 2.903 líneas docs/harness, cero diff de producto, size:exception PR único):**
+  - **(2) TTI H-17 antes/después MEDIDO** (`docs/UX-11-VALIDATION-REPORT.md` + `evidence/tti-after-2026-09-18.md`): arnés UX-5 re-ejecutado; cold hero N1 **2570/1978/2298 ms** (375-3G/768/1280) vs baseline 2381/2330/2270 → **+7.9%/−15.1%/+1.2%, ningún punto >20%, protocolo de ruido no disparado — H-17 se mantiene, sin regresión**.
+  - **(4) Checklist §47 completo:** 13 ítems del freeze mapeados ✅ con gates frescos (tsc 0, lint 0 err, parity 4/4, build OK, suite **1568/1568** en 24.4 min, timeout 2.9M ms); slip "15 filas" de UX-10 corregido.
+  - **(3) Auditoría a11y automatizada:** 1 devDependency nueva `@axe-core/playwright` (aprobada fundador, única de la fase); escaneo autenticado 20/20 combos (5 rutas × 375+1280 × light+dark), 0 gaps → **50 violaciones / 4 reglas triadas 0 P0 / 12 P1 abiertas** (color-contrast 18, aria-prohibited-attr 16, label 8, select-name 8) — adjudicación pendiente, alimenta UX-12.
+  - **(1) Protocolo de usabilidad listo para el fundador:** `docs/UX-11-USABILITY-PROTOCOL.md` — 4 tareas en español neutro (venta/gasto/Resumen 10s §41/cobro), receta de datos, guía de observación (MAC en cobro, F5 en gasto), criterios por tarea, regla 4/5.
+- **PARTE B — PENDIENTE FUNDADOR (la fase NO cierra sin esto; veredicto del informe = BLOCKED):** 5 sesiones de usabilidad (protocolo listo), S8.3/S12.2/S13.1, pases visuales (UX-10 9.5, UX-7 RSL-8, UX-8 filter-zero), adjudicación de los 12 P1. Criterios de aceptación aún NO declarables: sin P0/P1 abiertos + Regla de Oro ≥4/5 + regresión CERO (esta última ya demostrada en Parte A).
+- **Fases destinatarias:** UX-12 (12 P1 de axe + backlog heredado).
 
 ### UX-12 — POLISH FINAL ⏳ PLANIFICADA
 
@@ -178,7 +182,7 @@
 | UX-8 | ✅ | Microcopy + estados + errores — 30 toasts verbo+objeto, 404 localizado, noResults → EmptyState (HEAD `5dd8427`) | H-08 (30)/H-03/H-04 cerrados; DEC-DS-09; paridad es/en (`pnpm parity` gate) |
 | UX-9 | ✅ | A11y — focus trap, naming, aria-required, canal único toast, aria-pressed/sort, evidencia contraste (HEAD `7d0693d`) | H-05/H-11/H-12/H-13/H-16/H-18 cerrados; 1549/1549 tests ×2; 3 manuales pendientes RSL-8 |
 | UX-10 | ✅ | Implementación (orden §53) — nav 4 niveles + Configuración, H-10/H-14, tokens, Alert, FormField (C1–C9 + `81c5522`) | Gates §46 + regresión §47 verdes; 37/37 req / 66/66 esc; freeze CERO |
-| UX-11 | ⏳ | Validación | ≥5 usuarios; Regla de Oro; TTI; regresión 0 |
+| UX-11 | 🟡 | Validación — Parte A (evidencia TTI/§47/axe/protocolo) ✅ 2026-09-18; Parte B (5 usuarios + manuales) pendiente fundador | Regla de Oro ≥4/5; sin P0/P1 abiertos; regresión 0 (demostrada en A) |
 | UX-12 | ⏳ | Polish | Condición de éxito §56 |
 
 ---
