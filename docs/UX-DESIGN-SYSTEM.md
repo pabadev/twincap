@@ -35,7 +35,21 @@ El Design System no es un catálogo de estilos: es la materialización visual de
 1. **Un solo vocabulario de color:** los tokens `--tc-*` existentes SON el sistema. No se introduce una segunda paleta.
 2. **Corrección H-01 (DEC-DS-01):** reemplazar toda clase shadcn inexistente por tokens reales (`text-surface-muted`, `bg-surface-card`, `text-foreground`, `bg-background`). No se agregan `--color-muted-foreground`/`--color-card` solo para complacer a un patrón externo: el mapeo canónico es `muted → surface-muted`, `card → surface-card`.
 3. **Roles de uso:** `primary` = acción principal y navegación activa; `success`/`income` y `danger`/`expense` = semántica financiera (ingreso/gasto, positivo/negativo); `warning` = atención (saldo negativo, compromisos); `info`/`debt` = contextos (cuentas, deuda); `brand-teal`/`brand-gold` = identidad (logo, gradientes del landing, acentos puntuales). **Prohibido** color arbitrario por pantalla (hoy: zinc crudo en nav/toggles — H-19 hereda este problema en el hero indigo).
-4. **Contraste:** todo par texto/fondo cumple WCAG AA (4,5:1 texto normal, 3:1 texto grande). El texto secundario usa `surface-muted` (hoy `zinc-500` improvisado — migrar).
+4. **Contraste:** todo par texto/fondo cumple WCAG AA (4,5:1 texto normal, 3:1 texto grande). El texto secundario usa `surface-muted` — PX12 a nivel token esto ya es cierto; los class-level `zinc` no marcados persisten documentados (adenda §2.3).
+
+### 2.3. Adenda UX-12 (DEC-DS-01 ejecutado — token-level truth, 2026-09-18)
+
+Correcciones de VALOR de token (sin renombrar ni tokens nuevos), ratios medidos con WCAG (evidencia: `openspec/changes/ux-12-polish-final/evidence/contrast-ratio-precheck.md`):
+
+- `--tc-primary` light: `#155DFC` → `#1447E6` (blanco 5.25→**6.83**; sobre card 4.42→**5.75**).
+- `--tc-primary` dark: `#51A2FF` → `#0069F5` (blanco 2.64→**4.84**; dos pasos: intermedios `#007CFB` 3.98 y `#0073FB` 4.33 descartados).
+- `--tc-primary-hover`: light → `oklch(0.432 0.232 264.376)`; dark → `#0055D1` (blanco 6.52).
+- `--tc-surface-muted` light: `#71717A` → `#52525B` (sobre card 4.07→**6.51**; dark `#A1A1AA` ya pasaba 6.87).
+- `--tc-income` light: `#009966` → `#067855` (**4.62** sobre card; dark `#00BC7D` 7.12 sin cambio).
+- `--tc-expense` light: `#E7000B` → `#B91C1C` (**5.45** sobre card; dark `#FF3936` 4.94 sin cambio).
+- `--tc-brand-gold`/`--tc-brand-teal`: sin cambio de valor — evaluación por contexto: NO hay usos de texto UI fuera de la marca (logo/404); esos sitios reciben per-site AA (CC-4: `text-cyan-700` 4.51 / `text-amber-800` 5.97); usos decorativos (gradiente landing, iconos nav) conservan la marca.
+- **A nivel TOKEN, §2.2.4 es verdad; a nivel CLASE**, los sitios `zinc-500/400` NO marcados por axe persisten (decisión HYBRID: solo corrección de sitios marcados CC-1..CC-7 — documentado, no silencioso). Consecuencia honesta del darkening de `--tc-primary` dark: enlaces `dark:text-primary` fuera de las 5 rutas escaneadas quedan en ~4.0:1 (antes 6.67); si el re-scan los marca, se corrigen per-site acotado (tarea 5.2).
+- **Adenda de motion (3 líneas, documenta lo existente — §56 prohibe inventar):** transiciones sancionadas: cambio de tema ~0.3s (`html.theme-transition`), toast ~300ms, acordeón ~200ms. NO se agregan nuevos sistemas de animación, page-transitions ni stagger/shimmer.
 5. **Saldo negativo = rojo `danger` + soporte no cromático** (signo, etiqueta "negativo") — nunca color como único canal (§16).
 
 ## 3. Fundamentos — Tipografía

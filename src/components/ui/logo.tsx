@@ -43,8 +43,8 @@ export function Logo({ variant = 'logotipo', size = 'md' }: LogoProps) {
       <span
         className={`font-display font-bold tracking-tight ${config.text}`}
       >
-        <span className="text-brand-teal">Twin</span>
-        <span className="text-brand-gold">Cap</span>
+        <span className="text-cyan-700 dark:text-brand-teal">Twin</span>
+        <span className="text-amber-800 dark:text-brand-gold">Cap</span>
       </span>
     </div>
   );

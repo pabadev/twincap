@@ -101,14 +101,14 @@ function ContextCurrencyRows({
   }
   return (
     <>
-      <p className="text-[11px] sm:text-xs leading-tight text-zinc-500">{incomeLabel}:</p>
+      <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">{incomeLabel}:</p>
       {items.map((it) => (
         <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-income">
           <span className="font-semibold">+{formatAmount(it.monthlyIncome, it.currency, locale)}</span>{' '}
           <span className="text-zinc-400">{it.currency}</span>
         </p>
       ))}
-      <p className="text-[11px] sm:text-xs leading-tight text-zinc-500">{expensesLabel}:</p>
+      <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">{expensesLabel}:</p>
       {items.map((it) => (
         <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-expense">
           <span className="font-semibold">−{formatAmount(it.monthlyExpenses, it.currency, locale)}</span>{' '}
@@ -151,7 +151,7 @@ export function SummaryCards({
               <Icon icon={TrendingUp} size="md" className="text-income" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('incomeThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('incomeThisMonth')}</p>
               {multi ? (
                 <MultiCurrencyValue items={currencyBreakdown!} field="income" sign="+" locale={locale} className="text-income" />
               ) : (
@@ -169,7 +169,7 @@ export function SummaryCards({
               <Icon icon={TrendingDown} size="md" className="text-expense" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('expensesThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('expensesThisMonth')}</p>
               {multi ? (
                 <MultiCurrencyValue items={currencyBreakdown!} field="expenses" sign="−" locale={locale} className="text-expense" />
               ) : (
@@ -187,7 +187,7 @@ export function SummaryCards({
               <Icon icon={Wallet} size="md" className="text-info" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('totalBalance')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('totalBalance')}</p>
               {multi ? (
                 <MultiCurrencyValue items={currencyBreakdown!} field="balance" locale={locale} className="text-zinc-900 dark:text-zinc-100" />
               ) : (
@@ -205,7 +205,7 @@ export function SummaryCards({
               <Icon icon={ArrowLeftRight} size="md" className="text-info" />
             </div>
             <div className="min-w-0 flex flex-col gap-0.5">
-              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('financingThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('financingThisMonth')}</p>
               <p className="text-[11px] sm:text-xs leading-tight text-income">
                 {t('financingReceived')}:{' '}
                 <span className="font-semibold">+{formatAmount(financingInflow, currency, locale)}</span>
@@ -231,7 +231,7 @@ export function SummaryCards({
                   <Icon icon={User} size="md" className="text-income" />
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
-                  <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('filterScopePersonal')}</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('filterScopePersonal')}</p>
                   <ContextCurrencyRows
                     items={contextSummary.personal}
                     locale={locale}
@@ -249,7 +249,7 @@ export function SummaryCards({
                   <Icon icon={Briefcase} size="md" className="text-income" />
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
-                  <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">{t('filterScopeBusiness')}</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('filterScopeBusiness')}</p>
                   <ContextCurrencyRows
                     items={contextSummary.business}
                     locale={locale}

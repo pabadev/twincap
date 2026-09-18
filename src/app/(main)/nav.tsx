@@ -245,7 +245,7 @@ export function MainNav({
                       <Fragment key={group.headerKey ?? "tier1"}>
                         {group.headerKey && (
                           <li>
-                            <span className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 lg:pt-3 dark:text-zinc-500">
+                            <span className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 lg:pt-3 dark:text-zinc-400">
                               {t(group.headerKey)}
                             </span>
                           </li>
@@ -265,7 +265,7 @@ export function MainNav({
                                 aria-current={isActive ? "page" : undefined}
                                 className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
                                   isActive
-                                    ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
+                                    ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-foreground"
                                     : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                                 }`}
                               >

@@ -46,7 +46,7 @@ export default async function HelpPage() {
             <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-white">
               {tHelp('title')}
             </h1>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
               {tHelp('subtitle')}
             </p>
           </header>
@@ -103,7 +103,7 @@ export default async function HelpPage() {
 
       {/* Footer */}
       <footer className="border-t border-surface-border bg-surface-card py-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 px-4 text-xs text-zinc-500 sm:flex-row sm:px-6 dark:text-zinc-400">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 px-4 text-xs text-zinc-600 sm:flex-row sm:px-6 dark:text-zinc-400">
           <span>© {new Date().getFullYear()} TwinCap</span>
           <nav aria-label={tLanding('legalNavAriaLabel')} className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {FOOTER_LINKS.map(({ href, labelKey }) => (

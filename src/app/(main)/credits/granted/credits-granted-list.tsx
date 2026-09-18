@@ -94,7 +94,7 @@ export function CreditsGrantedList({
             <div>
               <label
                 htmlFor="credits-granted-filter-date-from"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateFrom")}
               </label>
@@ -109,7 +109,7 @@ export function CreditsGrantedList({
             <div>
               <label
                 htmlFor="credits-granted-filter-date-to"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateTo")}
               </label>
@@ -124,7 +124,7 @@ export function CreditsGrantedList({
             <div>
               <label
                 htmlFor="credits-granted-filter-status"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterStatus")}
               </label>
@@ -146,7 +146,7 @@ export function CreditsGrantedList({
             <div>
               <label
                 htmlFor="credits-granted-filter-search"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterSearch")}
               </label>
@@ -198,7 +198,7 @@ export function CreditsGrantedList({
                         {isPaid && <Badge variant="success">{tCommon("paid")}</Badge>}
                         {credit.writtenOff && <Badge variant="danger">{t("writtenOff")}</Badge>}
                       </div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
                         {formatDate(credit.date, locale)}
                         {credit.installments &&
                           ` · ${credit.installments} ${t("installmentCount")}`}
@@ -226,7 +226,7 @@ export function CreditsGrantedList({
                       <div className="text-sm font-medium text-zinc-900 dark:text-white">
                         {formatAmount(credit.principal.amount, currency, locale)}
                       </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400">
                         {pending > 0
                           ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
                           : t("paidInFull")}
@@ -260,7 +260,7 @@ export function CreditsGrantedList({
                     <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
                       {credit.abonos?.length > 0 && (
                         <div className="mb-3">
-                          <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          <h4 className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                             {t("abonos")}
                           </h4>
                           {/* Compact expandable table: keeps its bespoke cells

@@ -22,7 +22,7 @@ interface MovementCardProps {
 /**
  * Mobile card variant (<640px) for the pure list tables. Each field renders as
  * a label/value row: primary fields use `text-sm font-medium` (default color
- * `text-zinc-900 dark:text-white`), secondary fields `text-xs text-zinc-500
+ * `text-zinc-900 dark:text-white`), secondary fields `text-xs text-zinc-600
  * dark:text-zinc-400`. A field that supplies its own `className` (e.g.
  * "text-income") provides the color — replacing the default value color, the
  * same way the desktop tables combine `text-sm font-medium` with an income/
@@ -41,10 +41,10 @@ export function MovementCard({ id, fields, actions, className = "" }: MovementCa
             ? `${field.primary ? "text-sm font-medium" : "text-xs"} ${field.className}`.trim()
             : field.primary
               ? "text-sm font-medium text-zinc-900 dark:text-white"
-              : "text-xs text-zinc-500 dark:text-zinc-400";
+              : "text-xs text-zinc-600 dark:text-zinc-400";
           return (
             <div key={field.key} className="flex items-start justify-between gap-3">
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 {field.label}
               </dt>
               <dd className={`text-right ${valueClasses}`}>{field.value}</dd>
