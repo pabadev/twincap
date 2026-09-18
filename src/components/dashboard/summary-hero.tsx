@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useT } from '../../i18n/client';
-import { formatAmount, formatDate } from '../../lib/format';
-import { Card } from '../ui/card';
+import { useT } from "../../i18n/client";
+import { formatAmount, formatDate } from "../../lib/format";
+import { Card } from "../ui/card";
 
 interface SummaryHeroProps {
   /** Period result (income − expenses) in `currency` minor units. */
@@ -25,16 +25,10 @@ interface SummaryHeroProps {
  * P1.3). Semantic color only on the result figure (green ≥ 0, red < 0),
  * always with an explicit +/− sign.
  */
-export function SummaryHero({
-  result,
-  currency,
-  available,
-  dataAsOf,
-  locale,
-}: SummaryHeroProps) {
-  const t = useT('Dashboard');
-  const sign = result >= 0 ? '+' : '−';
-  const resultColor = result >= 0 ? 'text-income' : 'text-expense';
+export function SummaryHero({ result, currency, available, dataAsOf, locale }: SummaryHeroProps) {
+  const t = useT("Dashboard");
+  const sign = result >= 0 ? "+" : "−";
+  const resultColor = result >= 0 ? "text-income" : "text-expense";
   const hasData = available.length > 0;
 
   return (
@@ -42,13 +36,11 @@ export function SummaryHero({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card className="p-5 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {t('periodResult')}
+            {t("periodResult")}
           </p>
           {hasData ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p
-                className={`font-display text-[28px] leading-tight md:text-4xl ${resultColor}`}
-              >
+              <p className={`font-display text-[28px] leading-tight md:text-4xl ${resultColor}`}>
                 {sign}
                 {formatAmount(Math.abs(result), currency, locale)}
               </p>
@@ -60,30 +52,28 @@ export function SummaryHero({
             </div>
           ) : (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              {t('periodResultEmpty')}
+              {t("periodResultEmpty")}
             </p>
           )}
         </Card>
 
         <Card className="p-5 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {t('availableByCurrency')}
+            {t("availableByCurrency")}
           </p>
           <div className="mt-3 flex flex-col gap-1.5">
             {available.map((a) => (
-              <div
-                key={a.currency}
-                className="flex items-baseline justify-between gap-3"
-              >
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {a.currency}
-                </span>
+              <div key={a.currency} className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">{a.currency}</span>
                 <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">
                   {formatAmount(a.balance, a.currency, locale)}
                 </span>
               </div>
             ))}
             {available.length === 0 && (
+              // H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the bare "—"
+              // is the intentional zero-dash typography of the hero, not a
+              // missing state. See openspec/changes/ux-10-implementation/design.md.
               <p className="text-sm text-zinc-500 dark:text-zinc-400">—</p>
             )}
           </div>
@@ -91,7 +81,7 @@ export function SummaryHero({
       </div>
 
       <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-        {t('dataAsOf', { date: formatDate(dataAsOf, locale) })}
+        {t("dataAsOf", { date: formatDate(dataAsOf, locale) })}
       </p>
     </div>
   );

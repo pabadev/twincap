@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { formatAmount } from '../../lib/format';
-import { useT } from '../../i18n/client';
-import type { CurrencyTotal } from '../../core/application/compute-category-summary';
+import { formatAmount } from "../../lib/format";
+import { useT } from "../../i18n/client";
+import type { CurrencyTotal } from "../../core/application/compute-category-summary";
 // R14-K §14c: the row type lives in core; re-exported here so the
 // presentation layer keeps its stable import path.
-import type { SummaryTableRow } from '../../core/application/dashboard/dashboard-types';
-export type { SummaryTableRow } from '../../core/application/dashboard/dashboard-types';
+import type { SummaryTableRow } from "../../core/application/dashboard/dashboard-types";
+export type { SummaryTableRow } from "../../core/application/dashboard/dashboard-types";
 
 interface SummaryTableProps {
   title: string;
@@ -17,14 +17,8 @@ interface SummaryTableProps {
   emptyMessage: string;
 }
 
-export function SummaryTable({
-  title,
-  rows,
-  totals,
-  locale,
-  emptyMessage,
-}: SummaryTableProps) {
-  const t = useT('Dashboard');
+export function SummaryTable({ title, rows, totals, locale, emptyMessage }: SummaryTableProps) {
+  const t = useT("Dashboard");
 
   return (
     <div className="overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-surface-border dark:bg-surface-card flex flex-col">
@@ -33,12 +27,15 @@ export function SummaryTable({
       </div>
 
       <div className="grid grid-cols-[1fr_auto] border-b border-surface-border bg-surface-header dark:bg-zinc-800 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
-        <span>{t('summaryCategory')}</span>
-        <span>{t('summaryAmount')}</span>
+        <span>{t("summaryCategory")}</span>
+        <span>{t("summaryAmount")}</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 max-h-[300px] sm:max-h-[400px]">
         {rows.length === 0 ? (
+          // H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the summary block
+          // lives inside a bordered table shell; a centered EmptyState would
+          // misalign the panel rhythm. See openspec/changes/ux-10-implementation/design.md.
           <p className="py-4 text-sm text-zinc-500 dark:text-zinc-400">{emptyMessage}</p>
         ) : (
           rows.map((row, i) => (
@@ -61,7 +58,7 @@ export function SummaryTable({
           renders each currency's total on its own line (never summed across
           currencies — same pattern as MultiCurrencyValue in summary-cards). */}
       <div className="grid grid-cols-[1fr_auto] border-t border-surface-border bg-surface-header dark:bg-zinc-800 px-6 py-3 font-semibold">
-        <span className="text-sm text-zinc-800 dark:text-white">{t('total')}</span>
+        <span className="text-sm text-zinc-800 dark:text-white">{t("total")}</span>
         {totals.length === 0 ? (
           <span className="text-sm text-zinc-500 dark:text-zinc-400">—</span>
         ) : totals.length === 1 ? (

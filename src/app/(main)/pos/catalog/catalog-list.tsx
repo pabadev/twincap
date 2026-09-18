@@ -68,13 +68,16 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
               className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
             />
           </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {debouncedQuery.trim()
-              ? filteredItems.length > 0
+          {/* Unified empty state (H-10 residue): zero matches are presented
+              exclusively by the EmptyState below — the counter renders only
+              for non-empty results. */}
+          {!(debouncedQuery.trim() && filteredItems.length === 0) && (
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              {debouncedQuery.trim()
                 ? t("results", { count: String(filteredItems.length), total: String(items.length) })
-                : t("noResults")
-              : t("results", { count: String(items.length), total: String(items.length) })}
-          </p>
+                : t("results", { count: String(items.length), total: String(items.length) })}
+            </p>
+          )}
         </div>
       )}
 

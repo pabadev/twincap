@@ -338,6 +338,10 @@ export function DashboardContent({
 
         {accountBalances.length === 0 ? (
           <Card>
+            {/* H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the compact
+                inline Card text is the approved pattern; a full EmptyState
+                would fight the dashboard's grid language. See
+                openspec/changes/ux-10-implementation/design.md (H-10 Exclusion Register). */}
             <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
               {noAccountsMessage}
             </p>
