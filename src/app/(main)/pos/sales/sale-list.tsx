@@ -16,7 +16,6 @@ import { Icon } from "../../../../components/ui/icon";
 import { Modal } from "../../../../components/ui/modal";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
-import { BackButton } from "../../../../components/ui/back-button";
 import { Select } from "../../../../components/ui/select";
 import { Eye, ShoppingCart, Download, Loader2 } from "lucide-react";
 import { downloadCsv } from "../../../../lib/download-csv";
@@ -100,7 +99,6 @@ export function SaleList({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <BackButton />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex items-center gap-2">
