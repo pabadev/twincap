@@ -2,15 +2,15 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | ~1,500–2,000 product/test/docs lines (excl. raw scan JSON evidence artifacts) |
-| 400-line budget risk | Medium (session review budget = 2,500 lines, superseding the 400-line default; estimate fits) |
-| Chained PRs recommended | No (single-pr strategy confirmed by orchestrator; ~5 conventional commits on `master`, no push) |
-| Suggested split | Single PR; 5 work-unit commits (U1–U5) inside it |
-| Delivery strategy | single-pr |
-| Chain strategy | size-exception (single PR with maintainer-approved 2,500-line budget; approval encoded by orchestrator config) |
-| Biggest line drivers | U5 `docs/UX-12-VALIDATION-REPORT.md` (~350 new) + U1 filter-bar astro/tests (~350); raw JSON evidence is artifact, not review prose |
+| Field                   | Value                                                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Estimated changed lines | ~1,500–2,000 product/test/docs lines (excl. raw scan JSON evidence artifacts)                                                       |
+| 400-line budget risk    | Medium (session review budget = 2,500 lines, superseding the 400-line default; estimate fits)                                       |
+| Chained PRs recommended | No (single-pr strategy confirmed by orchestrator; ~5 conventional commits on `master`, no push)                                     |
+| Suggested split         | Single PR; 5 work-unit commits (U1–U5) inside it                                                                                    |
+| Delivery strategy       | single-pr                                                                                                                           |
+| Chain strategy          | size-exception (single PR with maintainer-approved 2,500-line budget; approval encoded by orchestrator config)                      |
+| Biggest line drivers    | U5 `docs/UX-12-VALIDATION-REPORT.md` (~350 new) + U1 filter-bar astro/tests (~350); raw JSON evidence is artifact, not review prose |
 
 Decision needed before apply: No
 Chained PRs recommended: No
@@ -30,19 +30,19 @@ The delta specs deferred 4 decisions. They are resolved HERE (per sdd-tasks mand
    - dark `--tc-surface-muted` → zinc-500-equivalent darker value reaching secondary-on-card ≥ 4.5:1;
    - light `--tc-primary` (4.42: borderline): bump ONLY if a standard ramp step reaches ≥ 4.5 without visible brand distortion; otherwise document as residual with the measured value (the CC-7 nav-surface fix from the UX-11 scan already compensates the flagged surface);
    - `--tc-income`/`--tc-expense`: compute on card background in both themes; correct only if failing.
-   A dedicated pre-commit contrast-check task (2.1) computes white(or surface)/`token-hex` WCAG ratios for all candidate values BEFORE the `globals.css` edit is committed; the axe re-scan is the final arbiter.
+     A dedicated pre-commit contrast-check task (2.1) computes white(or surface)/`token-hex` WCAG ratios for all candidate values BEFORE the `globals.css` edit is committed; the axe re-scan is the final arbiter.
 3. **Design decision DD-T3 — FormField-vs-htmlFor choice in filter bars**: Filter bars are inline horizontal layouts where `FormField`'s block-label structure may not fit. Task-per-file rule: use `FormField` **only when it renders correctly inside the bar layout**; otherwise use bare `htmlFor`/`id` association + `Select` `label`/`id` props (select.tsx:31 derives id from label). ACCEPTANCE per file = axe `label` + `select-name` 0 violations AND existing layout classes preserved (visible layout byte-equivalent); the per-file choice is documented in `apply-progress` for the unit.
 4. **Design decision DD-T4 — Axe re-scan evidence path**: Updating `e2e-a11y/scan.spec.ts:254` hard-coded output path from `ux-11-validation` to `openspec/changes/ux-12-polish-final/evidence/` is PART OF THE U1 SCAN UNIT (not U5), so any intermediate scan re-run writes into the owning change's folder. The spec's "Evidence path rule persists" scenario is satisfied by this edit; header comment at `scan.spec.ts:26` is updated in the same line-touch.
 
 ## Suggested Work Units
 
-| Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
-|------|------|-----------|----------------------|-----------------|-------------------|
-| U1 | A11y structural: toast aria-label removal + 18-label/2-select filter-bar retrofit + scan path re-point | PR 1 (single PR) | `pnpm exec vitest run src/__tests__/toast.test.tsx src/__tests__/a11y-filter-bar.test.tsx` (name per actual test files created in 1.4) | axe spot scan on the 5 list pages + a toast-waking page via `node e2e/load-e2e-env.cjs exec node node_modules/@playwright/test/cli.js test --config playwright.a11y.config.ts` (label/select-name/prohibited rules only pre-check) | Revert the `fix(a11y)` commit: 5 list files + `toast-provider.tsx` + `scan.spec.ts` + tests revert cleanly; no state/logic touched |
-| U2 | Contrast HYBRID: token value darkening (globals.css) + CC-1..CC-5/CC-7 per-site class fixes + DS §2.1.5 addendum + motion clause | PR 1 | `pnpm exec vitest run src/__tests__ --changedSince master~1` or targeted: any token/snapshot tests touching globals.css | axe re-run pre-check on the affected pages (color-contrast rule) before commit; ratio pre-check script evidence in change dir | Value-only diff: `git revert` restores prior token values + prior per-site classes; visual regression reverts independently |
-| U3 | Cleanup: back-button.tsx deletion (with test block removal) + Alert `success` variant + 6 banner migrations | PR 1 | `pnpm exec vitest run src/__tests__/touch-target-imports.test.ts src/__tests__/(alert|auth-form|forgot-password|reset-password|feedback-widget)*` (glob per actual test files) | Manual/attested: auth flows render the banners (existing component tests assert trigger conditions) | Revert restores component + test assertion + banner markup; Alert variant is additive and removable |
-| U4 | Polish: focus-visible ring unification (bounded grep-first) | PR 1 | `pnpm exec vitest run src/__tests__/button.test.tsx` (or the focused files actually touched) | N/A with reason — CSS-class swap with no behavioral harness; keyboard-focus a11y preserved by pattern parity (manual Tab spot-check documented) | Revert restores prior ring classes; no logic touched |
-| U5 | Close-out: full gate battery + axe re-scan evidence + TTI sample (optional-cheap) + validation report + frozen-domain audit | PR 1 | `pnpm test` (FULL suite, explicit timeout ≥ 2_900_000 ms) + full a11y harness command | `node e2e/load-e2e-env.cjs exec node node_modules/@playwright/test/cli.js test --config playwright.a11y.config.ts` (20/20 combos completed) | Docs/evidence only: deletion of the report/evidence dir is the rollback; no product diff |
+| Unit | Goal                                                                                                                             | Likely PR        | Focused test command                                                                                                                   | Runtime harness                                                                                                                                                                                                                    | Rollback boundary                                                                                                                  |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| U1   | A11y structural: toast aria-label removal + 18-label/2-select filter-bar retrofit + scan path re-point                           | PR 1 (single PR) | `pnpm exec vitest run src/__tests__/toast.test.tsx src/__tests__/a11y-filter-bar.test.tsx` (name per actual test files created in 1.4) | axe spot scan on the 5 list pages + a toast-waking page via `node e2e/load-e2e-env.cjs exec node node_modules/@playwright/test/cli.js test --config playwright.a11y.config.ts` (label/select-name/prohibited rules only pre-check) | Revert the `fix(a11y)` commit: 5 list files + `toast-provider.tsx` + `scan.spec.ts` + tests revert cleanly; no state/logic touched |
+| U2   | Contrast HYBRID: token value darkening (globals.css) + CC-1..CC-5/CC-7 per-site class fixes + DS §2.1.5 addendum + motion clause | PR 1             | `pnpm exec vitest run src/__tests__ --changedSince master~1` or targeted: any token/snapshot tests touching globals.css                | axe re-run pre-check on the affected pages (color-contrast rule) before commit; ratio pre-check script evidence in change dir                                                                                                      | Value-only diff: `git revert` restores prior token values + prior per-site classes; visual regression reverts independently        |
+| U3   | Cleanup: back-button.tsx deletion (with test block removal) + Alert `success` variant + 6 banner migrations                      | PR 1             | `pnpm exec vitest run src/**tests**/touch-target-imports.test.ts src/**tests**/(alert                                                  | auth-form                                                                                                                                                                                                                          | forgot-password                                                                                                                    | reset-password | feedback-widget)*` (glob per actual test files) | Manual/attested: auth flows render the banners (existing component tests assert trigger conditions) | Revert restores component + test assertion + banner markup; Alert variant is additive and removable |
+| U4   | Polish: focus-visible ring unification (bounded grep-first)                                                                      | PR 1             | `pnpm exec vitest run src/__tests__/button.test.tsx` (or the focused files actually touched)                                           | N/A with reason — CSS-class swap with no behavioral harness; keyboard-focus a11y preserved by pattern parity (manual Tab spot-check documented)                                                                                    | Revert restores prior ring classes; no logic touched                                                                               |
+| U5   | Close-out: full gate battery + axe re-scan evidence + TTI sample (optional-cheap) + validation report + frozen-domain audit      | PR 1             | `pnpm test` (FULL suite, explicit timeout ≥ 2_900_000 ms) + full a11y harness command                                                  | `node e2e/load-e2e-env.cjs exec node node_modules/@playwright/test/cli.js test --config playwright.a11y.config.ts` (20/20 combos completed)                                                                                        | Docs/evidence only: deletion of the report/evidence dir is the rollback; no product diff                                           |
 
 ---
 
@@ -55,21 +55,20 @@ The delta specs deferred 4 decisions. They are resolved HERE (per sdd-tasks mand
 
 ## Phase 1: Unit U1 — fix(a11y): toast aria-label removal + filter-bar label association + scan path (one commit)
 
-
 1 In `src/components/ui/toast-provider.tsx` (~lines 57-60): remove the `aria-label` attribute from the `aria-live` container; keep the region inert/silent. Verify inner toast items already provide announcement content (item-level naming / visually-hidden text per H-16 single-channel decision from UX-5/UX-8); if inner naming is insufficient (no text node inside rendered toasts), extend the toast item markup to carry visually-hidden presentational text — still no attribute on the live container.
 
 2 Update/extend the toast tests: in the existing toast-provider test file (locate with `grep -rn "ToastProvider" src/__tests__/`), add assertion: rendered live container does NOT have an `aria-label` attribute; keep/adjust existing announcement-UX assertions so announcement behavior remains covered. RED→GREEN per `strict_tdd: true`.
 
 3 Retrofit the 5 filter-bar list files (18 labels + 2 selects), applying DD-T3 per file and documenting the per-file choice (FormField vs htmlFor) in apply-progress:
-  
+
 3.1 `src/components/sales/sale-list.tsx` (~163-195): associate 4 labels; the status `<Select>` (bare) gets a name via `label` prop (select.tsx:31 id derivation) or `htmlFor`/`id` wiring. The file is also a CC-1 surface in U2 — in THIS unit touch only the a11y association (contrast classes stay for U2).
-  
+
 3.2 `src/components/credits/credits-granted-list.tsx` (~120-131): associate 4 labels.
-  
+
 3.3 `src/components/credits/credits-received-list.tsx`: associate 4 labels.
-  
+
 3.4 `src/components/payables/payables-list.tsx`: associate 4 labels.
-  
+
 3.5 `src/components/transfers/transfers-list.tsx`: associate the 2 date labels + account/search label.
 
 4 Add a unit a11y test asserting label/control association per list file: one test file (e.g., `src/__tests__/filter-bar-a11y.test.tsx`) rendering each list's filter bar and asserting every visible `<label>` has a `htmlFor` matching an existing control `id` (FormFields count via their built-in association, as UX-10 tested them). Structure-only; no filter state/logic changes.
@@ -146,16 +145,16 @@ The delta specs deferred 4 decisions. They are resolved HERE (per sdd-tasks mand
 
 ## Verification Scenarios (mapped from specs)
 
-| Spec scenario | Task |
-|---|---|
-| filter-bar: toast aria-label removed, announcements preserved | 1.1, 1.2 |
-| filter-bar: 5 lists labels/selects associated; structure-only | 1.3.x, 1.4 |
-| ui-token: dark primary/gold/surface-muted ≥ ratios; two-step evidenced | 2.1, 2.3 |
-| ui-token: light primary bump-or-residual decided | 2.4, 5.5 |
-| ui-token: CC-1..CC-7 exactly once; D6 untouched; no global migration | 2.5.x, 2.6 |
-| navigation-ia: back-button deleted + test block same unit; importers re-check | 3.1–3.2 |
-| navigation-ia: focus-visible unification; keyboard a11y preserved | 4.1–4.4 |
-| alert: success variant + ≥2 real call sites; 4+2 migrations byte-identical; parity | 3.3–3.6 |
-| ux-stage-closeout: report 5 sections with real data | 5.3–5.5 |
-| frozen domain empty diff | 0.1 (anchor), 5.6 |
-| no push | 6.2 |
+| Spec scenario                                                                      | Task              |
+| ---------------------------------------------------------------------------------- | ----------------- |
+| filter-bar: toast aria-label removed, announcements preserved                      | 1.1, 1.2          |
+| filter-bar: 5 lists labels/selects associated; structure-only                      | 1.3.x, 1.4        |
+| ui-token: dark primary/gold/surface-muted ≥ ratios; two-step evidenced             | 2.1, 2.3          |
+| ui-token: light primary bump-or-residual decided                                   | 2.4, 5.5          |
+| ui-token: CC-1..CC-7 exactly once; D6 untouched; no global migration               | 2.5.x, 2.6        |
+| navigation-ia: back-button deleted + test block same unit; importers re-check      | 3.1–3.2           |
+| navigation-ia: focus-visible unification; keyboard a11y preserved                  | 4.1–4.4           |
+| alert: success variant + ≥2 real call sites; 4+2 migrations byte-identical; parity | 3.3–3.6           |
+| ux-stage-closeout: report 5 sections with real data                                | 5.3–5.5           |
+| frozen domain empty diff                                                           | 0.1 (anchor), 5.6 |
+| no push                                                                            | 6.2               |

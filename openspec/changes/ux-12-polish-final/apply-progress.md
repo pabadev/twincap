@@ -16,7 +16,7 @@ Start anchor: `cc71576` (clean tree; only the untracked openspec change dir).
 ## U1 — fix(a11y) `e538341`
 
 Per-file DD-T3 choice (**documented, all bare `htmlFor`/`id` — NO FormField**: inline filter-bar layouts; FormField's block-label markup would change visible layout):
-`sale-list.tsx` (sale-filter-{date-from,date-to,status,search}; status Select via `id` prop wired to the visible label), `credits-granted-list.tsx` (credits-granted-filter-*, Select included), `credits-received-list.tsx` (same), `payables-list.tsx` (payables-filter-*, Select included — measured inventory correction), `transfers-list.tsx` (transfers-filter-{date-from,date-to}; NOTE: proposal said "account/search label" — the actual filter bar has ONLY the 2 date labels; no account/search control exists — inventory correction recorded).
+`sale-list.tsx` (sale-filter-{date-from,date-to,status,search}; status Select via `id` prop wired to the visible label), `credits-granted-list.tsx` (credits-granted-filter-_, Select included), `credits-received-list.tsx` (same), `payables-list.tsx` (payables-filter-_, Select included — measured inventory correction), `transfers-list.tsx` (transfers-filter-{date-from,date-to}; NOTE: proposal said "account/search label" — the actual filter bar has ONLY the 2 date labels; no account/search control exists — inventory correction recorded).
 
 Toast: provider's `aria-label` removed; inner toast items carry the message text node (announcement preserved, H-16 channel intact). `useT`/`tCommon` now unused → import dropped (lint-clean).
 scan.spec.ts:26 + :254 re-pointed to `ux-12-polish-final/evidence` (DD-T4).
@@ -55,15 +55,15 @@ Gates: tsc 0, lint 0, build OK.
 
 ## TDD Cycle Evidence
 
-| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
-|---|---|---|---|---|---|---|---|
-| 1.1/1.2 toast | `src/components/ui/__tests__/toast.test.tsx` (+suite) | Unit (jsdom) | ✅ 3/3 baseline | ✅ flipped assertion → RED | ✅ 4/4 | ➖ single channel (spec single behavior) | ➖ |
-| 1.3/1.4 | `src/app/(main)/filter-bar-a11y.test.tsx` | Unit (static markup) | N/A (new) | ✅ 5 RED | ✅ 5/5 | ✅ 5 per-list cases (different data shapes) | ➖ |
-| 2.x | N/A — value-only CSS (tasks 2.2) | — | — | — | — | — | ➖ |
-| 3.2 | `src/__tests__/touch-target-imports.test.ts` | Unit (fs) | ✅ 3→2 | ➖ removal (approval) | ✅ 2/2 | ➖ | ➖ |
-| 3.3 | `src/components/ui/__tests__/alert.test.tsx` | Unit (static) | ✅ 5/5 | ✅ 2 new RED | ✅ 7/7 | ✅ 2 cases (variant + contract) | ➖ |
-| 4.1-4.3 | `src/components/ui/__tests__/focus-visible.test.ts` | Unit (fs) | N/A (new) | ✅ 3 RED | ✅ 3/3 | ✅ canonical + touched-set + keyboard-keep | ➖ |
-| 5.x | full suite + harness | E2E/integration | — | — | ✅ 1577/1577 | — | ➖ |
+| Task          | Test file                                             | Layer                | Safety net      | RED                        | GREEN        | TRIANGULATE                                 | REFACTOR |
+| ------------- | ----------------------------------------------------- | -------------------- | --------------- | -------------------------- | ------------ | ------------------------------------------- | -------- |
+| 1.1/1.2 toast | `src/components/ui/__tests__/toast.test.tsx` (+suite) | Unit (jsdom)         | ✅ 3/3 baseline | ✅ flipped assertion → RED | ✅ 4/4       | ➖ single channel (spec single behavior)    | ➖       |
+| 1.3/1.4       | `src/app/(main)/filter-bar-a11y.test.tsx`             | Unit (static markup) | N/A (new)       | ✅ 5 RED                   | ✅ 5/5       | ✅ 5 per-list cases (different data shapes) | ➖       |
+| 2.x           | N/A — value-only CSS (tasks 2.2)                      | —                    | —               | —                          | —            | —                                           | ➖       |
+| 3.2           | `src/__tests__/touch-target-imports.test.ts`          | Unit (fs)            | ✅ 3→2          | ➖ removal (approval)      | ✅ 2/2       | ➖                                          | ➖       |
+| 3.3           | `src/components/ui/__tests__/alert.test.tsx`          | Unit (static)        | ✅ 5/5          | ✅ 2 new RED               | ✅ 7/7       | ✅ 2 cases (variant + contract)             | ➖       |
+| 4.1-4.3       | `src/components/ui/__tests__/focus-visible.test.ts`   | Unit (fs)            | N/A (new)       | ✅ 3 RED                   | ✅ 3/3       | ✅ canonical + touched-set + keyboard-keep  | ➖       |
+| 5.x           | full suite + harness                                  | E2E/integration      | —               | —                          | ✅ 1577/1577 | —                                           | ➖       |
 
 ## Work Unit / PR boundary
 
