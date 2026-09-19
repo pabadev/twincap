@@ -4,6 +4,11 @@ All ratios computed with `contrast-ratio-scripts/ratio-check.cjs` (WCAG 2.x rela
 luminance, matched to the audit's reported values: white-on-dark-primary 2.64 and
 light primary 4.42 reproduce exactly). Axe re-scan (U5) is the final arbiter.
 
+NOTE ON INTERIM VALUES (supersession): the "intermediate/candidate" rows below are
+interim evaluations from the DD-T2 two-step process and are SUPERSEDED by the final
+token values recorded per section (plus the axe re-scan results, which passed 0/20
+combos). They are retained for audit-trail traceability only.
+
 Surfaces (measured `#hex` equivalents of the `oklch()` tokens):
 
 | Theme | Token | Before | Key surface |
@@ -94,7 +99,7 @@ the light value; dark documented as passing.
 | **light expense final** | `#B91C1C` | **5.45** | PASS |
 | dark expense | `#FF3936` (unchanged) | 4.94 | PASS |
 
-## 5. Per-site CC classes (changelog)
+## 6. Per-site CC classes (changelog)
 
 - CC-1: `text-zinc-500` → `text-zinc-600` (6.51 on card / 6.94 on bg) in the 5 axe-flagged
   files only: `summary-hero.tsx`, `summary-cards.tsx`, `movement-card.tsx`,
