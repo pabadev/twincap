@@ -1,12 +1,13 @@
-'use client';
+"use client";
 
-import { Card } from '../ui/card';
-import { useT, useLocale } from '../../i18n/client';
-import { formatAmount, formatDate } from '../../lib/format';
+import Link from "next/link";
+import { Card } from "../ui/card";
+import { useT, useLocale } from "../../i18n/client";
+import { formatAmount, formatDate } from "../../lib/format";
 // R14-K §14c: the movement type lives in core; re-exported here so the
 // presentation layer keeps its stable import path.
-import type { SerializedMovement } from '../../core/application/dashboard/dashboard-types';
-export type { SerializedMovement } from '../../core/application/dashboard/dashboard-types';
+import type { SerializedMovement } from "../../core/application/dashboard/dashboard-types";
+export type { SerializedMovement } from "../../core/application/dashboard/dashboard-types";
 
 interface RecentMovementsProps {
   movements: SerializedMovement[];
@@ -14,15 +15,17 @@ interface RecentMovementsProps {
 }
 
 export function RecentMovements({ movements, noMovementsMessage }: RecentMovementsProps) {
-  const t = useT('Dashboard');
+  const t = useT("Dashboard");
   const locale = useLocale();
 
   if (movements.length === 0) {
     return (
       <Card className="p-4">
-        <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          {t('recentMovements')}
-        </h3>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {t("recentMovements")}
+          </h3>
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{noMovementsMessage}</p>
       </Card>
     );
@@ -30,9 +33,18 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
 
   return (
     <Card className="p-4">
-      <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        {t('recentMovements')}
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {t("recentMovements")}
+        </h3>
+        <Link
+          href="/movements"
+          className="text-sm font-medium text-primary hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+          aria-label={t("viewAllMovements")}
+        >
+          {t("viewAll")}
+        </Link>
+      </div>
       <div className="space-y-2">
         {movements.map((m) => (
           <div
@@ -41,7 +53,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
           >
             <div>
               <p className="text-sm text-zinc-900 dark:text-zinc-100">
-                {m.categoryName || t('uncategorized')}
+                {m.categoryName || t("uncategorized")}
               </p>
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
                 {formatDate(m.date, locale)}
@@ -49,12 +61,10 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
             </div>
             <span
               className={`text-sm font-medium ${
-                m.type === 'income'
-                  ? 'text-income'
-                  : 'text-expense'
+                m.type === "income" ? "text-income" : "text-expense"
               }`}
             >
-              {m.type === 'income' ? '+' : '−'}
+              {m.type === "income" ? "+" : "−"}
               {formatAmount(m.amount, m.currency, locale)}
             </span>
           </div>

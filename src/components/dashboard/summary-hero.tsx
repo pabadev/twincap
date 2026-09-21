@@ -36,29 +36,6 @@ export function SummaryHero({ result, currency, available, dataAsOf, locale }: S
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card className="p-5 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-            {t("periodResult")}
-          </p>
-          {hasData ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className={`font-display text-[28px] leading-tight md:text-4xl ${resultColor}`}>
-                {sign}
-                {formatAmount(Math.abs(result), currency, locale)}
-              </p>
-              {/* Variation vs previous period — not shipped by the snapshot
-                  yet; stays '—' until the server computes it (UX-5, DEC-R-07). */}
-              <span className="inline-flex items-center rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                —
-              </span>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {t("periodResultEmpty")}
-            </p>
-          )}
-        </Card>
-
-        <Card className="p-5 sm:p-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
             {t("availableByCurrency")}
           </p>
           <div className="mt-3 flex flex-col gap-1.5">
@@ -77,6 +54,29 @@ export function SummaryHero({ result, currency, available, dataAsOf, locale }: S
               <p className="text-sm text-zinc-600 dark:text-zinc-400">—</p>
             )}
           </div>
+        </Card>
+
+        <Card className="p-5 sm:p-6">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+            {t("monthlyCashFlow")}
+          </p>
+          {hasData ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className={`font-display text-[28px] leading-tight md:text-4xl ${resultColor}`}>
+                {sign}
+                {formatAmount(Math.abs(result), currency, locale)}
+              </p>
+              {/* Variation vs previous period — not shipped by the snapshot
+                  yet; stays '—' until the server computes it (UX-5, DEC-R-07). */}
+              <span className="inline-flex items-center rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                —
+              </span>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {t("periodResultEmpty")}
+            </p>
+          )}
         </Card>
       </div>
 
