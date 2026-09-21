@@ -172,6 +172,7 @@
     "topIncome": "Top 3 Income",
     "topExpense": "Top 3 Expenses",
     "periodResult": "How much is left this month?",
+    "monthlyCashFlow": "Monthly cash flow",
     "periodResultEmpty": "No movements this period",
     "availableByCurrency": "How much do I have available?",
     "dataAsOf": "Data as of {date}",
@@ -183,6 +184,7 @@
     "review": "Review",
     "topCategoriesShort": "Top 5 this month",
     "viewAll": "View all",
+    "viewAllMovements": "View all movements",
     "attention": "What needs my attention?"
   },
   "Accounts": {
@@ -233,6 +235,7 @@
     "newMovement": "New Movement",
     "quickAdd": "New income or expense",
     "quickAddMenu": "Quick movement actions",
+    "quickAddPosSale": "POS Sale",
     "groupSelection": "Selection",
     "groupDetails": "Details",
     "selectAccount": "Select an account",

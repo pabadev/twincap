@@ -199,10 +199,11 @@ describe("MainNav four-tier structure (UX-10)", () => {
     const { container } = mount(<MainNav isLoggedIn email="a@b.c" canViewAnalytics={false} />);
     const seq = navSequence(container);
 
-    // (a) Resumen + Movimientos come first, no header precedes them (a+c).
+    // (a) Resumen + Movimientos + Transferencias come first, no header precedes them (a+c).
     expect(seq[0]).toEqual({ kind: "link", value: "/dashboard" });
     expect(seq[1]).toEqual({ kind: "link", value: "/movements" });
-    expect(seq.slice(0, 2).some((e) => e.kind === "header")).toBe(false);
+    expect(seq[2]).toEqual({ kind: "link", value: "/transfers" });
+    expect(seq.slice(0, 3).some((e) => e.kind === "header")).toBe(false);
 
     // (b) Each header is immediately followed by its group's first link.
     const opIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupOperation");
@@ -214,9 +215,6 @@ describe("MainNav four-tier structure (UX-10)", () => {
 
     // (f) Analytics ABSENT when canViewAnalytics=false.
     expect(seq.some((e) => e.kind === "link" && e.value === "/analytics")).toBe(false);
-
-    // (e) /transfers leaves the nav (route reachable via Movimientos).
-    expect(seq.some((e) => e.kind === "link" && e.value === "/transfers")).toBe(false);
   });
 
   it("appends analytics as the last Compromisos item only when authorized", () => {

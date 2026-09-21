@@ -172,6 +172,7 @@
     "topIncome": "Top 3 Ingresos",
     "topExpense": "Top 3 Gastos",
     "periodResult": "¿Cuánto me quedó este mes?",
+    "monthlyCashFlow": "Flujo de caja del mes",
     "periodResultEmpty": "Sin movimientos este período",
     "availableByCurrency": "¿Cuánto tengo disponible?",
     "dataAsOf": "Datos al {date}",
@@ -183,6 +184,7 @@
     "review": "Revisar",
     "topCategoriesShort": "Top 5 este mes",
     "viewAll": "Ver todos",
+    "viewAllMovements": "Ver todos los movimientos",
     "attention": "¿Qué necesita mi atención?"
   },
   "Accounts": {
@@ -233,6 +235,7 @@
     "newMovement": "Nuevo movimiento",
     "quickAdd": "Nuevo ingreso o gasto",
     "quickAddMenu": "Acciones rápidas de movimiento",
+    "quickAddPosSale": "Venta POS",
     "groupSelection": "Selección",
     "groupDetails": "Datos ingresados",
     "selectAccount": "Selecciona una cuenta",

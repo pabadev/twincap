@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useT } from "../../i18n/client";
 import type { MovementType } from "../../core/domain/movement";
 import type { SerializedAccount } from "../../core/domain/account";
@@ -19,7 +20,7 @@ import { MovementForm } from "./movements/movement-form";
 import { resolveDefaultAccountId } from "../../lib/movement-form";
 import { Modal } from "../../components/ui/modal";
 import { Icon } from "../../components/ui/icon";
-import { Plus, TrendingUp, TrendingDown, X } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, X, ShoppingCart } from "lucide-react";
 
 export interface QuickMovementOptions {
   /** Preset movement type so the user starts directly on income or expense. */
@@ -58,6 +59,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const fabRef = useRef<HTMLButtonElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
 
   const tMovements = useT("Movements");
   const tCommon = useT("Common");
@@ -130,8 +132,23 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               <button
                 ref={firstOptionRef}
                 type="button"
+                onClick={() => {
+                  setDialOpen(false);
+                  router.push("/pos/sales");
+                }}
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("quickAddPosSale")}
+              >
+                <Icon icon={ShoppingCart} size="sm" className="text-income" />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                  {tMovements("quickAddPosSale")}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => openQuickMovement({ type: "income" })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("income")}
               >
                 <Icon icon={TrendingUp} size="sm" className="text-income" />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
@@ -141,7 +158,8 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: "expense" })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("expense")}
               >
                 <Icon icon={TrendingDown} size="sm" className="text-expense" />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
