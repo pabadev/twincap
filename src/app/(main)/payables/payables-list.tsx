@@ -24,9 +24,12 @@ import { ChevronDown, ReceiptText, Pencil } from "lucide-react";
 export function PayablesList({
   accounts,
   payables,
+  defaultCurrency,
 }: {
   accounts: SerializedAccount[];
   payables: SerializedPayable[];
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -67,7 +70,11 @@ export function PayablesList({
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newPayable")}>
-        <PayableForm accounts={accounts} onSuccess={() => setShowForm(false)} />
+        <PayableForm
+          accounts={accounts}
+          defaultCurrency={defaultCurrency}
+          onSuccess={() => setShowForm(false)}
+        />
       </Modal>
 
       <Modal

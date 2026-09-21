@@ -10,6 +10,7 @@ import { MongoCreditGrantedRepository } from "../../../infrastructure/repositori
 import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
 import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
 import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { MongoUserRepository } from "../../../infrastructure/repositories/user-repository";
 import { connectDb } from "../../../infrastructure/db/connection";
 import { AccountsPageClient } from "./accounts-page-client";
 import { DeleteAccountButton } from "./delete-account-button";
@@ -23,8 +24,8 @@ import { MovementCard } from "../../../components/ui/movement-card";
 import { Wallet } from "lucide-react";
 
 export default async function AccountsPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const authUser = await getCurrentUser();
+  if (!authUser) redirect("/login");
 
   const t = await getT("Accounts");
   const locale = await getLocale();
@@ -32,12 +33,15 @@ export default async function AccountsPage() {
   await connectDb();
   const accountRepo = new MongoAccountRepository();
   const movementRepo = new MongoMovementRepository();
+  const userRepo = new MongoUserRepository();
+  const user = await userRepo.findById(authUser.userId);
+  if (!user) redirect("/login");
 
   // R15.2: getUserBalances needs the live accounts (opening movements resolve
   // against them) and the parent repos to resolve link parents — listed first
   // so the balance read is sequential (accounts → full history → parents).
-  const accounts = await listAccounts(user.workspaceId!, accountRepo);
-  const balances = await getUserBalances(user.workspaceId!, accounts, movementRepo, {
+  const accounts = await listAccounts(authUser.workspaceId!, accountRepo);
+  const balances = await getUserBalances(authUser.workspaceId!, accounts, movementRepo, {
     transferRepo: new MongoTransferRepository(),
     creditReceivedRepo: new MongoCreditReceivedRepository(),
     creditGrantedRepo: new MongoCreditGrantedRepository(),
@@ -49,7 +53,7 @@ export default async function AccountsPage() {
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
-        <AccountsPageClient />
+        <AccountsPageClient defaultCurrency={user.defaultCurrency} />
       </div>
 
       {accounts.length === 0 ? (

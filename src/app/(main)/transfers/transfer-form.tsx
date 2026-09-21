@@ -39,11 +39,14 @@ type TransferFormState = {
 export function TransferForm({
   accounts,
   transfer,
+  defaultCurrency,
   onSuccess,
 }: {
   accounts: SerializedAccount[];
   /** Present → edit mode (prefills fields and calls updateTransferAction). */
   transfer?: SerializedTransfer;
+  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  defaultCurrency?: string;
   onSuccess?: () => void;
 }) {
   const isEdit = !!transfer;
@@ -73,13 +76,13 @@ export function TransferForm({
 
   // §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string.
   // When editing, the transfer's own currency wins; when creating, the first
-  // account's currency is used; when no accounts exist, the named constant
-  // from currency.ts provides a traceable default.
+  // account's currency is used; when no accounts exist, the user's defaultCurrency
+  // or the named constant from currency.ts provides a traceable default.
   const [sourceCurrency, setSourceCurrency] = useState(
-    transfer?.sourceCurrency ?? accounts[0]?.currency ?? DEFAULT_CURRENCY,
+    transfer?.sourceCurrency ?? accounts[0]?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY,
   );
   const [destCurrency, setDestCurrency] = useState(
-    transfer?.destinationCurrency ?? accounts[0]?.currency ?? DEFAULT_CURRENCY,
+    transfer?.destinationCurrency ?? accounts[0]?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY,
   );
   const isCrossCurrency = sourceCurrency !== destCurrency;
 

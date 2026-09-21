@@ -42,6 +42,7 @@ export function MovementForm({
   categories,
   defaultAccountId,
   defaultType,
+  defaultCurrency,
   onSuccess,
 }: {
   accounts: SerializedAccount[];
@@ -50,6 +51,8 @@ export function MovementForm({
   defaultAccountId?: string;
   /** Preset movement type (income | expense), e.g. from the quick-action FAB. */
   defaultType?: MovementType;
+  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  defaultCurrency?: string;
   onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(createMovementAction, null);
@@ -229,6 +232,7 @@ export function MovementForm({
           label={t("currency")}
           required
           disabled={isPending}
+          defaultValue={defaultCurrency}
           options={CURRENCIES.map((c) => ({ value: c, label: c }))}
         />
 

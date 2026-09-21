@@ -13,7 +13,14 @@ import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Package, Pencil, Search } from "lucide-react";
 
-export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
+export function CatalogList({
+  items,
+  defaultCurrency,
+}: {
+  items: SerializedCatalogItem[];
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<SerializedCatalogItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +53,7 @@ export function CatalogList({ items }: { items: SerializedCatalogItem[] }) {
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newItem")}>
-        <CatalogForm onDone={() => setShowForm(false)} />
+        <CatalogForm defaultCurrency={defaultCurrency} onDone={() => setShowForm(false)} />
       </Modal>
 
       <Modal open={!!editingItem} onClose={() => setEditingItem(null)} title={t("editItem")}>

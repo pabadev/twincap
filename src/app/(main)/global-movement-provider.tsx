@@ -51,7 +51,14 @@ interface FormDataPayload {
   categories: SerializedCategory[];
 }
 
-export function GlobalMovementProvider({ children }: { children: ReactNode }) {
+export function GlobalMovementProvider({
+  children,
+  defaultCurrency,
+}: {
+  children: ReactNode;
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [preset, setPreset] = useState<QuickMovementOptions>({});
   const [dialOpen, setDialOpen] = useState(false);
@@ -211,6 +218,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
             categories={data.categories}
             defaultAccountId={resolveDefaultAccountId(preset.accountId, data.accounts)}
             defaultType={preset.type}
+            defaultCurrency={defaultCurrency}
             onSuccess={closeModal}
           />
         )}

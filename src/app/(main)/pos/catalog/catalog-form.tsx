@@ -20,9 +20,11 @@ interface CatalogFormProps {
   item?: SerializedCatalogItem;
   /** Called after a successful save; a create passes the created item snapshot (when available). */
   onDone?: (item?: SerializedCatalogItem) => void;
+  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  defaultCurrency?: string;
 }
 
-export function CatalogForm({ item, onDone }: CatalogFormProps) {
+export function CatalogForm({ item, onDone, defaultCurrency }: CatalogFormProps) {
   const isEdit = !!item;
   const t = useT("Catalog");
   const tCommon = useT("Common");
@@ -38,7 +40,9 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   );
 
   const [type, setType] = useState<CatalogItemType>(item?.type ?? "product");
-  const [currency, setCurrency] = useState<Currency>(item?.unitPrice.currency ?? DEFAULT_CURRENCY);
+  const [currency, setCurrency] = useState<Currency>(
+    item?.unitPrice.currency ?? (defaultCurrency as Currency) ?? DEFAULT_CURRENCY,
+  );
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {

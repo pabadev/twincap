@@ -27,9 +27,12 @@ import { ChevronDown, CreditCard, Pencil } from "lucide-react";
 export function CreditsGrantedList({
   accounts,
   credits,
+  defaultCurrency,
 }: {
   accounts: SerializedAccount[];
   credits: SerializedCreditGranted[];
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -67,7 +70,11 @@ export function CreditsGrantedList({
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newCredit")}>
-        <CreditForm accounts={accounts} onSuccess={() => setShowForm(false)} />
+        <CreditForm
+          accounts={accounts}
+          defaultCurrency={defaultCurrency}
+          onSuccess={() => setShowForm(false)}
+        />
       </Modal>
 
       <Modal open={!!editingCredit} onClose={() => setEditingCredit(null)} title={t("editCredit")}>

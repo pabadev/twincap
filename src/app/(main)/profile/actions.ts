@@ -1,32 +1,53 @@
-'use server';
+"use server";
 
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
-import { bcryptPasswordHasher } from '../../../infrastructure/auth/password';
-import { User } from '../../../core/domain/user';
-import { passwordChangeRateLimiter, resendVerificationRateLimiter } from '../../../infrastructure/auth/rate-limiter';
-import { withAudit } from '../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
-import { resendVerification } from '../../../core/application/auth/resend-verification';
-import { buildAuthEmailDeps } from '../../../infrastructure/auth/auth-email-deps';
-import { deleteSessionCookie } from '../../../infrastructure/auth/session-cookie';
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { MongoUserRepository } from "../../../infrastructure/repositories/user-repository";
+import { bcryptPasswordHasher } from "../../../infrastructure/auth/password";
+import { User } from "../../../core/domain/user";
+import {
+  passwordChangeRateLimiter,
+  resendVerificationRateLimiter,
+} from "../../../infrastructure/auth/rate-limiter";
+import { withAudit } from "../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
+import { resendVerification } from "../../../core/application/auth/resend-verification";
+import { buildAuthEmailDeps } from "../../../infrastructure/auth/auth-email-deps";
+import { deleteSessionCookie } from "../../../infrastructure/auth/session-cookie";
+import { CURRENCIES, type Currency } from "../../../core/domain/currency";
 
 export async function updateProfileAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'error.unauthorized' };
+  if (!authUser) return { error: "error.unauthorized" };
 
-  const name = (formData.get('name') as string) || undefined;
-  const locale = (formData.get('locale') as string) || undefined;
+  const name = (formData.get("name") as string) || undefined;
+  const locale = (formData.get("locale") as string) || undefined;
+  const defaultCurrencyRaw = formData.get("defaultCurrency");
+
+  // Validate defaultCurrency against supported list
+  let defaultCurrency: Currency | undefined;
+  let clearDefaultCurrency = false;
+  if (defaultCurrencyRaw !== null) {
+    const value = defaultCurrencyRaw as string;
+    if (value === "") {
+      // Empty string means clear the preference
+      clearDefaultCurrency = true;
+    } else {
+      if (!CURRENCIES.includes(value as Currency)) {
+        return { error: "error.invalidCurrency" };
+      }
+      defaultCurrency = value as Currency;
+    }
+  }
 
   try {
     await connectDb();
     const userRepo = new MongoUserRepository();
     const existing = await userRepo.findById(authUser.userId);
-    if (!existing) return { error: 'error.notFound' };
+    if (!existing) return { error: "error.notFound" };
 
     const updated = new User({
       id: existing.id,
@@ -35,6 +56,9 @@ export async function updateProfileAction(
       createdAt: existing.createdAt,
       name: name ?? existing.name,
       locale: locale ?? existing.locale,
+      defaultCurrency: clearDefaultCurrency
+        ? undefined
+        : (defaultCurrency ?? existing.defaultCurrency),
       emailVerified: existing.emailVerified,
       // R14-F §13: profile edits must NOT invalidate sessions — pass the
       // version through unchanged (a missing value would reset it to 0).
@@ -43,11 +67,11 @@ export async function updateProfileAction(
 
     await userRepo.update(updated);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
-    return { error: 'error.operationFailed' };
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
+    return { error: "error.operationFailed" };
   }
 
-  return { success: 'profileSaved' };
+  return { success: "profileSaved" };
 }
 
 export async function changePasswordAction(
@@ -55,7 +79,7 @@ export async function changePasswordAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'error.unauthorized' };
+  if (!authUser) return { error: "error.unauthorized" };
 
   // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
   // timeouts). connectDb() is a cached no-op once up.
@@ -65,36 +89,36 @@ export async function changePasswordAction(
   const rateLimitKey = `password:${authUser.userId}`;
   const rateLimit = await passwordChangeRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'error.tooManyAttempts' };
+    return { error: "error.tooManyAttempts" };
   }
 
-  const currentPassword = formData.get('currentPassword') as string;
-  const newPassword = formData.get('newPassword') as string;
-  const confirmPassword = formData.get('confirmPassword') as string;
+  const currentPassword = formData.get("currentPassword") as string;
+  const newPassword = formData.get("newPassword") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
 
   if (!currentPassword || !newPassword || !confirmPassword) {
-    return { error: 'error.validation' };
+    return { error: "error.validation" };
   }
 
   if (newPassword !== confirmPassword) {
-    return { error: 'passwordMismatch' };
+    return { error: "passwordMismatch" };
   }
 
   try {
     await connectDb();
     const userRepo = new MongoUserRepository();
     const existing = await userRepo.findById(authUser.userId);
-    if (!existing) return { error: 'error.notFound' };
+    if (!existing) return { error: "error.notFound" };
 
     const valid = await bcryptPasswordHasher.compare(currentPassword, existing.passwordHash);
     if (!valid) {
-      return { error: 'wrongPassword' };
+      return { error: "wrongPassword" };
     }
 
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'changePassword', entityType: 'auth', userId: authUser.userId },
+      { action: "changePassword", entityType: "auth", userId: authUser.userId },
       async () => {
         const newHash = await bcryptPasswordHasher.hash(newPassword);
         const updated = new User({
@@ -104,6 +128,7 @@ export async function changePasswordAction(
           createdAt: existing.createdAt,
           name: existing.name,
           locale: existing.locale,
+          defaultCurrency: existing.defaultCurrency,
           emailVerified: existing.emailVerified,
           // R14-F §13: a password change invalidates ALL sessions, including
           // the current one (we delete the session cookie right after).
@@ -120,16 +145,16 @@ export async function changePasswordAction(
       },
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
-    return { error: 'error.operationFailed' };
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
+    return { error: "error.operationFailed" };
   }
 
-  return { success: 'passwordChanged' };
+  return { success: "passwordChanged" };
 }
 
 export async function resendVerificationAction(): Promise<{ error?: string; success?: string }> {
   const authUser = await getCurrentUser();
-  if (!authUser) return { error: 'error.unauthorized' };
+  if (!authUser) return { error: "error.unauthorized" };
 
   // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
   // timeouts). connectDb() is a cached no-op once up.
@@ -139,7 +164,7 @@ export async function resendVerificationAction(): Promise<{ error?: string; succ
   const rateLimitKey = `resendVerify:${authUser.userId}`;
   const rateLimit = await resendVerificationRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'tooManyAttempts' };
+    return { error: "tooManyAttempts" };
   }
 
   try {
@@ -147,9 +172,9 @@ export async function resendVerificationAction(): Promise<{ error?: string; succ
     const userRepo = new MongoUserRepository();
     await resendVerification({ userId: authUser.userId }, buildAuthEmailDeps(userRepo));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
-    return { error: 'error.operationFailed' };
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
+    return { error: "error.operationFailed" };
   }
 
-  return { success: 'verificationSent' };
+  return { success: "verificationSent" };
 }

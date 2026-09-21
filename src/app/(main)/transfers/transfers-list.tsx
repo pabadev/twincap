@@ -31,9 +31,12 @@ function formatRate(rate: number, locale: string): string {
 export function TransfersList({
   accounts,
   transfers,
+  defaultCurrency,
 }: {
   accounts: SerializedAccount[];
   transfers: SerializedTransfer[];
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingTransfer, setEditingTransfer] = useState<SerializedTransfer | null>(null);
@@ -60,7 +63,11 @@ export function TransfersList({
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newTransfer")}>
-        <TransferForm accounts={accounts} onSuccess={() => setShowForm(false)} />
+        <TransferForm
+          accounts={accounts}
+          defaultCurrency={defaultCurrency}
+          onSuccess={() => setShowForm(false)}
+        />
       </Modal>
 
       <Modal
