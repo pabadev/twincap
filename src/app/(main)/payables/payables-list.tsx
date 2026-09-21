@@ -171,7 +171,7 @@ export function PayablesList({
 
           {filtered.length === 0 && payables.length > 0 && <EmptyState title={t("noResults")} />}
 
-          <div className="space-y-3 overflow-x-auto">
+          <div className="grid gap-3 md:grid-cols-2 md:items-start">
             {filtered.map((payable) => {
               const isExpanded = expandedId === payable.id;
               const pending = payable.pending;
@@ -182,51 +182,87 @@ export function PayablesList({
                   key={payable.id}
                   className="overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
                 >
+                  {/* Product decision 2026-09-21: cards everywhere — the
+                      collapsed card follows the Movements card format
+                      (identity + chevron, label/value rows, bordered footer). */}
                   <div
-                    className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                     onClick={() => setExpandedId(isExpanded ? null : payable.id)}
                   >
-                    <div className="flex-1 min-w-[140px]">
-                      <div className="truncate font-medium text-zinc-900 dark:text-white">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 truncate font-medium text-zinc-900 dark:text-white">
                         {payable.counterparty}
                       </div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {formatDate(payable.date, locale)}
-                        {payable.dueDate &&
-                          ` · ${t("dueDateShort")} ${formatDate(payable.dueDate, locale)}`}
-                        {payable.note && ` · ${payable.note}`}
-                      </div>
-                    </div>
-                    <div className="ml-3 text-right">
-                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                        {formatAmount(payable.total.amount, currency, locale)}
-                      </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {pending > 0
-                          ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
-                          : t("paidInFull")}
-                      </div>
-                    </div>
-                    <div className="ml-4 flex items-center gap-2">
-                      <span className="text-xs text-zinc-400">
-                        {payable.abonos?.length}{" "}
-                        {payable.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
-                      </span>
-                      <ActionIconButton
-                        icon={Pencil}
-                        label={tCommon("edit")}
-                        tone="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingPayable(payable);
-                        }}
-                      />
                       <Icon
                         icon={ChevronDown}
                         size="sm"
-                        className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        className={`shrink-0 text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       />
                     </div>
+
+                    <dl className="mt-2 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {tCommon("date")}
+                        </dt>
+                        <dd className="text-right text-xs text-zinc-600 dark:text-zinc-400">
+                          {formatDate(payable.date, locale)}
+                        </dd>
+                      </div>
+                      {payable.dueDate && (
+                        <div className="flex items-start justify-between gap-3">
+                          <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            {t("dueDateShort")}
+                          </dt>
+                          <dd className="text-right text-xs text-zinc-600 dark:text-zinc-400">
+                            {formatDate(payable.dueDate, locale)}
+                          </dd>
+                        </div>
+                      )}
+                      {payable.note && (
+                        <div className="flex items-start justify-between gap-3">
+                          <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            {tCommon("note")}
+                          </dt>
+                          <dd className="text-right text-xs text-zinc-600 dark:text-zinc-400">
+                            {payable.note}
+                          </dd>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {tCommon("amount")}
+                        </dt>
+                        <dd className="text-right text-sm font-medium tabular-nums text-zinc-900 dark:text-white">
+                          {formatAmount(payable.total.amount, currency, locale)}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {t("pending")}
+                        </dt>
+                        <dd
+                          className={`text-right text-sm font-medium tabular-nums ${
+                            pending > 0 ? "text-debt" : "text-success"
+                          }`}
+                        >
+                          {pending > 0 ? formatAmount(pending, currency, locale) : t("paidInFull")}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-400">
+                      {payable.abonos?.length}{" "}
+                      {payable.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
+                    </span>
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={tCommon("edit")}
+                      tone="primary"
+                      onClick={() => setEditingPayable(payable)}
+                    />
                   </div>
 
                   {isExpanded && (
