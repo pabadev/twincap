@@ -186,12 +186,12 @@ export function CreditsReceivedList({
                   className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? "opacity-60" : ""}`}
                 >
                   <div
-                    className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="flex cursor-pointer flex-col gap-2 px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:gap-0"
                     onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                   >
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
-                        {credit.counterparty}
+                        <span className="min-w-0">{credit.counterparty}</span>
                         {isPaid && <Badge variant="success">{tCommon("paid")}</Badge>}
                       </div>
                       <div className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -218,35 +218,37 @@ export function CreditsReceivedList({
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                        {formatAmount(credit.principal.amount, currency, locale)}
+                    <div className="flex items-center justify-between gap-3 sm:ml-4 sm:shrink-0 sm:justify-end">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                          {formatAmount(credit.principal.amount, currency, locale)}
+                        </div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {pending > 0
+                            ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
+                            : t("paidInFull")}
+                        </div>
                       </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {pending > 0
-                          ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
-                          : t("paidInFull")}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-400">
+                          {credit.abonos?.length}{" "}
+                          {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
+                        </span>
+                        <ActionIconButton
+                          icon={Pencil}
+                          label={tCommon("edit")}
+                          tone="primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCredit(credit);
+                          }}
+                        />
+                        <Icon
+                          icon={ChevronDown}
+                          size="sm"
+                          className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        />
                       </div>
-                    </div>
-                    <div className="ml-4 flex items-center gap-2">
-                      <span className="text-xs text-zinc-400">
-                        {credit.abonos?.length}{" "}
-                        {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
-                      </span>
-                      <ActionIconButton
-                        icon={Pencil}
-                        label={tCommon("edit")}
-                        tone="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCredit(credit);
-                        }}
-                      />
-                      <Icon
-                        icon={ChevronDown}
-                        size="sm"
-                        className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                      />
                     </div>
                   </div>
 

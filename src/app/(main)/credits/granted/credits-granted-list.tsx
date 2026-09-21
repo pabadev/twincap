@@ -196,12 +196,12 @@ export function CreditsGrantedList({
                   className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isDimmed ? "opacity-60" : ""}`}
                 >
                   <div
-                    className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="flex cursor-pointer flex-col gap-2 px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:gap-0"
                     onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                   >
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
-                        {credit.counterparty}
+                        <span className="min-w-0">{credit.counterparty}</span>
                         {isPaid && <Badge variant="success">{tCommon("paid")}</Badge>}
                         {credit.writtenOff && <Badge variant="danger">{t("writtenOff")}</Badge>}
                       </div>
@@ -229,37 +229,39 @@ export function CreditsGrantedList({
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                        {formatAmount(credit.principal.amount, currency, locale)}
+                    <div className="flex items-center justify-between gap-3 sm:ml-4 sm:shrink-0 sm:justify-end">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                          {formatAmount(credit.principal.amount, currency, locale)}
+                        </div>
+                        <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                          {pending > 0
+                            ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
+                            : t("paidInFull")}
+                        </div>
                       </div>
-                      <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                        {pending > 0
-                          ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
-                          : t("paidInFull")}
-                      </div>
-                    </div>
-                    <div className="ml-4 flex items-center gap-2">
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                        {credit.abonos?.length}{" "}
-                        {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
-                      </span>
-                      {!credit.writtenOff && (
-                        <ActionIconButton
-                          icon={Pencil}
-                          label={tCommon("edit")}
-                          tone="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingCredit(credit);
-                          }}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                          {credit.abonos?.length}{" "}
+                          {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
+                        </span>
+                        {!credit.writtenOff && (
+                          <ActionIconButton
+                            icon={Pencil}
+                            label={tCommon("edit")}
+                            tone="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCredit(credit);
+                            }}
+                          />
+                        )}
+                        <Icon
+                          icon={ChevronDown}
+                          size="sm"
+                          className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                         />
-                      )}
-                      <Icon
-                        icon={ChevronDown}
-                        size="sm"
-                        className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                      />
+                      </div>
                     </div>
                   </div>
 
@@ -270,70 +272,127 @@ export function CreditsGrantedList({
                           <h4 className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                             {t("abonos")}
                           </h4>
-                          {/* Compact expandable table: keeps its bespoke cells
-                            (pb-1 / py-1, text-xs header row) — only the
-                            `<table>` element fits the ui/table contract here. */}
-                          <Table className="min-w-full text-sm">
-                            <thead>
-                              <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                <th className="pb-1 text-left">{tCommon("date")}</th>
-                                <th className="pb-1 text-right">{tCommon("amount")}</th>
-                                {showSplitColumns && (
-                                  <>
-                                    <th className="pb-1 text-right">{t("capital")}</th>
-                                    <th className="pb-1 text-right">{t("interest")}</th>
-                                  </>
-                                )}
-                                <th className="pb-1 text-right">{tCommon("actions")}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {credit.abonos?.map((abono) => (
-                                <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
-                                  <td className="py-1">{formatDate(abono.date, locale)}</td>
-                                  <td className="py-1 text-right">
-                                    +{formatAmount(abono.amount.amount, currency, locale)}
-                                  </td>
+                          {/* Desktop (>=640px): compact expandable table keeps
+                            its bespoke cells (pb-1 / py-1, text-xs header row)
+                            — only the `<table>` element fits the ui/table
+                            contract here. */}
+                          <div className="max-sm:hidden">
+                            <Table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                  <th className="pb-1 text-left">{tCommon("date")}</th>
+                                  <th className="pb-1 text-right">{tCommon("amount")}</th>
                                   {showSplitColumns && (
                                     <>
-                                      <td className="py-1 text-right">
-                                        {abono.capitalAmount
-                                          ? `+${formatAmount(abono.capitalAmount.amount, currency, locale)}`
-                                          : "—"}
-                                      </td>
-                                      <td className="py-1 text-right">
-                                        {abono.interestAmount
-                                          ? `+${formatAmount(abono.interestAmount.amount, currency, locale)}`
-                                          : "—"}
-                                      </td>
+                                      <th className="pb-1 text-right">{t("capital")}</th>
+                                      <th className="pb-1 text-right">{t("interest")}</th>
                                     </>
                                   )}
-                                  <td className="py-1 text-right">
-                                    {!credit.writtenOff && (
-                                      <div className="flex items-center justify-end gap-1">
-                                        <ActionIconButton
-                                          icon={Pencil}
-                                          label={tCommon("edit")}
-                                          tone="primary"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingAbonoId(
-                                              editingAbonoId === abono.id ? null : abono.id,
-                                            );
-                                            setShowAbonoFormId(null);
-                                          }}
-                                        />
-                                        <DeleteAbonoButton
-                                          creditId={credit.id}
-                                          abonoId={abono.id}
-                                        />
-                                      </div>
-                                    )}
-                                  </td>
+                                  <th className="pb-1 text-right">{tCommon("actions")}</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </Table>
+                              </thead>
+                              <tbody>
+                                {credit.abonos?.map((abono) => (
+                                  <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
+                                    <td className="py-1">{formatDate(abono.date, locale)}</td>
+                                    <td className="py-1 text-right">
+                                      +{formatAmount(abono.amount.amount, currency, locale)}
+                                    </td>
+                                    {showSplitColumns && (
+                                      <>
+                                        <td className="py-1 text-right">
+                                          {abono.capitalAmount
+                                            ? `+${formatAmount(abono.capitalAmount.amount, currency, locale)}`
+                                            : "—"}
+                                        </td>
+                                        <td className="py-1 text-right">
+                                          {abono.interestAmount
+                                            ? `+${formatAmount(abono.interestAmount.amount, currency, locale)}`
+                                            : "—"}
+                                        </td>
+                                      </>
+                                    )}
+                                    <td className="py-1 text-right">
+                                      {!credit.writtenOff && (
+                                        <div className="flex items-center justify-end gap-1">
+                                          <ActionIconButton
+                                            icon={Pencil}
+                                            label={tCommon("edit")}
+                                            tone="primary"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingAbonoId(
+                                                editingAbonoId === abono.id ? null : abono.id,
+                                              );
+                                              setShowAbonoFormId(null);
+                                            }}
+                                          />
+                                          <DeleteAbonoButton
+                                            creditId={credit.id}
+                                            abonoId={abono.id}
+                                          />
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </Table>
+                          </div>
+
+                          {/* Mobile (<640px): the same abonos as stacked rows —
+                              a 5-column table (date/amount/capital/interest/
+                              actions) is illegible at card width (§20). */}
+                          <div className="space-y-2 sm:hidden">
+                            {credit.abonos?.map((abono) => (
+                              <div
+                                key={abono.id}
+                                className="rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
+                              >
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <span className="text-zinc-600 dark:text-zinc-400">
+                                    {formatDate(abono.date, locale)}
+                                  </span>
+                                  <span className="font-medium tabular-nums text-zinc-900 dark:text-white">
+                                    +{formatAmount(abono.amount.amount, currency, locale)}
+                                  </span>
+                                </div>
+                                {showSplitColumns && (
+                                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
+                                    <span>
+                                      {t("capital")}:{" "}
+                                      {abono.capitalAmount
+                                        ? `+${formatAmount(abono.capitalAmount.amount, currency, locale)}`
+                                        : "—"}
+                                    </span>
+                                    <span>
+                                      {t("interest")}:{" "}
+                                      {abono.interestAmount
+                                        ? `+${formatAmount(abono.interestAmount.amount, currency, locale)}`
+                                        : "—"}
+                                    </span>
+                                  </div>
+                                )}
+                                {!credit.writtenOff && (
+                                  <div className="mt-2 flex items-center justify-end gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                                    <ActionIconButton
+                                      icon={Pencil}
+                                      label={tCommon("edit")}
+                                      tone="primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingAbonoId(
+                                          editingAbonoId === abono.id ? null : abono.id,
+                                        );
+                                        setShowAbonoFormId(null);
+                                      }}
+                                    />
+                                    <DeleteAbonoButton creditId={credit.id} abonoId={abono.id} />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
