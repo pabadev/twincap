@@ -23,6 +23,7 @@ import { formatAmount } from "../../../lib/format";
 import { shouldShowF5, computeProjectedBalance } from "../../../lib/movement-f5";
 import type { AccountBalancesMap } from "../../../lib/movement-f5";
 import { useMoneyActionConfirmation } from "../../../lib/use-money-action-confirmation";
+import { Plus } from "lucide-react";
 import {
   MoneyActionConfirmation,
   type ConfirmationDetailRow,
@@ -170,160 +171,165 @@ export function MovementForm({
   };
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-5">
-      <IdempotencyField />
-      <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
-      <FieldGroup title={t("groupSelection")}>
-        <Select
-          id="account"
-          name="accountId"
-          label={t("account")}
-          required
-          disabled={isPending}
-          defaultValue={resolveDefaultAccountId(defaultAccountId, accounts)}
-          placeholder={t("selectAccount")}
-          options={accounts.map((a) => ({
-            value: a.id,
-            label: `${a.name} (${a.currency})`,
-          }))}
-        />
-
-        <Select
-          id="type"
-          name="type"
-          label={t("type")}
-          required
-          disabled={isPending}
-          value={selectedType}
-          onChange={(e) => {
-            const newType = e.target.value as MovementType;
-            setSelectedType(newType);
-            // §15: when the type changes, the current category may no longer be
-            // valid (category belongs to the other type). Clear it so the user
-            // picks from the filtered list.
-            setSelectedCategoryId("");
-          }}
-          options={MOVEMENT_TYPES.map((mt) => ({
-            value: mt,
-            label: mt === "income" ? t("income") : t("expense"),
-          }))}
-        />
-
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label
-              htmlFor="categoryId"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              {t("category")}
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowCategoryForm(true)}
-              disabled={isPending}
-              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
-              aria-label={t("addCategoryInline")}
-            >
-              +
-            </button>
-          </div>
+    <>
+      <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-5">
+        <IdempotencyField />
+        <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
+        <FieldGroup title={t("groupSelection")}>
           <Select
-            id="categoryId"
-            name="categoryId"
+            id="account"
+            name="accountId"
+            label={t("account")}
             required
             disabled={isPending}
-            value={selectedCategoryId}
-            onChange={(e) => setSelectedCategoryId(e.target.value)}
-            placeholder={t("selectCategory")}
-            options={filteredCategories.map((c) => ({
-              value: c.id,
-              label: c.name,
+            defaultValue={resolveDefaultAccountId(defaultAccountId, accounts)}
+            placeholder={t("selectAccount")}
+            options={accounts.map((a) => ({
+              value: a.id,
+              label: `${a.name} (${a.currency})`,
             }))}
           />
-        </div>
 
-        <Input
-          id="date"
-          name="date"
-          type="date"
-          label={t("date")}
-          required
+          <Select
+            id="type"
+            name="type"
+            label={t("type")}
+            required
+            disabled={isPending}
+            value={selectedType}
+            onChange={(e) => {
+              const newType = e.target.value as MovementType;
+              setSelectedType(newType);
+              // §15: when the type changes, the current category may no longer be
+              // valid (category belongs to the other type). Clear it so the user
+              // picks from the filtered list.
+              setSelectedCategoryId("");
+            }}
+            options={MOVEMENT_TYPES.map((mt) => ({
+              value: mt,
+              label: mt === "income" ? t("income") : t("expense"),
+            }))}
+          />
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label
+                htmlFor="categoryId"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                {t("category")}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowCategoryForm(true)}
+                disabled={isPending}
+                className="inline-flex min-h-[32px] cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary"
+                aria-label={t("addCategoryInline")}
+              >
+                <Plus size={12} aria-hidden="true" />
+                {t("addCategoryInline")}
+              </button>
+            </div>
+            <Select
+              id="categoryId"
+              name="categoryId"
+              required
+              disabled={isPending}
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              placeholder={t("selectCategory")}
+              options={filteredCategories.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
+            />
+          </div>
+
+          <Input
+            id="date"
+            name="date"
+            type="date"
+            label={t("date")}
+            required
+            disabled={isPending}
+            defaultValue={toDateInputValue()}
+            max={toDateInputValue()}
+          />
+        </FieldGroup>
+
+        <FieldGroup title={t("groupDetails")}>
+          <Input
+            id="amount"
+            name="amount"
+            type="number"
+            label={t("amount")}
+            min="1"
+            required
+            disabled={isPending}
+          />
+
+          <Select
+            id="currency"
+            name="currency"
+            label={t("currency")}
+            required
+            disabled={isPending}
+            defaultValue={defaultCurrency}
+            options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          />
+
+          <Select
+            id="context"
+            name="context"
+            label={t("context")}
+            disabled={isPending}
+            defaultValue="Personal"
+            options={MOVEMENT_CONTEXTS.map((c) => ({
+              value: c,
+              label: c === "Personal" ? t("personal") : t("business"),
+            }))}
+          />
+
+          <div className="sm:col-span-2">
+            <Input id="note" name="note" type="text" label={t("note")} disabled={isPending} />
+          </div>
+        </FieldGroup>
+
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
           disabled={isPending}
-          defaultValue={toDateInputValue()}
-          max={toDateInputValue()}
-        />
-      </FieldGroup>
+          loading={isPending}
+        >
+          {isPending ? t("creating") : t("addMovement")}
+        </Button>
 
-      <FieldGroup title={t("groupDetails")}>
-        <Input
-          id="amount"
-          name="amount"
-          type="number"
-          label={t("amount")}
-          min="1"
-          required
-          disabled={isPending}
-        />
-
-        <Select
-          id="currency"
-          name="currency"
-          label={t("currency")}
-          required
-          disabled={isPending}
-          defaultValue={defaultCurrency}
-          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-        />
-
-        <Select
-          id="context"
-          name="context"
-          label={t("context")}
-          disabled={isPending}
-          defaultValue="Personal"
-          options={MOVEMENT_CONTEXTS.map((c) => ({
-            value: c,
-            label: c === "Personal" ? t("personal") : t("business"),
-          }))}
-        />
-
-        <div className="sm:col-span-2">
-          <Input id="note" name="note" type="text" label={t("note")} disabled={isPending} />
-        </div>
-      </FieldGroup>
-
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        disabled={isPending}
-        loading={isPending}
-      >
-        {isPending ? t("creating") : t("addMovement")}
-      </Button>
-
-      {/* F5 (UX-6): informed confirmation for a projected-negative expense —
+        {/* F5 (UX-6): informed confirmation for a projected-negative expense —
           purely informational (createMovementAction has no balance guard), so
           this NEVER blocks. Confirming re-dispatches the SAME captured
           FormData with the SAME idempotency key (D9 — generated once on mount
           by IdempotencyField, reused by the re-dispatch); cancelling closes
           the dialog, keeps the form populated and dispatches nothing. */}
-      <MoneyActionConfirmation
-        open={isConfirmOpen}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        title={tConfirm("negativeBalanceTitle")}
-        confirmLabel={tTransfers("registerAnyway")}
-        cancelLabel={tCommon("cancel")}
-        variant="f5-negative-balance"
-        detailRows={confirmRows}
-        negativeBalanceWarning={tConfirm("projectedNegativeWarning")}
-        projectedNegative
-        loading={isPending}
-      />
+        <MoneyActionConfirmation
+          open={isConfirmOpen}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+          title={tConfirm("negativeBalanceTitle")}
+          confirmLabel={tTransfers("registerAnyway")}
+          cancelLabel={tCommon("cancel")}
+          variant="f5-negative-balance"
+          detailRows={confirmRows}
+          negativeBalanceWarning={tConfirm("projectedNegativeWarning")}
+          projectedNegative
+          loading={isPending}
+        />
+      </form>
 
-      {/* §15: inline category creation — nested modal MUST live outside the
-          movement <form> (a <form> cannot contain another <form>). */}
+      {/* §15: inline category creation — this nested modal MUST live OUTSIDE
+          the movement <form> (a <form> cannot contain another <form>); Modal
+          renders inline (no portal), so placement in the tree is the DOM
+          placement. Rendering it inside caused a hydration error on submit. */}
       <Modal
         open={showCategoryForm}
         onClose={() => setShowCategoryForm(false)}
@@ -340,6 +346,6 @@ export function MovementForm({
           }}
         />
       </Modal>
-    </form>
+    </>
   );
 }
