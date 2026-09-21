@@ -42,7 +42,9 @@ export default async function CategoriesPage() {
           description={t("emptyDescription")}
         />
       ) : (
-        <div className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          {/* §22: Ingresos/Gastos side by side on large screens, stacked on
+              mobile (real responsive layout, not just scaled-down type). */}
           <CategorySection
             title={t("income")}
             categories={incomeCategories}

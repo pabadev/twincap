@@ -132,8 +132,10 @@ export function GlobalMovementProvider({
     <GlobalMovementContext.Provider value={value}>
       {children}
 
-      {/* Floating quick action — speed dial for direct income/expense entry */}
-      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex flex-col items-end gap-3 lg:bottom-8 lg:right-8">
+      {/* Floating quick action — speed dial for direct income/expense entry.
+          §24: vertical menu spacing kept moderately tight (gap-2 outer,
+          gap-1.5 between options) while touch targets stay 44px (h-11). */}
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex flex-col items-end gap-2 lg:bottom-8 lg:right-8">
         {dialOpen && (
           <>
             <div className="fixed inset-0" aria-hidden="true" onClick={() => setDialOpen(false)} />
@@ -141,7 +143,7 @@ export function GlobalMovementProvider({
               id="quick-movement-menu"
               role="group"
               aria-label={tMovements("quickAddMenu")}
-              className="relative flex flex-col items-end gap-2"
+              className="relative flex flex-col items-end gap-1.5"
             >
               <button
                 ref={firstOptionRef}
