@@ -289,7 +289,9 @@ async function createManualMovementInUI(
 
   await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
-  await dialog.getByLabel("Category").selectOption({ label: category });
+  // exact: the movement category select — without it, the inline
+  // "Add category" trigger button (same dialog) substring-matches too.
+  await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByLabel("Note").fill(note);
   // Anchored so "Date" never substring-matches a sibling field label.

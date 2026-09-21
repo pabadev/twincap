@@ -124,7 +124,7 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await beforeLoanRegister(page);
     await createAccountInUI(page, "Ahorros Beta");
 
-    const row = page.locator("tr", { hasText: "Ahorros Beta" });
+    const row = page.locator("[data-id]", { hasText: "Ahorros Beta" });
     await row.getByRole("button", { name: /Edit/i }).click();
 
     const dialog = page.getByRole("dialog", { name: /Rename Account/i });
@@ -135,15 +135,19 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await expect(dialog).toBeHidden();
     // Visible-only: the mobile card variant also carries the same text hidden
     // (display:none) beside the desktop table since UX-7 WU-1.
-    await expect(page.getByText("Ahorros Gamma", { exact: true }).filter({ visible: true })).toBeVisible();
-    await expect(page.getByText("Ahorros Beta", { exact: true }).filter({ visible: true })).toHaveCount(0);
+    await expect(
+      page.getByText("Ahorros Gamma", { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Ahorros Beta", { exact: true }).filter({ visible: true }),
+    ).toHaveCount(0);
   });
 
   test("set an initial balance on an existing account", async ({ page }) => {
     await beforeLoanRegister(page);
     await createAccountInUI(page, "Caja Roja");
 
-    const row = page.locator("tr", { hasText: "Caja Roja" });
+    const row = page.locator("[data-id]", { hasText: "Caja Roja" });
     await row.getByRole("button", { name: /Set Initial Balance/i }).click();
 
     const dialog = page.getByRole("dialog", {
@@ -157,7 +161,7 @@ test.describe("Slice 1 — Auth + Accounts", () => {
 
     await expect(dialog).toBeHidden();
     // Balance reflects in the list (COP 5,000 in the en locale).
-    const refreshedRow = page.locator("tr", { hasText: "Caja Roja" });
+    const refreshedRow = page.locator("[data-id]", { hasText: "Caja Roja" });
     await expect(refreshedRow).toContainText("5,000");
   });
 
@@ -165,7 +169,7 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await beforeLoanRegister(page);
     await createAccountInUI(page, "Billetera Aux");
 
-    const row = page.locator("tr", { hasText: "Billetera Aux" });
+    const row = page.locator("[data-id]", { hasText: "Billetera Aux" });
     await row.getByRole("button", { name: /Delete/i }).click();
 
     await confirmDialog(page, {

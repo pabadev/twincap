@@ -34,7 +34,7 @@ async function setInitialBalanceInUI(
   amount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
@@ -78,7 +78,7 @@ async function openMovementDialog(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Account").selectOption({ label: `${account} (COP)` });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
-  await dialog.getByLabel("Category").selectOption({ label: category });
+  await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByLabel("Note").fill(note);
   // Settle budget: the F5 gate reads `balances` from the on-mount
@@ -96,7 +96,7 @@ async function expectAccountBalance(
   copAmount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   // `formatAmount` renders "COP 10,000" (COP exponent 0, no decimals) with
   // Intl NBSP between code and number — `\s+`-safe regex over the amount.
   await expect(row).toContainText(copAmount);
@@ -142,21 +142,28 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
     // was never persisted (fresh /movements render showed no row). The only
     // reliable commit signal is the refreshed list on THIS page showing the
     // row (success effect → router.refresh() → server re-render from the DB).
-    await expect(page.locator("tr", { hasText: "f5-confirm" })).toContainText(/[−-]COP\s+10,000/, {
-      timeout: 60_000,
-    });
+    await expect(page.locator("[data-id]", { hasText: "f5-confirm" })).toContainText(
+      /[−-]COP\s+10,000/,
+      {
+        timeout: 60_000,
+      },
+    );
 
     // Exactly one movement row with the traceable note.
     await page.goto("/movements");
-    const row = page.locator("tr", { hasText: "f5-confirm" });
+    const row = page.locator("[data-id]", { hasText: "f5-confirm" });
     await expect(row).toContainText(/[−-]COP\s+10,000/);
     // Visible-only: the mobile card variant duplicates the note hidden
     // (display:none) beside the desktop table since UX-7 WU-1.
-    await expect(page.getByText("f5-confirm", { exact: true }).filter({ visible: true })).toHaveCount(1);
+    await expect(
+      page.getByText("f5-confirm", { exact: true }).filter({ visible: true }),
+    ).toHaveCount(1);
 
     // The derived account balance is negative — nothing was blocked.
     await page.goto("/accounts");
-    await expect(page.locator("tr", { hasText: "Efectivo" }).first()).toContainText(/-COP\s+5,000/);
+    await expect(page.locator("[data-id]", { hasText: "Efectivo" }).first()).toContainText(
+      /-COP\s+5,000/,
+    );
   });
 
   test("expense within balance submits directly — no confirmation dialog", async ({ page }) => {
@@ -179,7 +186,9 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
 
     // Movement registered; balance reflects the expense.
     await page.goto("/movements");
-    await expect(page.locator("tr", { hasText: "f5-sufficient" })).toContainText(/[−-]COP\s+3,000/);
+    await expect(page.locator("[data-id]", { hasText: "f5-sufficient" })).toContainText(
+      /[−-]COP\s+3,000/,
+    );
     await expectAccountBalance(page, "Efectivo", "2,000");
   });
 
@@ -201,7 +210,9 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
 
     // Movement registered; balance reflects the income.
     await page.goto("/movements");
-    await expect(page.locator("tr", { hasText: "f5-income" })).toContainText(/\+?COP\s+100,000/);
+    await expect(page.locator("[data-id]", { hasText: "f5-income" })).toContainText(
+      /\+?COP\s+100,000/,
+    );
     await expectAccountBalance(page, "Efectivo", "100,000");
   });
 
@@ -286,13 +297,15 @@ test.describe("UX-6 F5 — movements negative-balance confirmation", () => {
 
     // Same write barrier as the confirm test: the F5 close is optimistic, so
     // wait for the commit to land on THIS page before navigating away.
-    await expect(page.locator("tr", { hasText: "f5-double" })).toHaveCount(1, {
+    await expect(page.locator("[data-id]", { hasText: "f5-double" })).toHaveCount(1, {
       timeout: 60_000,
     });
 
     await page.goto("/movements");
     // Visible-only: the mobile card variant duplicates the note hidden
     // (display:none) beside the desktop table since UX-7 WU-1.
-    await expect(page.getByText("f5-double", { exact: true }).filter({ visible: true })).toHaveCount(1);
+    await expect(
+      page.getByText("f5-double", { exact: true }).filter({ visible: true }),
+    ).toHaveCount(1);
   });
 });

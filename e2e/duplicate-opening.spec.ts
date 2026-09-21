@@ -56,7 +56,7 @@ async function openSetInitialBalanceFilled(
   accountName: string,
   amount: string,
 ): Promise<void> {
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
@@ -113,7 +113,7 @@ test.describe("R15.3 §11 — Opening duplicado", () => {
     // Second tab: same context (shared session cookie), its own page/state.
     const pageB = await context.newPage();
     await pageB.goto("/accounts");
-    await expect(pageB.locator("tr", { hasText: "Caja Concurso" })).toBeVisible();
+    await expect(pageB.locator("[data-id]", { hasText: "Caja Concurso" })).toBeVisible();
 
     // Fill BOTH dialogs with different amounts (10,000 vs 20,000) and submit
     // concurrently — two distinct idempotency keys (per form mount).
@@ -158,7 +158,7 @@ test.describe("R15.3 §11 — Opening duplicado", () => {
     // derived balance, and the "Set Initial Balance" action is gone.
     const winnerPage = winnerKey === "a" ? page : pageB;
     await winnerPage.goto("/accounts");
-    const winnerRow = winnerPage.locator("tr", { hasText: "Caja Concurso" });
+    const winnerRow = winnerPage.locator("[data-id]", { hasText: "Caja Concurso" });
     await expect(winnerRow).toContainText(formatCopMinor(winnerAmount));
     await expect(winnerRow.getByRole("button", { name: /Set Initial Balance/i })).toHaveCount(0);
   });

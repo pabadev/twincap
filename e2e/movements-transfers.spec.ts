@@ -51,7 +51,7 @@ async function setInitialBalanceInUI(
   amount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
@@ -90,7 +90,7 @@ async function createMovementInUI(
 
   await dialog.getByLabel("Account").selectOption({ label: `${account} (COP)` });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
-  await dialog.getByLabel("Category").selectOption({ label: category });
+  await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Add Movement" }).click();
@@ -104,7 +104,7 @@ async function expectAccountBalance(
   copAmount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   // `formatAmount` renders "COP 10,000" (COP exponent 0, no decimals). We match
   // the numeric portion so the assertion is immune to Intl's non-breaking
   // space between the currency code and the number.
@@ -180,7 +180,7 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
 
     // Confirm the movement is listed with amount +COP 5,000.
     await page.goto("/movements");
-    const row = page.locator("tr", { hasText: "slice2-edit-me" });
+    const row = page.locator("[data-id]", { hasText: "slice2-edit-me" });
     await expect(row).toContainText(/\+?COP\s+5,000/);
 
     // Open the edit modal from the row's edit action.
@@ -190,7 +190,7 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
 
     // Change amount to 8,000 and category to Ventas, keep date = today.
     await dialog.getByLabel(/Amount \(COP\)/i).fill("8000");
-    await dialog.getByLabel("Category").selectOption({ label: "Ventas" });
+    await dialog.getByLabel("Category", { exact: true }).selectOption({ label: "Ventas" });
     await dialog.getByLabel("Date").fill(todayInputValue());
     await dialog.getByRole("button", { name: /Save/i }).click();
 
@@ -201,7 +201,7 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
 
     // Row now shows the updated amount and category label.
     await page.goto("/movements");
-    const editedRow = page.locator("tr", { hasText: "slice2-edit-me" });
+    const editedRow = page.locator("[data-id]", { hasText: "slice2-edit-me" });
     await expect(editedRow).toContainText(/COP\s+8,000/);
     await expect(editedRow).toContainText("Ventas");
   });
@@ -225,7 +225,7 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
 
     // Delete the manual movement → back to 20,000.
     await page.goto("/movements");
-    const row = page.locator("tr", { hasText: "slice2-to-delete" });
+    const row = page.locator("[data-id]", { hasText: "slice2-to-delete" });
     await row.getByRole("button", { name: /Delete/i }).click();
 
     const confirm = page.getByRole("dialog", {
