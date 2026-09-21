@@ -179,3 +179,69 @@ Cluster 5 — §25-28 accessibility (labels explicit, focus-visible unification,
 reduced motion) + §29-31 design system (Card API, tokens, Top 3 vs Top 5
 decision). Run the full vitest suite (timeout ≥ 45 min) at the next slice
 close or feature end, per the delivery budget.
+
+## Cluster 5 — Beta feedback fixes (user report, 2026-09-21)
+
+Five findings from beta testing; inserted ahead of the §25-31 cluster.
+
+- [x] B1: Profile defaultCurrency — select is uncontrolled; React 19 resets
+      the form after the action resolves, so the input reverts (blank/—) after a
+      green success toast and never shows the saved option. Fix: controlled select
+  - router.refresh() on success so the saved value stays visible.
+- [x] B2: FAB "Venta POS" navigates via router.push("/pos/sales") while
+      Ingreso/Egreso open their form in place. Fix: POS option opens SaleForm in a
+      modal in place (fetch catalog/accounts/clients on open via a new
+      getSaleFormDataAction; reuse SaleForm — no form logic duplication).
+- [x] B3: Sale detail modal shows the internal sale ID (font-mono UUID).
+      Decision: remove — internal identifier, no value for register/understand/
+      detect/act (§47). Drop saleIdLabel keys (es/en).
+- [x] B4: Credits granted/received cards cram all info into a dense header —
+      do not follow the Movements card format. Fix: restructure into MovementCard
+      visual language (row 1 counterparty+badges+chevron; dl label/value rows for
+      date, amount, installments/total/progress, pending emphasized text-debt;
+      footer border-t with abono count + edit). Update cluster 4 structural tests.
+- [x] B5: Inline category creation from income/expense form: (a) the "+" is a
+      tiny bare-text button; (b) submitting the category form triggers hydration
+      error "<form> cannot be a descendant of <form>" — the category Modal sits
+      INSIDE the movement <form> (form closes AFTER the Modal) and Modal is not a
+      portal. Fix: move the Modal outside the form (fragment) — the code comment
+      already demanded this, the code contradicted it; replace "+" with a visible
+      labeled button (existing i18n key addCategoryInline "Agregar categoría").
+- [x] B6: Verification — tsc/eslint/prettier clean; targeted tests updated +
+      green (profile select stays populated, category modal outside form, FAB POS
+      modal opens, credits rows structural, detail modal has no ID).
+
+Commit plan: c1=B5 (hydration fix is the blocker, categories module), c2=B1,
+c3=B2, c4=B3+B4 (sales/credits presentation), c5=docs.
+
+### Cluster 5 completion evidence
+
+- B1: root cause was DEEPER than reported — React 19 resets the DOM form after
+  EVERY form action, and controlled fields stay blank when no re-render
+  follows (state unchanged → React never rewrites the reset DOM value).
+  Fix: profile fields held in controlled draft state; on success the form
+  re-mounts (key bump) seeded with the SUBMITTED values; router.refresh()
+  re-syncs server props. Test: profile-form.test.tsx NEW (select keeps COP
+  after save, name preserved, refresh called).
+- B2: getSaleFormDataAction added (accounts/catalog/clients, same
+  fetch-on-open pattern); FAB POS opens SaleForm in a size-lg modal in place;
+  dial data invalidated on close (§16 pattern). pos/sales/actions.ts was a
+  legacy single-quote file — prettier normalization applied on touch (§18).
+  Tests: provider +2 (POS modal opens + fetch-once-per-open contract).
+- B3: sale ID row removed from sale-detail-modal; saleIdLabel dropped from
+  es/en. Decision documented: internal identifier, no user value (§47).
+- B4: both credit lists restructured to the Movements card language: row 1 =
+  counterparty + badges + chevron; dl label/value rows (Fecha, Monto primary,
+  Cuotas n/m + frequency, Total a pagar, Pendiente emphasized text-debt /
+  Pagado text-success); footer = abono count + edit on border-t. New i18n key
+  installmentsRow (es/en). installmentProgress folded into the Cuotas row
+  (n/m format). Cluster 4 structural tests rewritten for the new structure.
+- B5: category Modal moved OUTSIDE the movement form (fragment) — the old
+  comment demanded this but the code had it inside; hydration error gone.
+  Bare "+" replaced with labeled "+ Agregar categoría" button (addCategoryInline,
+  Plus icon 12px, 32px min touch, primary/10 hover bg).
+- B6: tsc 0 errors; eslint clean on all 10 touched files; prettier clean;
+  targeted vitest 17/17 across 6 files (two runs; second on post-prettier
+  bytes); messages-parity 2/2.
+
+Commits: 1cde01f (B5), 162708c (B1), 57f5e9f (B2), 210ca7f (B3+B4).
