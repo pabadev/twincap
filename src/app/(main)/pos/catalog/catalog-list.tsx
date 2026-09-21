@@ -108,9 +108,9 @@ export function CatalogList({
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+                className="flex flex-col gap-2 rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <div className="font-medium text-zinc-900 dark:text-white">{item.name}</div>
                   <div className="text-sm text-zinc-500 dark:text-zinc-400">
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
@@ -123,7 +123,7 @@ export function CatalogList({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
                   <div className="text-right">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white">
                       {formatAmount(item.unitPrice.amount, currency, locale)}
