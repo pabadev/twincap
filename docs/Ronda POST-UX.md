@@ -621,6 +621,13 @@ fila final → acciones
 
 Evitar múltiples columnas estrechas dentro de una card móvil.
 
+> **DECISIÓN DE PRODUCTO (2026-09-21, fundador):** la vista de tablas se ELIMINA
+> en todas las resoluciones (laptop, PC, etc.). Todas las listas renderizan
+> cards en todos los breakpoints, siguiendo el patrón de Movimientos. En PC las
+> cards pueden disponerse en grillas de dos columnas (por ejemplo créditos y
+> cuentas por pagar). El ordenamiento por encabezados de tabla queda retirado
+> junto con la tabla (el orden por defecto de cada listado se conserva).
+
 ---
 
 # 20. CRÉDITOS, CATÁLOGO Y VENTAS — RESPONSIVE
@@ -649,11 +656,11 @@ Evaluar y corregir columnas apiñadas.
 
 ### Transferencias
 
-Mantener el patrón responsive de referencia.
+El patrón de referencia es ahora la propia card (sin variante de tabla).
 
 ### Cuentas
 
-Mantener el patrón responsive de referencia.
+El patrón de referencia es ahora la propia card (sin variante de tabla).
 
 No limitarse a añadir `overflow-x-auto`.
 
@@ -923,9 +930,11 @@ Los nuevos componentes no deben introducir nuevos colores raw sin justificación
 Existe una discrepancia:
 
 Diseño:
+
 > Top 5
 
 Implementación:
+
 > Top 3
 
 NO elegir automáticamente uno.

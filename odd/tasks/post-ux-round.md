@@ -245,3 +245,44 @@ c3=B2, c4=B3+B4 (sales/credits presentation), c5=docs.
   bytes); messages-parity 2/2.
 
 Commits: 1cde01f (B5), 162708c (B1), 57f5e9f (B2), 210ca7f (B3+B4).
+
+## Cluster 6 — Cards everywhere: tables retired (product decision, 2026-09-21)
+
+User override of §19/§20: remove table views on ALL breakpoints; every list
+renders cards (Movements pattern). PC may arrange cards in 2-column grids
+(credits, payables). Recorded in docs/Ronda POST-UX.md §19/§20.
+
+- [x] C1: payables-list — 3-column card header → MovementCard row format
+      (B4 pattern: identity+chevron / dl rows Fecha+Vence+Nota+Monto+Pendiente /
+      footer abono count + edit); list container becomes grid gap-3
+      md:grid-cols-2 md:items-start; drop list-level overflow-x-auto.
+- [x] C2: credits received/granted — card list becomes grid gap-3
+      md:grid-cols-2 md:items-start (2-column arrangement on PC).
+- [x] C3: movements-list — delete TableShell table block + sort machinery
+      (SortIcon/toggleSort/sortField/sortDir/sortAria; fixed date-desc order
+      kept); cards become the only representation (remove sm:hidden); remove
+      3 sort-header tests from movements-list.test.tsx.
+- [x] C4: clients-list — delete table block; cards everywhere.
+- [x] C5: accounts page — delete table block; cards everywhere; drop the
+      duplicate length check structure.
+- [x] C6: transfers-list — delete table block; cards everywhere.
+- [x] C7: categories page — delete table block; cards everywhere; drop the
+      now-unused actionsLabel plumbing.
+- [x] C8: verification (tsc/eslint/prettier/targeted tests) + this doc.
+
+Card variants already carry the tables' full information and actions
+(verified per surface). Inner 3-col abonos tables in payables/received stay:
+legible at card width. i18n: no key removals needed (all labels still used).
+
+Commit plan: c1=C1, c2=C2, c3=C3, c4=C4+C7, c5=C5+C6, c6=docs.
+
+### Cluster 6 completion evidence
+
+Commits: e492d88 (C1 payables rows + 2-col grid), cfc7c33 (C2 credits grid),
+8fceb41 (C3 movements: -254 lines of table/sort machinery, 3 sort tests
+removed with the feature, fixed date-desc order kept), 8cbe6dc (C4+C7 clients
++categories), c73ae95 (C5+C6 accounts +transfers, redundant guard dropped).
+docs/Ronda POST-UX.md §19/§20 updated with the 2026-09-21 product decision.
+Verification: tsc 0 errors; eslint clean (2 dead sort types found and
+removed); prettier clean; targeted vitest 13/13 + 3/3 movements post-fix.
+No i18n changes needed (all table labels already used by the card fields).
