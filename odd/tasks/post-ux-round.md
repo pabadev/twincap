@@ -57,3 +57,26 @@ Every change here must make it easier to: register, understand, detect, or act.
 
 ## Next step
 Commit T1-T5 as work-unit commits on feature branch; then cluster 2 (monetary integrity).
+
+## Cluster 2 — Monetary integrity + honest currency defaults (§12-14)
+Commits: d859149 (aggregation), e563a66 (COP fallbacks), 0ed1783 + 56b71e8 (defaultCurrency + BRL).
+- [x] T6 (§12): Fixed 3 unbudgeted `+=` monetary aggregations in build-dashboard-snapshot.ts
+  (attention receivables/payables) → sumSafeMinorUnits. Domain-layer `+=` with post-loop
+  assertSafeMinorUnits left intact (approved frozen pattern, documented decision).
+- [x] T7 (§13): 4 silent "COP" fallbacks replaced with explicit DEFAULT_CURRENCY from
+  core/domain/currency.ts. Test fixtures unchanged (controlled data setup).
+- [x] T8 (§14): User.defaultCurrency — optional Mongoose field, domain entity, mapper,
+  Profile setting with server-side validation, wired to movement/account/transfer/credit/
+  payable/catalog forms via layout + providers (fallback chain: account.currency ??
+  defaultCurrency ?? DEFAULT_CURRENCY). Edit forms preserve entity currency (correct).
+- [x] T9 (§42/BRL): BRL added to CURRENCIES + model enums (PT-BR readiness); UI regression
+  movement-form.test.tsx (USD→USD, BRL→BRL, no pref→DEFAULT_CURRENCY).
+- Verification: tsc 0 errors; 20/20 targeted tests (currency 5, user 5, profile actions 5,
+  movement-form 3, parity 2); prettier clean.
+- INCIDENT (documented): an accidental repo-wide prettier run produced a 442-file
+  mega-format commit; fully reverted (mixed reset + checkout) and rebuilt as 33-file
+  commits. Lesson: never run prettier/checkers at repo scope on this repo; scope strictly
+  to touched files. Legacy single-quote files normalize only when touched.
+
+## Next step
+Cluster 3 — patterns/forms/notes/a11y (§15-17, §23, §25-28).
