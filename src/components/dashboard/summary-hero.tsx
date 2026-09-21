@@ -41,8 +41,13 @@ export function SummaryHero({ result, currency, available, dataAsOf, locale }: S
           <div className="mt-3 flex flex-col gap-1.5">
             {available.map((a) => (
               <div key={a.currency} className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">{a.currency}</span>
-                <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+                  {a.currency}
+                </span>
+                {/* §21: min-w-0 + break-words wrap extremely large balances
+                    instead of overflowing the card; tabular-nums keeps digits
+                    aligned. The figure is never truncated or hidden. */}
+                <span className="min-w-0 break-words text-right text-base font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
                   {formatAmount(a.balance, a.currency, locale)}
                 </span>
               </div>

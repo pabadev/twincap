@@ -350,12 +350,16 @@ export function DashboardContent({
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {accountBalances.map((account) => (
               <Card key={account.id} title={account.name}>
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {account.currency}
                   </span>
+                  {/* §21: min-w-0 + break-words keep very large balances inside
+                      the card (the Card root clips overflow); tabular-nums
+                      keeps digits aligned; mobile steps the size down. Never
+                      truncate or hide the figure. */}
                   <span
-                    className={`text-xl font-semibold ${
+                    className={`min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl ${
                       account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
                     }`}
                   >
