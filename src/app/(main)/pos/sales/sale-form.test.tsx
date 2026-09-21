@@ -165,3 +165,28 @@ describe("SaleForm clientId required semantics (S6.1/S6.2)", () => {
     expect(container.querySelector("#clientId-hint")).toBeNull();
   });
 });
+
+// Ronda POST-UX §23: the line-item remove control must be icon-only with an
+// accessible name and native tooltip (no visible text label).
+describe("SaleForm remove-item control (§23)", () => {
+  it("renders an icon-only remove button with accessible name and tooltip", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // A single line item has no remove control yet.
+    expect(container.querySelector('button[aria-label="remove"]')).toBeNull();
+
+    const addItem = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    expect(addItem).toBeDefined();
+    act(() => {
+      addItem!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const remove = container.querySelector<HTMLButtonElement>('button[aria-label="remove"]');
+    expect(remove).not.toBeNull();
+    expect(remove!.getAttribute("title")).toBe("remove");
+    // Icon-only: no visible text, the accessible name comes from aria-label.
+    expect(remove!.textContent?.trim()).toBe("");
+    expect(remove!.querySelector("svg")).not.toBeNull();
+  });
+});
