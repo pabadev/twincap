@@ -163,7 +163,9 @@ export function CreditsReceivedList({
 
           {filtered.length === 0 && credits.length > 0 && <EmptyState title={t("noResults")} />}
 
-          <div className="space-y-3">
+          {/* Product decision 2026-09-21: cards everywhere; on PC the cards
+              may arrange in a 2-column grid. */}
+          <div className="grid gap-3 md:grid-cols-2 md:items-start">
             {filtered.map((credit) => {
               const isExpanded = expandedId === credit.id;
               const pending = credit.pending;
