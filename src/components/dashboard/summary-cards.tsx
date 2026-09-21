@@ -160,7 +160,7 @@ export function SummaryCards({
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-income/10 p-2">
               <Icon icon={TrendingUp} size="md" className="text-income" />
@@ -186,7 +186,7 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-expense/10 p-2">
               <Icon icon={TrendingDown} size="md" className="text-expense" />
@@ -212,7 +212,7 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={Wallet} size="md" className="text-info" />
@@ -237,7 +237,7 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={ArrowLeftRight} size="md" className="text-info" />
@@ -269,7 +269,7 @@ export function SummaryCards({
       {(contextSummary?.personal || contextSummary?.business) && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {contextSummary.personal && (
-            <Card className="p-3 sm:p-4">
+            <Card contentClassName="p-3 sm:p-4">
               <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={User} size="md" className="text-income" />
@@ -289,7 +289,7 @@ export function SummaryCards({
             </Card>
           )}
           {contextSummary.business && (
-            <Card className="p-3 sm:p-4">
+            <Card contentClassName="p-3 sm:p-4">
               <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={Briefcase} size="md" className="text-income" />

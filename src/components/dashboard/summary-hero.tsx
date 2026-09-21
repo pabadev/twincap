@@ -34,7 +34,7 @@ export function SummaryHero({ result, currency, available, dataAsOf, locale }: S
   return (
     <div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="p-5 sm:p-6">
+        <Card contentClassName="p-5 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
             {t("availableByCurrency")}
           </p>
@@ -61,7 +61,7 @@ export function SummaryHero({ result, currency, available, dataAsOf, locale }: S
           </div>
         </Card>
 
-        <Card className="p-5 sm:p-6">
+        <Card contentClassName="p-5 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
             {t("monthlyCashFlow")}
           </p>

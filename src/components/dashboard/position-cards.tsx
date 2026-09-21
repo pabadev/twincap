@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Card } from '../ui/card';
-import { Icon } from '../ui/icon';
-import { TrendingUp, TrendingDown, Scale } from 'lucide-react';
-import { useT } from '../../i18n/client';
-import { formatAmount } from '../../lib/format';
+import { Card } from "../ui/card";
+import { Icon } from "../ui/icon";
+import { TrendingUp, TrendingDown, Scale } from "lucide-react";
+import { useT } from "../../i18n/client";
+import { formatAmount } from "../../lib/format";
 
 interface CurrencyPosition {
   currency: string;
@@ -19,26 +19,22 @@ interface PositionCardsProps {
 }
 
 export function PositionCards({ positions, locale }: PositionCardsProps) {
-  const t = useT('Dashboard');
+  const t = useT("Dashboard");
 
   if (positions.length === 0) {
     return (
-      <Card className="p-4">
+      <Card contentClassName="p-4">
         <h3 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          {t('position')}
+          {t("position")}
         </h3>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {t('noPositionData')}
-        </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("noPositionData")}</p>
       </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-        {t('position')}
-      </h2>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{t("position")}</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {positions.map((pos) => (
           <Card key={pos.currency} className="p-4">
@@ -53,7 +49,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                   <Icon icon={TrendingUp} size="sm" className="text-income" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('activos')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t("activos")}</p>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {formatAmount(pos.activos, pos.currency, locale)}
                   </p>
@@ -64,7 +60,7 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                   <Icon icon={TrendingDown} size="sm" className="text-expense" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('pasivos')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t("pasivos")}</p>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {formatAmount(pos.pasivos, pos.currency, locale)}
                   </p>
@@ -76,15 +72,13 @@ export function PositionCards({ positions, locale }: PositionCardsProps) {
                     <Icon icon={Scale} size="sm" className="text-info" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('netPosition')}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{t("netPosition")}</p>
                     <p
                       className={`text-sm font-semibold ${
-                        pos.net >= 0
-                          ? 'text-income'
-                          : 'text-expense'
+                        pos.net >= 0 ? "text-income" : "text-expense"
                       }`}
                     >
-                      {pos.net >= 0 ? '+' : ''}
+                      {pos.net >= 0 ? "+" : ""}
                       {formatAmount(pos.net, pos.currency, locale)}
                     </p>
                   </div>
