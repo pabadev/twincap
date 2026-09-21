@@ -286,3 +286,42 @@ docs/Ronda POST-UX.md §19/§20 updated with the 2026-09-21 product decision.
 Verification: tsc 0 errors; eslint clean (2 dead sort types found and
 removed); prettier clean; targeted vitest 13/13 + 3/3 movements post-fix.
 No i18n changes needed (all table labels already used by the card fields).
+
+## Cluster 7 — §26-31: labels, reduced motion, Top 5, Card API, focus/token audit
+
+- [ ] T24 (§31): Top 3 → Top 5 in dashboard-content (spec UX-RESUMEN-DESIGN.md
+      is explicitly Top 5, "slice(0,5) es presentación"); disagreement resolved in
+      favour of the vigente spec; update tests if any assert 3.
+- [ ] T25 (§28): global prefers-reduced-motion media query in globals.css
+      (kills transitions/animations app-wide: toast, accordion, nav drawer,
+      chevrons, theme + spinners paused) — the canonical single-rule approach
+      instead of per-component overrides.
+- [ ] T26 (§26): catalog + clients search inputs rely on placeholder alone —
+      add aria-label (visible <label> impractical for an inline icon search).
+- [ ] T27 (§29): Card gains contentClassName (children wrapper padding);
+      migrate the real double-padding consumers (dashboard cards, summary-hero)
+      from className="p-_" to contentClassName="p-_"; default stays p-6
+      (zero breakage); new ui card unit test.
+- [ ] T28 (§27/§30/§25): structural audit recorded — focus pattern already
+      focus-visible on interactive primitives (button/icon-button/nav/FAB/report
+      cards; inputs keep focus: for border+ring, appropriate); no new raw colors
+      introduced this round (§30 rule recorded for the final report); the full
+      §25 a11y surface matrix stays for the round-close validation.
+- [x] T29: verification + docs.
+
+Commit plan: c1=T24, c2=T25, c3=T26, c4=T27, c5=docs.
+
+### Cluster 7 completion evidence
+
+Commits: 67fe936 (Top 5 per vigente spec — §31 disagreement resolved for the
+design doc), e268be0 (globals.css prefers-reduced-motion global rule §28),
+4002099 (§26 aria-labels catalog+clients search), 14cd36f (§29 Card
+contentClassName; 15 double-padding consumers migrated across 6 dashboard
+files; new ui/**tests**/card.test.tsx 3/3).
+T28 audit notes: focus pattern on interactive primitives is already
+focus-visible (button, action-icon-button, nav, FAB, report-card, not-found);
+inputs keep focus: for border+ring (appropriate, inputs are focus-targets);
+no new raw colors introduced this round (§30 rule recorded); full §25 a11y
+surface matrix deferred to round-close validation (§41).
+Verification: tsc 0 errors; eslint clean (after children-as-prop fix in the
+new test); prettier clean; targeted vitest 7/7 (card 3 + dashboard-content 4).
