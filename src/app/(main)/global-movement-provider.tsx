@@ -79,7 +79,14 @@ export function GlobalMovementProvider({
     setModalOpen(true);
   }, []);
 
-  const closeModal = useCallback(() => setModalOpen(false), []);
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    // §16: invalidate the cached reference data on close so the next open
+    // fetches fresh accounts/categories. Without this, a category created
+    // elsewhere (e.g. /categories page) would not appear in the FAB form
+    // until a full page refresh.
+    setData(null);
+  }, []);
 
   useEffect(() => {
     if (!modalOpen || data !== null || loadState === "error") return;

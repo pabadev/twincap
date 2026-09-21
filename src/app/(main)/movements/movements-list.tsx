@@ -418,12 +418,23 @@ export function MovementsList({
                             syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
                             "—"}
                         </Td>
-                        <Td className="text-sm text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
-                          {movement.link
-                            ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
-                                movement.note) ||
-                              "—"
-                            : movement.note || "—"}
+                        <Td className="text-sm text-zinc-600 dark:text-zinc-400">
+                          <span
+                            className="block max-w-[200px] line-clamp-3"
+                            title={
+                              movement.link
+                                ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                                    movement.note) ||
+                                  "—"
+                                : movement.note || "—"
+                            }
+                          >
+                            {movement.link
+                              ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                                  movement.note) ||
+                                "—"
+                              : movement.note || "—"}
+                          </span>
                         </Td>
                         <Td>
                           <span

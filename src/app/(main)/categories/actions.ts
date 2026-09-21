@@ -1,48 +1,50 @@
-'use server';
+"use server";
 
 import {
   createCategory,
   updateCategory,
   deleteCategory,
-} from '../../../core/application/categories';
-import type { CreateCategoryInput } from '../../../core/application/categories';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { revalidatePath } from 'next/cache';
-import { handleActionError } from '../../../lib/handle-action-error';
+} from "../../../core/application/categories";
+import type { CreateCategoryInput } from "../../../core/application/categories";
+import type { SerializedCategory } from "../../../core/domain/category";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoCategoryRepository } from "../../../infrastructure/repositories/category-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { revalidatePath } from "next/cache";
+import { handleActionError } from "../../../lib/handle-action-error";
 
 const ids = objectIdGenerator;
 
-export async function createCategoryAction(
-  _prev: { error?: string; success?: string } | null,
-  formData: FormData,
-): Promise<{ error?: string; success?: string }> {
-  const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+export type CategoryActionResult = {
+  error?: string;
+  success?: string;
+  /** Snapshot of the created category — lets flows like the movement form auto-select it. */
+  category?: SerializedCategory;
+};
 
-  const name = formData.get('name') as string;
-  const type = formData.get('type') as CreateCategoryInput['type'];
+export async function createCategoryAction(
+  _prev: CategoryActionResult | null,
+  formData: FormData,
+): Promise<CategoryActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "error.unauthorized" };
+
+  const name = formData.get("name") as string;
+  const type = formData.get("type") as CreateCategoryInput["type"];
 
   try {
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
-    await createCategory(
-      user.workspaceId!,
-      { name, type },
-      categoryRepo,
-      ids,
-    );
-    revalidatePath('/categories');
-    revalidatePath('/movements');
+    const category = await createCategory(user.workspaceId!, { name, type }, categoryRepo, ids);
+    revalidatePath("/categories");
+    revalidatePath("/movements");
+    return { success: "categoryCreated", category: category.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
-
-  return { success: 'categoryCreated' };
 }
 
 export async function updateCategoryAction(
@@ -50,22 +52,22 @@ export async function updateCategoryAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const categoryId = formData.get('categoryId') as string;
-  const name = formData.get('name') as string;
+  const categoryId = formData.get("categoryId") as string;
+  const name = formData.get("name") as string;
 
   try {
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
     await updateCategory(user.workspaceId!, { categoryId, name }, categoryRepo);
-    revalidatePath('/categories');
-    revalidatePath('/movements');
+    revalidatePath("/categories");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'categoryUpdated' };
+  return { success: "categoryUpdated" };
 }
 
 export async function deleteCategoryAction(
@@ -73,20 +75,26 @@ export async function deleteCategoryAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const categoryId = formData.get('categoryId') as string;
+  const categoryId = formData.get("categoryId") as string;
 
   try {
     await connectDb();
     const categoryRepo = new MongoCategoryRepository();
     const movementRepo = new MongoMovementRepository();
-    await deleteCategory(user.workspaceId!, categoryId, categoryRepo, movementRepo, new MongoUnitOfWork());
-    revalidatePath('/categories');
-    revalidatePath('/movements');
+    await deleteCategory(
+      user.workspaceId!,
+      categoryId,
+      categoryRepo,
+      movementRepo,
+      new MongoUnitOfWork(),
+    );
+    revalidatePath("/categories");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'categoryDeleted' };
+  return { success: "categoryDeleted" };
 }

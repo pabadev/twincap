@@ -204,41 +204,43 @@ export function TransferForm({
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       {isEdit && <input type="hidden" name="transferId" value={transfer.id} />}
-      <Select
-        id="sourceAccountId"
-        name="sourceAccountId"
-        label={t("fromAccount")}
-        required
-        disabled={isPending || isEdit}
-        defaultValue={transfer?.sourceAccountId}
-        placeholder={tCommon("select")}
-        onChange={(e) => {
-          const acc = accounts.find((a) => a.id === e.target.value);
-          if (acc) setSourceCurrency(acc.currency);
-        }}
-        options={accounts.map((a) => ({
-          value: a.id,
-          label: `${a.name} (${a.currency})`,
-        }))}
-      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Select
+          id="sourceAccountId"
+          name="sourceAccountId"
+          label={t("fromAccount")}
+          required
+          disabled={isPending || isEdit}
+          defaultValue={transfer?.sourceAccountId}
+          placeholder={tCommon("select")}
+          onChange={(e) => {
+            const acc = accounts.find((a) => a.id === e.target.value);
+            if (acc) setSourceCurrency(acc.currency);
+          }}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.currency})`,
+          }))}
+        />
 
-      <Select
-        id="destinationAccountId"
-        name="destinationAccountId"
-        label={t("toAccount")}
-        required
-        disabled={isPending || isEdit}
-        defaultValue={transfer?.destinationAccountId}
-        placeholder={tCommon("select")}
-        onChange={(e) => {
-          const acc = accounts.find((a) => a.id === e.target.value);
-          if (acc) setDestCurrency(acc.currency);
-        }}
-        options={accounts.map((a) => ({
-          value: a.id,
-          label: `${a.name} (${a.currency})`,
-        }))}
-      />
+        <Select
+          id="destinationAccountId"
+          name="destinationAccountId"
+          label={t("toAccount")}
+          required
+          disabled={isPending || isEdit}
+          defaultValue={transfer?.destinationAccountId}
+          placeholder={tCommon("select")}
+          onChange={(e) => {
+            const acc = accounts.find((a) => a.id === e.target.value);
+            if (acc) setDestCurrency(acc.currency);
+          }}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.currency})`,
+          }))}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input

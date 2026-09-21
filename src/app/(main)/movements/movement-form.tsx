@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../i18n/client";
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from "../../../core/domain/movement";
@@ -13,6 +13,8 @@ import type { SerializedAccount } from "../../../core/domain/account";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
+import { Modal } from "../../../components/ui/modal";
+import { CategoryForm } from "../categories/category-form";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { filterCategoriesByType, resolveDefaultAccountId } from "../../../lib/movement-form";
@@ -57,6 +59,15 @@ export function MovementForm({
 }) {
   const [state, formAction, isPending] = useActionState(createMovementAction, null);
   const [selectedType, setSelectedType] = useState<MovementType>(defaultType ?? "income");
+  // §15: inline category creation — local additions merge with the prop list so
+  // the new category is immediately available in the select without a refresh.
+  const [extraCategories, setExtraCategories] = useState<SerializedCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const allCategories = useMemo(
+    () => [...categories, ...extraCategories],
+    [categories, extraCategories],
+  );
   const t = useT("Movements");
   const tTransfers = useT("Transfers");
   const tConfirm = useT("MoneyConfirmation");
@@ -107,7 +118,7 @@ export function MovementForm({
   /** Detail rows rendered by the F5 dialog, computed at submit time. */
   const [confirmRows, setConfirmRows] = useState<ConfirmationDetailRow[]>([]);
 
-  const filteredCategories = filterCategoriesByType(categories, selectedType);
+  const filteredCategories = filterCategoriesByType(allCategories, selectedType);
 
   // F5 (UX-6 G2): conditional informed confirmation. The gate is computed NOW
   // from the current DOM values; `shouldShowF5` returns true ONLY for an
@@ -184,24 +195,52 @@ export function MovementForm({
           required
           disabled={isPending}
           value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value as MovementType)}
+          onChange={(e) => {
+            const newType = e.target.value as MovementType;
+            setSelectedType(newType);
+            // §15: when the type changes, the current category may no longer be
+            // valid (category belongs to the other type). Clear it so the user
+            // picks from the filtered list.
+            setSelectedCategoryId("");
+          }}
           options={MOVEMENT_TYPES.map((mt) => ({
             value: mt,
             label: mt === "income" ? t("income") : t("expense"),
           }))}
         />
 
-        <Select
-          id="categoryId"
-          name="categoryId"
-          label={t("category")}
-          required
-          disabled={isPending}
-          options={filteredCategories.map((c) => ({
-            value: c.id,
-            label: c.name,
-          }))}
-        />
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <label
+              htmlFor="categoryId"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {t("category")}
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCategoryForm(true)}
+              disabled={isPending}
+              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+              aria-label={t("addCategoryInline")}
+            >
+              +
+            </button>
+          </div>
+          <Select
+            id="categoryId"
+            name="categoryId"
+            required
+            disabled={isPending}
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            placeholder={t("selectCategory")}
+            options={filteredCategories.map((c) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+          />
+        </div>
 
         <Input
           id="date"
@@ -282,6 +321,25 @@ export function MovementForm({
         projectedNegative
         loading={isPending}
       />
+
+      {/* §15: inline category creation — nested modal MUST live outside the
+          movement <form> (a <form> cannot contain another <form>). */}
+      <Modal
+        open={showCategoryForm}
+        onClose={() => setShowCategoryForm(false)}
+        title={t("newCategory")}
+        size="sm"
+      >
+        <CategoryForm
+          onSuccess={(category) => {
+            setShowCategoryForm(false);
+            if (category) {
+              setExtraCategories((prev) => [...prev, category]);
+              setSelectedCategoryId(category.id);
+            }
+          }}
+        />
+      </Modal>
     </form>
   );
 }

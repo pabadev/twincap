@@ -48,6 +48,12 @@ vi.mock("../../../lib/use-money-action-confirmation", () => ({
   }),
 }));
 
+// §15: mock the inline category form to avoid pulling in the real server action
+// which requires env vars (MONGODB_URI, AUTH_SECRET).
+vi.mock("../categories/category-form", () => ({
+  CategoryForm: () => null,
+}));
+
 function account(overrides: Partial<SerializedAccount> = {}): SerializedAccount {
   return {
     id: "acc-1",
