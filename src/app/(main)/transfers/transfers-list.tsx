@@ -12,7 +12,6 @@ import { Icon } from "../../../components/ui/icon";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
-import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
 import { MovementCard } from "../../../components/ui/movement-card";
 import { ArrowRightLeft, Pencil } from "lucide-react";
 
@@ -130,94 +129,12 @@ export function TransfersList({
             <EmptyState title={tCommon("noResults")} />
           )}
 
-          <TableShell className="max-sm:hidden">
-            <Table className="min-w-[700px]">
-              <THead>
-                <tr>
-                  <Th>{tCommon("date")}</Th>
-                  <Th>{t("fromTo")}</Th>
-                  <Th align="right">{tCommon("amount")}</Th>
-                  <Th align="right">{tCommon("note")}</Th>
-                  <Th align="right">{tCommon("actions")}</Th>
-                </tr>
-              </THead>
-              <TBody>
-                {filtered.map((transfer) => (
-                  <tr key={transfer.id}>
-                    <Td className="text-sm whitespace-nowrap text-zinc-600 dark:text-zinc-400">
-                      {formatDate(transfer.date, locale)}
-                    </Td>
-                    <Td className="max-w-[280px] truncate text-sm text-zinc-600 dark:text-zinc-400">
-                      {accountName(accounts, transfer.sourceAccountId)}
-                      {" → "}
-                      {accountName(accounts, transfer.destinationAccountId)}
-                    </Td>
-                    {transfer.sourceCurrency === transfer.destinationCurrency ? (
-                      <Td
-                        align="right"
-                        className="text-sm font-medium whitespace-nowrap text-zinc-900 dark:text-white"
-                      >
-                        {formatAmount(
-                          transfer.sourceAmount.amount,
-                          transfer.sourceAmount.currency,
-                          locale,
-                        )}
-                      </Td>
-                    ) : (
-                      <Td align="right">
-                        <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                          {formatAmount(
-                            transfer.sourceAmount.amount,
-                            transfer.sourceAmount.currency,
-                            locale,
-                          )}
-                        </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {formatAmount(
-                            transfer.destinationAmount.amount,
-                            transfer.destinationAmount.currency,
-                            locale,
-                          )}
-                          {transfer.effectiveExchangeRate &&
-                            transfer.effectiveExchangeRate !== 1 && (
-                              <span className="ml-1 text-xs font-normal text-zinc-400">
-                                ({t("effectiveRate")}:{" "}
-                                {formatRate(transfer.effectiveExchangeRate, locale)})
-                              </span>
-                            )}
-                        </div>
-                      </Td>
-                    )}
-                    <Td
-                      align="right"
-                      className="max-w-[200px] text-sm text-zinc-600 dark:text-zinc-400"
-                    >
-                      {transfer.note || "—"}
-                    </Td>
-                    <Td align="right">
-                      <div className="flex items-center justify-end gap-1">
-                        <ActionIconButton
-                          icon={Pencil}
-                          label={tCommon("edit")}
-                          tone="primary"
-                          onClick={() => setEditingTransfer(transfer)}
-                        />
-                        <DeleteTransferButton transferId={transfer.id} />
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </TBody>
-            </Table>
-          </TableShell>
-
-          {/* Card variant (<640px) */}
-          <div className="space-y-3 sm:hidden">
+          {/* Cards are the only representation (product decision 2026-09-21). */}
+          <div className="space-y-3">
             {filtered.map((transfer) => (
               <MovementCard
                 key={transfer.id}
                 id={transfer.id}
-                className="sm:hidden"
                 fields={[
                   {
                     key: "date",
