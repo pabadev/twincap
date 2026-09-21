@@ -10,13 +10,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import { useT } from "../../i18n/client";
 import type { MovementType } from "../../core/domain/movement";
 import type { SerializedAccount } from "../../core/domain/account";
 import type { SerializedCategory } from "../../core/domain/category";
+import type { SerializedCatalogItem } from "../../core/domain/catalog";
+import type { SerializedClient } from "../../core/domain/client";
 import { listAccountsAction, listCategoriesAction } from "./movements/actions";
+import { getSaleFormDataAction } from "./pos/sales/actions";
 import { MovementForm } from "./movements/movement-form";
+import { SaleForm } from "./pos/sales/sale-form";
 import { resolveDefaultAccountId } from "../../lib/movement-form";
 import { Modal } from "../../components/ui/modal";
 import { Icon } from "../../components/ui/icon";
@@ -51,6 +54,12 @@ interface FormDataPayload {
   categories: SerializedCategory[];
 }
 
+interface SaleFormDataPayload {
+  catalogItems: SerializedCatalogItem[];
+  accounts: SerializedAccount[];
+  clients: SerializedClient[];
+}
+
 export function GlobalMovementProvider({
   children,
   defaultCurrency,
@@ -61,15 +70,18 @@ export function GlobalMovementProvider({
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [preset, setPreset] = useState<QuickMovementOptions>({});
+  const [posModalOpen, setPosModalOpen] = useState(false);
+  const [posData, setPosData] = useState<SaleFormDataPayload | null>(null);
+  const [posLoadState, setPosLoadState] = useState<LoadState>("idle");
   const [dialOpen, setDialOpen] = useState(false);
   const [data, setData] = useState<FormDataPayload | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const fabRef = useRef<HTMLButtonElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
-  const router = useRouter();
 
   const tMovements = useT("Movements");
   const tCommon = useT("Common");
+  const tSales = useT("Sales");
   const tToast = useT("Toast");
   const tErrors = useT("Errors");
 
@@ -77,6 +89,21 @@ export function GlobalMovementProvider({
     setPreset(options);
     setDialOpen(false);
     setModalOpen(true);
+  }, []);
+
+  // Beta feedback: "Venta POS" must behave like Ingreso/Egreso — open the
+  // associated form in place instead of navigating away from the current view.
+  const openPosSale = useCallback(() => {
+    setDialOpen(false);
+    setPosModalOpen(true);
+  }, []);
+
+  const closePosModal = useCallback(() => {
+    setPosModalOpen(false);
+    // §16 pattern: drop cached reference data on close so the next open
+    // fetches fresh catalog/accounts/clients.
+    setPosData(null);
+    setPosLoadState("idle");
   }, []);
 
   const closeModal = useCallback(() => {
@@ -106,6 +133,22 @@ export function GlobalMovementProvider({
       active = false;
     };
   }, [modalOpen, data, loadState]);
+
+  useEffect(() => {
+    if (!posModalOpen || posData !== null || posLoadState === "error") return;
+    let active = true;
+    void (async () => {
+      try {
+        const payload = await getSaleFormDataAction();
+        if (active) setPosData(payload);
+      } catch {
+        if (active) setPosLoadState("error");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [posModalOpen, posData, posLoadState]);
 
   useEffect(() => {
     if (!dialOpen) return;
@@ -148,10 +191,7 @@ export function GlobalMovementProvider({
               <button
                 ref={firstOptionRef}
                 type="button"
-                onClick={() => {
-                  setDialOpen(false);
-                  router.push("/pos/sales");
-                }}
+                onClick={openPosSale}
                 className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
                 aria-label={tMovements("quickAddPosSale")}
               >
@@ -229,6 +269,38 @@ export function GlobalMovementProvider({
             defaultType={preset.type}
             defaultCurrency={defaultCurrency}
             onSuccess={closeModal}
+          />
+        )}
+      </Modal>
+
+      {/* Shared POS sale form — same in-place pattern as the movement modal.
+          SaleForm reuses the list page's form component (no logic duplicated)
+          and closes itself via onDone after a successful create. */}
+      <Modal open={posModalOpen} onClose={closePosModal} title={tSales("createSale")} size="lg">
+        {posLoadState === "error" ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{tToast("operationFailed")}</p>
+            <button
+              type="button"
+              onClick={() => setPosLoadState("idle")}
+              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              {tErrors("retry")}
+            </button>
+          </div>
+        ) : posData === null ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+            {tCommon("loading")}
+          </p>
+        ) : posData.accounts.length === 0 ? (
+          // Same account-needed guidance as the movement modal (H-10 style).
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{tMovements("noAccounts")}</p>
+        ) : (
+          <SaleForm
+            catalogItems={posData.catalogItems}
+            accounts={posData.accounts}
+            clients={posData.clients}
+            onDone={closePosModal}
           />
         )}
       </Modal>

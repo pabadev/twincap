@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   createSale,
@@ -7,61 +7,96 @@ import {
   deleteSale,
   getSaleDetail,
   type SaleDetailSnapshot,
-} from '../../../../core/application/sales';
-import type { Currency } from '../../../../core/domain/currency';
-import type { PaymentMode } from '../../../../core/domain/sale';
-import { getCurrentUser } from '../../../../infrastructure/auth/getCurrentUser';
-import { MongoCatalogItemRepository } from '../../../../infrastructure/repositories/catalog-repository';
-import { MongoSaleRepository } from '../../../../infrastructure/repositories/sale-repository';
-import { MongoMovementRepository } from '../../../../infrastructure/repositories/movement-repository';
-import { MongoClientRepository } from '../../../../infrastructure/repositories/client-repository';
-import { MongoAccountRepository } from '../../../../infrastructure/repositories/account-repository';
-import { MongoCreditGrantedRepository } from '../../../../infrastructure/repositories/credit-granted-repository';
-import { MongoUnitOfWork } from '../../../../infrastructure/transactions/mongo-unit-of-work';
-import { connectDb } from '../../../../infrastructure/db/connection';
-import { claimIdempotency, releaseIdempotency } from '../../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../../infrastructure/config/id-generator';
-import { assertBusinessDateNotFuture, businessDateToInputValue } from '../../../../lib/date';
-import { handleActionError } from '../../../../lib/handle-action-error';
-import { revalidatePath } from 'next/cache';
-import { withAudit } from '../../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../../infrastructure/repositories/operation-log-repository';
-import { trackAnalytics } from '../../../../lib/track-analytics';
-import { serializeEntities } from '../../../../lib/serialize';
-import { getT } from '../../../../i18n/server';
-import { buildSalesCsv, filterSalesForCsv } from './export-csv';
-import type { SaleCsvFilters } from './export-csv';
+} from "../../../../core/application/sales";
+import { listCatalogItems } from "../../../../core/application/catalog";
+import { listClients } from "../../../../core/application/clients";
+import { listAccounts } from "../../../../core/application/accounts";
+import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
+import type { SerializedClient } from "../../../../core/domain/client";
+import type { SerializedAccount } from "../../../../core/domain/account";
+import type { Currency } from "../../../../core/domain/currency";
+import type { PaymentMode } from "../../../../core/domain/sale";
+import { getCurrentUser } from "../../../../infrastructure/auth/getCurrentUser";
+import { MongoCatalogItemRepository } from "../../../../infrastructure/repositories/catalog-repository";
+import { MongoSaleRepository } from "../../../../infrastructure/repositories/sale-repository";
+import { MongoMovementRepository } from "../../../../infrastructure/repositories/movement-repository";
+import { MongoClientRepository } from "../../../../infrastructure/repositories/client-repository";
+import { MongoAccountRepository } from "../../../../infrastructure/repositories/account-repository";
+import { MongoCreditGrantedRepository } from "../../../../infrastructure/repositories/credit-granted-repository";
+import { MongoUnitOfWork } from "../../../../infrastructure/transactions/mongo-unit-of-work";
+import { connectDb } from "../../../../infrastructure/db/connection";
+import { claimIdempotency, releaseIdempotency } from "../../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../../infrastructure/config/id-generator";
+import { assertBusinessDateNotFuture, businessDateToInputValue } from "../../../../lib/date";
+import { handleActionError } from "../../../../lib/handle-action-error";
+import { revalidatePath } from "next/cache";
+import { withAudit } from "../../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../../infrastructure/repositories/operation-log-repository";
+import { trackAnalytics } from "../../../../lib/track-analytics";
+import { serializeEntities } from "../../../../lib/serialize";
+import { getT } from "../../../../i18n/server";
+import { buildSalesCsv, filterSalesForCsv } from "./export-csv";
+import type { SaleCsvFilters } from "./export-csv";
 
 const ids = objectIdGenerator;
+
+/**
+ * Reference data for the POS sale form (beta feedback: the FAB "Venta POS"
+ * option opens the form in place, so the modal fetches its own data on open
+ * — same fetch-on-open pattern as the shared movement modal).
+ */
+export async function getSaleFormDataAction(): Promise<{
+  catalogItems: SerializedCatalogItem[];
+  accounts: SerializedAccount[];
+  clients: SerializedClient[];
+}> {
+  const user = await getCurrentUser();
+  if (!user) return { catalogItems: [], accounts: [], clients: [] };
+
+  await connectDb();
+  const catalogRepo = new MongoCatalogItemRepository();
+  const clientRepo = new MongoClientRepository();
+  const accountRepo = new MongoAccountRepository();
+  const [catalogItems, clients, accounts] = await Promise.all([
+    listCatalogItems(user.workspaceId!, catalogRepo),
+    listClients(user.workspaceId!, clientRepo),
+    listAccounts(user.workspaceId!, accountRepo),
+  ]);
+  return {
+    catalogItems: serializeEntities(catalogItems),
+    accounts: serializeEntities(accounts),
+    clients: serializeEntities(clients),
+  };
+}
 
 export async function createSaleAction(
   _prev: { error?: string; success?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const lineItemsJson = formData.get('lineItems') as string;
-  const accountId = formData.get('accountId') as string;
-  const clientId = (formData.get('clientId') as string) || undefined;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const paymentMode = formData.get('paymentMode') as PaymentMode;
-  const currency = formData.get('currency') as Currency;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const lineItemsJson = formData.get("lineItems") as string;
+  const accountId = formData.get("accountId") as string;
+  const clientId = (formData.get("clientId") as string) || undefined;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const paymentMode = formData.get("paymentMode") as PaymentMode;
+  const currency = formData.get("currency") as Currency;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let items: { itemId: string; quantity: number; unitPrice: number }[];
   try {
     items = JSON.parse(lineItemsJson);
   } catch {
-    return { error: 'Invalid line items data' };
+    return { error: "Invalid line items data" };
   }
 
   if (!items || items.length === 0) {
-    return { error: 'Sale must have at least one line item' };
+    return { error: "Sale must have at least one line item" };
   }
 
   // R15.3.1 P3: line item quantities are discrete counts — reject
@@ -69,14 +104,14 @@ export async function createSaleAction(
   // i18n key; the Sale aggregate re-enforces the same rule server-side.
   for (const item of items) {
     if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-      return { error: 'error.quantityInteger' };
+      return { error: "error.quantityInteger" };
     }
   }
 
   // H14: upfront payment applies only to on-credit sales.
-  const initialPaymentRaw = formData.get('initialPayment');
+  const initialPaymentRaw = formData.get("initialPayment");
   const initialPayment =
-    paymentMode === 'on-credit' && initialPaymentRaw !== null
+    paymentMode === "on-credit" && initialPaymentRaw !== null
       ? Number(initialPaymentRaw)
       : undefined;
 
@@ -88,22 +123,27 @@ export async function createSaleAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createSale');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createSale");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createSale',
-        entityType: 'sale',
-        result: 'duplicate',
+        action: "createSale",
+        entityType: "sale",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createSale', entityType: 'sale', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createSale",
+        entityType: "sale",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const catalogRepo = new MongoCatalogItemRepository();
         const saleRepo = new MongoSaleRepository();
@@ -131,23 +171,23 @@ export async function createSaleAction(
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
-    revalidatePath('/pos/sales');
-    revalidatePath('/pos/catalog');
-    revalidatePath('/credits/granted');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/pos/sales");
+    revalidatePath("/pos/catalog");
+    revalidatePath("/credits/granted");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
     // R13-G: track sale creation (analytics, best-effort).
-    await trackAnalytics('saleCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("saleCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'createSale');
+      await releaseIdempotency(user.userId, idempotencyKey, "createSale");
     }
     return handleActionError(error);
   }
 
-  return { success: 'saleCreated' };
+  return { success: "saleCreated" };
 }
 
 export async function addSaleAbonoAction(
@@ -155,17 +195,17 @@ export async function addSaleAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const saleId = formData.get('saleId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const currency = formData.get('currency') as Currency;
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const saleId = formData.get("saleId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const currency = formData.get("currency") as Currency;
+  const accountId = formData.get("accountId") as string;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
@@ -176,22 +216,27 @@ export async function addSaleAbonoAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "addSaleAbono");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'addSaleAbono',
-        entityType: 'sale',
-        result: 'duplicate',
+        action: "addSaleAbono",
+        entityType: "sale",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'addSaleAbono', entityType: 'sale', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "addSaleAbono",
+        entityType: "sale",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
@@ -212,19 +257,19 @@ export async function addSaleAbonoAction(
     // resolved). From here on the idempotency key MUST NOT be released on
     // failure (R15.3.1 P1.2).
     committed = true;
-    revalidatePath('/pos/sales');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/pos/sales");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'addSaleAbono');
+      await releaseIdempotency(user.userId, idempotencyKey, "addSaleAbono");
     }
     return handleActionError(error);
   }
 
-  return { success: 'abonoAdded' };
+  return { success: "abonoAdded" };
 }
 
 export async function deleteSaleAbonoAction(
@@ -232,33 +277,41 @@ export async function deleteSaleAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const saleId = formData.get('saleId') as string;
-  const abonoId = formData.get('abonoId') as string;
+  const saleId = formData.get("saleId") as string;
+  const abonoId = formData.get("abonoId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteSaleAbono', entityType: 'sale', userId: user.userId },
+      { action: "deleteSaleAbono", entityType: "sale", userId: user.userId },
       () => {
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteSaleAbono(user.workspaceId!, saleId, abonoId, saleRepo, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deleteSaleAbono(
+          user.workspaceId!,
+          saleId,
+          abonoId,
+          saleRepo,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidatePath('/pos/sales');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/pos/sales");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoDeleted' };
+  return { success: "abonoDeleted" };
 }
 
 export async function deleteSaleAction(
@@ -266,51 +319,57 @@ export async function deleteSaleAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const saleId = formData.get('saleId') as string;
+  const saleId = formData.get("saleId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteSale', entityType: 'sale', userId: user.userId },
+      { action: "deleteSale", entityType: "sale", userId: user.userId },
       () => {
         const catalogRepo = new MongoCatalogItemRepository();
         const saleRepo = new MongoSaleRepository();
         const movementRepo = new MongoMovementRepository();
         const creditRepo = new MongoCreditGrantedRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteSale(user.workspaceId!, saleId, saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, new MongoUnitOfWork());
+        return deleteSale(
+          user.workspaceId!,
+          saleId,
+          saleRepo,
+          catalogRepo,
+          movementRepo,
+          creditRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidatePath('/pos/sales');
-    revalidatePath('/pos/catalog');
-    revalidatePath('/credits/granted');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/pos/sales");
+    revalidatePath("/pos/catalog");
+    revalidatePath("/credits/granted");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'saleDeleted' };
+  return { success: "saleDeleted" };
 }
 
 export type SaleDetailResult =
-  | { ok: true; sale: SaleDetailSnapshot }
-  | { ok: false; error: string };
+  { ok: true; sale: SaleDetailSnapshot } | { ok: false; error: string };
 
 /**
  * H17: full detail snapshot for one sale (read-only). The userId always comes
  * from the session — never from the client — so the read stays tenant-scoped.
  */
-export async function getSaleDetailAction(
-  saleId: string,
-): Promise<SaleDetailResult> {
+export async function getSaleDetailAction(saleId: string): Promise<SaleDetailResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: 'error.unauthorized' };
+  if (!user) return { ok: false, error: "error.unauthorized" };
 
   try {
     await connectDb();
@@ -344,7 +403,7 @@ export async function exportSalesCsvAction(
   filters: SaleCsvFilters,
 ): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: 'error.unauthorized' };
+  if (!user) return { ok: false, error: "error.unauthorized" };
 
   try {
     await connectDb();
@@ -362,27 +421,23 @@ export async function exportSalesCsvAction(
     const itemNames: Record<string, string> = {};
     for (const item of catalogItems) itemNames[item.id] = item.name;
 
-    const t = await getT('Export');
+    const t = await getT("Export");
     const labels = {
-      date: t('date'),
-      client: t('client'),
-      items: t('items'),
-      total: t('total'),
-      paid: t('paid'),
-      pending: t('pending'),
-      currency: t('currency'),
-      paymentMode: t('paymentMode'),
-      paidInFull: t('paidInFull'),
-      onCredit: t('onCredit'),
-      noClient: t('noClient'),
+      date: t("date"),
+      client: t("client"),
+      items: t("items"),
+      total: t("total"),
+      paid: t("paid"),
+      pending: t("pending"),
+      currency: t("currency"),
+      paymentMode: t("paymentMode"),
+      paidInFull: t("paidInFull"),
+      onCredit: t("onCredit"),
+      noClient: t("noClient"),
     };
 
     const filtered = filterSalesForCsv(serializeEntities(sales), filters, clientNames);
-    const csv = buildSalesCsv(
-      filtered,
-      { clientNames, itemNames },
-      labels,
-    );
+    const csv = buildSalesCsv(filtered, { clientNames, itemNames }, labels);
     const date = businessDateToInputValue(new Date());
     return { ok: true, csv, filename: `sales_${date}.csv` };
   } catch (error) {

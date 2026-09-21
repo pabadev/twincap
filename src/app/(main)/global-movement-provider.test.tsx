@@ -27,6 +27,16 @@ vi.mock("./movements/actions", () => ({
   listCategoriesAction: (...args: unknown[]) => listCategoriesAction(...args),
 }));
 
+const getSaleFormDataAction = vi.fn().mockResolvedValue({
+  catalogItems: [],
+  accounts: [],
+  clients: [],
+});
+
+vi.mock("./pos/sales/actions", () => ({
+  getSaleFormDataAction: (...args: unknown[]) => getSaleFormDataAction(...args),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: () => {},
@@ -40,6 +50,11 @@ vi.mock("next/navigation", () => ({
 // Stub the MovementForm to avoid pulling in server actions
 vi.mock("./movements/movement-form", () => ({
   MovementForm: () => null,
+}));
+
+// Stub SaleForm — the POS modal reuses it (same fetch-on-open contract).
+vi.mock("./pos/sales/sale-form", () => ({
+  SaleForm: () => null,
 }));
 
 function TestConsumer() {
@@ -118,5 +133,79 @@ describe("GlobalMovementProvider §16 cache invalidation", () => {
     });
     expect(listAccountsAction).toHaveBeenCalledTimes(2);
     expect(listCategoriesAction).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Beta feedback (B2): "Venta POS" must behave like Ingreso/Egreso — open the
+// associated form in place (modal), not navigate away. Observable contract:
+// the POS option opens a dialog whose data is fetched on open.
+describe("GlobalMovementProvider POS sale in-place modal (B2)", () => {
+  afterEach(() => {
+    unmountAll();
+    vi.clearAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("opens the POS sale modal in place and fetches its data on open", async () => {
+    const { container } = mount(
+      <GlobalMovementProvider defaultCurrency="COP">
+        <TestConsumer />
+      </GlobalMovementProvider>,
+    );
+
+    // Open the speed dial and pick the POS option.
+    const fab = container.querySelector<HTMLButtonElement>('[aria-label="quickAdd"]')!;
+    act(() => {
+      fab.click();
+    });
+    const posOption = container.querySelector<HTMLButtonElement>('[aria-label="quickAddPosSale"]')!;
+    act(() => {
+      posOption.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getSaleFormDataAction).toHaveBeenCalledTimes(1);
+    // The POS dialog is open with the create-sale title (no navigation).
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog!.textContent).toContain("createSale");
+  });
+
+  it("invalidates cached POS data on close: re-fetch on the next open", async () => {
+    const { container } = mount(
+      <GlobalMovementProvider defaultCurrency="COP">
+        <TestConsumer />
+      </GlobalMovementProvider>,
+    );
+
+    const fab = container.querySelector<HTMLButtonElement>('[aria-label="quickAdd"]')!;
+    act(() => {
+      fab.click();
+    });
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="quickAddPosSale"]')!.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getSaleFormDataAction).toHaveBeenCalledTimes(1);
+
+    // Close the POS modal, reopen the dial, pick POS again.
+    const close = container.querySelector<HTMLButtonElement>('[aria-label="close"]')!;
+    act(() => {
+      close.click();
+    });
+    act(() => {
+      fab.click();
+    });
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="quickAddPosSale"]')!.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getSaleFormDataAction).toHaveBeenCalledTimes(2);
   });
 });
