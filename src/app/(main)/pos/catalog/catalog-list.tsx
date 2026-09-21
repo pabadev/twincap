@@ -69,6 +69,7 @@ export function CatalogList({
             </div>
             <input
               type="text"
+              aria-label={t("search")}
               placeholder={t("search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
