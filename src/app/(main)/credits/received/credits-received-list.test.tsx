@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CreditsReceivedList } from "./credits-received-list";
 import type { SerializedCreditReceived } from "../../../../core/domain/credit-received";
 
-// Ronda POST-UX §19/§20: the credit card header must stack into rows on
-// mobile (counterparty / metadata / amounts+actions) instead of squeezing
-// three columns side by side; desktop keeps the single-row layout.
+// Ronda POST-UX beta feedback (B4): the collapsed credit card must follow the
+// Movements card format — row 1 identity + chevron, label/value rows for the
+// financial data, and a bordered footer with the abono count + actions.
 
 vi.mock("../../../../i18n/client", () => ({
   useT: () => (key: string) => key,
@@ -79,28 +79,34 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("CreditsReceivedList card header responsiveness (§19/§20)", () => {
-  it("stacks the card header on mobile and restores the row layout on sm+", () => {
+describe("CreditsReceivedList card format (B4)", () => {
+  it("renders identity row, label/value rows and a bordered footer", () => {
     const { container } = mount(<CreditsReceivedList accounts={accounts} credits={[credit]} />);
     const header = container.querySelector<HTMLElement>("div.cursor-pointer");
     expect(header).not.toBeNull();
-    // Mobile: column stack with row gaps; desktop: back to the single row.
-    expect(header!.className).toContain("flex-col");
-    expect(header!.className).toContain("sm:flex-row");
-    // The amounts+actions group spreads across the card width on mobile and
-    // packs to the right edge on desktop.
-    const bottomRow = header!.lastElementChild as HTMLElement | null;
-    expect(bottomRow?.className).toContain("justify-between");
-    expect(bottomRow?.className).toContain("sm:justify-end");
-    // The counterparty block cannot force horizontal overflow.
-    expect(container.querySelector("span.min-w-0")).not.toBeNull();
+    // Row 1 carries the counterparty and the expand chevron.
+    expect(header!.textContent).toContain(credit.counterparty);
+    expect(header!.querySelector("svg")).not.toBeNull();
+    // The financial data lives in dl label/value rows (date, amount, pending).
+    const dl = header!.querySelector("dl");
+    expect(dl).not.toBeNull();
+    expect(dl!.textContent).toContain("date");
+    expect(dl!.textContent).toContain("amount");
+    expect(dl!.textContent).toContain("pending");
+    // Footer is a bordered sibling row with the abono count and edit action.
+    const footer = header!.nextElementSibling as HTMLElement | null;
+    expect(footer?.className).toContain("border-t");
+    expect(footer!.textContent).toContain("abonoCount");
+    expect(footer!.querySelector('button[aria-label="edit"]')).not.toBeNull();
   });
 
-  it("keeps the amounts and pending figure visible in the stacked row", () => {
+  it("keeps the pending figure visible and emphasized in the rows", () => {
     const { container } = mount(<CreditsReceivedList accounts={accounts} credits={[credit]} />);
-    const header = container.querySelector<HTMLElement>("div.cursor-pointer")!;
-    const bottomRow = header.lastElementChild!;
-    // Principal on top, pending below — both inside the mobile row.
-    expect(bottomRow.textContent).toContain("pending");
+    const dl = container.querySelector("dl")!;
+    const pendingRow = [...dl.querySelectorAll("dd")].find((dd) =>
+      dd.className.includes("text-debt"),
+    );
+    expect(pendingRow).toBeDefined();
+    expect(pendingRow!.className).toContain("tabular-nums");
   });
 });

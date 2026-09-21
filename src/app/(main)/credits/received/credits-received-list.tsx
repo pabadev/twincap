@@ -185,71 +185,92 @@ export function CreditsReceivedList({
                   key={credit.id}
                   className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? "opacity-60" : ""}`}
                 >
+                  {/* Beta feedback: the collapsed card follows the Movements
+                      card format — row 1 identity + chevron, then label/value
+                      rows, then a bordered footer with count + actions. */}
                   <div
-                    className="flex cursor-pointer flex-col gap-2 px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:gap-0"
+                    className="cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                     onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-white">
-                        <span className="min-w-0">{credit.counterparty}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2 font-medium text-zinc-900 dark:text-white">
+                        <span className="min-w-0 truncate">{credit.counterparty}</span>
                         {isPaid && <Badge variant="success">{tCommon("paid")}</Badge>}
                       </div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {formatDate(credit.date, locale)}
-                        {credit.installments &&
-                          ` · ${credit.installments} ${t("installmentCount")}`}
-                        {credit.frequency && ` · ${t(credit.frequency)}`}
-                        {credit.installments && credit.installmentValue && (
-                          <>
-                            {" · "}
-                            {t("totalToPayLabel")}:{" "}
-                            {formatAmount(credit.totalToPay, currency, locale)}
-                            {paidInstallments !== undefined &&
-                              paidInstallments < credit.installments && (
-                                <>
-                                  {" · "}
-                                  {t("installmentProgress", {
-                                    count: String(paidInstallments),
-                                    total: String(credit.installments),
-                                  })}
-                                </>
-                              )}
-                          </>
-                        )}
-                      </div>
+                      <Icon
+                        icon={ChevronDown}
+                        size="sm"
+                        className={`shrink-0 text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      />
                     </div>
-                    <div className="flex items-center justify-between gap-3 sm:ml-4 sm:shrink-0 sm:justify-end">
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-zinc-900 dark:text-white">
+
+                    <dl className="mt-2 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {tCommon("date")}
+                        </dt>
+                        <dd className="text-right text-xs text-zinc-600 dark:text-zinc-400">
+                          {formatDate(credit.date, locale)}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {tCommon("amount")}
+                        </dt>
+                        <dd className="text-right text-sm font-medium tabular-nums text-zinc-900 dark:text-white">
                           {formatAmount(credit.principal.amount, currency, locale)}
-                        </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {pending > 0
-                            ? `${t("pending")} ${formatAmount(pending, currency, locale)}`
-                            : t("paidInFull")}
-                        </div>
+                        </dd>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-400">
-                          {credit.abonos?.length}{" "}
-                          {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
-                        </span>
-                        <ActionIconButton
-                          icon={Pencil}
-                          label={tCommon("edit")}
-                          tone="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingCredit(credit);
-                          }}
-                        />
-                        <Icon
-                          icon={ChevronDown}
-                          size="sm"
-                          className={`text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
+                      {credit.installments && (
+                        <div className="flex items-start justify-between gap-3">
+                          <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            {t("installmentsRow")}
+                          </dt>
+                          <dd className="text-right text-xs text-zinc-600 dark:text-zinc-400">
+                            {paidInstallments !== undefined
+                              ? `${paidInstallments}/${credit.installments}`
+                              : credit.installments}{" "}
+                            {t("installmentCount")}
+                            {credit.frequency && ` · ${t(credit.frequency)}`}
+                          </dd>
+                        </div>
+                      )}
+                      {credit.installments && credit.installmentValue && (
+                        <div className="flex items-start justify-between gap-3">
+                          <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            {t("totalToPayLabel")}
+                          </dt>
+                          <dd className="text-right text-xs tabular-nums text-zinc-600 dark:text-zinc-400">
+                            {formatAmount(credit.totalToPay, currency, locale)}
+                          </dd>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                          {t("pending")}
+                        </dt>
+                        <dd
+                          className={`text-right text-sm font-medium tabular-nums ${
+                            pending > 0 ? "text-debt" : "text-success"
+                          }`}
+                        >
+                          {pending > 0 ? formatAmount(pending, currency, locale) : t("paidInFull")}
+                        </dd>
                       </div>
-                    </div>
+                    </dl>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-400">
+                      {credit.abonos?.length}{" "}
+                      {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
+                    </span>
+                    <ActionIconButton
+                      icon={Pencil}
+                      label={tCommon("edit")}
+                      tone="primary"
+                      onClick={() => setEditingCredit(credit)}
+                    />
                   </div>
 
                   {isExpanded && (

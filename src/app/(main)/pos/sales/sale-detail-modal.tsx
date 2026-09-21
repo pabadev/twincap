@@ -77,14 +77,6 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
           <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                {t("saleIdLabel")}
-              </dt>
-              <dd className="break-all font-mono text-xs text-zinc-900 dark:text-white">
-                {snapshot.id}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 {tCommon("date")}
               </dt>
               <dd className="text-zinc-900 dark:text-white">{formatDate(snapshot.date, locale)}</dd>
