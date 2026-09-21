@@ -29,18 +29,16 @@ const AccountSchema = new Schema<AccountDoc>(
     currency: {
       type: String,
       required: true,
-      enum: ["COP", "USD", "MXN", "EUR"],
+      enum: ["COP", "USD", "MXN", "EUR", "BRL"],
     },
     isFixed: {
       type: Boolean,
       required: true,
       default: false,
     },
-
   },
   { timestamps: true },
 );
 
 export const AccountModel =
-  mongoose.models["Account"] ||
-  mongoose.model<AccountDoc>("Account", AccountSchema);
+  mongoose.models["Account"] || mongoose.model<AccountDoc>("Account", AccountSchema);

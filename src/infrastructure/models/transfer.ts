@@ -62,12 +62,12 @@ const TransferSchema = new Schema<TransferDoc>(
     sourceCurrency: {
       type: String,
       required: true,
-      enum: ["COP", "USD", "MXN", "EUR"],
+      enum: ["COP", "USD", "MXN", "EUR", "BRL"],
     },
     destinationCurrency: {
       type: String,
       required: true,
-      enum: ["COP", "USD", "MXN", "EUR"],
+      enum: ["COP", "USD", "MXN", "EUR", "BRL"],
     },
     rate: {
       type: Number,
@@ -90,5 +90,4 @@ const TransferSchema = new Schema<TransferDoc>(
 );
 
 export const TransferModel =
-  mongoose.models["Transfer"] ||
-  mongoose.model<TransferDoc>("Transfer", TransferSchema);
+  mongoose.models["Transfer"] || mongoose.model<TransferDoc>("Transfer", TransferSchema);
