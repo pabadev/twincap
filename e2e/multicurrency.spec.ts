@@ -85,7 +85,7 @@ test.describe("R15.3 §11 — Multimoneda", () => {
     await expect(page.getByRole("dialog", { name: /New Transfer/i })).toBeHidden();
 
     // The list shows the transfer with BOTH amounts and the derived rate.
-    const row = page.locator("tr", { hasText: /Dollar Account \(USD\)/ }).first();
+    const row = page.locator("[data-id]", { hasText: /Dollar Account \(USD\)/ }).first();
     await expect(row).toContainText(/Efectivo \(COP\)/);
     await expect(row).toContainText(/COP\s+190,000/);
     await expect(row).toContainText(/\$50\.00/);
@@ -94,7 +94,7 @@ test.describe("R15.3 §11 — Multimoneda", () => {
     // Persistence: reload → the transfer and its derived rate are still shown
     // (the value recomputes from the stored amounts).
     await page.reload();
-    const reloadedRow = page.locator("tr", { hasText: /Dollar Account \(USD\)/ }).first();
+    const reloadedRow = page.locator("[data-id]", { hasText: /Dollar Account \(USD\)/ }).first();
     await expect(reloadedRow).toContainText(/COP\s+190,000/);
     await expect(reloadedRow).toContainText(/\$50\.00/);
     await expect(reloadedRow).toContainText(/\(Effective rate: 3,800\)/);
@@ -123,9 +123,9 @@ test.describe("R15.3 §11 — Multimoneda", () => {
 
     // Account balances reflect the transfer legs (source −190,000, dest +50 USD).
     await page.goto("/accounts");
-    const efectivoRow = page.locator("tr", { hasText: "Efectivo" }).first();
+    const efectivoRow = page.locator("[data-id]", { hasText: "Efectivo" }).first();
     await expect(efectivoRow).toContainText(/-COP\s+190,000/);
-    const dollarRow = page.locator("tr", { hasText: "Dollar Account" }).first();
+    const dollarRow = page.locator("[data-id]", { hasText: "Dollar Account" }).first();
     await expect(dollarRow).toContainText(/\$50\.00/);
   });
 });
