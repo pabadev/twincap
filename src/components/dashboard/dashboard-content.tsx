@@ -192,8 +192,11 @@ export function DashboardContent({
   // A11: the cross-currency `totalBalance` reduce is GONE — SummaryCards now
   // derives the mono-currency total from `currencyBreakdown` and renders the
   // per-currency breakdown in multi-currency mode (no cross-currency sum).
-  const topIncomeRows = incomeRows.slice(0, 3);
-  const topExpenseRows = expenseRows.slice(0, 3);
+  // §31: the vigente spec (UX-RESUMEN-DESIGN.md) is explicitly Top 5
+  // ("slice(0,5) es presentación, no cálculo") — the implementation showed 3.
+  // Resolved in favour of the design: first 5 income/expense rows.
+  const topIncomeRows = incomeRows.slice(0, 5);
+  const topExpenseRows = expenseRows.slice(0, 5);
 
   // N1 hero: period result of the snapshot's aggregation currency plus
   // per-currency available balances (never summed across currencies, R15.3.1 P1.3).
