@@ -80,3 +80,22 @@ Commits: d859149 (aggregation), e563a66 (COP fallbacks), 0ed1783 + 56b71e8 (defa
 
 ## Next step
 Cluster 3 — patterns/forms/notes/a11y (§15-17, §23, §25-28).
+
+## Cluster 3 — Category flows + form density + notes (§15-18)
+Commit: 0540d38.
+- [x] T10 (§15): Quick category creation in movement form ("+" inline, POS pattern):
+  server action returns created snapshot, parent merges state, auto-selects new
+  category, form state preserved, no refresh. i18n keys added.
+- [x] T11 (§16): FAB stale-category root cause: GlobalMovementProvider cached
+  accounts/categories client-side forever (data !== null guard). Fix: closeModal
+  resets data → every open fetches fresh. Regression: open→close→reopen fetches
+  twice (real behavior test, not smoke).
+- [x] T12 (§17): Transfer form groups account selects in 2-col desktop grid;
+  movement form already semantically grouped (left as-is, deliberate).
+- [x] T13 (§18): Note cell max-w truncate → line-clamp-3 + title attr; full
+  content accessible; mobile cards already render full text (deliberate).
+- Verification: tsc 0 errors; 34/34 targeted tests (provider 2, movements suite,
+  parity); prettier clean; eslint clean.
+
+## Next step
+Cluster 4 — standalone §19-24 responsive/cards + venta Quitar button + menus.
