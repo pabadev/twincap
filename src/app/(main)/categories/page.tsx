@@ -9,7 +9,6 @@ import { DeleteCategoryButton } from "./delete-category-button";
 import { RenameCategoryButton } from "./rename-category-button";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Icon } from "../../../components/ui/icon";
-import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
 import { MovementCard } from "../../../components/ui/movement-card";
 import { Tags } from "lucide-react";
 
@@ -50,14 +49,12 @@ export default async function CategoriesPage() {
             categories={incomeCategories}
             emptyMessage={t("noIncome")}
             nameLabel={tCommon("name")}
-            actionsLabel={tCommon("actions")}
           />
           <CategorySection
             title={t("expense")}
             categories={expenseCategories}
             emptyMessage={t("noExpense")}
             nameLabel={tCommon("name")}
-            actionsLabel={tCommon("actions")}
           />
         </div>
       )}
@@ -70,13 +67,11 @@ function CategorySection({
   categories,
   emptyMessage,
   nameLabel,
-  actionsLabel,
 }: {
   title: string;
   categories: { id: string; name: string }[];
   emptyMessage: string;
   nameLabel: string;
-  actionsLabel: string;
 }) {
   if (categories.length === 0) {
     return (
@@ -90,41 +85,12 @@ function CategorySection({
   return (
     <div>
       <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
-      <TableShell className="max-sm:hidden">
-        <Table className="min-w-[300px]">
-          <THead>
-            <tr>
-              <Th>{nameLabel}</Th>
-              <Th align="right">{actionsLabel}</Th>
-            </tr>
-          </THead>
-          <TBody>
-            {categories.map((category) => (
-              <tr key={category.id}>
-                <Td>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                    {category.name}
-                  </span>
-                </Td>
-                <Td align="right">
-                  <div className="flex items-center justify-end gap-1">
-                    <RenameCategoryButton categoryId={category.id} categoryName={category.name} />
-                    <DeleteCategoryButton categoryId={category.id} />
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </TBody>
-        </Table>
-      </TableShell>
-
-      {/* Card variant (<640px) */}
-      <div className="space-y-3 sm:hidden">
+      {/* Cards are the only representation (product decision 2026-09-21). */}
+      <div className="space-y-3">
         {categories.map((category) => (
           <MovementCard
             key={category.id}
             id={category.id}
-            className="sm:hidden"
             fields={[
               {
                 key: "name",
