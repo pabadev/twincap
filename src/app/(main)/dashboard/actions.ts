@@ -1,27 +1,32 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { getT, getLocale } from '../../../i18n/server';
-import { listAccounts } from '../../../core/application/accounts';
-import { filterMovementsWithLiveParents, accountBalancesFromMovements, collectLiveParentIds } from '../../../core/application/movements';
-import { buildDashboardSnapshot } from '../../../core/application/dashboard/build-dashboard-snapshot';
-import { computeDashboardWindow } from '../../../core/application/dashboard/compute-dashboard-window';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoCategoryRepository } from '../../../infrastructure/repositories/category-repository';
-import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
-import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
-import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
-import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
-import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
-import { connectDb } from '../../../infrastructure/db/connection';
-import type { DashboardFilters } from '../../../components/dashboard/dashboard-filters';
-import type { DashboardSnapshot } from '../../../components/dashboard/dashboard-snapshot';
-import { makeCategoryLabelResolver } from '../../../lib/resolve-category-label';
-import { SYSTEM_NOTES_NAMESPACE } from '../../../lib/system-note';
-import { reportUnexpectedErrorAndWait } from '../../../lib/report-unexpected-error';
-import { trackAnalytics } from '../../../lib/track-analytics';
+import { redirect } from "next/navigation";
+import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
+import { getT, getLocale } from "../../../i18n/server";
+import { listAccounts } from "../../../core/application/accounts";
+import {
+  filterMovementsWithLiveParents,
+  accountBalancesFromMovements,
+  collectLiveParentIds,
+} from "../../../core/application/movements";
+import { buildDashboardSnapshot } from "../../../core/application/dashboard/build-dashboard-snapshot";
+import { computeDashboardWindow } from "../../../core/application/dashboard/compute-dashboard-window";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoCategoryRepository } from "../../../infrastructure/repositories/category-repository";
+import { MongoCreditReceivedRepository } from "../../../infrastructure/repositories/credit-received-repository";
+import { MongoCreditGrantedRepository } from "../../../infrastructure/repositories/credit-granted-repository";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { connectDb } from "../../../infrastructure/db/connection";
+import type { DashboardFilters } from "../../../components/dashboard/dashboard-filters";
+import type { DashboardSnapshot } from "../../../components/dashboard/dashboard-snapshot";
+import { makeCategoryLabelResolver } from "../../../lib/resolve-category-label";
+import { SYSTEM_NOTES_NAMESPACE } from "../../../lib/system-note";
+import { reportUnexpectedErrorAndWait } from "../../../lib/report-unexpected-error";
+import { trackAnalytics } from "../../../lib/track-analytics";
 
 /**
  * Server action that re-aggregates the dashboard snapshot for a given filter
@@ -34,7 +39,7 @@ export async function getDashboardSnapshotAction(
   tzOffsetMinutes = 0,
 ): Promise<DashboardSnapshot> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
   try {
     await connectDb();
@@ -55,17 +60,25 @@ export async function getDashboardSnapshotAction(
     // window; balances keep reading FULL history (R7-A, identical numbers).
     const { from, to } = computeDashboardWindow(new Date(), tzOffsetMinutes);
 
-    const [windowedMovements, balanceMovements, categories, creditsReceived, creditsGranted, payables, sales, transfers] =
-      await Promise.all([
-        movementRepo.findByWorkspaceIdAndDateRange(user.workspaceId!, from, to),
-        movementRepo.findByWorkspaceIdForBalance(user.workspaceId!),
-        categoryRepo.findByWorkspaceId(user.workspaceId!),
-        creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
-        creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
-        payableRepo.findByWorkspaceId(user.workspaceId!),
-        saleRepo.findByWorkspaceId(user.workspaceId!),
-        transferRepo.findByWorkspaceId(user.workspaceId!),
-      ]);
+    const [
+      windowedMovements,
+      balanceMovements,
+      categories,
+      creditsReceived,
+      creditsGranted,
+      payables,
+      sales,
+      transfers,
+    ] = await Promise.all([
+      movementRepo.findByWorkspaceIdAndDateRange(user.workspaceId!, from, to),
+      movementRepo.findByWorkspaceIdForBalance(user.workspaceId!),
+      categoryRepo.findByWorkspaceId(user.workspaceId!),
+      creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
+      creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
+      payableRepo.findByWorkspaceId(user.workspaceId!),
+      saleRepo.findByWorkspaceId(user.workspaceId!),
+      transferRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
 
     // R6-P1 defensive filter + R7-A balance derivation — same source/pattern
     // as page.tsx. R15.2: shared assembly via collectLiveParentIds (single
@@ -97,11 +110,14 @@ export async function getDashboardSnapshotAction(
 
     const serializedCategories = categories.map((c) => c.toJSON());
 
-    const primaryCurrency =
-      accounts.length > 0 ? accounts[0].currency : 'COP';
+    // §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string.
+    // When the workspace has no accounts yet, the dashboard still needs a
+    // currency for aggregation scope; the named constant makes the choice
+    // traceable (currency.ts) rather than an anonymous literal.
+    const primaryCurrency = accounts.length > 0 ? accounts[0].currency : DEFAULT_CURRENCY;
 
     const [tDashboard, tSystemNotes, locale] = await Promise.all([
-      getT('Dashboard'),
+      getT("Dashboard"),
       getT(SYSTEM_NOTES_NAMESPACE),
       getLocale(),
     ]);
@@ -113,7 +129,7 @@ export async function getDashboardSnapshotAction(
     });
 
     // R13-G: track dashboard view (analytics, best-effort).
-    await trackAnalytics('dashboardViewed', user.workspaceId!, user.userId);
+    await trackAnalytics("dashboardViewed", user.workspaceId!, user.userId);
 
     return buildDashboardSnapshot({
       accounts: accountBalancesWithBalance,

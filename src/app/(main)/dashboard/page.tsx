@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import { getT, getLocale } from "../../../i18n/server";
 import { listAccounts } from "../../../core/application/accounts";
 import {
@@ -137,7 +138,8 @@ export default async function DashboardPage({
     balance: balanceByAccount.get(account.id) ?? 0,
   }));
 
-  const primaryCurrency = accounts.length > 0 ? accounts[0].currency : "COP";
+  // §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string.
+  const primaryCurrency = accounts.length > 0 ? accounts[0].currency : DEFAULT_CURRENCY;
 
   const positionData = computeActivosPasivos({
     accounts: accountBalances,

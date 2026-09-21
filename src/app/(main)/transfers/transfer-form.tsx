@@ -15,7 +15,7 @@ import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { businessDateToInputValue, toDateInputValue } from "../../../lib/date";
 import { formatAmount } from "../../../lib/format";
-import { exponentOf } from "../../../core/domain/currency";
+import { exponentOf, DEFAULT_CURRENCY } from "../../../core/domain/currency";
 
 /**
  * Action-state shape shared by the create/edit transfer actions.
@@ -71,11 +71,15 @@ export function TransferForm({
   const warning = state?.warning ?? null;
   const showWarning = !!warning && !warningDismissed;
 
+  // §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string.
+  // When editing, the transfer's own currency wins; when creating, the first
+  // account's currency is used; when no accounts exist, the named constant
+  // from currency.ts provides a traceable default.
   const [sourceCurrency, setSourceCurrency] = useState(
-    transfer?.sourceCurrency ?? accounts[0]?.currency ?? "COP",
+    transfer?.sourceCurrency ?? accounts[0]?.currency ?? DEFAULT_CURRENCY,
   );
   const [destCurrency, setDestCurrency] = useState(
-    transfer?.destinationCurrency ?? accounts[0]?.currency ?? "COP",
+    transfer?.destinationCurrency ?? accounts[0]?.currency ?? DEFAULT_CURRENCY,
   );
   const isCrossCurrency = sourceCurrency !== destCurrency;
 
