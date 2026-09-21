@@ -106,7 +106,11 @@ html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before,
 html.theme-transition *::after {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease !important;
 }
 
 /* PWA standalone mode — add safe area padding */
@@ -114,6 +118,21 @@ html.theme-transition *::after {
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* §28 reduced motion: honour prefers-reduced-motion globally — transitions
+   (toast, accordion, nav drawer, chevrons, theme) and animations (spinners)
+   collapse to effectively zero so movement is never essential to using the
+   app. One canonical rule instead of per-component overrides. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
