@@ -26,7 +26,7 @@ vi.mock("../global-movement-provider", () => ({
 vi.mock("./actions", () => ({
   listAccountsAction: async () => [],
   listCategoriesAction: async () => [],
-  listMovementsPagedAction: async () => ({ items: [], nextCursor: null }),
+  listMovementsPagedAction: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   exportMovementsCsvAction: async () => null,
 }));
 
@@ -129,5 +129,50 @@ describe("MovementsList sort headers (R-10, H-18)", () => {
     expect(headerCell(container, "amount").getAttribute("aria-sort")).toBe("descending");
     expect(headerCell(container, "date").getAttribute("aria-sort")).toBe("none");
     expect(headerCell(container, "category").getAttribute("aria-sort")).toBe("none");
+  });
+});
+
+describe("MovementsList load more (T5 regression)", () => {
+  it("renders the load more button when nextCursor is set", () => {
+    const { container } = mount(
+      <MovementsList
+        initialMovements={[movement()]}
+        nextCursor={{ date: "2026-09-01T00:00:00.000Z", createdAt: "2026-09-01T00:00:00.000Z" }}
+      />,
+    );
+    const button = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("loadMore"),
+    );
+    expect(button).toBeDefined();
+  });
+
+  it("does not render the load more button when nextCursor is null", () => {
+    const { container } = mount(<MovementsList {...baseProps} />);
+    const button = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("loadMore"),
+    );
+    expect(button).toBeUndefined();
+  });
+
+  it("calls the load more handler once when clicked", async () => {
+    const { listMovementsPagedAction } = await import("./actions");
+    const mockLoadMore = vi.mocked(listMovementsPagedAction);
+    mockLoadMore.mockClear();
+    mockLoadMore.mockResolvedValueOnce({ items: [], nextCursor: null });
+
+    const { container } = mount(
+      <MovementsList
+        initialMovements={[movement()]}
+        nextCursor={{ date: "2026-09-01T00:00:00.000Z", createdAt: "2026-09-01T00:00:00.000Z" }}
+      />,
+    );
+    const button = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("loadMore"),
+    );
+    expect(button).toBeDefined();
+    act(() => {
+      button!.click();
+    });
+    expect(mockLoadMore).toHaveBeenCalledTimes(1);
   });
 });

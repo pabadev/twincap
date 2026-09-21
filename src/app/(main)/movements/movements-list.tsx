@@ -473,28 +473,6 @@ export function MovementsList({
                     ))}
                   </TBody>
                 </Table>
-
-                {/* Load more */}
-                {nextCursor && (
-                  <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 text-center">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-11"
-                      onClick={handleLoadMore}
-                      disabled={loadingMore}
-                    >
-                      {loadingMore ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Icon icon={Loader2} size="sm" className="animate-spin" />
-                          {tCommon("loading")}
-                        </span>
-                      ) : (
-                        tCommon("loadMore")
-                      )}
-                    </Button>
-                  </div>
-                )}
               </TableShell>
 
               {/* Card variant (<640px) — same rows, same actions */}
@@ -583,6 +561,28 @@ export function MovementsList({
                   />
                 ))}
               </div>
+
+              {/* Load more — shared between table and card variants */}
+              {nextCursor && (
+                <div className="border-t border-zinc-200 p-4 text-center dark:border-zinc-700">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-11"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Icon icon={Loader2} size="sm" className="animate-spin" />
+                        {tCommon("loading")}
+                      </span>
+                    ) : (
+                      tCommon("loadMore")
+                    )}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </>
