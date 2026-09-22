@@ -325,6 +325,7 @@ export function DashboardContent({
         monthlyExpenses={monthlyExpenses}
         financingInflow={financingInflow}
         financingOutflow={financingOutflow}
+        financingBreakdown={snapshot.financingBreakdown}
         locale={locale}
         currencyBreakdown={currencyBreakdown}
         contextSummary={filters.scope === "all" ? snapshot.contextSummary : undefined}

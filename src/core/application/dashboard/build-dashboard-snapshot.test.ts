@@ -1,13 +1,18 @@
-import { describe, expect, it } from 'vitest';
-import { buildDashboardSnapshot } from './build-dashboard-snapshot';
-import { Movement, type MovementContext, type MovementLinkKind, type MovementType } from '../../domain/movement';
-import { Category } from '../../domain/category';
-import { Money, MoneyError } from '../../domain/money';
-import type { Currency } from '../../domain/currency';
-import type { SerializedCategory } from '../../domain/category';
-import type { DashboardFilters } from './dashboard-types';
+import { describe, expect, it } from "vitest";
+import { buildDashboardSnapshot } from "./build-dashboard-snapshot";
+import {
+  Movement,
+  type MovementContext,
+  type MovementLinkKind,
+  type MovementType,
+} from "../../domain/movement";
+import { Category } from "../../domain/category";
+import { Money, MoneyError } from "../../domain/money";
+import type { Currency } from "../../domain/currency";
+import type { SerializedCategory } from "../../domain/category";
+import type { DashboardFilters } from "./dashboard-types";
 
-const SEED_DATE = new Date('2020-01-01');
+const SEED_DATE = new Date("2020-01-01");
 /** Reference instant = the real clock. `buildDashboardSnapshot` computes
  *  "current month"/"current year" from `new Date()` internally (it does not
  *  accept an injected `now`), so fixtures and expectations must be derived
@@ -15,7 +20,7 @@ const SEED_DATE = new Date('2020-01-01');
  *  when the month/year rolls over. */
 const NOW = new Date();
 const utcMonthKey = (d: Date): string =>
-  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 const nowYear = NOW.getUTCFullYear();
 const nowMonth = NOW.getUTCMonth(); // 0-indexed
 
@@ -59,7 +64,7 @@ let seq = 0;
 function category(type: MovementType, id?: string, name?: string): Category {
   return new Category({
     id: id ?? `cat-${type}`,
-    workspaceId: 'u1',
+    workspaceId: "u1",
     name: name ?? `Cat ${type}`,
     type,
     createdAt: SEED_DATE,
@@ -78,13 +83,13 @@ function movement(input: {
 }): Movement {
   return new Movement({
     id: `m-${++seq}`,
-    workspaceId: 'u1',
-    accountId: input.accountId ?? 'acc-1',
+    workspaceId: "u1",
+    accountId: input.accountId ?? "acc-1",
     category: category(input.type, input.categoryId),
     type: input.type,
-    amount: new Money(input.amount, input.currency ?? 'COP'),
+    amount: new Money(input.amount, input.currency ?? "COP"),
     date: input.date ?? inCurrentMonth(),
-    context: input.context ?? 'Personal',
+    context: input.context ?? "Personal",
     createdAt: SEED_DATE,
     link: input.linkKind
       ? { kind: input.linkKind, refId: `ref-${seq}`, opId: `op-${seq}` }
@@ -93,46 +98,55 @@ function movement(input: {
 }
 
 const accounts = [
-  { id: 'acc-1', name: 'Cash', currency: 'COP', isFixed: true, balance: 2_000_000 },
-  { id: 'acc-2', name: 'Ahorros', currency: 'USD', isFixed: false, balance: 1500 },
+  { id: "acc-1", name: "Cash", currency: "COP", isFixed: true, balance: 2_000_000 },
+  { id: "acc-2", name: "Ahorros", currency: "USD", isFixed: false, balance: 1500 },
 ];
 
 const categories: SerializedCategory[] = [
-  { id: 'cat-income', workspaceId: 'u1', name: 'Salario', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-salary-in', workspaceId: 'u1', name: 'Salario in', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-freelance', workspaceId: 'u1', name: 'Freelance', type: 'income', createdAt: SEED_DATE },
-  { id: 'cat-food', workspaceId: 'u1', name: 'Comida', type: 'expense', createdAt: SEED_DATE },
-  { id: 'cat-rent', workspaceId: 'u1', name: 'Arriendo', type: 'expense', createdAt: SEED_DATE },
+  { id: "cat-income", workspaceId: "u1", name: "Salario", type: "income", createdAt: SEED_DATE },
+  {
+    id: "cat-salary-in",
+    workspaceId: "u1",
+    name: "Salario in",
+    type: "income",
+    createdAt: SEED_DATE,
+  },
+  {
+    id: "cat-freelance",
+    workspaceId: "u1",
+    name: "Freelance",
+    type: "income",
+    createdAt: SEED_DATE,
+  },
+  { id: "cat-food", workspaceId: "u1", name: "Comida", type: "expense", createdAt: SEED_DATE },
+  { id: "cat-rent", workspaceId: "u1", name: "Arriendo", type: "expense", createdAt: SEED_DATE },
 ];
 
 const resolveCategoryLabel = (categoryId: string): string => {
   const found = categories.find((c) => c.id === categoryId);
-  return found?.name ?? 'Uncategorized';
+  return found?.name ?? "Uncategorized";
 };
 
 const allFilters: DashboardFilters = {
-  scope: 'all',
-  accountId: 'all',
-  categoryId: 'all',
+  scope: "all",
+  accountId: "all",
+  categoryId: "all",
 };
 
-function buildInput(
-  movements: Movement[],
-  filters: DashboardFilters = allFilters,
-) {
+function buildInput(movements: Movement[], filters: DashboardFilters = allFilters) {
   return {
     accounts,
     categories,
     movements,
     filters,
-    locale: 'es' as const,
-    primaryCurrency: 'COP',
+    locale: "es" as const,
+    primaryCurrency: "COP",
     resolveCategoryLabel,
   };
 }
 
-describe('buildDashboardSnapshot', () => {
-  it('empty movements: zeroed aggregates, empty rows and recent', () => {
+describe("buildDashboardSnapshot", () => {
+  it("empty movements: zeroed aggregates, empty rows and recent", () => {
     const snapshot = buildDashboardSnapshot(buildInput([]));
     expect(snapshot.monthlyIncome).toBe(0);
     expect(snapshot.monthlyExpenses).toBe(0);
@@ -144,142 +158,221 @@ describe('buildDashboardSnapshot', () => {
     expect(snapshot.expenseRows).toEqual([]);
     expect(snapshot.recentMovements).toEqual([]);
     expect(snapshot.accountBalances).toHaveLength(2);
-    expect(snapshot.currency).toBe('COP');
+    expect(snapshot.currency).toBe("COP");
   });
 
-  it('current month: computes monthly income/expenses and rows with resolved labels', () => {
-    const salary = movement({ type: 'income', amount: 2_000_000, categoryId: 'cat-salary-in' });
-    const freelance = movement({ type: 'income', amount: 500_000, categoryId: 'cat-freelance' });
-    const food = movement({ type: 'expense', amount: 300_000, categoryId: 'cat-food' });
+  it("current month: computes monthly income/expenses and rows with resolved labels", () => {
+    const salary = movement({ type: "income", amount: 2_000_000, categoryId: "cat-salary-in" });
+    const freelance = movement({ type: "income", amount: 500_000, categoryId: "cat-freelance" });
+    const food = movement({ type: "expense", amount: 300_000, categoryId: "cat-food" });
 
     const snapshot = buildDashboardSnapshot(buildInput([salary, freelance, food]));
 
     expect(snapshot.monthlyIncome).toBe(2_500_000);
     expect(snapshot.monthlyExpenses).toBe(300_000);
-    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 2_500_000 }]);
-    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 300_000 }]);
+    expect(snapshot.incomeTotals).toEqual([{ currency: "COP", value: 2_500_000 }]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: "COP", value: 300_000 }]);
 
     // income rows sorted by amount desc, labels resolved to real category names
     expect(snapshot.incomeRows).toEqual([
-      { label: 'Salario in', value: 2_000_000, currency: 'COP' },
-      { label: 'Freelance', value: 500_000, currency: 'COP' },
+      { label: "Salario in", value: 2_000_000, currency: "COP" },
+      { label: "Freelance", value: 500_000, currency: "COP" },
     ]);
-    expect(snapshot.expenseRows).toEqual([
-      { label: 'Comida', value: 300_000, currency: 'COP' },
+    expect(snapshot.expenseRows).toEqual([{ label: "Comida", value: 300_000, currency: "COP" }]);
+  });
+
+  it("financing breakdown (beta round 3): per-currency current-month principals, COP-first, no cross-currency sums", () => {
+    const receivedCOP = movement({
+      type: "income",
+      amount: 800_000,
+      linkKind: "creditReceivedPrincipal",
+    });
+    const grantedCOP = movement({
+      type: "expense",
+      amount: 400_000,
+      linkKind: "creditGrantedPrincipal",
+    });
+    const receivedUSD = movement({
+      type: "income",
+      amount: 120,
+      currency: "USD",
+      accountId: "acc-2",
+      linkKind: "creditReceivedPrincipal",
+    });
+    // Financing from a PREVIOUS month never reaches the current-month card.
+    const receivedLastMonth = movement({
+      type: "income",
+      amount: 999,
+      linkKind: "creditReceivedPrincipal",
+      date: inLastMonth(),
+    });
+
+    const snapshot = buildDashboardSnapshot(
+      buildInput([receivedCOP, grantedCOP, receivedUSD, receivedLastMonth]),
+    );
+
+    expect(snapshot.financingInflow).toBe(800_000);
+    expect(snapshot.financingOutflow).toBe(400_000);
+    expect(snapshot.financingBreakdown).toEqual([
+      { currency: "COP", inflow: 800_000, outflow: 400_000 },
+      { currency: "USD", inflow: 120, outflow: 0 },
     ]);
   });
 
-  it('fixed window (N2): summary tables and recent movements are scoped to the current civil month', () => {
-    const thisMonth = movement({ type: 'income', amount: 1_000_000, categoryId: 'cat-income' });
+  it("financing breakdown stays empty when the month has no financing movements", () => {
+    const snapshot = buildDashboardSnapshot(
+      buildInput([movement({ type: "income", amount: 100, categoryId: "cat-income" })]),
+    );
+    expect(snapshot.financingBreakdown).toEqual([]);
+  });
+
+  it("fixed window (N2): summary tables and recent movements are scoped to the current civil month", () => {
+    const thisMonth = movement({ type: "income", amount: 1_000_000, categoryId: "cat-income" });
     const lastMonth = movement({
-      type: 'income',
+      type: "income",
       amount: 700_000,
       date: inLastMonth(),
-      categoryId: 'cat-income',
+      categoryId: "cat-income",
     });
 
     const snapshot = buildDashboardSnapshot(buildInput([thisMonth, lastMonth]));
 
     // The last-month movement must NOT leak into the current-month cards,
     // even though it is inside the unfiltered set (it still feeds the charts).
-    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 1_000_000 }]);
+    expect(snapshot.incomeTotals).toEqual([{ currency: "COP", value: 1_000_000 }]);
     expect(snapshot.monthlyIncome).toBe(1_000_000);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonth.id]);
   });
 
-  it('scope filter: Personal excludes Business movements', () => {
-    const personal = movement({ type: 'income', amount: 1_000_000, categoryId: 'cat-income', context: 'Personal' });
-    const business = movement({ type: 'income', amount: 500_000, categoryId: 'cat-income', context: 'Business' });
-
-    const snapshot = buildDashboardSnapshot(
-      buildInput([personal, business], { ...allFilters, scope: 'Personal' }),
-    );
-
-    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 1_000_000 }]);
-    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([personal.id]);
-  });
-
-  it('accountId filter: narrows account balances, movements and currency', () => {
-    const cop = movement({ type: 'income', amount: 1_000_000, accountId: 'acc-1', categoryId: 'cat-income' });
-    const usd = movement({
-      type: 'expense',
-      amount: 200,
-      accountId: 'acc-2',
-      currency: 'USD',
-      categoryId: 'cat-food',
+  it("scope filter: Personal excludes Business movements", () => {
+    const personal = movement({
+      type: "income",
+      amount: 1_000_000,
+      categoryId: "cat-income",
+      context: "Personal",
+    });
+    const business = movement({
+      type: "income",
+      amount: 500_000,
+      categoryId: "cat-income",
+      context: "Business",
     });
 
     const snapshot = buildDashboardSnapshot(
-      buildInput([cop, usd], { ...allFilters, accountId: 'acc-2' }),
+      buildInput([personal, business], { ...allFilters, scope: "Personal" }),
+    );
+
+    expect(snapshot.incomeTotals).toEqual([{ currency: "COP", value: 1_000_000 }]);
+    expect(snapshot.recentMovements.map((m) => m.id)).toEqual([personal.id]);
+  });
+
+  it("accountId filter: narrows account balances, movements and currency", () => {
+    const cop = movement({
+      type: "income",
+      amount: 1_000_000,
+      accountId: "acc-1",
+      categoryId: "cat-income",
+    });
+    const usd = movement({
+      type: "expense",
+      amount: 200,
+      accountId: "acc-2",
+      currency: "USD",
+      categoryId: "cat-food",
+    });
+
+    const snapshot = buildDashboardSnapshot(
+      buildInput([cop, usd], { ...allFilters, accountId: "acc-2" }),
     );
 
     expect(snapshot.accountBalances).toEqual([
-      { id: 'acc-2', name: 'Ahorros', currency: 'USD', isFixed: false, balance: 1500 },
+      { id: "acc-2", name: "Ahorros", currency: "USD", isFixed: false, balance: 1500 },
     ]);
-    expect(snapshot.currency).toBe('USD');
+    expect(snapshot.currency).toBe("USD");
     // Only USD movements aggregate
     expect(snapshot.monthlyExpenses).toBe(200);
     expect(snapshot.monthlyIncome).toBe(0);
   });
 
-  it('categoryId filter: filters movements to that category', () => {
-    const salary = movement({ type: 'income', amount: 2_000_000, categoryId: 'cat-salary-in' });
-    const freelance = movement({ type: 'income', amount: 500_000, categoryId: 'cat-freelance' });
+  it("categoryId filter: filters movements to that category", () => {
+    const salary = movement({ type: "income", amount: 2_000_000, categoryId: "cat-salary-in" });
+    const freelance = movement({ type: "income", amount: 500_000, categoryId: "cat-freelance" });
 
     const snapshot = buildDashboardSnapshot(
-      buildInput([salary, freelance], { ...allFilters, categoryId: 'cat-freelance' }),
+      buildInput([salary, freelance], { ...allFilters, categoryId: "cat-freelance" }),
     );
 
-    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 500_000 }]);
-    expect(snapshot.incomeRows).toEqual([
-      { label: 'Freelance', value: 500_000, currency: 'COP' },
-    ]);
+    expect(snapshot.incomeTotals).toEqual([{ currency: "COP", value: 500_000 }]);
+    expect(snapshot.incomeRows).toEqual([{ label: "Freelance", value: 500_000, currency: "COP" }]);
   });
 
-  it('multi-currency: currencyBreakdown aggregates per currency with economic filtering', () => {
-    const copSalary = movement({ type: 'income', amount: 2_000_000, accountId: 'acc-1', categoryId: 'cat-income' });
+  it("multi-currency: currencyBreakdown aggregates per currency with economic filtering", () => {
+    const copSalary = movement({
+      type: "income",
+      amount: 2_000_000,
+      accountId: "acc-1",
+      categoryId: "cat-income",
+    });
     const usdExpense = movement({
-      type: 'expense',
+      type: "expense",
       amount: 400,
-      accountId: 'acc-2',
-      currency: 'USD',
-      categoryId: 'cat-food',
+      accountId: "acc-2",
+      currency: "USD",
+      categoryId: "cat-food",
     });
 
     const snapshot = buildDashboardSnapshot(buildInput([copSalary, usdExpense]));
 
     // COP first, then USD; balances from accounts + economic flows
     expect(snapshot.currencyBreakdown).toEqual([
-      { currency: 'COP', balance: 2_000_000, income: 2_000_000, expenses: 0, result: 2_000_000 },
-      { currency: 'USD', balance: 1500, income: 0, expenses: 400, result: -400 },
+      { currency: "COP", balance: 2_000_000, income: 2_000_000, expenses: 0, result: 2_000_000 },
+      { currency: "USD", balance: 1500, income: 0, expenses: 400, result: -400 },
     ]);
   });
 
-  it('monthlyData: 6-month window padded, oldest first, current month last', () => {
-    const july = movement({ type: 'income', amount: 100_000, date: inLastMonth(), categoryId: 'cat-income' });
+  it("monthlyData: 6-month window padded, oldest first, current month last", () => {
+    const july = movement({
+      type: "income",
+      amount: 100_000,
+      date: inLastMonth(),
+      categoryId: "cat-income",
+    });
 
     const snapshot = buildDashboardSnapshot(buildInput([july]));
 
     expect(snapshot.monthlyData.map((b) => b.month)).toEqual(lastSixMonths());
     // The last-month bucket sits at index 4 in a 6-month window ending at the current month.
-    expect(snapshot.monthlyData[4]).toEqual({ month: utcMonthKey(inLastMonth()), income: 100_000, expenses: 0 });
+    expect(snapshot.monthlyData[4]).toEqual({
+      month: utcMonthKey(inLastMonth()),
+      income: 100_000,
+      expenses: 0,
+    });
   });
 
-  it('yearlyData: 12-month window for the current year', () => {
-    const jan = movement({ type: 'income', amount: 50_000, date: inYear(0), categoryId: 'cat-income' });
+  it("yearlyData: 12-month window for the current year", () => {
+    const jan = movement({
+      type: "income",
+      amount: 50_000,
+      date: inYear(0),
+      categoryId: "cat-income",
+    });
     const snapshot = buildDashboardSnapshot(buildInput([jan]));
 
     expect(snapshot.yearlyData).toHaveLength(12);
-    expect(snapshot.yearlyData[0]).toEqual({ month: utcMonthKey(inYear(0)), income: 50_000, expenses: 0 });
+    expect(snapshot.yearlyData[0]).toEqual({
+      month: utcMonthKey(inYear(0)),
+      income: 50_000,
+      expenses: 0,
+    });
     expect(snapshot.yearlyData.map((b) => b.month)).toEqual(currentYearMonths());
   });
 
-  it('recentMovements: top 10 with resolved categoryName and ISO date (UX-5)', () => {
+  it("recentMovements: top 10 with resolved categoryName and ISO date (UX-5)", () => {
     const movements = Array.from({ length: 12 }, (_, i) =>
       movement({
-        type: i % 2 === 0 ? 'income' : 'expense',
+        type: i % 2 === 0 ? "income" : "expense",
         amount: (i + 1) * 100_000,
-        categoryId: i % 2 === 0 ? 'cat-income' : 'cat-food',
+        categoryId: i % 2 === 0 ? "cat-income" : "cat-food",
         date: inCurrentMonth(i + 1),
       }),
     );
@@ -289,22 +382,22 @@ describe('buildDashboardSnapshot', () => {
     // UX-5: the slice grew from 5 to 10.
     expect(snapshot.recentMovements).toHaveLength(10);
     expect(snapshot.recentMovements[0].id).toBe(movements[0].id);
-    expect(snapshot.recentMovements[0].categoryName).toBe('Salario');
+    expect(snapshot.recentMovements[0].categoryName).toBe("Salario");
     expect(snapshot.recentMovements[0].date).toBe(inCurrentMonth(1).toISOString());
-    expect(typeof snapshot.recentMovements[0].date).toBe('string');
+    expect(typeof snapshot.recentMovements[0].date).toBe("string");
   });
 
-  it('synthetic category labels resolve to localized/system label', () => {
+  it("synthetic category labels resolve to localized/system label", () => {
     const sale = movement({
-      type: 'income',
+      type: "income",
       amount: 300_000,
-      categoryId: '000000000000000000000004', // SALE_CATEGORY_ID
-      linkKind: 'salePayment',
-      context: 'Business',
+      categoryId: "000000000000000000000004", // SALE_CATEGORY_ID
+      linkKind: "salePayment",
+      context: "Business",
     });
 
     const syntheticResolver = (categoryId: string): string => {
-      if (categoryId === '000000000000000000000004') return 'Venta';
+      if (categoryId === "000000000000000000000004") return "Venta";
       return categoryId;
     };
 
@@ -313,150 +406,176 @@ describe('buildDashboardSnapshot', () => {
       categories,
       movements: [sale],
       filters: allFilters,
-      locale: 'es' as const,
-      primaryCurrency: 'COP',
+      locale: "es" as const,
+      primaryCurrency: "COP",
       resolveCategoryLabel: syntheticResolver,
     });
 
-    expect(snapshot.incomeRows).toEqual([
-      { label: 'Venta', value: 300_000, currency: 'COP' },
-    ]);
-    expect(snapshot.recentMovements[0].categoryName).toBe('Venta');
+    expect(snapshot.incomeRows).toEqual([{ label: "Venta", value: 300_000, currency: "COP" }]);
+    expect(snapshot.recentMovements[0].categoryName).toBe("Venta");
   });
 
-  it('synthetic category id with no resolver falls back to uncategorized label', () => {
+  it("synthetic category id with no resolver falls back to uncategorized label", () => {
     const sale = movement({
-      type: 'income',
+      type: "income",
       amount: 300_000,
-      categoryId: 'synthetic-unknown',
-      linkKind: 'salePayment',
-      context: 'Business',
+      categoryId: "synthetic-unknown",
+      linkKind: "salePayment",
+      context: "Business",
     });
 
     // A resolver that returns the raw id (as the uncategorized fallback path does)
     const snapshot = buildDashboardSnapshot(
-      buildInput([sale], { ...allFilters, categoryId: 'all' }),
+      buildInput([sale], { ...allFilters, categoryId: "all" }),
     );
     expect(snapshot.incomeRows).toEqual([
-      { label: 'Uncategorized', value: 300_000, currency: 'COP' },
+      { label: "Uncategorized", value: 300_000, currency: "COP" },
     ]);
   });
 });
 
-describe('buildDashboardSnapshot — A6/N1 contextSummary', () => {
-  it('scope all: splits the current-month result between Personal and Business', () => {
-    const personal = movement({ type: 'income', amount: 1_000_000, context: 'Personal' });
-    const businessIncome = movement({ type: 'income', amount: 500_000, context: 'Business' });
-    const businessExpense = movement({ type: 'expense', amount: 200_000, context: 'Business' });
+describe("buildDashboardSnapshot — A6/N1 contextSummary", () => {
+  it("scope all: splits the current-month result between Personal and Business", () => {
+    const personal = movement({ type: "income", amount: 1_000_000, context: "Personal" });
+    const businessIncome = movement({ type: "income", amount: 500_000, context: "Business" });
+    const businessExpense = movement({ type: "expense", amount: 200_000, context: "Business" });
 
     const snapshot = buildDashboardSnapshot(
       buildInput([personal, businessIncome, businessExpense]),
     );
 
     expect(snapshot.contextSummary).toEqual({
-      personal: [{ currency: 'COP', monthlyIncome: 1_000_000, monthlyExpenses: 0 }],
-      business: [{ currency: 'COP', monthlyIncome: 500_000, monthlyExpenses: 200_000 }],
+      personal: [{ currency: "COP", monthlyIncome: 1_000_000, monthlyExpenses: 0 }],
+      business: [{ currency: "COP", monthlyIncome: 500_000, monthlyExpenses: 200_000 }],
     });
     // Total cards unchanged
     expect(snapshot.monthlyIncome).toBe(1_500_000);
     expect(snapshot.monthlyExpenses).toBe(200_000);
   });
 
-  it('scope all: splits by context AND currency (N1)', () => {
-    const personalCop = movement({ type: 'income', amount: 1_000_000, context: 'Personal' });
-    const personalUsd = movement({ type: 'income', amount: 200, currency: 'USD', context: 'Personal' });
-    const businessUsd = movement({ type: 'expense', amount: 80, currency: 'USD', context: 'Business' });
+  it("scope all: splits by context AND currency (N1)", () => {
+    const personalCop = movement({ type: "income", amount: 1_000_000, context: "Personal" });
+    const personalUsd = movement({
+      type: "income",
+      amount: 200,
+      currency: "USD",
+      context: "Personal",
+    });
+    const businessUsd = movement({
+      type: "expense",
+      amount: 80,
+      currency: "USD",
+      context: "Business",
+    });
 
-    const snapshot = buildDashboardSnapshot(
-      buildInput([personalCop, personalUsd, businessUsd]),
-    );
+    const snapshot = buildDashboardSnapshot(buildInput([personalCop, personalUsd, businessUsd]));
 
     // Each context carries one entry PER currency with economic data —
     // the USD movements are no longer dropped by the COP scope.
     expect(snapshot.contextSummary).toEqual({
       personal: [
-        { currency: 'COP', monthlyIncome: 1_000_000, monthlyExpenses: 0 },
-        { currency: 'USD', monthlyIncome: 200, monthlyExpenses: 0 },
+        { currency: "COP", monthlyIncome: 1_000_000, monthlyExpenses: 0 },
+        { currency: "USD", monthlyIncome: 200, monthlyExpenses: 0 },
       ],
-      business: [{ currency: 'USD', monthlyIncome: 0, monthlyExpenses: 80 }],
+      business: [{ currency: "USD", monthlyIncome: 0, monthlyExpenses: 80 }],
     });
     // Total cards keep their own aggregation currency (primary COP).
     expect(snapshot.monthlyIncome).toBe(1_000_000);
     expect(snapshot.monthlyExpenses).toBe(0);
   });
 
-  it('scope Personal: contextSummary is not populated', () => {
-    const personal = movement({ type: 'income', amount: 1_000_000, context: 'Personal' });
-    const business = movement({ type: 'expense', amount: 200_000, context: 'Business' });
+  it("scope Personal: contextSummary is not populated", () => {
+    const personal = movement({ type: "income", amount: 1_000_000, context: "Personal" });
+    const business = movement({ type: "expense", amount: 200_000, context: "Business" });
 
     const snapshot = buildDashboardSnapshot(
-      buildInput([personal, business], { ...allFilters, scope: 'Personal' }),
+      buildInput([personal, business], { ...allFilters, scope: "Personal" }),
     );
 
     expect(snapshot.contextSummary).toBeUndefined();
   });
 
-  it('fixed window (N2): contextSummary and card totals reflect only the current month, charts carry the full series', () => {
+  it("fixed window (N2): contextSummary and card totals reflect only the current month, charts carry the full series", () => {
     const other = otherMonthIndex();
-    const otherMonthBusiness = movement({ type: 'income', amount: 500_000, date: inYear(other), context: 'Business', categoryId: 'cat-income' });
-    const curBusiness = movement({ type: 'income', amount: 300_000, context: 'Business', categoryId: 'cat-income' });
+    const otherMonthBusiness = movement({
+      type: "income",
+      amount: 500_000,
+      date: inYear(other),
+      context: "Business",
+      categoryId: "cat-income",
+    });
+    const curBusiness = movement({
+      type: "income",
+      amount: 300_000,
+      context: "Business",
+      categoryId: "cat-income",
+    });
 
-    const snapshot = buildDashboardSnapshot(
-      buildInput([otherMonthBusiness, curBusiness]),
-    );
+    const snapshot = buildDashboardSnapshot(buildInput([otherMonthBusiness, curBusiness]));
 
     // The other-month movement is inside the unfiltered set but outside the
     // current month: excluded from the cards AND from contextSummary…
     expect(snapshot.contextSummary?.business).toEqual([
-      { currency: 'COP', monthlyIncome: 300_000, monthlyExpenses: 0 },
+      { currency: "COP", monthlyIncome: 300_000, monthlyExpenses: 0 },
     ]);
-    expect(snapshot.incomeTotals).toEqual([{ currency: 'COP', value: 300_000 }]);
+    expect(snapshot.incomeTotals).toEqual([{ currency: "COP", value: 300_000 }]);
     // …but still present with real data in the chart series (the old
     // "11 empty buckets" asymmetry is gone).
     const otherKey = utcMonthKey(inYear(other));
     expect(snapshot.yearlyData[other]).toEqual({ month: otherKey, income: 500_000, expenses: 0 });
   });
 
-  it('omits a context section whose movements carry no economic result', () => {
-    const transfer = movement({ type: 'income', amount: 5_000_000, linkKind: 'transfer' });
-    const businessInc = movement({ type: 'income', amount: 100_000, context: 'Business' });
+  it("omits a context section whose movements carry no economic result", () => {
+    const transfer = movement({ type: "income", amount: 5_000_000, linkKind: "transfer" });
+    const businessInc = movement({ type: "income", amount: 100_000, context: "Business" });
 
     const snapshot = buildDashboardSnapshot(buildInput([transfer, businessInc]));
 
     expect(snapshot.contextSummary?.personal).toBeUndefined();
     expect(snapshot.contextSummary?.business).toEqual([
-      { currency: 'COP', monthlyIncome: 100_000, monthlyExpenses: 0 },
+      { currency: "COP", monthlyIncome: 100_000, monthlyExpenses: 0 },
     ]);
   });
 });
 
-describe('buildDashboardSnapshot — A11 chartDataByCurrency', () => {
-  it('multi-currency: ships per-currency chart series and keeps the single-currency fields', () => {
-    const copIncome = movement({ type: 'income', amount: 2_000_000, accountId: 'acc-1', categoryId: 'cat-income' });
-    const usdExpense = movement({ type: 'expense', amount: 400, accountId: 'acc-2', currency: 'USD', categoryId: 'cat-food' });
+describe("buildDashboardSnapshot — A11 chartDataByCurrency", () => {
+  it("multi-currency: ships per-currency chart series and keeps the single-currency fields", () => {
+    const copIncome = movement({
+      type: "income",
+      amount: 2_000_000,
+      accountId: "acc-1",
+      categoryId: "cat-income",
+    });
+    const usdExpense = movement({
+      type: "expense",
+      amount: 400,
+      accountId: "acc-2",
+      currency: "USD",
+      categoryId: "cat-food",
+    });
 
     const snapshot = buildDashboardSnapshot(buildInput([copIncome, usdExpense]));
 
-    expect(snapshot.chartCurrencies).toEqual(['COP', 'USD']);
+    expect(snapshot.chartCurrencies).toEqual(["COP", "USD"]);
     expect(snapshot.chartDataByCurrency).toBeDefined();
     // Single-currency fields keep today's shape (zero-change)
     expect(snapshot.monthlyData).toHaveLength(6);
     expect(snapshot.yearlyData).toHaveLength(12);
 
     const currentKey = utcMonthKey(inCurrentMonth());
-    const usd = snapshot.chartDataByCurrency!['USD'];
+    const usd = snapshot.chartDataByCurrency!["USD"];
     expect(usd.monthly).toHaveLength(6);
     expect(usd.monthly[5]).toEqual({ month: currentKey, income: 0, expenses: 400 });
     expect(usd.yearly[nowMonth]).toEqual({ month: currentKey, income: 0, expenses: 400 });
 
-    const cop = snapshot.chartDataByCurrency!['COP'];
+    const cop = snapshot.chartDataByCurrency!["COP"];
     expect(cop.monthly[5]).toEqual({ month: currentKey, income: 2_000_000, expenses: 0 });
     // The COP per-currency series IS what monthlyData reports today
     expect(snapshot.monthlyData).toEqual(cop.monthly);
   });
 
-  it('mono-currency: chartCurrencies/chartDataByCurrency stay undefined (zero-change)', () => {
-    const copIncome = movement({ type: 'income', amount: 2_000_000 });
+  it("mono-currency: chartCurrencies/chartDataByCurrency stay undefined (zero-change)", () => {
+    const copIncome = movement({ type: "income", amount: 2_000_000 });
 
     const snapshot = buildDashboardSnapshot(buildInput([copIncome]));
 
@@ -467,10 +586,15 @@ describe('buildDashboardSnapshot — A11 chartDataByCurrency', () => {
   });
 });
 
-describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
-  it('movements in the previous AND current month both appear with real data in the 6/12 series', () => {
-    const lastMonthIncome = movement({ type: 'income', amount: 700_000, date: inLastMonth(), categoryId: 'cat-income' });
-    const thisMonthExpense = movement({ type: 'expense', amount: 200_000, categoryId: 'cat-food' });
+describe("buildDashboardSnapshot — N2 fixed windows (charts), Fase 5", () => {
+  it("movements in the previous AND current month both appear with real data in the 6/12 series", () => {
+    const lastMonthIncome = movement({
+      type: "income",
+      amount: 700_000,
+      date: inLastMonth(),
+      categoryId: "cat-income",
+    });
+    const thisMonthExpense = movement({ type: "expense", amount: 200_000, categoryId: "cat-food" });
 
     const snapshot = buildDashboardSnapshot(buildInput([lastMonthIncome, thisMonthExpense]));
 
@@ -480,16 +604,32 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     // 6-month series: BOTH months carry their real values (previously the
     // current_month period filter zeroed the past buckets).
     const monthlyIdx = new Map(snapshot.monthlyData.map((b, i) => [b.month, i]));
-    expect(snapshot.monthlyData[monthlyIdx.get(lastKey)!]).toEqual({ month: lastKey, income: 700_000, expenses: 0 });
-    expect(snapshot.monthlyData[monthlyIdx.get(curKey)!]).toEqual({ month: curKey, income: 0, expenses: 200_000 });
+    expect(snapshot.monthlyData[monthlyIdx.get(lastKey)!]).toEqual({
+      month: lastKey,
+      income: 700_000,
+      expenses: 0,
+    });
+    expect(snapshot.monthlyData[monthlyIdx.get(curKey)!]).toEqual({
+      month: curKey,
+      income: 0,
+      expenses: 200_000,
+    });
 
     // 12-month series: same real data for the current civil year. When the
     // current month is January the previous month belongs to the previous
     // year, which the current-year series must NOT contain.
     const yearlyIdx = new Map(snapshot.yearlyData.map((b, i) => [b.month, i]));
-    expect(snapshot.yearlyData[yearlyIdx.get(curKey)!]).toEqual({ month: curKey, income: 0, expenses: 200_000 });
+    expect(snapshot.yearlyData[yearlyIdx.get(curKey)!]).toEqual({
+      month: curKey,
+      income: 0,
+      expenses: 200_000,
+    });
     if (nowMonth >= 1) {
-      expect(snapshot.yearlyData[yearlyIdx.get(lastKey)!]).toEqual({ month: lastKey, income: 700_000, expenses: 0 });
+      expect(snapshot.yearlyData[yearlyIdx.get(lastKey)!]).toEqual({
+        month: lastKey,
+        income: 700_000,
+        expenses: 0,
+      });
     } else {
       expect(yearlyIdx.has(lastKey)).toBe(false);
     }
@@ -498,18 +638,18 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     expect(snapshot.monthlyIncome).toBe(0);
     expect(snapshot.monthlyExpenses).toBe(200_000);
     expect(snapshot.incomeTotals).toEqual([]);
-    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 200_000 }]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: "COP", value: 200_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([thisMonthExpense.id]);
   });
 
-  it('every month of the 6-month window keeps its real data — no zeroed buckets', () => {
+  it("every month of the 6-month window keeps its real data — no zeroed buckets", () => {
     const movements = lastSixMonths().map((key, i) => {
-      const [y, m] = key.split('-').map(Number);
+      const [y, m] = key.split("-").map(Number);
       return movement({
-        type: i % 2 === 0 ? 'income' : 'expense',
+        type: i % 2 === 0 ? "income" : "expense",
         amount: (i + 1) * 100_000,
         date: new Date(Date.UTC(y, m - 1, 15, 12)),
-        categoryId: i % 2 === 0 ? 'cat-income' : 'cat-food',
+        categoryId: i % 2 === 0 ? "cat-income" : "cat-food",
       });
     });
 
@@ -528,133 +668,146 @@ describe('buildDashboardSnapshot — N2 fixed windows (charts), Fase 5', () => {
     expect(snapshot.monthlyExpenses).toBe(600_000);
   });
 
-  it('yearly series: non-current months of the current year carry real data (11 months no longer empty)', () => {
+  it("yearly series: non-current months of the current year carry real data (11 months no longer empty)", () => {
     const other = otherMonthIndex();
-    const otherMonth = movement({ type: 'income', amount: 250_000, date: inYear(other), categoryId: 'cat-income' });
-    const curMonth = movement({ type: 'expense', amount: 80_000, categoryId: 'cat-food' });
+    const otherMonth = movement({
+      type: "income",
+      amount: 250_000,
+      date: inYear(other),
+      categoryId: "cat-income",
+    });
+    const curMonth = movement({ type: "expense", amount: 80_000, categoryId: "cat-food" });
 
     const snapshot = buildDashboardSnapshot(buildInput([otherMonth, curMonth]));
 
     expect(snapshot.yearlyData).toHaveLength(12);
     const otherKey = utcMonthKey(inYear(other));
     expect(snapshot.yearlyData[other]).toEqual({ month: otherKey, income: 250_000, expenses: 0 });
-    expect(snapshot.yearlyData[nowMonth]).toEqual({ month: utcMonthKey(inCurrentMonth()), income: 0, expenses: 80_000 });
+    expect(snapshot.yearlyData[nowMonth]).toEqual({
+      month: utcMonthKey(inCurrentMonth()),
+      income: 0,
+      expenses: 80_000,
+    });
 
     // The non-current month feeds the chart only — never the cards.
     expect(snapshot.incomeTotals).toEqual([]);
-    expect(snapshot.expenseTotals).toEqual([{ currency: 'COP', value: 80_000 }]);
+    expect(snapshot.expenseTotals).toEqual([{ currency: "COP", value: 80_000 }]);
     expect(snapshot.recentMovements.map((m) => m.id)).toEqual([curMonth.id]);
   });
 
-  it('throws MoneyError when the per-currency balance breakdown overflows (R15.3.1 P1.3)', () => {
+  it("throws MoneyError when the per-currency balance breakdown overflows (R15.3.1 P1.3)", () => {
     const hugeAccounts = [
-      { id: 'acc-1', name: 'Cash', currency: 'COP', isFixed: true, balance: 9_000_000_000_000_000 },
-      { id: 'acc-2', name: 'Ahorros', currency: 'COP', isFixed: false, balance: 9_000_000_000_000_000 },
+      { id: "acc-1", name: "Cash", currency: "COP", isFixed: true, balance: 9_000_000_000_000_000 },
+      {
+        id: "acc-2",
+        name: "Ahorros",
+        currency: "COP",
+        isFixed: false,
+        balance: 9_000_000_000_000_000,
+      },
     ];
-    expect(() =>
-      buildDashboardSnapshot({ ...buildInput([]), accounts: hugeAccounts }),
-    ).toThrow(MoneyError);
+    expect(() => buildDashboardSnapshot({ ...buildInput([]), accounts: hugeAccounts })).toThrow(
+      MoneyError,
+    );
   });
 
-  it('throws MoneyError when the current-month income breakdown overflows', () => {
+  it("throws MoneyError when the current-month income breakdown overflows", () => {
     const movs = [
-      movement({ type: 'income', amount: Number.MAX_SAFE_INTEGER, categoryId: 'cat-salary-in' }),
-      movement({ type: 'income', amount: Number.MAX_SAFE_INTEGER, categoryId: 'cat-salary-in' }),
+      movement({ type: "income", amount: Number.MAX_SAFE_INTEGER, categoryId: "cat-salary-in" }),
+      movement({ type: "income", amount: Number.MAX_SAFE_INTEGER, categoryId: "cat-salary-in" }),
     ];
     expect(() => buildDashboardSnapshot(buildInput(movs))).toThrow(MoneyError);
   });
 });
 
-describe('buildDashboardSnapshot — N4 attention (UX-5)', () => {
+describe("buildDashboardSnapshot — N4 attention (UX-5)", () => {
   const oneWeekAgo = new Date(Date.now() - 7 * 86_400_000);
 
-  it('dataAsOf: ships the civil cut timestamp', () => {
+  it("dataAsOf: ships the civil cut timestamp", () => {
     const snapshot = buildDashboardSnapshot(buildInput([]));
-    expect(typeof snapshot.dataAsOf).toBe('string');
+    expect(typeof snapshot.dataAsOf).toBe("string");
     expect(() => new Date(snapshot.dataAsOf)).not.toThrow();
   });
 
-  it('attentionTotals: sums receivables (credits granted, not written off) and payables (credits received + payables), per currency, COP-first', () => {
+  it("attentionTotals: sums receivables (credits granted, not written off) and payables (credits received + payables), per currency, COP-first", () => {
     const baseInput = buildInput([]);
     const snapshot = buildDashboardSnapshot({
       ...baseInput,
       creditsGranted: [
-        { pending: { amount: 900_000, currency: 'COP' }, writtenOff: false },
+        { pending: { amount: 900_000, currency: "COP" }, writtenOff: false },
         // Written-off credits must be excluded from receivables (R9/D9.4).
-        { pending: { amount: 5_000_000, currency: 'COP' }, writtenOff: true },
-        { pending: { amount: 200, currency: 'USD' }, writtenOff: false },
+        { pending: { amount: 5_000_000, currency: "COP" }, writtenOff: true },
+        { pending: { amount: 200, currency: "USD" }, writtenOff: false },
       ],
-      creditsReceived: [
-        { pending: { amount: 350_000, currency: 'COP' } },
-      ],
+      creditsReceived: [{ pending: { amount: 350_000, currency: "COP" } }],
       payables: [
         {
-          id: 'pay-1',
-          pending: { amount: 150_000, currency: 'COP' },
+          id: "pay-1",
+          pending: { amount: 150_000, currency: "COP" },
           dueDate: oneWeekAgo,
-          description: 'Proveedor A',
+          description: "Proveedor A",
         },
         {
-          id: 'pay-2',
-          pending: { amount: 100, currency: 'USD' },
+          id: "pay-2",
+          pending: { amount: 100, currency: "USD" },
           dueDate: oneWeekAgo,
-          description: 'Proveedor B',
+          description: "Proveedor B",
         },
       ],
     });
 
     expect(snapshot.attentionTotals).toEqual([
-      { currency: 'COP', receivables: 900_000, payables: 500_000 },
-      { currency: 'USD', receivables: 200, payables: 100 },
+      { currency: "COP", receivables: 900_000, payables: 500_000 },
+      { currency: "USD", receivables: 200, payables: 100 },
     ]);
   });
 
-  it('attentionTotals: empty when no credits/payables are passed', () => {
+  it("attentionTotals: empty when no credits/payables are passed", () => {
     const snapshot = buildDashboardSnapshot(buildInput([]));
     expect(snapshot.attentionTotals).toEqual([]);
     expect(snapshot.overduePayables).toEqual([]);
   });
 
-  it('overduePayables: keeps dueDate < now && pending > 0, oldest first, max 3', () => {
+  it("overduePayables: keeps dueDate < now && pending > 0, oldest first, max 3", () => {
     const baseInput = buildInput([]);
     const snapshot = buildDashboardSnapshot({
       ...baseInput,
       payables: [
         {
-          id: 'pay-old',
-          pending: { amount: 300_000, currency: 'COP' },
+          id: "pay-old",
+          pending: { amount: 300_000, currency: "COP" },
           dueDate: new Date(Date.now() - 60 * 86_400_000),
-          description: 'Muy vencido',
+          description: "Muy vencido",
         },
         {
-          id: 'pay-new',
-          pending: { amount: 100_000, currency: 'COP' },
+          id: "pay-new",
+          pending: { amount: 100_000, currency: "COP" },
           dueDate: new Date(Date.now() - 7 * 86_400_000),
-          description: 'Reciente',
+          description: "Reciente",
         },
         // Future dueDate → not overdue, even with pending.
         {
-          id: 'pay-future',
-          pending: { amount: 50_000, currency: 'COP' },
+          id: "pay-future",
+          pending: { amount: 50_000, currency: "COP" },
           dueDate: new Date(Date.now() + 10 * 86_400_000),
-          description: 'Futuro',
+          description: "Futuro",
         },
         // paid off → not overdue even with a past dueDate.
         {
-          id: 'pay-paid',
-          pending: { amount: 0, currency: 'COP' },
+          id: "pay-paid",
+          pending: { amount: 0, currency: "COP" },
           dueDate: oneWeekAgo,
-          description: 'Pagado',
+          description: "Pagado",
         },
       ],
     });
 
     expect(snapshot.overduePayables).toHaveLength(2);
-    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(['pay-old', 'pay-new']);
+    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(["pay-old", "pay-new"]);
     expect(snapshot.overduePayables[0]).toMatchObject({
-      id: 'pay-old',
-      label: 'Muy vencido',
-      currency: 'COP',
+      id: "pay-old",
+      label: "Muy vencido",
+      currency: "COP",
       pending: 300_000,
     });
     expect(snapshot.overduePayables[0].daysOverdue).toBeGreaterThan(
@@ -663,11 +816,11 @@ describe('buildDashboardSnapshot — N4 attention (UX-5)', () => {
     expect(snapshot.overduePayables[1].daysOverdue).toBeGreaterThanOrEqual(7);
   });
 
-  it('overduePayables: caps at 3 alerts, oldest first', () => {
+  it("overduePayables: caps at 3 alerts, oldest first", () => {
     const baseInput = buildInput([]);
     const payables = Array.from({ length: 5 }, (_, i) => ({
       id: `pay-${i}`,
-      pending: { amount: (i + 1) * 10_000, currency: 'COP' },
+      pending: { amount: (i + 1) * 10_000, currency: "COP" },
       dueDate: new Date(Date.now() - (i + 1) * 86_400_000),
       description: `Proveedor ${i}`,
     }));
@@ -679,6 +832,6 @@ describe('buildDashboardSnapshot — N4 attention (UX-5)', () => {
 
     expect(snapshot.overduePayables).toHaveLength(3);
     // Oldest first = highest daysOverdue at index 0 (pay-4 is 5 days late).
-    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(['pay-4', 'pay-3', 'pay-2']);
+    expect(snapshot.overduePayables.map((p) => p.id)).toEqual(["pay-4", "pay-3", "pay-2"]);
   });
 });

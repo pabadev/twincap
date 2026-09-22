@@ -122,7 +122,12 @@ async function createPayableInUI(
 
 async function createTransferInUI(
   page: Page,
-  { from, to, sourceAmount, destAmount }: { from: string; to: string; sourceAmount: string; destAmount: string },
+  {
+    from,
+    to,
+    sourceAmount,
+    destAmount,
+  }: { from: string; to: string; sourceAmount: string; destAmount: string },
 ): Promise<void> {
   await page.goto("/transfers");
   await page.getByRole("button", { name: "Add Transfer" }).click();
@@ -244,9 +249,7 @@ test("measure dashboard scroll metrics with rich data", async ({ page }) => {
       const rect = el.getBoundingClientRect();
       if (rect.height > 400) {
         const cls =
-          typeof el.className === "string"
-            ? el.className.split(" ").slice(0, 3).join(" ")
-            : "";
+          typeof el.className === "string" ? el.className.split(" ").slice(0, 3).join(" ") : "";
         oversized.push({
           tag: el.tagName,
           classes: cls,
