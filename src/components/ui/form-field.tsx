@@ -19,6 +19,8 @@ interface FormFieldProps {
   hint?: string;
   /** Default true; false → decorative aria-hidden column header (line rows 2+). */
   showLabel?: boolean;
+  /** Extra classes for the label element (e.g. whitespace-nowrap for tight line rows). */
+  labelClassName?: string;
   /** Exactly one control element — wiring is injected via cloneElement. */
   children: ReactElement;
 }
@@ -31,6 +33,7 @@ export function FormField({
   error,
   hint,
   showLabel = true,
+  labelClassName,
   children,
 }: FormFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
@@ -60,7 +63,9 @@ export function FormField({
 
   const control = isValidElement(children) ? cloneElement(children, injected) : children;
 
-  const labelClasses = "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300";
+  const labelClasses = `mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300${
+    labelClassName ? ` ${labelClassName}` : ""
+  }`;
 
   return (
     <div>

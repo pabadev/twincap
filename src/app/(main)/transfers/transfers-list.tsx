@@ -54,7 +54,7 @@ export function TransfersList({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <Button variant="primary" size="sm" className="h-11" onClick={() => setShowForm(true)}>
           {t("addTransfer")}

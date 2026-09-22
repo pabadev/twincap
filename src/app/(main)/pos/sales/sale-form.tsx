@@ -344,7 +344,12 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                     </FormField>
                   </div>
                   <div className="w-20 sm:w-28">
-                    <FormField id={`price-${idx}`} label={t("unitPrice")} showLabel={idx === 0}>
+                    <FormField
+                      id={`price-${idx}`}
+                      label={t("unitPrice")}
+                      showLabel={idx === 0}
+                      labelClassName="whitespace-nowrap"
+                    >
                       <Input
                         type="number"
                         min="1"

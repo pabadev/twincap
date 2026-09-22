@@ -87,18 +87,64 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
   }
 
   // Compute the selected value label position, clamped inside the viewBox.
-  function getLabelPosition(index: number, series: "income" | "expenses") {
+  // Two variants: mobile renders the tap label LARGE (owner decision
+  // 2026-09-22: ≥2× the original glyphs — only one value shows at a time);
+  // sm+ keeps the original compact size which was already fine.
+  function getLabelPosition(index: number, series: "income" | "expenses", mobile: boolean) {
     const d = data[index];
     if (!d) return null;
     const value = series === "income" ? d.income : d.expenses;
     const cx = toX(index);
     const cy = toY(value);
     // Position label above the point; if too close to top, put it below.
-    const labelY = cy > PAD.top + 26 ? cy - 10 : cy + 24;
-    // Clamp X to stay inside viewBox (tap label full format is wide; keep a
-    // generous half-pill margin so the pill stays inside the chart).
-    const labelX = Math.max(PAD.left + 70, Math.min(W - PAD.right - 70, cx));
+    const labelOffset = mobile ? 26 : 20;
+    const labelY = cy > PAD.top + labelOffset ? cy - 10 : cy + 24;
+    // Clamp X to stay inside viewBox (the full-format mobile pill is wide).
+    const clampMargin = mobile ? 70 : 20;
+    const labelX = Math.max(PAD.left + clampMargin, Math.min(W - PAD.right - clampMargin, cx));
     return { x: labelX, y: labelY, value };
+  }
+
+  function renderTapLabel(
+    selected: { index: number; series: "income" | "expenses" },
+    mobile: boolean,
+  ): React.ReactNode {
+    const pos = getLabelPosition(selected.index, selected.series, mobile);
+    if (!pos) return null;
+    const isIncome = selected.series === "income";
+    // FULL exact value (no compact notation) per owner decision.
+    const valueText =
+      pos.value > 0 ? `${isIncome ? "+" : "−"}${fullFormatter.format(pos.value)}` : "—";
+    // Pill sized from the rendered string, per variant. Font sizes are in
+    // viewBox units, so they scale with the chart.
+    const fontSize = mobile ? 20 : 10;
+    const pillW = valueText.length * fontSize * 0.58 + fontSize;
+    const pillH = fontSize + 8;
+    const hiddenClass = mobile ? "sm:hidden" : "hidden sm:block";
+    return (
+      <g className={hiddenClass}>
+        {/* Background pill for readability */}
+        <rect
+          x={pos.x - pillW / 2}
+          y={pos.y - pillH + fontSize / 3}
+          width={pillW}
+          height={pillH}
+          rx={5}
+          className="fill-white/95 stroke-zinc-200 stroke-1 dark:fill-zinc-900/95 dark:stroke-zinc-700"
+        />
+        <text
+          x={pos.x}
+          y={pos.y + 2}
+          textAnchor="middle"
+          fontSize={fontSize}
+          className={`font-semibold tabular-nums ${
+            isIncome ? "fill-income" : "fill-expense"
+          } dark:fill-current`}
+        >
+          {valueText}
+        </text>
+      </g>
+    );
   }
 
   return (
@@ -242,48 +288,9 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
           );
         })}
 
-        {/* Selected point value label */}
-        {selected &&
-          (() => {
-            const pos = getLabelPosition(selected.index, selected.series);
-            if (!pos) return null;
-            const isIncome = selected.series === "income";
-            // Owner decision 2026-09-22: the tap label is readable-first —
-            // FULL exact value (no compact notation; only one label shows at
-            // a time) and ≥2× the previous glyph size. Font sizes and the
-            // pill are in viewBox units, so they scale with the chart.
-            const valueText =
-              pos.value > 0 ? `${isIncome ? "+" : "−"}${fullFormatter.format(pos.value)}` : "—";
-            // Estimate pill size from the rendered string (full currency
-            // format is long; center on the point, clamped by the caller).
-            const fontSize = 20;
-            const pillW = valueText.length * fontSize * 0.58 + fontSize;
-            const pillH = fontSize + 8;
-            return (
-              <g>
-                {/* Background pill for readability */}
-                <rect
-                  x={pos.x - pillW / 2}
-                  y={pos.y - pillH + fontSize / 3}
-                  width={pillW}
-                  height={pillH}
-                  rx={5}
-                  className="fill-white/95 stroke-zinc-200 stroke-1 dark:fill-zinc-900/95 dark:stroke-zinc-700"
-                />
-                <text
-                  x={pos.x}
-                  y={pos.y + 2}
-                  textAnchor="middle"
-                  fontSize={fontSize}
-                  className={`font-semibold tabular-nums ${
-                    isIncome ? "fill-income" : "fill-expense"
-                  } dark:fill-current`}
-                >
-                  {valueText}
-                </text>
-              </g>
-            );
-          })()}
+        {/* Selected point value label: LARGE on mobile, compact on sm+. */}
+        {selected && renderTapLabel(selected, true)}
+        {selected && renderTapLabel(selected, false)}
       </svg>
 
       {/* Non-visual access: the same series as screen-reader text. */}

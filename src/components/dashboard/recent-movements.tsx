@@ -20,7 +20,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
 
   if (movements.length === 0) {
     return (
-      <Card contentClassName="p-4">
+      <Card contentClassName="p-4" className="lg:max-w-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {t("recentMovements")}
@@ -32,7 +32,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
   }
 
   return (
-    <Card contentClassName="p-4">
+    <Card contentClassName="p-4" className="lg:max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t("recentMovements")}
