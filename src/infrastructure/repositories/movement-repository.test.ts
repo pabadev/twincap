@@ -228,7 +228,7 @@ describe("MongoMovementRepository windowed reads (R14-I)", () => {
 
     // Same sort as findByWorkspaceId ({ date: -1, createdAt: -1 })
     const sort = chain.sort as ReturnType<typeof vi.fn>;
-    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(m._id.toString());
@@ -297,7 +297,7 @@ describe("MongoMovementRepository windowed reads (R14-I)", () => {
       "_id workspaceId accountId type amount date note context link categoryId createdAt",
     );
     const sort = chain.select.mock.results[0].value.sort as ReturnType<typeof vi.fn>;
-    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+    expect(sort).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(m._id.toString());
@@ -342,7 +342,7 @@ describe("MongoMovementRepository windowed reads (R14-I)", () => {
 
     const result = await repo.findByWorkspaceId(UID);
     const chain = movementFind.mock.results[0].value;
-    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
     expect(result).toHaveLength(2);
   });
 });
@@ -396,7 +396,7 @@ describe("MongoMovementRepository lite balance read (R15.2 corrective)", () => {
       signedAmount: 1,
     });
     expect(options).toHaveProperty("session");
-    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1 });
+    expect(chain.sort).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(m._id.toString());
@@ -425,5 +425,50 @@ describe("MongoMovementRepository lite balance read (R15.2 corrective)", () => {
     expect(result).toEqual([]);
     expect(categoryFind).not.toHaveBeenCalled();
     expect(accountFind).not.toHaveBeenCalled();
+  });
+});
+
+describe("MongoMovementRepository sort tiebreaker (B1)", () => {
+  let repo: MongoMovementRepository;
+  const UID = new Types.ObjectId().toString();
+
+  beforeEach(() => {
+    repo = new MongoMovementRepository();
+    movementFind.mockReset();
+    categoryFind.mockReset();
+    accountFind.mockReset();
+  });
+
+  it("findByWorkspaceId sort includes _id: -1 as final tiebreaker for deterministic ordering", async () => {
+    const sortFn = vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue([]) });
+    movementFind.mockImplementation(() => ({ sort: sortFn }));
+    categoryFind.mockImplementation(() => execResult([]));
+    accountFind.mockImplementation(() => execResult([]));
+
+    await repo.findByWorkspaceId(UID);
+
+    expect(sortFn).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
+  });
+
+  it("findByAccountId sort includes _id: -1 as final tiebreaker", async () => {
+    const accountId = new Types.ObjectId().toString();
+    const sortFn = vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue([]) });
+    movementFind.mockImplementation(() => ({ sort: sortFn }));
+    categoryFind.mockImplementation(() => execResult([]));
+    accountFind.mockImplementation(() => execResult([]));
+
+    await repo.findByAccountId(UID, accountId);
+
+    expect(sortFn).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
+  });
+
+  it("findByAccountIdForBalance sort includes _id: -1 as final tiebreaker", async () => {
+    const accountId = new Types.ObjectId().toString();
+    const sortFn = vi.fn().mockReturnValue({ exec: vi.fn().mockResolvedValue([]) });
+    movementFind.mockImplementation(() => ({ sort: sortFn }));
+
+    await repo.findByAccountIdForBalance(UID, accountId);
+
+    expect(sortFn).toHaveBeenCalledWith({ date: -1, createdAt: -1, _id: -1 });
   });
 });

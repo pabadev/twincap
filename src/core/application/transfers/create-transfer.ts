@@ -1,9 +1,14 @@
-import { Transfer } from '../../domain/transfer';
-import { Movement } from '../../domain/movement';
-import { Money, deriveExchangeRate } from '../../domain/money';
-import { ValidationError, ConflictError, NotFoundError, DEBT_MODIFIED_MSG } from '../../domain/errors';
-import type { InsufficientFundsWarning } from '../../domain/errors';
-import { transferCategory } from '../../domain/synthetic-categories';
+import { Transfer } from "../../domain/transfer";
+import { Movement } from "../../domain/movement";
+import { Money, deriveExchangeRate } from "../../domain/money";
+import {
+  ValidationError,
+  ConflictError,
+  NotFoundError,
+  DEBT_MODIFIED_MSG,
+} from "../../domain/errors";
+import type { InsufficientFundsWarning } from "../../domain/errors";
+import { transferCategory } from "../../domain/synthetic-categories";
 import type {
   TransferRepository,
   MovementRepository,
@@ -12,10 +17,10 @@ import type {
   CreditGrantedRepository,
   SaleRepository,
   PayableRepository,
-} from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { CreateTransferInput } from './dto/transfers';
-import { computeAccountLiveBalance } from '../movements/compute-live-balance';
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { CreateTransferInput } from "./dto/transfers";
+import { computeAccountLiveBalance } from "../movements/compute-live-balance";
 
 /**
  * Result of a createTransfer attempt: either a written transfer (with no
@@ -23,8 +28,7 @@ import { computeAccountLiveBalance } from '../movements/compute-live-balance';
  * the caller's confirmation, NO transfer plus a structured warning.
  */
 export type CreateTransferResult =
-  | { transfer: Transfer; warning: null }
-  | { transfer: null; warning: InsufficientFundsWarning };
+  { transfer: Transfer; warning: null } | { transfer: null; warning: InsufficientFundsWarning };
 
 /**
  * Create a transfer between two accounts (TRA-1..4).
@@ -90,7 +94,7 @@ export async function createTransfer(
   // TRA-1: source ≠ destination (pure input validation — no state involved,
   // so it can stay outside the transaction).
   if (input.sourceAccountId === input.destinationAccountId) {
-    throw new ValidationError('Source and destination accounts must be different');
+    throw new ValidationError("Source and destination accounts must be different");
   }
 
   return uow.withTransaction(async (tx) => {
@@ -105,7 +109,11 @@ export async function createTransfer(
     if (!sourceAccount) {
       throw new NotFoundError(`Source account ${input.sourceAccountId} not found`);
     }
-    const destinationAccount = await accountRepo.findById(workspaceId, input.destinationAccountId, tx);
+    const destinationAccount = await accountRepo.findById(
+      workspaceId,
+      input.destinationAccountId,
+      tx,
+    );
     if (!destinationAccount) {
       throw new NotFoundError(`Destination account ${input.destinationAccountId} not found`);
     }
@@ -121,16 +129,20 @@ export async function createTransfer(
     // non-existent account → NotFoundError.
     const touchedDestination = await accountRepo.touch(workspaceId, input.destinationAccountId, tx);
     if (!touchedDestination) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     // ACC-1: declared currencies must match the accounts' real currencies.
     if (input.sourceCurrency !== sourceAccount.currency) {
-      throw new ValidationError(`Source account currency is ${sourceAccount.currency}, declared ${input.sourceCurrency}`);
+      throw new ValidationError(
+        `Source account currency is ${sourceAccount.currency}, declared ${input.sourceCurrency}`,
+      );
     }
     const declaredDestCurrency = input.destinationCurrency ?? input.sourceCurrency;
     if (declaredDestCurrency !== destinationAccount.currency) {
-      throw new ValidationError(`Destination account currency is ${destinationAccount.currency}, declared ${declaredDestCurrency}`);
+      throw new ValidationError(
+        `Destination account currency is ${destinationAccount.currency}, declared ${declaredDestCurrency}`,
+      );
     }
 
     // TRA-2/3 (R15.1 Fase 4): same-currency = equal amounts; cross-currency
@@ -147,9 +159,7 @@ export async function createTransfer(
       destAmount = input.sourceAmount;
     } else {
       if (!input.destinationAmount || input.destinationAmount <= 0) {
-        throw new ValidationError(
-          'Cross-currency transfer requires a positive destination amount',
-        );
+        throw new ValidationError("Cross-currency transfer requires a positive destination amount");
       }
       destAmount = input.destinationAmount;
     }
@@ -184,7 +194,7 @@ export async function createTransfer(
       return {
         transfer: null,
         warning: {
-          type: 'insufficient_funds',
+          type: "insufficient_funds",
           currentBalance: sourceBalance,
           projectedBalance,
           currency: sourceCurrency,
@@ -201,6 +211,8 @@ export async function createTransfer(
     const expenseOpId = ids.generate();
     const incomeOpId = ids.generate();
     const now = new Date();
+    // Tie-break determinism: subsequent legs get +1ms so same-day sorting is stable.
+    const incomeNow = new Date(now.getTime() + 1);
 
     const transfer = new Transfer({
       id: transferId,
@@ -226,12 +238,12 @@ export async function createTransfer(
       id: expenseMovementId,
       workspaceId,
       accountId: input.sourceAccountId,
-      category: transferCategory('expense'),
-      type: 'expense',
+      category: transferCategory("expense"),
+      type: "expense",
       amount: sourceAmountMoney,
       date: input.date,
       note: input.note,
-      link: { kind: 'transfer', refId: transferId, opId: expenseOpId },
+      link: { kind: "transfer", refId: transferId, opId: expenseOpId },
       createdAt: now,
     });
     await movementRepo.create(expenseMovement, tx);
@@ -241,13 +253,13 @@ export async function createTransfer(
       id: incomeMovementId,
       workspaceId,
       accountId: input.destinationAccountId,
-      category: transferCategory('income'),
-      type: 'income',
+      category: transferCategory("income"),
+      type: "income",
       amount: destinationAmountMoney,
       date: input.date,
       note: input.note,
-      link: { kind: 'transfer', refId: transferId, opId: incomeOpId },
-      createdAt: now,
+      link: { kind: "transfer", refId: transferId, opId: incomeOpId },
+      createdAt: incomeNow,
     });
     await movementRepo.create(incomeMovement, tx);
 

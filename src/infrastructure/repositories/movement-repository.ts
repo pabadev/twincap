@@ -34,7 +34,9 @@ export class MongoMovementRepository implements MovementRepository {
   async findByWorkspaceId(workspaceId: string): Promise<Movement[]> {
     const docs = await MovementModel.find({
       workspaceId: new Types.ObjectId(workspaceId),
-    }).sort({ date: -1, createdAt: -1 }).exec();
+    })
+      .sort({ date: -1, createdAt: -1, _id: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
@@ -71,7 +73,7 @@ export class MongoMovementRepository implements MovementRepository {
     }
 
     const docs = await MovementModel.find(query)
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1, createdAt: -1, _id: -1 })
       .limit(limit + 1) // fetch one extra to detect next page
       .exec();
 
@@ -96,9 +98,7 @@ export class MongoMovementRepository implements MovementRepository {
     });
 
     const lastDoc = pageDocs[pageDocs.length - 1] as MovementDocument;
-    const nextCursor = hasMore
-      ? { date: lastDoc.date, createdAt: lastDoc.createdAt }
-      : null;
+    const nextCursor = hasMore ? { date: lastDoc.date, createdAt: lastDoc.createdAt } : null;
 
     return { items, nextCursor };
   }
@@ -116,7 +116,7 @@ export class MongoMovementRepository implements MovementRepository {
       null,
       { session: sessionOf(tx) },
     )
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1, createdAt: -1, _id: -1 })
       .exec();
     if (docs.length === 0) return [];
 
@@ -173,7 +173,7 @@ export class MongoMovementRepository implements MovementRepository {
       },
       { session: sessionOf(tx) },
     )
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1, createdAt: -1, _id: -1 })
       .exec();
     return docs.map((doc) => {
       const d = doc as MovementDocument;
@@ -310,7 +310,7 @@ export class MongoMovementRepository implements MovementRepository {
     const result = await MovementModel.deleteMany(
       {
         workspaceId: new Types.ObjectId(workspaceId),
-        'link.refId': refId,
+        "link.refId": refId,
       },
       { session },
     ).exec();
@@ -325,7 +325,9 @@ export class MongoMovementRepository implements MovementRepository {
     const docs = await MovementModel.find({
       workspaceId: new Types.ObjectId(workspaceId),
       date: { $gte: from, $lt: to },
-    }).sort({ date: -1, createdAt: -1 }).exec();
+    })
+      .sort({ date: -1, createdAt: -1, _id: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
     const { categoryMap, accountMap } = await this.resolveBulkDependencies(workspaceId, docs);
@@ -344,10 +346,8 @@ export class MongoMovementRepository implements MovementRepository {
     const docs = await MovementModel.find({
       workspaceId: new Types.ObjectId(workspaceId),
     })
-      .select(
-        '_id workspaceId accountId type amount date note context link categoryId createdAt',
-      )
-      .sort({ date: -1, createdAt: -1 })
+      .select("_id workspaceId accountId type amount date note context link categoryId createdAt")
+      .sort({ date: -1, createdAt: -1, _id: -1 })
       .exec();
     if (docs.length === 0) return [];
 
@@ -435,7 +435,7 @@ export class MongoMovementRepository implements MovementRepository {
 
     // If not found in DB, try resolving as synthetic category
     if (!catDoc) {
-      const synthetic = resolveSyntheticCategory(categoryId, movementType as 'income' | 'expense');
+      const synthetic = resolveSyntheticCategory(categoryId, movementType as "income" | "expense");
       if (!synthetic) {
         throw new NotFoundError(`Category ${categoryId} not found for user ${workspaceId}`);
       }
@@ -490,7 +490,7 @@ export class MongoMovementRepository implements MovementRepository {
       const category = toCategoryEntity(doc as CategoryDocument);
       // Map this category for all movement types that reference it
       const typesForThisCat = new Set(
-        docs.filter(d => d.categoryId.toString() === catId).map(d => d.type),
+        docs.filter((d) => d.categoryId.toString() === catId).map((d) => d.type),
       );
       for (const t of typesForThisCat) {
         categoryMap.set(`${catId}:${t}`, category);
@@ -504,7 +504,7 @@ export class MongoMovementRepository implements MovementRepository {
       const key = `${catId}:${doc.type}`;
       if (!categoryMap.has(key) && !seen.has(key)) {
         seen.add(key);
-        const synthetic = resolveSyntheticCategory(catId, doc.type as 'income' | 'expense');
+        const synthetic = resolveSyntheticCategory(catId, doc.type as "income" | "expense");
         if (synthetic) {
           categoryMap.set(key, synthetic);
         }
