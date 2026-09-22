@@ -37,13 +37,13 @@ export function formatAmountParts(
   amount: number,
   currency: string,
   locale: string,
-): { amount: string; suffix: string; suffixFirst: boolean } {
+): { sign: string; amount: string; suffix: string; suffixFirst: boolean } {
   const formatted = formatAmount(amount, currency, locale);
   // The currency code is typically 3 uppercase letters. Detect its position.
   const codeMatch = formatted.match(/\b([A-Z]{3})\b/);
   if (!codeMatch || codeMatch.index === undefined) {
     // Fallback: no currency code found, return as-is with empty suffix.
-    return { amount: formatted, suffix: "", suffixFirst: false };
+    return { sign: "", amount: formatted, suffix: "", suffixFirst: false };
   }
   const suffix = codeMatch[1];
   const codeIndex = codeMatch.index;
@@ -52,11 +52,19 @@ export function formatAmountParts(
 
   if (codeIndex === 0) {
     // en-style: "COP 1,234,567.89" — code first, amount after.
-    return { amount: afterCode, suffix, suffixFirst: true };
-  } else {
-    // es-style: "$1.234.567,89 COP" — amount first, code last.
-    return { amount: beforeCode, suffix, suffixFirst: false };
+    return { sign: "", amount: afterCode, suffix, suffixFirst: true };
   }
+  // en-style negative: Intl emits "-COP 5,000.00" — the sign precedes the
+  // code, so beforeCode is decoration (no digits). The sign travels with the
+  // suffix (it renders first), the digits stay in the amount part; the full
+  // string rebuilds exactly what Intl emitted and E2E regexes depend on the
+  // "−<CODE> <amount>" adjacency.
+  if (!/\p{Nd}/u.test(beforeCode)) {
+    return { sign: beforeCode, amount: afterCode, suffix, suffixFirst: true };
+  }
+  // es-style: amount first, code last (sign already leading in beforeCode,
+  // e.g. "-5.000,00 COP"): the full amount (with its sign) renders first.
+  return { sign: "", amount: beforeCode, suffix, suffixFirst: false };
 }
 
 /**

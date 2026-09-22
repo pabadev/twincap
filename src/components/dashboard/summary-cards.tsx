@@ -37,6 +37,7 @@ function MoneyValue({
   return (
     <span className={className}>
       {sign}
+      {parts.sign}
       {parts.suffixFirst ? (
         <>
           <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}

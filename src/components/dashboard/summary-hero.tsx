@@ -52,6 +52,7 @@ export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHer
                     suffix is in its own whitespace-nowrap span so it never
                     wraps alone. tabular-nums keeps digits aligned. */}
                 <span className="min-w-0 break-words text-right font-display text-2xl font-semibold tabular-nums text-zinc-900 md:text-3xl dark:text-zinc-100">
+                  {parts.sign}
                   {parts.suffixFirst ? (
                     <>
                       <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}

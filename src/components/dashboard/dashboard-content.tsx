@@ -372,6 +372,7 @@ export function DashboardContent({
                         account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
                       }`}
                     >
+                      {parts.sign}
                       {parts.suffixFirst ? (
                         <>
                           <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
