@@ -8,13 +8,13 @@
  * only — no React, no client-component imports.
  */
 
-import type { MonthBucket } from '../compute-dashboard-summary';
-import type { YearMonthBucket } from '../compute-yearly-evolution';
-import type { ContextSummary } from '../compute-context-summary';
-import type { CurrencyTotal } from '../compute-category-summary';
+import type { MonthBucket } from "../compute-dashboard-summary";
+import type { YearMonthBucket } from "../compute-yearly-evolution";
+import type { ContextSummary } from "../compute-context-summary";
+import type { CurrencyTotal } from "../compute-category-summary";
 
 /** Dashboard scope filter: all movements or a single context. */
-export type ScopeFilter = 'all' | 'Personal' | 'Business';
+export type ScopeFilter = "all" | "Personal" | "Business";
 
 export interface DashboardFilters {
   scope: ScopeFilter;
@@ -48,6 +48,20 @@ export interface AttentionTotals {
   payables: number;
 }
 
+/**
+ * Current-month financing capital per currency (beta round 3): the
+ * "Flujo de caja del mes" card must report credit principals in EVERY
+ * currency that had a financing movement that month — never summed across
+ * currencies. Entries exist only when inflow or outflow is non-zero.
+ */
+export interface FinancingTotals {
+  currency: string;
+  /** Principal of credits received this month (income-type financing movement). */
+  inflow: number;
+  /** Principal of credits granted this month (expense-type financing movement). */
+  outflow: number;
+}
+
 /** Row of the income/expense category summary tables. */
 export interface SummaryTableRow {
   label: string;
@@ -58,7 +72,7 @@ export interface SummaryTableRow {
 /** Serialized recent movement (the ten most recent of the current civil month). */
 export interface SerializedMovement {
   id: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   amount: number;
   currency: string;
   date: string;
@@ -90,6 +104,12 @@ export interface DashboardSnapshot {
   monthlyExpenses: number;
   financingInflow: number;
   financingOutflow: number;
+  /**
+   * Current-month financing capital per currency, COP-first, only currencies
+   * with a non-zero flow (beta round 3). Powers "Flujo de caja del mes" in
+   * multi-currency workspaces; mono-currency rendering ignores it.
+   */
+  financingBreakdown: FinancingTotals[];
   incomeRows: SummaryTableRow[];
   expenseRows: SummaryTableRow[];
   /** Per-currency totals of the category summary tables, sorted COP-first. */
@@ -125,8 +145,5 @@ export interface DashboardSnapshot {
    * single-currency values as today; the map only powers the currency
    * selector in the chart view (no server round-trip on switch).
    */
-  chartDataByCurrency?: Record<
-    string,
-    { monthly: MonthBucket[]; yearly: YearMonthBucket[] }
-  >;
+  chartDataByCurrency?: Record<string, { monthly: MonthBucket[]; yearly: YearMonthBucket[] }>;
 }

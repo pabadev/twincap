@@ -3,6 +3,7 @@ import type {
   DashboardFilters,
   CurrencyBreakdown,
   AttentionTotals,
+  FinancingTotals,
   OverduePayable,
 } from "./dashboard-types";
 import type { SerializedCategory } from "../../domain/category";
@@ -11,7 +12,7 @@ import { computeDashboardSummary } from "../compute-dashboard-summary";
 import { computeCategorySummary } from "../compute-category-summary";
 import { computeYearlyEvolution } from "../compute-yearly-evolution";
 import { computeContextSummary } from "../compute-context-summary";
-import { countsTowardEconomicResult } from "../economic-result";
+import { countsTowardEconomicResult, FINANCING_CAPITAL_LINK_KINDS } from "../economic-result";
 import { sumSafeMinorUnits } from "../../domain/money";
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
@@ -220,6 +221,35 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     now: civilNow,
   });
 
+  // beta round 3: per-currency financing breakdown of the CURRENT month —
+  // every currency with a financing-capital movement appears with its own
+  // inflow/outflow lines; never summed across currencies. Mirrors the
+  // financing branch of computeDashboardSummary but unsized by the
+  // aggregation currency `currency` (uses the full guarded-sum rules).
+  const financingMap = new Map<string, { inflow: number; outflow: number }>();
+  for (const m of monthlyMovements) {
+    if (m.link === undefined || !FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind)) continue;
+    const entry = financingMap.get(m.amount.currency) ?? { inflow: 0, outflow: 0 };
+    if (m.type === "income") {
+      entry.inflow = sumSafeMinorUnits(
+        [entry.inflow, m.amount.amount],
+        `Dashboard financing inflow breakdown (${m.amount.currency})`,
+      );
+    } else {
+      entry.outflow = sumSafeMinorUnits(
+        [entry.outflow, m.amount.amount],
+        `Dashboard financing outflow breakdown (${m.amount.currency})`,
+      );
+    }
+    financingMap.set(m.amount.currency, entry);
+  }
+  const financingBreakdown: FinancingTotals[] = Array.from(financingMap.entries())
+    .filter(([, data]) => data.inflow !== 0 || data.outflow !== 0)
+    .map(([currency, data]) => ({ currency, ...data }))
+    .sort((a, b) =>
+      a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
+    );
+
   // Category rows are current-month fixtures (render alongside the cards).
   // Multi-currency (R4-A2): aggregated per currency, no single-currency scope.
   const { incomeCategories, expenseCategories, incomeTotals, expenseTotals } =
@@ -360,6 +390,7 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     monthlyExpenses,
     financingInflow,
     financingOutflow,
+    financingBreakdown,
     incomeRows,
     expenseRows,
     incomeTotals,

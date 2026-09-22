@@ -1,4 +1,4 @@
-import { Skeleton } from '../../../components/ui/skeleton';
+import { Skeleton } from "../../../components/ui/skeleton";
 
 export default function ClientsLoading() {
   return (
@@ -7,8 +7,8 @@ export default function ClientsLoading() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-36" />
       </div>
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
             className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"

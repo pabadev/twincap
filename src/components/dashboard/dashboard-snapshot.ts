@@ -11,4 +11,4 @@ export type {
   DashboardAccountSnapshot,
   DashboardSnapshot,
   OverduePayable,
-} from '../../core/application/dashboard/dashboard-types';
+} from "../../core/application/dashboard/dashboard-types";

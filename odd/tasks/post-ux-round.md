@@ -372,3 +372,86 @@ stride 3/6). Verified stroke-/fill-income/expese utilities derive from the
 
 - [x] U5: verification (tsc 0, eslint clean, prettier clean, targeted tests
       green 4+3+2+2) + push/PR on a fresh branch from master.
+
+## Cluster 8 delivery
+
+PR #14 (feat/post-ux-round-2 -> master, 5 commits f583b3a..17d28ab) MERGED.
+CI: Quality pass, Vercel pass; E2E failed once on duplicate-opening
+(concurrency timing sensitivity — known flaky class R15) and PASSED on the
+re-run 3m12s; Vercel Production deployment == success after merge
+(master 3dcdbed). Reports-grid removal, asymmetric Top, button-bodied
+Ver todos link and native SVG line chart are LIVE in production.
+
+## Cluster 9 — Beta round 3 (dashboard polish + global layout width)
+
+### Objective
+
+Fix the beta round-3 findings: spurious giant scroll after Patrimonio, multi-currency
+"Flujo de caja del mes" card, Movimientos recientes position, credits granted grid
+symmetry, overflow-x scrollbar artifacts, and the PC/laptop width strategy
+(100% at 1200/1366, capped on large screens; narrower chronological lists).
+
+### Problem
+
+After PR #14 the product owner beta-tested the dashboard and list views. Results:
+the dashboard scrolls ~1 viewport of blank space past Patrimonio (real data);
+"Flujo de caja del mes" shows only COP regardless of movement currencies;
+Movimientos recientes sits below the chart/attention although a previous round
+decided it belongs right after the accounts cards; Credits granted cards have
+uneven heights breaking the grid; the outer wrapper adds 24px side margins at
+1200/1366; Movements/Transfers (chronological lists) stretch across the full
+1280+ width and read badly.
+
+### Scope (cluster 9 only)
+
+- [x] U1: Dashboard blank-scroll bug — PARTIALLY RESOLVED: could NOT
+      reproduce. E2E measurement (e2e/measure-scroll.spec.ts) with fresh user,
+      4 movements, credit granted, credit received, payable, USD account +
+      cross-currency transfer, POS sale: mainScroll-content gap == 32px BOTH
+      measurements (padding of main p-8). No oversized element (>400px beyond
+      content). Result pending: reproduced only with the product owner's real
+      dataset via a DevTools snippet (next step: paste output of the console
+      script into the round). Investigated: SummaryTable/Attention/Position
+      cards clean, Modal null when closed, toast/FAB fixed (no flow impact).
+- [x] U2: RecentMovements moved right under the accounts cards (commit 7406afa).
+- [x] U3: Financing card per-currency (commit 8a3479d): snapshot gains
+      financingBreakdown (current-month principals per currency, guarded sums,
+      COP-first, only currencies with non-zero flow; previous-month financing
+      excluded); UI renders per-currency lines only when >1 currency, mono
+      keeps the compact form; 2 new builder tests. Multi-currency data is
+      already live in production (USD accounts confirmed in beta screenshots).
+- [x] U4: Equal-height commitment cards — dropped md:items-start on credits
+      granted/received + payables grids (commit 1f99990).
+- [x] U5: Layout width: outer wrapper cap moved lg→2xl only
+      (`2xl:max-w-[min(1536px,calc(100vw-3rem))]`); 1200/1366 full width,
+      ≥1536 capped as before (commit 084d15a).
+- [x] U6: Chronological lists narrowed (movements-list, transfers-list:
+      max-w-6xl→max-w-5xl, commit 57b667b); non-chronological single-column
+      card sets gained a 2-col PC grid (accounts page, clients list + loading,
+      commit d71713c). Sale list kept at 6xl pending the owner's call.
+- [x] U7: verification — tsc 0, eslint clean on all touched paths, prettier
+      clean on touched files, targeted suites green (dashboard components 7,
+      core dashboard 40, app 133). Push/PR: feat/post-ux-round-3.
+
+### Cluster 9 round 2 (owner feedback after PR #15 preview)
+
+- [x] U1 FIXED: root cause found and closed. The whole-page double scroll +
+      giant blank was NOT in dashboard content: the MonthlyChart sr-only
+      summary table is position:absolute (the sr-only utility); with no
+      positioned ancestor its containing block is the page itself, so it
+      escaped main's overflow-auto and stretched documentElement.scrollHeight
+      (doc 2832 vs viewport 720). Fix: monthly-chart Card gets
+      className="relative" (commit 754a3c8). Repro spec now asserts doc<=vh+40
+      and measures body children + absolute outliers (342ea68). Verified:
+      doc=720 after fix.
+- [x] U8 hero hierarchy (owner): "¿Cuánto tengo disponible?" dominates via
+      font-display text-2xl/3xl figures; "Flujo de caja del mes" renders
+      PER-CURRENCY server-computed result rows (same level/row rhythm,
+      secondary size, semantic color) — replaces the single-COP giant figure
+      (commit 03a2155). No new i18n keys.
+- [x] U9 lists narrower still: movements/transfers max-w-5xl → max-w-3xl
+      (commit 1ab2089). Sales list unchanged (pending owner call).
+### Cluster 9 round 2 addendum
+- [x] U10: shell-width contract updated — 2xl cap on BOTH (main) and
+      (analytics) layouts; RSL-1/2 comment amended with the beta round-3
+      owner decision. Unblocked the Quality gate (shell-width.test).

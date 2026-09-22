@@ -198,10 +198,13 @@ export function DashboardContent({
   const topIncomeRows = incomeRows.slice(0, 3);
   const topExpenseRows = expenseRows.slice(0, 5);
 
-  // N1 hero: period result of the snapshot's aggregation currency plus
-  // per-currency available balances (never summed across currencies, R15.3.1 P1.3).
-  const heroEntry = currencyBreakdown.find((c) => c.currency === currency);
-  const heroResult = heroEntry?.result ?? 0;
+  // N1 hero: period result per currency — each currency with economic
+  // movement that month carries its own line; never summed cross-currency
+  // (beta round 3). Available balances per currency likewise (R15.3.1 P1.3).
+  const heroResults = currencyBreakdown.map((c) => ({
+    currency: c.currency,
+    result: c.result,
+  }));
   const availableByCurrency = currencyBreakdown.map((c) => ({
     currency: c.currency,
     balance: c.balance,
@@ -311,8 +314,7 @@ export function DashboardContent({
 
       {/* ── N1 HERO ──────────────────────────────────────────────── */}
       <SummaryHero
-        result={heroResult}
-        currency={currency}
+        results={heroResults}
         available={availableByCurrency}
         dataAsOf={snapshot.dataAsOf}
         locale={locale}
@@ -325,6 +327,7 @@ export function DashboardContent({
         monthlyExpenses={monthlyExpenses}
         financingInflow={financingInflow}
         financingOutflow={financingOutflow}
+        financingBreakdown={snapshot.financingBreakdown}
         locale={locale}
         currencyBreakdown={currencyBreakdown}
         contextSummary={filters.scope === "all" ? snapshot.contextSummary : undefined}
@@ -379,6 +382,12 @@ export function DashboardContent({
           </div>
         )}
       </div>
+
+      {/* N5 DETALLE moved up (beta round 3): Movimientos recientes belongs
+          right under the accounts cards — "¿dónde está mi dinero?" then
+          "¿qué pasó?" — previous round's decision that cluster 8 regressed
+          by pushing it below the chart and attention sections. */}
+      <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
 
       {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
         <div>
@@ -489,9 +498,6 @@ export function DashboardContent({
         overduePayables={snapshot.overduePayables}
         locale={locale}
       />
-
-      {/* ── N5 DETALLE ───────────────────────────────────────────── */}
-      <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
 
       <PositionCards positions={positionData} locale={locale} />
 

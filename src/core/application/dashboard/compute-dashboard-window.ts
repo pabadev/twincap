@@ -25,10 +25,7 @@ export interface DashboardWindow {
  *                  `buildDashboardSnapshot` (A2 civil-clock shift).
  *                  Default 0 = server UTC clock.
  */
-export function computeDashboardWindow(
-  now: Date,
-  tzOffsetMinutes = 0,
-): DashboardWindow {
+export function computeDashboardWindow(now: Date, tzOffsetMinutes = 0): DashboardWindow {
   // A2: same civil-clock shift as buildDashboardSnapshot.
   const civilNow = new Date(now.getTime() - tzOffsetMinutes * 60_000);
 

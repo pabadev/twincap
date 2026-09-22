@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// RSL-1 / RSL-7: the app shell layouts must carry the exact viewport-relative
-// width class. Below lg (<1024px) the `lg:` variant is inert, so mobile and
-// tablet behavior is unchanged (RSL-4). At >=1024px the shell measures
-// min(1536px, 100vw - 3rem): 24px guaranteed margin per side on 1024-1536px
-// viewports (1366px -> 1318px, RSL-2) and the 1536px cap above 1568px (RSL-3).
+// RSL-1 / RSL-7, amended by beta round 3 (product decision 2026-09-22): the
+// viewport-relative cap only applies at >=1536px (2xl). At 1200/1366 the shell
+// uses the FULL available width (24px side margins removed); above that the
+// min(1536px, 100vw - 3rem) cap keeps huge monitors centered (RSL-3).
 // NOTE (Tailwind v4): underscores stand for spaces in the CSS declaration —
 // raw spaces produce an unmatchable class token (HTML splits on whitespace).
-const SHELL_WIDTH_CLASS = "lg:max-w-[min(1536px,calc(100vw_-_3rem))]";
+const SHELL_WIDTH_CLASS = "2xl:max-w-[min(1536px,calc(100vw_-_3rem))]";
 
 const SHELL_LAYOUTS = ["src/app/(main)/layout.tsx", "src/app/(analytics)/layout.tsx"];
 

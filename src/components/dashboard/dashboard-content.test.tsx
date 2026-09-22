@@ -24,6 +24,7 @@ const mockSnapshot: DashboardSnapshot = {
   monthlyExpenses: 0,
   financingInflow: 0,
   financingOutflow: 0,
+  financingBreakdown: [],
   incomeRows: [],
   expenseRows: [],
   incomeTotals: [],

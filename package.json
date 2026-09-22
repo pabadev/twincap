@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "node e2e/load-e2e-env.cjs test",
     "e2e:server": "next build && next start",
+    "e2e:build": "next build",
     "test:e2e:install": "playwright install chromium",
     "migrate:workspace": "node scripts/migrate-workspace.mjs",
     "indexes:verify": "node scripts/verify-all-indexes.mjs",

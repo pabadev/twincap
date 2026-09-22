@@ -10,6 +10,7 @@ import type {
   ContextSummary,
   ContextCurrencySummary,
 } from "../../core/application/compute-context-summary";
+import type { FinancingTotals } from "../../core/application/dashboard/dashboard-types";
 // R14-K §14c: the breakdown type lives in core; re-exported here so the
 // presentation layer keeps its stable import path.
 import type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
@@ -23,6 +24,12 @@ interface SummaryCardsProps {
   financingInflow: number;
   /** Financing capital outflow of the current month, in `currency` minor units. */
   financingOutflow: number;
+  /**
+   * Per-currency financing breakdown of the current month (beta round 3).
+   * When more than one currency appears, the card switches to the
+   * per-currency rendering; mono-currency keeps the historical compact form.
+   */
+  financingBreakdown?: FinancingTotals[];
   locale: string;
   currencyBreakdown?: CurrencyBreakdown[];
   /** Personal/Business split (A6) — rendered below the total cards when present. */
@@ -137,12 +144,73 @@ function ContextCurrencyRows({
   );
 }
 
+/**
+ * Financing card body in multi-currency mode (beta round 3): one line per
+ * currency with a non-zero principal flow, COP-first (server order). Each
+ * amount is SIGNED in its own currency — never summed across currencies,
+ * same rule as MultiCurrencyValue above.
+ */
+function FinancingCurrencyRows({
+  items,
+  locale,
+  receivedLabel,
+  grantedLabel,
+}: {
+  items: FinancingTotals[];
+  locale: string;
+  receivedLabel: string;
+  grantedLabel: string;
+}) {
+  // Hide the label group when that side has no non-zero flow (e.g. only
+  // credits received this month).
+  const inflowItems = items.filter((it) => it.inflow !== 0);
+  const outflowItems = items.filter((it) => it.outflow !== 0);
+  return (
+    <>
+      {inflowItems.length > 0 && (
+        <>
+          <p className="text-[11px] sm:text-xs leading-tight text-income">{receivedLabel}:</p>
+          {inflowItems.map((it) => (
+            <p
+              key={`in-${it.currency}`}
+              className="text-[11px] sm:text-xs leading-tight text-income"
+            >
+              <span className="font-semibold">+{formatAmount(it.inflow, it.currency, locale)}</span>{" "}
+              <span className="text-zinc-400">{it.currency}</span>
+            </p>
+          ))}
+        </>
+      )}
+      {outflowItems.length > 0 && (
+        <>
+          <p className="text-[11px] sm:text-xs leading-tight text-expense">{grantedLabel}:</p>
+          {outflowItems.map((it) => (
+            <p
+              key={`out-${it.currency}`}
+              className="text-[11px] sm:text-xs leading-tight text-expense"
+            >
+              <span className="font-semibold">
+                −{formatAmount(it.outflow, it.currency, locale)}
+              </span>{" "}
+              <span className="text-zinc-400">{it.currency}</span>
+            </p>
+          ))}
+        </>
+      )}
+      {inflowItems.length === 0 && outflowItems.length === 0 && (
+        <p className="text-[11px] sm:text-xs leading-tight text-zinc-400">—</p>
+      )}
+    </>
+  );
+}
+
 export function SummaryCards({
   currency,
   monthlyIncome,
   monthlyExpenses,
   financingInflow,
   financingOutflow,
+  financingBreakdown,
   locale,
   currencyBreakdown,
   contextSummary,
@@ -246,18 +314,29 @@ export function SummaryCards({
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                 {t("financingThisMonth")}
               </p>
-              <p className="text-[11px] sm:text-xs leading-tight text-income">
-                {t("financingReceived")}:{" "}
-                <span className="font-semibold">
-                  +{formatAmount(financingInflow, currency, locale)}
-                </span>
-              </p>
-              <p className="text-[11px] sm:text-xs leading-tight text-expense">
-                {t("financingGranted")}:{" "}
-                <span className="font-semibold">
-                  −{formatAmount(financingOutflow, currency, locale)}
-                </span>
-              </p>
+              {financingBreakdown && financingBreakdown.length > 1 ? (
+                <FinancingCurrencyRows
+                  items={financingBreakdown}
+                  locale={locale}
+                  receivedLabel={t("financingReceived")}
+                  grantedLabel={t("financingGranted")}
+                />
+              ) : (
+                <>
+                  <p className="text-[11px] sm:text-xs leading-tight text-income">
+                    {t("financingReceived")}:{" "}
+                    <span className="font-semibold">
+                      +{formatAmount(financingInflow, currency, locale)}
+                    </span>
+                  </p>
+                  <p className="text-[11px] sm:text-xs leading-tight text-expense">
+                    {t("financingGranted")}:{" "}
+                    <span className="font-semibold">
+                      −{formatAmount(financingOutflow, currency, locale)}
+                    </span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </Card>
