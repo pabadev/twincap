@@ -380,6 +380,12 @@ export function DashboardContent({
         )}
       </div>
 
+      {/* N5 DETALLE moved up (beta round 3): Movimientos recientes belongs
+          right under the accounts cards — "¿dónde está mi dinero?" then
+          "¿qué pasó?" — previous round's decision that cluster 8 regressed
+          by pushing it below the chart and attention sections. */}
+      <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
+
       {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
@@ -489,9 +495,6 @@ export function DashboardContent({
         overduePayables={snapshot.overduePayables}
         locale={locale}
       />
-
-      {/* ── N5 DETALLE ───────────────────────────────────────────── */}
-      <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
 
       <PositionCards positions={positionData} locale={locale} />
 
