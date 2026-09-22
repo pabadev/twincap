@@ -59,3 +59,22 @@ describe("MonthlyChart line chart (§10)", () => {
     expect((dense.match(/text-anchor="middle"/g) || []).length).toBe(6);
   });
 });
+
+// A3 (F6): tap-to-show — each point has a transparent hit circle (r=12) for
+// touch/click; selecting a point renders a value label; tapping background
+// clears the selection.
+describe("MonthlyChart tap-to-show (A3 F6)", () => {
+  it("renders transparent hit circles for each point (2 series × N months)", () => {
+    const html = renderToStaticMarkup(createElement(MonthlyChart, { ...baseProps }));
+    // Hit circles: r=12, fill="transparent", one per point (2 series × 3 months = 6).
+    const hitCircles = (html.match(/r="12" fill="transparent"/g) || []).length;
+    expect(hitCircles).toBe(6);
+  });
+
+  it("renders a background rect for clearing selection", () => {
+    const html = renderToStaticMarkup(createElement(MonthlyChart, { ...baseProps }));
+    expect(html).toContain('fill="transparent"');
+    // The background rect should be present.
+    expect(html).toContain("<rect");
+  });
+});

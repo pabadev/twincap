@@ -1,7 +1,7 @@
 "use client";
 
 import { useT } from "../../i18n/client";
-import { formatAmount, formatDate } from "../../lib/format";
+import { formatAmountParts, formatDate } from "../../lib/format";
 import { Card } from "../ui/card";
 
 interface SummaryHeroProps {
@@ -40,19 +40,34 @@ export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHer
           {t("availableByCurrency")}
         </p>
         <div className="mt-3 flex flex-col gap-1.5">
-          {available.map((a) => (
-            <div key={a.currency} className="flex items-baseline justify-between gap-3">
-              <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
-                {a.currency}
-              </span>
-              {/* §21: min-w-0 + break-words wrap extremely large balances
-                  instead of overflowing the card; tabular-nums keeps digits
-                  aligned. The figure is never truncated or hidden. */}
-              <span className="min-w-0 break-words text-right font-display text-2xl font-semibold tabular-nums text-zinc-900 md:text-3xl dark:text-zinc-100">
-                {formatAmount(a.balance, a.currency, locale)}
-              </span>
-            </div>
-          ))}
+          {available.map((a) => {
+            const parts = formatAmountParts(a.balance, a.currency, locale);
+            return (
+              <div key={a.currency} className="flex items-baseline justify-between gap-3">
+                <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+                  {a.currency}
+                </span>
+                {/* §21 + A2 (F4): min-w-0 + break-words wrap extremely large
+                    balances instead of overflowing the card; the currency
+                    suffix is in its own whitespace-nowrap span so it never
+                    wraps alone. tabular-nums keeps digits aligned. */}
+                <span className="min-w-0 break-words text-right font-display text-2xl font-semibold tabular-nums text-zinc-900 md:text-3xl dark:text-zinc-100">
+                  {parts.sign}
+                  {parts.suffixFirst ? (
+                    <>
+                      <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                      <span>{parts.amount}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{parts.amount}</span>{" "}
+                      <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                    </>
+                  )}
+                </span>
+              </div>
+            );
+          })}
           {available.length === 0 && (
             // H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the bare "—"
             // is the intentional zero-dash typography of the hero, not a
@@ -71,21 +86,34 @@ export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHer
             {resultRows.length === 0 ? (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("periodResultEmpty")}</p>
             ) : (
-              resultRows.map((r) => (
-                <div key={r.currency} className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
-                    {r.currency}
-                  </span>
-                  <span
-                    className={`min-w-0 break-words text-right text-lg font-semibold tabular-nums sm:text-xl ${
-                      r.result >= 0 ? "text-income" : "text-expense"
-                    }`}
-                  >
-                    {r.result >= 0 ? "+" : "−"}
-                    {formatAmount(Math.abs(r.result), r.currency, locale)}
-                  </span>
-                </div>
-              ))
+              resultRows.map((r) => {
+                const parts = formatAmountParts(Math.abs(r.result), r.currency, locale);
+                return (
+                  <div key={r.currency} className="flex items-baseline justify-between gap-3">
+                    <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+                      {r.currency}
+                    </span>
+                    <span
+                      className={`min-w-0 break-words text-right text-lg font-semibold tabular-nums sm:text-xl ${
+                        r.result >= 0 ? "text-income" : "text-expense"
+                      }`}
+                    >
+                      {r.result >= 0 ? "+" : "−"}
+                      {parts.suffixFirst ? (
+                        <>
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                          <span>{parts.amount}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{parts.amount}</span>{" "}
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
         ) : (

@@ -1,14 +1,18 @@
-import { CreditGranted } from '../../domain/credit-granted';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { CreditAbono } from '../../domain/credit-granted';
-import { splitAbonoCapitalInterest } from './split-abono';
-import { WRITE_OFF_ALREADY_MSG } from './write-off-credit-granted';
-import type { AddAbonoInput } from './dto/credits-granted';
+import { CreditGranted } from "../../domain/credit-granted";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import { creditGrantedCategory } from "../../domain/synthetic-categories";
+import type {
+  CreditGrantedRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { CreditAbono } from "../../domain/credit-granted";
+import { splitAbonoCapitalInterest } from "./split-abono";
+import { WRITE_OFF_ALREADY_MSG } from "./write-off-credit-granted";
+import type { AddAbonoInput } from "./dto/credits-granted";
 
 /**
  * Add an abono to a credit granted (CRED-G-2, CRED-G-3).
@@ -74,24 +78,26 @@ export async function addAbono(
     // outside the tx (static reference resolved up front; matrix row 70).
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     // Re-fetch via repo — returns CreditGranted instance with pending getter.
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
-    const credit = credits.find(c => c.id === creditId);
-    if (!credit) throw new NotFoundError('Credit not found');
+    const credit = credits.find((c) => c.id === creditId);
+    if (!credit) throw new NotFoundError("Credit not found");
 
     // ACC-1: the abono's currency must match the credit's principal currency.
     if (input.currency !== credit.principal.currency) {
-      throw new ValidationError(`Credit currency is ${credit.principal.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Credit currency is ${credit.principal.currency}, declared ${input.currency}`,
+      );
     }
 
     // CRED-G-2: pending = totalToPay − Σ abonos; overpayment rejected
     if (input.amount > credit.pending) {
-      throw new ConflictError('Abono exceeds pending amount');
+      throw new ConflictError("Abono exceeds pending amount");
     }
 
     // R15-F4 (audit §6): a written-off credit must never accept new abonos.
@@ -104,13 +110,15 @@ export async function addAbono(
 
     const abonoId = ids.generate();
     const now = new Date();
+    // Tie-break determinism: interest movement gets +1ms so same-day sorting is stable.
+    const interestNow = new Date(now.getTime() + 1);
 
     // ─── Standalone credit: split capital / interest (R9/D9.1) ─────────
     if (!credit.saleId) {
-      const split = splitAbonoCapitalInterest(
-        credit.principal.amount,
-        [...credit.abonos.map(a => ({ amount: a.amount.amount })), { amount: input.amount }],
-      );
+      const split = splitAbonoCapitalInterest(credit.principal.amount, [
+        ...credit.abonos.map((a) => ({ amount: a.amount.amount })),
+        { amount: input.amount },
+      ]);
       const { capitalAmount: capitalPortion, interestAmount: interestPortion } =
         split[split.length - 1];
 
@@ -127,22 +135,29 @@ export async function addAbono(
         accountId: input.accountId,
         movementId: primaryMovementId,
         capitalAmount: capitalPortion > 0 ? new Money(capitalPortion, input.currency) : undefined,
-        interestAmount: interestPortion > 0 ? new Money(interestPortion, input.currency) : undefined,
+        interestAmount:
+          interestPortion > 0 ? new Money(interestPortion, input.currency) : undefined,
         interestMovementId,
       };
 
       // Abono first, then movements (legacy ordering: a mid-way failure leaves
       // the abono embedded without a phantom balance-affecting movement).
-      await creditRepo.addAbono(workspaceId, creditId, {
-        id: abono.id,
-        amount: abono.amount.amount,
-        date: abono.date,
-        accountId: abono.accountId,
-        movementId: abono.movementId,
-        capitalAmount: abono.capitalAmount?.amount,
-        interestAmount: abono.interestAmount?.amount,
-        interestMovementId: abono.interestMovementId,
-      }, tx, credit.version);
+      await creditRepo.addAbono(
+        workspaceId,
+        creditId,
+        {
+          id: abono.id,
+          amount: abono.amount.amount,
+          date: abono.date,
+          accountId: abono.accountId,
+          movementId: abono.movementId,
+          capitalAmount: abono.capitalAmount?.amount,
+          interestAmount: abono.interestAmount?.amount,
+          interestMovementId: abono.interestMovementId,
+        },
+        tx,
+        credit.version,
+      );
 
       if (capitalPortion > 0) {
         await movementRepo.create(
@@ -150,13 +165,13 @@ export async function addAbono(
             id: primaryMovementId,
             workspaceId,
             accountId: input.accountId,
-            category: creditGrantedCategory('income'),
-            type: 'income',
+            category: creditGrantedCategory("income"),
+            type: "income",
             amount: new Money(capitalPortion, input.currency),
             date: input.date,
             // No persisted note: display text derives at render from link.kind.
-            context: 'Personal',
-            link: { kind: 'creditGrantedAbono', refId: creditId, opId: ids.generate() },
+            context: "Personal",
+            link: { kind: "creditGrantedAbono", refId: creditId, opId: ids.generate() },
             createdAt: now,
           }),
           tx,
@@ -168,13 +183,13 @@ export async function addAbono(
             id: interestMovementId ?? primaryMovementId,
             workspaceId,
             accountId: input.accountId,
-            category: creditGrantedCategory('income'),
-            type: 'income',
+            category: creditGrantedCategory("income"),
+            type: "income",
             amount: new Money(interestPortion, input.currency),
             date: input.date,
-            context: 'Personal',
-            link: { kind: 'creditGrantedAbonoInterest', refId: creditId, opId: ids.generate() },
-            createdAt: now,
+            context: "Personal",
+            link: { kind: "creditGrantedAbonoInterest", refId: creditId, opId: ids.generate() },
+            createdAt: interestNow,
           }),
           tx,
         );
@@ -203,31 +218,37 @@ export async function addAbono(
     // ─── Sale-born credit: legacy single-movement behavior (never split) ───
     const movementId = ids.generate();
 
-    await creditRepo.addAbono(workspaceId, creditId, {
-      id: abonoId,
-      amount: input.amount,
-      date: input.date,
-      accountId: input.accountId,
-      movementId,
-    }, tx, credit.version);
+    await creditRepo.addAbono(
+      workspaceId,
+      creditId,
+      {
+        id: abonoId,
+        amount: input.amount,
+        date: input.date,
+        accountId: input.accountId,
+        movementId,
+      },
+      tx,
+      credit.version,
+    );
 
     // Create income movement (abono = debtor pays back → income on receiving account)
     const movement = new Movement({
       id: movementId,
       workspaceId,
       accountId: input.accountId,
-      category: creditGrantedCategory('income'),
-      type: 'income',
+      category: creditGrantedCategory("income"),
+      type: "income",
       amount: new Money(input.amount, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
       // Sale-born credit abono is commercial activity (flows to Business),
       // matching the POS initial payment (D3-bis).
-      context: 'Business',
+      context: "Business",
       // saleId (when present) keeps the ledger traceable to the originating
       // sale (I12); standalone credits never carry it.
       link: {
-        kind: 'creditGrantedAbono',
+        kind: "creditGrantedAbono",
         refId: creditId,
         saleId: credit.saleId,
         opId: ids.generate(),

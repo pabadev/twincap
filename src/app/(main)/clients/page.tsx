@@ -12,7 +12,7 @@ import { Icon } from "../../../components/ui/icon";
 
 export default async function ClientsPage() {
   const user = await getCurrentUser();
-  if (!user) {
+  if (!user || !user.workspaceId) {
     redirect("/login");
   }
 
@@ -20,7 +20,7 @@ export default async function ClientsPage() {
 
   await connectDb();
   const clientRepo = new MongoClientRepository();
-  const clients = await listClients(user.workspaceId!, clientRepo);
+  const clients = await listClients(user.workspaceId, clientRepo);
   const serializedClients: SerializedClient[] = clients.map((c) => ({
     id: c.id,
     name: c.name,

@@ -4,7 +4,7 @@ import { Card } from "../ui/card";
 import { Icon } from "../ui/icon";
 import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, User, Briefcase } from "lucide-react";
 import { useT } from "../../i18n/client";
-import { formatAmount } from "../../lib/format";
+import { formatAmount, formatAmountParts } from "../../lib/format";
 import { DEFAULT_CURRENCY } from "../../core/domain/currency";
 import type {
   ContextSummary,
@@ -15,6 +15,43 @@ import type { FinancingTotals } from "../../core/application/dashboard/dashboard
 // presentation layer keeps its stable import path.
 import type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
 export type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
+
+/**
+ * A2 (F4): renders a money value with the currency suffix in its own
+ * whitespace-nowrap span so it never wraps alone at narrow widths.
+ */
+function MoneyValue({
+  amount,
+  currency,
+  locale,
+  sign,
+  className,
+}: {
+  amount: number;
+  currency: string;
+  locale: string;
+  sign?: string;
+  className?: string;
+}) {
+  const parts = formatAmountParts(amount, currency, locale);
+  return (
+    <span className={className}>
+      {sign}
+      {parts.sign}
+      {parts.suffixFirst ? (
+        <>
+          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+          <span>{parts.amount}</span>
+        </>
+      ) : (
+        <>
+          <span>{parts.amount}</span>{" "}
+          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+        </>
+      )}
+    </span>
+  );
+}
 
 interface SummaryCardsProps {
   currency: string;
@@ -59,8 +96,12 @@ function MultiCurrencyValue({
     return (
       <p className={`text-base sm:text-lg font-semibold leading-tight ${className ?? ""}`}>
         {/* §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string. */}
-        {sign}
-        {formatAmount(total, items[0]?.currency ?? DEFAULT_CURRENCY, locale)}
+        <MoneyValue
+          amount={total}
+          currency={items[0]?.currency ?? DEFAULT_CURRENCY}
+          locale={locale}
+          sign={sign}
+        />
       </p>
     );
   }
@@ -74,8 +115,7 @@ function MultiCurrencyValue({
             key={item.currency}
             className={`text-xs sm:text-sm font-medium leading-tight ${className ?? ""}`}
           >
-            {sign}
-            {formatAmount(val, item.currency, locale)}
+            <MoneyValue amount={val} currency={item.currency} locale={locale} sign={sign} />
           </span>
         );
       })}
@@ -247,7 +287,7 @@ export function SummaryCards({
                 />
               ) : (
                 <p className="text-base sm:text-lg font-semibold text-income leading-tight">
-                  +{formatAmount(monthlyIncome, currency, locale)}
+                  <MoneyValue amount={monthlyIncome} currency={currency} locale={locale} sign="+" />
                 </p>
               )}
             </div>
@@ -273,7 +313,12 @@ export function SummaryCards({
                 />
               ) : (
                 <p className="text-base sm:text-lg font-semibold text-expense leading-tight">
-                  −{formatAmount(monthlyExpenses, currency, locale)}
+                  <MoneyValue
+                    amount={monthlyExpenses}
+                    currency={currency}
+                    locale={locale}
+                    sign="−"
+                  />
                 </p>
               )}
             </div>
@@ -298,7 +343,7 @@ export function SummaryCards({
                 />
               ) : (
                 <p className={`text-base sm:text-lg font-semibold leading-tight ${balanceClass}`}>
-                  {formatAmount(monoBalance, currency, locale)}
+                  <MoneyValue amount={monoBalance} currency={currency} locale={locale} />
                 </p>
               )}
             </div>
@@ -326,13 +371,23 @@ export function SummaryCards({
                   <p className="text-[11px] sm:text-xs leading-tight text-income">
                     {t("financingReceived")}:{" "}
                     <span className="font-semibold">
-                      +{formatAmount(financingInflow, currency, locale)}
+                      <MoneyValue
+                        amount={financingInflow}
+                        currency={currency}
+                        locale={locale}
+                        sign="+"
+                      />
                     </span>
                   </p>
                   <p className="text-[11px] sm:text-xs leading-tight text-expense">
                     {t("financingGranted")}:{" "}
                     <span className="font-semibold">
-                      −{formatAmount(financingOutflow, currency, locale)}
+                      <MoneyValue
+                        amount={financingOutflow}
+                        currency={currency}
+                        locale={locale}
+                        sign="−"
+                      />
                     </span>
                   </p>
                 </>

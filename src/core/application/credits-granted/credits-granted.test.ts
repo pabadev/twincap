@@ -2328,3 +2328,54 @@ describe("markAsPaid — split on final settlement (R9)", () => {
     expect(movementRepo.created).toHaveLength(0);
   });
 });
+
+describe("addAbono createdAt tiebreaker (B1)", () => {
+  it("interest movement createdAt is 1ms after capital movement for deterministic same-day sorting", async () => {
+    // Credit with installments: principal 100000, totalToPay 120000 (2 x 60000)
+    // Prior abono: 90000 (capital recovery), new abono: 20000
+    // Split: second abono recovers 10000 capital + 10000 interest
+    const credit = makeCredit(
+      {
+        principal: new Money(100000, "COP"),
+        installments: 2,
+        installmentValue: new Money(60000, "COP"),
+      },
+      [
+        {
+          id: "a-1",
+          amount: new Money(90000, "COP"),
+          date: new Date("2026-09-01"),
+          accountId: "acc-1",
+          movementId: "m-a1",
+        },
+      ],
+    );
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+    const ids = fakeIdGen();
+
+    await addAbono(
+      "user-1",
+      "cg-1",
+      { amount: 20000, date: new Date("2026-09-22"), accountId: "acc-1", currency: "COP" },
+      creditRepo,
+      movementRepo,
+      ids,
+      accountRepo,
+      fakeUow(),
+    );
+
+    // Two movements created: capital (primary) + interest
+    expect(movementRepo.created).toHaveLength(2);
+    const capital = movementRepo.created[0];
+    const interest = movementRepo.created[1];
+
+    expect(capital.link?.kind).toBe("creditGrantedAbono");
+    expect(interest.link?.kind).toBe("creditGrantedAbonoInterest");
+    // Interest movement is 1ms after capital for deterministic ordering
+    expect(interest.createdAt.getTime()).toBe(capital.createdAt.getTime() + 1);
+  });
+});

@@ -455,3 +455,60 @@ uneven heights breaking the grid; the outer wrapper adds 24px side margins at
 - [x] U10: shell-width contract updated — 2xl cap on BOTH (main) and
       (analytics) layouts; RSL-1/2 comment amended with the beta round-3
       owner decision. Unblocked the Quality gate (shell-width.test).
+
+## Cluster 10 — Beta round 4 (owner + beta-user findings, approved 2026-09-22)
+
+Objective: fix the 6 findings of the fourth beta feedback chain
+(audit via explore agent ses_f3575132cffe54t2I8szSry4AO, file:line verdicts).
+
+### Phase A — UX corrections (findings 2/3/4/6)
+
+- [x] A1 (F2+F3, shared file sale-form.tsx): local client option list
+      checkpoint — handleClientCreated appends the returned snapshot to a
+      useState copy of `clients` and renders options from it (fixes both the
+      /sales page modal and the FAB cached-posData route); line-item rows get
+      min-w-0 (sale-form.tsx:293-341, fixed w-16/w-20 siblings overflow inside
+      modal budget); regression test asserting no horizontal overflow
+      (scrollWidth <= clientWidth) at 360px.
+      DONE: a2c3ff9 — localClients state + useMemo merge; min-w-0 on item-name
+      cell; flex-wrap group for qty/price/remove at <sm; 2 regression tests
+      (client auto-select, min-w-0 structural).
+- [x] A2 (F4): currency suffix extraction — money values composed with
+      Intl style:'currency' (lib/format.ts) wrap the COP suffix onto its own
+      line at ~360px (policy §21 working as designed — refinement not
+      regression). Render suffix as its own whitespace-nowrap shrink-0 span
+      next to the amount in summary-hero.tsx:51-86, dashboard-content.tsx:367-373,
+      summary-cards.tsx value spans; keep §21 no-hidden-figures rule and the
+      break-words regression tests green (amend assertions to the new markup).
+      DONE: 4803728 — formatAmountParts helper splits amount/suffix with
+      locale-honest order; MoneyValue component in summary-cards; applied in
+      summary-hero, dashboard-content, summary-cards; test asserts suffix span
+      has whitespace-nowrap.
+- [x] A3 (F6): chart tap-to-show — monthly-chart.tsx:130-157 native <title>
+      only is invisible on touch. Keep r=3 visuals + <title>; add transparent
+      hit circles r=12 per point; tap/click selects a point and renders a <text>
+      value label near it; tap elsewhere / Escape clears. No new deps.
+      Extend monthly-chart.test.tsx (hit circle, tap reveal, clear).
+      DONE: efab801 — transparent hit circles (r=12) per point; selected state
+      renders highlighted circle + value label (compact format) clamped inside
+      viewBox; tap background clears; dark mode pill background; 2 new tests
+      (hit circle count, background rect).
+- [ ] A4: verification (tsc/lint/prettier/targeted suites) + work-unit commits.
+
+### Phase B — data integrity + diagnosis (findings 5/1)
+
+- [ ] B1 (F5): same-day ordering residual gaps — linked legs share ONE
+      `now` (create-transfer.ts:203, create-sale.ts:145, abono flows): give
+      each linked leg a distinct createdAt (+1ms); append cheap `_id: -1`
+      tiebreaker to the 2-key sorts; NEW backfill script
+      scripts/backfill-movement-createdAt.mjs (createdAt = _id.getTimestamp()
+      for legacy docs missing it; dry-run default, --apply, fail-closed
+      pattern of prior index scripts). Atlas --apply requires my own
+      authorization after dry-run.
+- [ ] B2 (F1): /clients error diagnosis — harden Client domain mapper
+      (core/domain/client.ts:36-38 null phone/email/note -> ?? "")
+      + defend page.tsx:23 workspaceId non-null assertion; then query the
+      errorevents collection via the existing monitor pipeline for
+      fingerprint path=/clients (read-only) to close the root cause with
+      the real stack; record findings here and report to owner.
+- [ ] B3: verification + full-suite run (≥45 min timeout) + docs/commits.

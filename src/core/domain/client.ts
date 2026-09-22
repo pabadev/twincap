@@ -33,9 +33,12 @@ export class Client {
     this.id = input.id;
     this.workspaceId = input.workspaceId;
     this.name = name;
-    this.phone = input.phone.trim();
-    this.email = input.email.trim();
-    this.note = input.note.trim();
+    // Null-safe: persisted docs may have explicit null for optional text fields
+    // (model defaults only fill absent props). Preserve domain validation for
+    // actual values; null/undefined become empty strings.
+    this.phone = (input.phone ?? "").trim();
+    this.email = (input.email ?? "").trim();
+    this.note = (input.note ?? "").trim();
     this.createdAt = input.createdAt;
   }
 
@@ -54,4 +57,4 @@ export class Client {
 }
 
 /** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
-export type SerializedClient = ReturnType<Client['toJSON']>;
+export type SerializedClient = ReturnType<Client["toJSON"]>;
