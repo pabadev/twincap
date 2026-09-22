@@ -94,9 +94,10 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
     const cx = toX(index);
     const cy = toY(value);
     // Position label above the point; if too close to top, put it below.
-    const labelY = cy > PAD.top + 20 ? cy - 8 : cy + 14;
-    // Clamp X to stay inside viewBox.
-    const labelX = Math.max(PAD.left + 20, Math.min(W - PAD.right - 20, cx));
+    const labelY = cy > PAD.top + 26 ? cy - 10 : cy + 24;
+    // Clamp X to stay inside viewBox (tap label full format is wide; keep a
+    // generous half-pill margin so the pill stays inside the chart).
+    const labelX = Math.max(PAD.left + 70, Math.min(W - PAD.right - 70, cx));
     return { x: labelX, y: labelY, value };
   }
 
@@ -247,24 +248,34 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
             const pos = getLabelPosition(selected.index, selected.series);
             if (!pos) return null;
             const isIncome = selected.series === "income";
+            // Owner decision 2026-09-22: the tap label is readable-first —
+            // FULL exact value (no compact notation; only one label shows at
+            // a time) and ≥2× the previous glyph size. Font sizes and the
+            // pill are in viewBox units, so they scale with the chart.
             const valueText =
-              pos.value > 0 ? `${isIncome ? "+" : "−"}${compactFormatter.format(pos.value)}` : "—";
+              pos.value > 0 ? `${isIncome ? "+" : "−"}${fullFormatter.format(pos.value)}` : "—";
+            // Estimate pill size from the rendered string (full currency
+            // format is long; center on the point, clamped by the caller).
+            const fontSize = 20;
+            const pillW = valueText.length * fontSize * 0.58 + fontSize;
+            const pillH = fontSize + 8;
             return (
               <g>
                 {/* Background pill for readability */}
                 <rect
-                  x={pos.x - 24}
-                  y={pos.y - 10}
-                  width={48}
-                  height={16}
-                  rx={4}
-                  className="fill-white/90 dark:fill-zinc-900/90"
+                  x={pos.x - pillW / 2}
+                  y={pos.y - pillH + fontSize / 3}
+                  width={pillW}
+                  height={pillH}
+                  rx={5}
+                  className="fill-white/95 stroke-zinc-200 stroke-1 dark:fill-zinc-900/95 dark:stroke-zinc-700"
                 />
                 <text
                   x={pos.x}
                   y={pos.y + 2}
                   textAnchor="middle"
-                  className={`text-[10px] font-semibold tabular-nums ${
+                  fontSize={fontSize}
+                  className={`font-semibold tabular-nums ${
                     isIncome ? "fill-income" : "fill-expense"
                   } dark:fill-current`}
                 >
