@@ -372,3 +372,57 @@ stride 3/6). Verified stroke-/fill-income/expese utilities derive from the
 
 - [x] U5: verification (tsc 0, eslint clean, prettier clean, targeted tests
       green 4+3+2+2) + push/PR on a fresh branch from master.
+
+## Cluster 8 delivery
+
+PR #14 (feat/post-ux-round-2 -> master, 5 commits f583b3a..17d28ab) MERGED.
+CI: Quality pass, Vercel pass; E2E failed once on duplicate-opening
+(concurrency timing sensitivity — known flaky class R15) and PASSED on the
+re-run 3m12s; Vercel Production deployment == success after merge
+(master 3dcdbed). Reports-grid removal, asymmetric Top, button-bodied
+Ver todos link and native SVG line chart are LIVE in production.
+
+## Cluster 9 — Beta round 3 (dashboard polish + global layout width)
+
+### Objective
+
+Fix the beta round-3 findings: spurious giant scroll after Patrimonio, multi-currency
+"Flujo de caja del mes" card, Movimientos recientes position, credits granted grid
+symmetry, overflow-x scrollbar artifacts, and the PC/laptop width strategy
+(100% at 1200/1366, capped on large screens; narrower chronological lists).
+
+### Problem
+
+After PR #14 the product owner beta-tested the dashboard and list views. Results:
+the dashboard scrolls ~1 viewport of blank space past Patrimonio (real data);
+"Flujo de caja del mes" shows only COP regardless of movement currencies;
+Movimientos recientes sits below the chart/attention although a previous round
+decided it belongs right after the accounts cards; Credits granted cards have
+uneven heights breaking the grid; the outer wrapper adds 24px side margins at
+1200/1366; Movements/Transfers (chronological lists) stretch across the full
+1280+ width and read badly.
+
+### Scope (cluster 9 only)
+
+- [ ] U1: Dashboard blank-scroll bug — reproduce with seeded data (E2E
+      measurement), find the element creating the extra height, fix, keep a
+      diagnostic spec (measure-scroll.spec.ts) until green, then decide keep/delete.
+- [ ] U2: Section order: Movimientos recientes moves to sit right under the
+      accounts cards ("¿dónde está mi dinero?" → "¿qué pasó?"). Chart/attention
+      follow. Update dashboard tests.
+- [ ] U3: "Flujo de caja del mes" per-currency breakdown: financingInflow/
+      financingOutflow gain a per-currency monthly breakdown in the snapshot
+      (ALL currencies with financing movements that month — never summed
+      cross-currency; guarded sums; server-side like every other metric).
+      UI mirrors ContextCurrencyRows pattern; mono-currency keeps compact form.
+- [ ] U4: Credits granted grid: equal card heights (shorter cards stretch to
+      the tallest sibling) preserving internal alignment patterns.
+- [ ] U5: Global layout width: outer wrapper cap moves from lg (1024) to 1536+
+      (2xl-max-w-[min(1536px,calc(100vw-3rem))]); 1200/1366 get 100% width.
+      Inner ContentContainer cap (dashboard 7xl) stays.
+- [ ] U6: Chronological lists (Movimientos, Transferencias) narrow on PC
+      (new list ContentContainer variant — max-w-4xl class range); non-
+      chronological card grids (Cuentas, Créditos, Payables, etc.) keep width.
+      Map every page container explicitly.
+- [ ] U7: Verification (tsc, eslint, prettier, targeted tests, messages parity
+      if i18n touched) + fresh branch from master + push/PR.
