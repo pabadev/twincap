@@ -62,7 +62,12 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
   const labelStride = data.length > 8 ? 2 : 1;
 
   return (
-    <Card contentClassName="p-4">
+    // relative: the sr-only table below is position:absolute (the sr-only
+    // utility). Without a positioned ancestor its containing block is the
+    // page itself, so it escapes `main`'s overflow-auto, paints far below
+    // the last section and stretches documentElement.scrollHeight — the
+    // whole-page double scroll + giant blank area (beta round 3, U1).
+    <Card className="relative" contentClassName="p-4">
       <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         {title ?? t("monthlyTrend")}
       </h3>
