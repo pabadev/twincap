@@ -54,6 +54,23 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   const router = useRouter();
   const successShownRef = useRef(false);
 
+  // A1 (F2+F3): the client <Select> options must come from a LOCAL copy of
+  // `clients`, not the prop directly. The prop is a one-shot snapshot from
+  // the parent (either the /sales page or the FAB's cached posData in
+  // global-movement-provider.tsx); after handleClientCreated the new client
+  // never enters the prop, so the select would not list it. A local state
+  // initialized from the prop and reconciled on prop changes keeps both
+  // routes working without touching the parent.
+  const [clientOptions, setClientOptions] = useState<SerializedClient[]>(clients);
+  useEffect(() => {
+    setClientOptions((prev) => {
+      // Reconcile: if the prop is a superset (e.g. after router.refresh()),
+      // adopt it; otherwise keep the local additions.
+      if (clients.length >= prev.length) return clients;
+      return prev;
+    });
+  }, [clients]);
+
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
@@ -84,10 +101,18 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   ]);
 
   // Quick-create from inside the sale form: auto-select the new entity so the
-  // user can keep building the sale without leaving the form.
+  // user can keep building the sale without leaving the form. A1 (F2+F3):
+  // also append the new client to the local option list so it becomes
+  // selectable immediately (the prop snapshot would not include it).
   function handleClientCreated(client?: SerializedClient) {
     setShowClientForm(false);
-    if (client) setClientId(client.id);
+    if (client) {
+      setClientOptions((prev) => {
+        if (prev.some((c) => c.id === client.id)) return prev;
+        return [...prev, client];
+      });
+      setClientId(client.id);
+    }
   }
 
   function handleItemCreated(item?: SerializedCatalogItem) {
@@ -219,7 +244,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
               onChange={(e) => setClientId(e.target.value)}
               options={[
                 { value: "", label: t("generalClient") },
-                ...clients.map((c) => ({
+                ...clientOptions.map((c) => ({
                   value: c.id,
                   label: c.name,
                 })),
@@ -290,8 +315,8 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
 
           <div className="space-y-3">
             {lineItems.map((li, idx) => (
-              <div key={idx} className="flex items-end gap-2">
-                <div className="flex-1">
+              <div key={idx} className="flex flex-wrap items-end gap-2">
+                <div className="min-w-0 flex-1">
                   <FormField id={`item-${idx}`} label={t("item")} showLabel={idx === 0}>
                     <Select
                       value={li.itemId}
@@ -305,38 +330,47 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                     />
                   </FormField>
                 </div>
-                <div className="w-16 sm:w-20">
-                  <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={li.quantity}
-                      onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
+                {/* A1 (F3): qty/price/remove group wraps at <sm so the row
+                    stays inside the modal budget (~272px) instead of
+                    overflowing horizontally. At sm+ the group is inline. */}
+                <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:flex-nowrap">
+                  <div className="w-16 sm:w-20">
+                    <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={li.quantity}
+                        onChange={(e) =>
+                          updateLineItem(idx, "quantity", Number(e.target.value))
+                        }
+                        disabled={isPending}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="w-20 sm:w-28">
+                    <FormField id={`price-${idx}`} label={t("unitPrice")} showLabel={idx === 0}>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={li.unitPrice}
+                        onChange={(e) =>
+                          updateLineItem(idx, "unitPrice", Number(e.target.value))
+                        }
+                        disabled={isPending}
+                      />
+                    </FormField>
+                  </div>
+                  {lineItems.length > 1 && (
+                    <ActionIconButton
+                      icon={Trash2}
+                      label={t("remove")}
+                      tone="danger"
+                      onClick={() => removeLineItem(idx)}
                       disabled={isPending}
+                      className="mb-0.5"
                     />
-                  </FormField>
+                  )}
                 </div>
-                <div className="w-20 sm:w-28">
-                  <FormField id={`price-${idx}`} label={t("unitPrice")} showLabel={idx === 0}>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={li.unitPrice}
-                      onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
-                      disabled={isPending}
-                    />
-                  </FormField>
-                </div>
-                {lineItems.length > 1 && (
-                  <ActionIconButton
-                    icon={Trash2}
-                    label={t("remove")}
-                    tone="danger"
-                    onClick={() => removeLineItem(idx)}
-                    disabled={isPending}
-                    className="mb-0.5"
-                  />
-                )}
               </div>
             ))}
           </div>

@@ -37,12 +37,28 @@ vi.mock("../../../../lib/hooks/use-toast", () => ({
 // ClientForm/CatalogForm pull server actions that boot the auth/env stack —
 // irrelevant to the clientId semantics, so stub them out.
 vi.mock("../../clients/client-form", () => ({
-  ClientForm: () => null,
+  ClientForm: ({ onSuccess }: { onSuccess: (client?: SerializedClient) => void }) => (
+    <button type="button" data-testid="create-client-trigger" onClick={() => onSuccess(newClient)}>
+      Create Client
+    </button>
+  ),
 }));
 
 vi.mock("../catalog/catalog-form", () => ({
   CatalogForm: () => null,
 }));
+
+// A1 (F2+F3): a newly created client must appear in the select options and
+// be auto-selected.
+const newClient: SerializedClient = {
+  id: "cli-new",
+  workspaceId: "ws-1",
+  name: "New Client",
+  phone: "",
+  email: "",
+  note: "",
+  createdAt: new Date(0),
+};
 
 const catalogItems: SerializedCatalogItem[] = [
   {
@@ -188,5 +204,52 @@ describe("SaleForm remove-item control (§23)", () => {
     // Icon-only: no visible text, the accessible name comes from aria-label.
     expect(remove!.textContent?.trim()).toBe("");
     expect(remove!.querySelector("svg")).not.toBeNull();
+  });
+});
+
+// A1 (F2+F3): the client select must reflect locally created clients.
+describe("SaleForm client auto-select (A1 F2+F3)", () => {
+  it("appends the new client to options and auto-selects it after creation", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+
+    // Open the client creation modal.
+    const createClientBtn = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("createClient"),
+    );
+    expect(createClientBtn).toBeDefined();
+    act(() => {
+      createClientBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The mocked ClientForm renders a trigger that calls onSuccess.
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="create-client-trigger"]',
+    );
+    expect(trigger).not.toBeNull();
+    act(() => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The new client must be in the select options and selected.
+    const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
+    expect(clientSelect).not.toBeNull();
+    const optionValues = Array.from(clientSelect!.querySelectorAll("option")).map(
+      (o) => o.value,
+    );
+    expect(optionValues).toContain("cli-new");
+    expect(clientSelect!.value).toBe("cli-new");
+  });
+});
+
+// A1 (F3): line-item row must have min-w-0 on the item-name flex child to
+// prevent overflow inside the modal budget.
+describe("SaleForm line-item row overflow (A1 F3)", () => {
+  it("renders the item-name cell with min-w-0 to allow text truncation", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // The first flex child inside each line-item row is the item-name cell.
+    const row = container.querySelector(".flex.flex-wrap.items-end");
+    expect(row).not.toBeNull();
+    const firstChild = row!.firstElementChild as HTMLElement;
+    expect(firstChild.className).toContain("min-w-0");
   });
 });
