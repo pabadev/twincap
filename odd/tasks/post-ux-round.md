@@ -404,25 +404,31 @@ uneven heights breaking the grid; the outer wrapper adds 24px side margins at
 
 ### Scope (cluster 9 only)
 
-- [ ] U1: Dashboard blank-scroll bug — reproduce with seeded data (E2E
-      measurement), find the element creating the extra height, fix, keep a
-      diagnostic spec (measure-scroll.spec.ts) until green, then decide keep/delete.
-- [ ] U2: Section order: Movimientos recientes moves to sit right under the
-      accounts cards ("¿dónde está mi dinero?" → "¿qué pasó?"). Chart/attention
-      follow. Update dashboard tests.
-- [ ] U3: "Flujo de caja del mes" per-currency breakdown: financingInflow/
-      financingOutflow gain a per-currency monthly breakdown in the snapshot
-      (ALL currencies with financing movements that month — never summed
-      cross-currency; guarded sums; server-side like every other metric).
-      UI mirrors ContextCurrencyRows pattern; mono-currency keeps compact form.
-- [ ] U4: Credits granted grid: equal card heights (shorter cards stretch to
-      the tallest sibling) preserving internal alignment patterns.
-- [ ] U5: Global layout width: outer wrapper cap moves from lg (1024) to 1536+
-      (2xl-max-w-[min(1536px,calc(100vw-3rem))]); 1200/1366 get 100% width.
-      Inner ContentContainer cap (dashboard 7xl) stays.
-- [ ] U6: Chronological lists (Movimientos, Transferencias) narrow on PC
-      (new list ContentContainer variant — max-w-4xl class range); non-
-      chronological card grids (Cuentas, Créditos, Payables, etc.) keep width.
-      Map every page container explicitly.
-- [ ] U7: Verification (tsc, eslint, prettier, targeted tests, messages parity
-      if i18n touched) + fresh branch from master + push/PR.
+- [x] U1: Dashboard blank-scroll bug — PARTIALLY RESOLVED: could NOT
+      reproduce. E2E measurement (e2e/measure-scroll.spec.ts) with fresh user,
+      4 movements, credit granted, credit received, payable, USD account +
+      cross-currency transfer, POS sale: mainScroll-content gap == 32px BOTH
+      measurements (padding of main p-8). No oversized element (>400px beyond
+      content). Result pending: reproduced only with the product owner's real
+      dataset via a DevTools snippet (next step: paste output of the console
+      script into the round). Investigated: SummaryTable/Attention/Position
+      cards clean, Modal null when closed, toast/FAB fixed (no flow impact).
+- [x] U2: RecentMovements moved right under the accounts cards (commit 7406afa).
+- [x] U3: Financing card per-currency (commit 8a3479d): snapshot gains
+      financingBreakdown (current-month principals per currency, guarded sums,
+      COP-first, only currencies with non-zero flow; previous-month financing
+      excluded); UI renders per-currency lines only when >1 currency, mono
+      keeps the compact form; 2 new builder tests. Multi-currency data is
+      already live in production (USD accounts confirmed in beta screenshots).
+- [x] U4: Equal-height commitment cards — dropped md:items-start on credits
+      granted/received + payables grids (commit 1f99990).
+- [x] U5: Layout width: outer wrapper cap moved lg→2xl only
+      (`2xl:max-w-[min(1536px,calc(100vw-3rem))]`); 1200/1366 full width,
+      ≥1536 capped as before (commit 084d15a).
+- [x] U6: Chronological lists narrowed (movements-list, transfers-list:
+      max-w-6xl→max-w-5xl, commit 57b667b); non-chronological single-column
+      card sets gained a 2-col PC grid (accounts page, clients list + loading,
+      commit d71713c). Sale list kept at 6xl pending the owner's call.
+- [x] U7: verification — tsc 0, eslint clean on all touched paths, prettier
+      clean on touched files, targeted suites green (dashboard components 7,
+      core dashboard 40, app 133). Push/PR: feat/post-ux-round-3.
