@@ -37,9 +37,12 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
         <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t("recentMovements")}
         </h3>
+        {/* Beta round 2: "Ver todos" with a button body (secondary-button
+            styling) — a plain text link was easy to miss. Semantically still
+            a link (page navigation) with a >=44px touch target. */}
         <Link
           href="/movements"
-          className="text-sm font-medium text-primary hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+          className="inline-flex h-11 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           aria-label={t("viewAllMovements")}
         >
           {t("viewAll")}

@@ -325,3 +325,50 @@ no new raw colors introduced this round (§30 rule recorded); full §25 a11y
 surface matrix deferred to round-close validation (§41).
 Verification: tsc 0 errors; eslint clean (after children-as-prop fix in the
 new test); prettier clean; targeted vitest 7/7 (card 3 + dashboard-content 4).
+
+## Cluster 8 — Beta round 2 (dashboard analysis proposals)
+
+Four proposals, analyzed per §47 (register/understand/detect/act):
+
+- [ ] U1 (Top Buckets): product-owner proposal ACCEPTED — asymmetric Top:
+      incomes sliced to Top 3 (most personal users have ≤3 income categories;
+      more than 3 is noise), expenses keep Top 5 (spread, actionable). Fix the
+      stale titles (they still say Top 3) with per-section keys; update
+      UX-RESUMEN-DESIGN.md row 6 with a dated amendment.
+- [ ] U2 (Ver todos): recent-movements "Ver todos" becomes a link with a
+      button body (secondary-button styling, semantically still a <Link>);
+      h-11 touch target; discoverability on desktop + mobile.
+- [ ] U3 (Reports grid): DashboardReportsGrid "Entiende mejor tus finanzas"
+      is redundant secondary navigation (all 6 targets already in the sidebar)
+      — removes nothing user could not already reach; violates N1 minimalism.
+      DELETE component + ReportCard + index re-export + 7 i18n keys (es/en).
+- [ ] U4 (Line chart): the current chart is a DIY horizontal bar list —
+      rewrite as a NATIVE SVG line chart (income + expenses polylines, points
+      with native <title> tooltips, baseline grid, month labels, legend,
+      responsive viewBox, dark mode). NO external library (chart.js cleared out):
+      single chart in the app today; adopt a lib if charts multiply (recorded
+      for §34 analytics roadmap).
+- [x] U5: verification + PR.
+
+Commit plan: c1=U1, c2=U2, c3=U3, c4=U4, c5=docs+push.
+
+### Cluster 8 completion evidence
+
+U1: incomeRows.slice(0,3) / expenseRows.slice(0,5); Dashboard titles now
+"Top 3 Ingresos"/"Top 5 Gastos" (en: Top 3 Income / Top 5 Expenses);
+UX-RESUMEN-DESIGN.md row 6 amended (dated 2026-09-22, proposal accepted).
+U2: recent-movements "Ver todos" now a <Link> with secondary-button body
+(h-11 touch target), aria-label preserved.
+U3: dashboard-reports-grid.tsx + report-card.tsx DELETED; index re-export
+removed (tsc caught the leftover); 7 i18n keys dropped from es+en
+(messages-parity 2/2, messages-usage green).
+U4: monthly-chart.tsx rewritten as native SVG line chart (solid income /
+dashed expenses polylines, baseline grid + compact Y labels, native <title>
+tooltips per point, month label stride 2 on 12-month series, sr-only data
+table, legend, dark tokens, no external dependency). NEW monthly-chart.test.tsx
+(3 tests: two polylines, 6 title tooltips + sr-only + no canvas, label
+stride 3/6). Verified stroke-/fill-income/expese utilities derive from the
+@theme tokens.
+
+- [x] U5: verification (tsc 0, eslint clean, prettier clean, targeted tests
+      green 4+3+2+2) + push/PR on a fresh branch from master.

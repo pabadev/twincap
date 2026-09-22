@@ -9,7 +9,6 @@ import { SummaryAttention } from "./summary-attention";
 import { MonthlyChart } from "./monthly-chart";
 import { RecentMovements } from "./recent-movements";
 import { PositionCards } from "./position-cards";
-import { DashboardReportsGrid } from "./dashboard-reports-grid";
 import { SummaryTable, type SummaryTableRow } from "./summary-table";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -192,10 +191,11 @@ export function DashboardContent({
   // A11: the cross-currency `totalBalance` reduce is GONE — SummaryCards now
   // derives the mono-currency total from `currencyBreakdown` and renders the
   // per-currency breakdown in multi-currency mode (no cross-currency sum).
-  // §31: the vigente spec (UX-RESUMEN-DESIGN.md) is explicitly Top 5
-  // ("slice(0,5) es presentación, no cálculo") — the implementation showed 3.
-  // Resolved in favour of the design: first 5 income/expense rows.
-  const topIncomeRows = incomeRows.slice(0, 5);
+  // §31 + beta round 2: asymmetric Top per product decision — incomes are
+  // heavily concentrated (≤3 categories either way) so Top 3 avoids noise;
+  // expenses spread across many categories and benefit from Top 5.
+  // UX-RESUMEN-DESIGN.md row 6 amended accordingly (2026-09-22).
+  const topIncomeRows = incomeRows.slice(0, 3);
   const topExpenseRows = expenseRows.slice(0, 5);
 
   // N1 hero: period result of the snapshot's aggregation currency plus
@@ -492,8 +492,6 @@ export function DashboardContent({
 
       {/* ── N5 DETALLE ───────────────────────────────────────────── */}
       <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
-
-      <DashboardReportsGrid />
 
       <PositionCards positions={positionData} locale={locale} />
 

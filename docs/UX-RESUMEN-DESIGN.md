@@ -17,14 +17,14 @@ Definir el diseño conceptual de la página **Resumen** (hoy "Dashboard"/"Panel"
 
 Este documento **ejecuta** — no redefine — las decisiones ya aprobadas por el fundador:
 
-| Decisión | Qué ejecuta aquí |
-|---|---|
-| DEC-IA-01 | El módulo se llama **Resumen** ("Summary" en inglés) en todo texto visible; "Dashboard"/"Panel" queda solo como término interno de código/ruta. |
-| DEC-IA-07 | El nivel 1 del Resumen muestra **Disponible por moneda + Resultado del período**. |
-| DEC-IA (jerarquía, sección 9) | Estructura en 5 niveles (N1…N5) y selector de período explícito (§9.3), conservando los filtros ya existentes. |
-| DEC-DS-01/02 | Tokens de color y tipografía: **Sora** para cifras N1, títulos de nivel 1 y hero; **Geist Sans** para cuerpo y el resto. |
-| DEC-DS-09 | Mapeo completo de los 12 estados a las regiones del Resumen (sección 7). |
-| DEC-DS-12 | Confianza visible: fuentes de datos y fechas de actualización legibles en cada nivel. |
+| Decisión                      | Qué ejecuta aquí                                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| DEC-IA-01                     | El módulo se llama **Resumen** ("Summary" en inglés) en todo texto visible; "Dashboard"/"Panel" queda solo como término interno de código/ruta. |
+| DEC-IA-07                     | El nivel 1 del Resumen muestra **Disponible por moneda + Resultado del período**.                                                               |
+| DEC-IA (jerarquía, sección 9) | Estructura en 5 niveles (N1…N5) y selector de período explícito (§9.3), conservando los filtros ya existentes.                                  |
+| DEC-DS-01/02                  | Tokens de color y tipografía: **Sora** para cifras N1, títulos de nivel 1 y hero; **Geist Sans** para cuerpo y el resto.                        |
+| DEC-DS-09                     | Mapeo completo de los 12 estados a las regiones del Resumen (sección 7).                                                                        |
+| DEC-DS-12                     | Confianza visible: fuentes de datos y fechas de actualización legibles en cada nivel.                                                           |
 
 ### 1.3 Reglas innegociables
 
@@ -49,13 +49,13 @@ Cada afirmación sobre la plataforma lleva una etiqueta:
 
 La jerarquía DEC-IA (sección 9) se mapea a regiones de la página. El orden N1→N5 es **el mismo en los tres breakpoints** (mismo modelo mental móvil/desktop); lo que cambia es el layout.
 
-| Nivel | Región | Propósito (pregunta que responde) |
-|---|---|---|
-| **N1** | Hero: **Resultado del período** + **Disponible por moneda** + variación % | "¿Estoy ganando o perdiendo? ¿Cuánto tengo disponible?" |
-| **N2** | Desglose: ingresos, gastos, Top 5 categorías, split Personal/Negocio, financiamiento (colapsable) | "¿De dónde viene? ¿Por qué?" |
-| **N3** | Evolución: gráfico 6/12 meses reales + selector de moneda | "¿Cómo viene la tendencia?" |
-| **N4** | Atención: Por cobrar / Por pagar + alertas condicionales (empty por defecto) | "¿Hay algo que requiera mi acción?" — NUNCA una pared de alertas (§25) |
-| **N5** | Detalle: movimientos recientes (10), cuentas, posición financiera, accesos a módulos | "¿Qué pasó exactamente? ¿A dónde voy para profundizar?" |
+| Nivel  | Región                                                                                            | Propósito (pregunta que responde)                                      |
+| ------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **N1** | Hero: **Resultado del período** + **Disponible por moneda** + variación %                         | "¿Estoy ganando o perdiendo? ¿Cuánto tengo disponible?"                |
+| **N2** | Desglose: ingresos, gastos, Top 5 categorías, split Personal/Negocio, financiamiento (colapsable) | "¿De dónde viene? ¿Por qué?"                                           |
+| **N3** | Evolución: gráfico 6/12 meses reales + selector de moneda                                         | "¿Cómo viene la tendencia?"                                            |
+| **N4** | Atención: Por cobrar / Por pagar + alertas condicionales (empty por defecto)                      | "¿Hay algo que requiera mi acción?" — NUNCA una pared de alertas (§25) |
+| **N5** | Detalle: movimientos recientes (10), cuentas, posición financiera, accesos a módulos              | "¿Qué pasó exactamente? ¿A dónde voy para profundizar?"                |
 
 ### 2.1 Wireframe — móvil 375px (columna única)
 
@@ -177,24 +177,27 @@ La jerarquía DEC-IA (sección 9) se mapea a regiones de la página. El orden N1
 
 ### 3.1 Tabla maestra
 
-| # | Métrica (es/en) | Fórmula de negocio (qué kinds la componen) | Origen en el snapshot | Breakpoints | Estado vacío |
-|---|---|---|---|---|---|
-| 1 | **Resultado del período** / *Period result* | Σ ingresos económicos − Σ gastos económicos del período, por moneda. Los kinds económicos se resuelven con `countsTowardEconomicResult` (context-aware): excluye transferencias, apertura, capital de financiamiento (`creditReceivedPrincipal`, `creditGrantedPrincipal`), abonos de crédito otorgado standalone (solo el excedente `creditGrantedAbonoInterest` es ingreso; `creditGrantedWriteOff` es gasto); el abono de venta POS a crédito con context Business SÍ es ingreso. | `currencyBreakdown[].income − expenses` [EXISTENTE ✗ operands] → campo `result` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** | 375 / 768 / 1280 | Hero: "Sin movimientos este período" (ver 7) |
-| 2 | **Disponible por moneda** / *Available by currency* | Σ saldos de cuentas de la moneda (firmado, sin FX). No es resultado económico: es flujo (proyecto §9.2, "saldo ≠ resultado"). | `currencyBreakdown[].balance` **[EXISTENTE]** (máx 3 monedas por saldo |descendente; "+N más" en detalle) | 375 / 768 / 1280 | Sin cuentas → CTA "Crear cuenta" (first-use, patrón existente del onboarding) |
-| 3 | **Variación % vs período anterior** / *Change vs previous period* | ((valor período / valor período anterior) − 1) × 100, por moneda, para Resultado y para Ingresos/Gastos. Mes scope: vs mes civil anterior (buckets reales `monthlyData`); Año/12m: vs período anterior equivalente. Si no hay dato anterior → "—" (NUNCA 0 % engañoso). | `monthlyData` [EXISTENTE, datos] → campos `resultChangePct`, `incomeChangePct`, `expenseChangePct` por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** (Año/12m requieren ventana ampliada, ver 8.2 de este doc / 4.2) | 375 / 768 / 1280 | Sin período anterior → "—" |
-| 4 | **Ingresos del período** / *Period income* | Σ ingresos económicos por moneda (mismos kinds que #1). | `currencyBreakdown[].income` **[EXISTENTE]** | 375 / 768 / 1280 | `noIncomeData` (existente) |
-| 5 | **Gastos del período** / *Period expenses* | Σ gastos económicos por moneda. | `currencyBreakdown[].expenses` **[EXISTENTE]** | 375 / 768 / 1280 | `noExpenseData` (existente) |
-| 6 | **Top 5 categorías** / *Top 5 categories* | Primeras 5 filas de ingresos/gastos del mes, por moneda (el servidor ya entrega `incomeRows`/`expenseRows` ordenadas descendente; `slice(0,5)` es presentación, no cálculo). | `incomeRows`, `expenseRows`, `incomeTotals`, `expenseTotals` **[EXISTENTE]** | 768 / 1280 (tabla doble); 375 (lista concisa) | `noIncomeData`/`noExpenseData` |
-| 7 | **Split Personal/Negocio** / *Personal/Business split* | Ingresos/gastos del mes por contexto y moneda (resumen contextual). | `contextSummary` **[EXISTENTE]** | 375 (colapsable) / 768 / 1280 | Sin datos de un contexto → se oculta ese contexto |
-| 8 | **Flujos de financiamiento** / *Financing flows* | Entradas/salidas de financiamiento del mes (capital de créditos recibidos/otorgados; NO económicas). | `financingInflow`, `financingOutflow` **[EXISTENTE]** | colapsable en N2 (todos los breakpoints) | Sin flujos → sub-región oculta |
-| 9 | **Evolución 6 meses** / *6-month trend* | Serie mensual real de ingresos/gastos (últimos 6 meses civiles, el último = mes actual). | `monthlyData` **[EXISTENTE]** | 768 / 1280; 375 compacto 160px | EmptyState: "Sin movimientos en este período" |
-| 10 | **Evolución anual** / *Annual trend* | Serie mensual real del año civil actual (12 buckets). | `yearlyData` **[EXISTENTE]** | 768 / 1280; 375 (toggle Mensual/Anual) | EmptyState |
-| 11 | **Por cobrar** / *Receivables* | Σ pendientes por cobrar, por moneda: `CreditGranted.pending` (no castigados) + `Sale.pending` de ventas a crédito (POS), más antiguo primero. | datos en el [EXISTENTE] agregador `computeActivosPasivos` (fusionados en activos) → campo `receivables` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** | 375 / 768 / 1280 | "Nada por cobrar" |
-| 12 | **Por pagar** / *Payables* | Σ pendientes por pagar, por moneda: `CreditReceived.pending` + `Payable.pending`, con vencimiento más próximo primero (usa `dueDate`, que existe en Payable). | ídem → campo `payables` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** | 375 / 768 / 1280 | "Nada por pagar" |
-| 13 | **Movimientos recientes (10)** / *Recent movements (10)* | 10 movimientos más recientes del mes civil actual. El snapshot hoy serializa 5 (`recentMovements`). | `recentMovements` **[EXISTENTE]** → slice server-side ampliado a 10 **[REQUIERE EXTENSIÓN SNAPSHOT leve]** | 375 (lista) / 768 / 1280 (tabla) | `noMovementsMessage` (existente) |
-| 14 | **Desglose por cuenta** / *Accounts* | Saldo por cuenta (nombre, moneda, saldo firmado). | `accountBalances` **[EXISTENTE]** | 375 / 768 / 1280 (panel 1/3 en desktop) | `noAccountsMessage` (existente) |
-| 15 | **Posición financiera** / *Financial position* | Activos, pasivos y neto por moneda (activos = saldos + créditos otorgados pendientes no castigados; pasivos = créditos recibidos + payables pendientes; sin FX). | `positionData` **[EXISTENTE]** (llega por separado de `page.tsx`) | 768 / 1280 (panel 1/3); 375 colapsable en N5 | `noPositionData` (existente) |
-| 16 | **Accesos a módulos** / *Module shortcuts* | Grilla de accesos a movimientos, transferencias, créditos recibidos/otorgados, cuentas por pagar, ventas POS. | grilla `DashboardReportsGrid` **[EXISTENTE]** → se REUBICA en N5 (relocation, sin nueva funcionalidad) **[DISEÑO PROPUESTO]** | 375 / 768 / 1280 | No aplica (siempre visible; el módulo destino tiene su propio vacío) |
+| #   | Métrica (es/en)                                                   | Fórmula de negocio (qué kinds la componen)                                                                                                                                                                                                                                                                                                                                                                                                                                           | Origen en el snapshot                                                                                                                                                                                           | Breakpoints                       | Estado vacío                                 |
+| --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------- |
+| 1   | **Resultado del período** / _Period result_                       | Σ ingresos económicos − Σ gastos económicos del período, por moneda. Los kinds económicos se resuelven con `countsTowardEconomicResult` (context-aware): excluye transferencias, apertura, capital de financiamiento (`creditReceivedPrincipal`, `creditGrantedPrincipal`), abonos de crédito otorgado standalone (solo el excedente `creditGrantedAbonoInterest` es ingreso; `creditGrantedWriteOff` es gasto); el abono de venta POS a crédito con context Business SÍ es ingreso. | `currencyBreakdown[].income − expenses` [EXISTENTE ✗ operands] → campo `result` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]**                                                                              | 375 / 768 / 1280                  | Hero: "Sin movimientos este período" (ver 7) |
+| 2   | **Disponible por moneda** / _Available by currency_               | Σ saldos de cuentas de la moneda (firmado, sin FX). No es resultado económico: es flujo (proyecto §9.2, "saldo ≠ resultado").                                                                                                                                                                                                                                                                                                                                                        | `currencyBreakdown[].balance` **[EXISTENTE]** (máx 3 monedas por saldo                                                                                                                                          | descendente; "+N más" en detalle) | 375 / 768 / 1280                             | Sin cuentas → CTA "Crear cuenta" (first-use, patrón existente del onboarding) |
+| 3   | **Variación % vs período anterior** / _Change vs previous period_ | ((valor período / valor período anterior) − 1) × 100, por moneda, para Resultado y para Ingresos/Gastos. Mes scope: vs mes civil anterior (buckets reales `monthlyData`); Año/12m: vs período anterior equivalente. Si no hay dato anterior → "—" (NUNCA 0 % engañoso).                                                                                                                                                                                                              | `monthlyData` [EXISTENTE, datos] → campos `resultChangePct`, `incomeChangePct`, `expenseChangePct` por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** (Año/12m requieren ventana ampliada, ver 8.2 de este doc / 4.2) | 375 / 768 / 1280                  | Sin período anterior → "—"                   |
+| 4   | **Ingresos del período** / _Period income_                        | Σ ingresos económicos por moneda (mismos kinds que #1).                                                                                                                                                                                                                                                                                                                                                                                                                              | `currencyBreakdown[].income` **[EXISTENTE]**                                                                                                                                                                    | 375 / 768 / 1280                  | `noIncomeData` (existente)                   |
+| 5   | **Gastos del período** / _Period expenses_                        | Σ gastos económicos por moneda.                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `currencyBreakdown[].expenses` **[EXISTENTE]**                                                                                                                                                                  | 375 / 768 / 1280                  | `noExpenseData` (existente)                  |
+
+> **AMENDMENT 2026-09-22 (decisión de producto, propuesta beta aceptada):** Top asimétrico — **Top 3 Ingresos** (la mayoría de los usuarios tiene ≤2-3 categorías de ingreso; mostrar 5 no aporta) y **Top 5 Gastos** (los gastos se dispersan en más categorías y el detalle es accionable). Los títulos de sección reflejan el corte real por sección.
+
+| 6 | **Top 3 ingresos / Top 5 gastos** / _Top 3 income / Top 5 expenses_ | Primeras N filas de ingresos/gastos del mes, por moneda (el servidor ya entrega `incomeRows`/`expenseRows` ordenadas descendente; el corte es presentación: `slice(0,3)` ingresos / `slice(0,5)` gastos). | `incomeRows`, `expenseRows`, `incomeTotals`, `expenseTotals` **[EXISTENTE]** | 768 / 1280 (tabla doble); 375 (lista concisa) | `noIncomeData`/`noExpenseData` |
+| 7 | **Split Personal/Negocio** / _Personal/Business split_ | Ingresos/gastos del mes por contexto y moneda (resumen contextual). | `contextSummary` **[EXISTENTE]** | 375 (colapsable) / 768 / 1280 | Sin datos de un contexto → se oculta ese contexto |
+| 8 | **Flujos de financiamiento** / _Financing flows_ | Entradas/salidas de financiamiento del mes (capital de créditos recibidos/otorgados; NO económicas). | `financingInflow`, `financingOutflow` **[EXISTENTE]** | colapsable en N2 (todos los breakpoints) | Sin flujos → sub-región oculta |
+| 9 | **Evolución 6 meses** / _6-month trend_ | Serie mensual real de ingresos/gastos (últimos 6 meses civiles, el último = mes actual). | `monthlyData` **[EXISTENTE]** | 768 / 1280; 375 compacto 160px | EmptyState: "Sin movimientos en este período" |
+| 10 | **Evolución anual** / _Annual trend_ | Serie mensual real del año civil actual (12 buckets). | `yearlyData` **[EXISTENTE]** | 768 / 1280; 375 (toggle Mensual/Anual) | EmptyState |
+| 11 | **Por cobrar** / _Receivables_ | Σ pendientes por cobrar, por moneda: `CreditGranted.pending` (no castigados) + `Sale.pending` de ventas a crédito (POS), más antiguo primero. | datos en el [EXISTENTE] agregador `computeActivosPasivos` (fusionados en activos) → campo `receivables` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** | 375 / 768 / 1280 | "Nada por cobrar" |
+| 12 | **Por pagar** / _Payables_ | Σ pendientes por pagar, por moneda: `CreditReceived.pending` + `Payable.pending`, con vencimiento más próximo primero (usa `dueDate`, que existe en Payable). | ídem → campo `payables` nuevo por moneda **[REQUIERE EXTENSIÓN SNAPSHOT]** | 375 / 768 / 1280 | "Nada por pagar" |
+| 13 | **Movimientos recientes (10)** / _Recent movements (10)_ | 10 movimientos más recientes del mes civil actual. El snapshot hoy serializa 5 (`recentMovements`). | `recentMovements` **[EXISTENTE]** → slice server-side ampliado a 10 **[REQUIERE EXTENSIÓN SNAPSHOT leve]** | 375 (lista) / 768 / 1280 (tabla) | `noMovementsMessage` (existente) |
+| 14 | **Desglose por cuenta** / _Accounts_ | Saldo por cuenta (nombre, moneda, saldo firmado). | `accountBalances` **[EXISTENTE]** | 375 / 768 / 1280 (panel 1/3 en desktop) | `noAccountsMessage` (existente) |
+| 15 | **Posición financiera** / _Financial position_ | Activos, pasivos y neto por moneda (activos = saldos + créditos otorgados pendientes no castigados; pasivos = créditos recibidos + payables pendientes; sin FX). | `positionData` **[EXISTENTE]** (llega por separado de `page.tsx`) | 768 / 1280 (panel 1/3); 375 colapsable en N5 | `noPositionData` (existente) |
+| 16 | **Accesos a módulos** / _Module shortcuts_ | Grilla de accesos a movimientos, transferencias, créditos recibidos/otorgados, cuentas por pagar, ventas POS. | grilla `DashboardReportsGrid` **[EXISTENTE]** → se REUBICA en N5 (relocation, sin nueva funcionalidad) **[DISEÑO PROPUESTO]** | 375 / 768 / 1280 | No aplica (siempre visible; el módulo destino tiene su propio vacío) |
 
 ### 3.2 Extensiones de snapshot necesarias (lista exacta)
 
@@ -207,10 +210,10 @@ Todas viven en `src/core/application/dashboard/build-dashboard-snapshot.ts` y ti
 
 ### 3.3 Bloqueos por freeze
 
-| Necesidad | Bloqueo | Trabajo futuro (post-freeze) |
-|---|---|---|
+| Necesidad                                                     | Bloqueo                                                                                                                                                               | Trabajo futuro (post-freeze)                                                                                                                                                                         |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Alerta "cobro vencido" de créditos otorgados/ventas a crédito | `CreditGranted` y `Sale` **no tienen `dueDate`** en el dominio congelado ([EXISTENTE][BLOQUEADO — DOMINIO CONGELADO]); `Pending` siempre se deriva, nunca se almacena | Extensión de dominio: `dueDate` en `CreditGranted` (+ `Sale.on-credit`), con su impacto en reglas de amortización. Se documenta en el backlog como entrada de extensión de dominio, sin diseñar aquí |
-| Vencidos de **Por pagar** | **SÍ factible**: `Payable.dueDate?` existe como opcional ([EXISTENTE]). Si falta → sin alerta, solo orden "más próximo primero" | — (ninguno; se diseña en 5.1) |
+| Vencidos de **Por pagar**                                     | **SÍ factible**: `Payable.dueDate?` existe como opcional ([EXISTENTE]). Si falta → sin alerta, solo orden "más próximo primero"                                       | — (ninguno; se diseña en 5.1)                                                                                                                                                                        |
 
 ---
 
@@ -246,11 +249,11 @@ Principios (§25): **nunca una pared de alertas**; región N4 con empty state po
 
 ### 5.1 Umbrales exactos
 
-| Alerta (es/en) | Condición | Origen | Comportamiento al resolverse |
-|---|---|---|---|
-| **Pago vencido** / *Overdue payment* | `Payable.dueDate` < hoy (fecha civil) ∧ `Payable.pending > 0` (el pending siempre es derivado, nunca almacenado) | Payables ya leídos → **[REQUIERE EXTENSIÓN SNAPSHOT]** (lista de id + días de atraso, por moneda) | Desaparece sola cuando `pending = 0` ([Payable.pending] derivado; el abono la resuelve) |
-| **Saldo negativo** / *Negative balance* | `currencyBreakdown[].balance < 0` (por moneda) | **[EXISTENTE]** (balance firmado por moneda); la regla de flag es **[DISEÑO PROPUESTO]** | Desaparece sola cuando el saldo ≥ 0; además la cuenta con saldo negativo muestra estado `danger` + microcopy "Saldo negativo" (DEC-DS-12) — estado de cuenta, NO banner |
-| **Gasto atípico** / *Unusual expense* | `gastoMes > 1,5 × promedio(gastos de los 3 meses civiles completos anteriores)` ∧ `(gastoMes − promedio) ≥ 0,1 × ingresoMes`, por moneda. Umbral PROPUESTO (dato de configuración de fase, no de dominio) | Promedios derivables server-side de `monthlyData` **[REQUIERE EXTENSIÓN SNAPSHOT]** | Las condiciones se re-evalúan con cada corte; el dismiss (5.2) la silencia hasta el próximo mes |
+| Alerta (es/en)                          | Condición                                                                                                                                                                                                 | Origen                                                                                            | Comportamiento al resolverse                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pago vencido** / _Overdue payment_    | `Payable.dueDate` < hoy (fecha civil) ∧ `Payable.pending > 0` (el pending siempre es derivado, nunca almacenado)                                                                                          | Payables ya leídos → **[REQUIERE EXTENSIÓN SNAPSHOT]** (lista de id + días de atraso, por moneda) | Desaparece sola cuando `pending = 0` ([Payable.pending] derivado; el abono la resuelve)                                                                                 |
+| **Saldo negativo** / _Negative balance_ | `currencyBreakdown[].balance < 0` (por moneda)                                                                                                                                                            | **[EXISTENTE]** (balance firmado por moneda); la regla de flag es **[DISEÑO PROPUESTO]**          | Desaparece sola cuando el saldo ≥ 0; además la cuenta con saldo negativo muestra estado `danger` + microcopy "Saldo negativo" (DEC-DS-12) — estado de cuenta, NO banner |
+| **Gasto atípico** / _Unusual expense_   | `gastoMes > 1,5 × promedio(gastos de los 3 meses civiles completos anteriores)` ∧ `(gastoMes − promedio) ≥ 0,1 × ingresoMes`, por moneda. Umbral PROPUESTO (dato de configuración de fase, no de dominio) | Promedios derivables server-side de `monthlyData` **[REQUIERE EXTENSIÓN SNAPSHOT]**               | Las condiciones se re-evalúan con cada corte; el dismiss (5.2) la silencia hasta el próximo mes                                                                         |
 
 ### 5.2 Diseño y no repetición
 
@@ -285,20 +288,20 @@ es/en, castellano neutro (sin voseo): `Nuevo movimiento` / `New movement`, `Nuev
 
 Los 12 estados de DEC-DS-09 mapeados al Resumen:
 
-| Estado | Región | Implementación |
-|---|---|---|
-| Default | Todas | Contenido en reposo según 2.x |
-| Loading | Dashboard completo | Skeleton por región (existe `loading.tsx` rico [EXISTENTE]; se mantiene y se alinea a los 5 niveles) |
-| Saving | Solo donde el Resumen participa (quick actions) | Botones con spinner + disabled (patrón DS) |
-| Success | Todas | Estado de reposo |
-| Error | Por región | Cartel parcial por región (patrón DS "error con reintento"); nunca rompe las demás regiones |
-| Empty | N1 (hero), N2, N3, N4, N5 | `noIncomeData`, `noExpenseData`, `noMovementsMessage`, `noPositionData`, `noAccountsMessage` [EXISTENTES]; N4 por defecto vacío ("Nada requiere tu atención") **[DISEÑO PROPUESTO]**; hero vacío: "Sin movimientos este período" + CTA crear cuenta (first-use) **[DISEÑO PROPUESTO]** |
-| Disabled | Selector de moneda en N3 sin datos | Deshabilitado por moneda sin datos |
-| Featured | Resultado del hero (N1) | Primera tarjeta con énfasis (Sora + semántica) |
-| Progress | Barra de progreso del mes (ingresos vs objetivo) — se omite: el dominio no tiene objetivos en esta ronda | No aplica hoy (sin datos de objetivo; se declara y no se fabrica) |
-| Busy | Re-corte de período | `aria-busy` en la región que se refresca (no bloquea el resto) — **[DISEÑO PROPUESTO]** (hoy `aria-busy` global) — **[DISEÑO PROPUESTO]** |
-| Failure | Snapshot fuera de servicio | Pantalla completa + reintento (patrón DS) |
-| Focus | Elementos interactivos | Anillos de foco visibles (patrón existente) |
+| Estado   | Región                                                                                                   | Implementación                                                                                                                                                                                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default  | Todas                                                                                                    | Contenido en reposo según 2.x                                                                                                                                                                                                                                                          |
+| Loading  | Dashboard completo                                                                                       | Skeleton por región (existe `loading.tsx` rico [EXISTENTE]; se mantiene y se alinea a los 5 niveles)                                                                                                                                                                                   |
+| Saving   | Solo donde el Resumen participa (quick actions)                                                          | Botones con spinner + disabled (patrón DS)                                                                                                                                                                                                                                             |
+| Success  | Todas                                                                                                    | Estado de reposo                                                                                                                                                                                                                                                                       |
+| Error    | Por región                                                                                               | Cartel parcial por región (patrón DS "error con reintento"); nunca rompe las demás regiones                                                                                                                                                                                            |
+| Empty    | N1 (hero), N2, N3, N4, N5                                                                                | `noIncomeData`, `noExpenseData`, `noMovementsMessage`, `noPositionData`, `noAccountsMessage` [EXISTENTES]; N4 por defecto vacío ("Nada requiere tu atención") **[DISEÑO PROPUESTO]**; hero vacío: "Sin movimientos este período" + CTA crear cuenta (first-use) **[DISEÑO PROPUESTO]** |
+| Disabled | Selector de moneda en N3 sin datos                                                                       | Deshabilitado por moneda sin datos                                                                                                                                                                                                                                                     |
+| Featured | Resultado del hero (N1)                                                                                  | Primera tarjeta con énfasis (Sora + semántica)                                                                                                                                                                                                                                         |
+| Progress | Barra de progreso del mes (ingresos vs objetivo) — se omite: el dominio no tiene objetivos en esta ronda | No aplica hoy (sin datos de objetivo; se declara y no se fabrica)                                                                                                                                                                                                                      |
+| Busy     | Re-corte de período                                                                                      | `aria-busy` en la región que se refresca (no bloquea el resto) — **[DISEÑO PROPUESTO]** (hoy `aria-busy` global) — **[DISEÑO PROPUESTO]**                                                                                                                                              |
+| Failure  | Snapshot fuera de servicio                                                                               | Pantalla completa + reintento (patrón DS)                                                                                                                                                                                                                                              |
+| Focus    | Elementos interactivos                                                                                   | Anillos de foco visibles (patrón existente)                                                                                                                                                                                                                                            |
 
 Nota de progreso/objetivos: la ronda actual no define objetivos financieros — **no se diseña** una barra de progreso inventada; el hueco se documenta en el backlog.
 
@@ -325,15 +328,15 @@ Hallazgo H-17: TTI actual **no es verificable** con los criterios del roadmap (�
 
 ## 9. Mapeo de hallazgos que cierra
 
-| Hallazgo | Cierre propuesto |
-|---|---|
-| H-07 (naming del Resumen "Informes"/"Panel") | DEC-IA-01 aplicado: módulo **Resumen / Summary**. i18n: `Nav.dashboard` → `"Resumen"` (es) / `"Summary"` (en); `Dashboard.dashboard` → `"Panel"` (es) / `"Dashboard"` (en) y título del `<h1>` del Resumen = `"Resumen"` **[DISEÑO PROPUESTO, i18n es/en en paridad]** |
-| H-17 (TTI no verificable) | Sección 8: protocolo de medición + hipótesis POR PROBAR (ninguna se declara ejecutada) |
-| H-18 (`aria-pressed` en alternadores) | Selector de período (4.2) y toggle Mensual/Anual del gráfico (N3) con `aria-pressed`, siguiendo el patrón existente del MonthlyChart **[DISEÑO PROPUESTO]** |
-| Deficiencia "Resumen débil en N1" (auditoría, sección B.8) | Hero N1 con Resultado + Disponible + variación, sin scroll en móvil, con fuentes de datos visibles (DEC-DS-12) |
-| Grilla de reportes alta en la página | Relocación a N5 "Accesos" (2.1/2.2/2.3); el usuario no pierde el camino hacia los módulos desde el Resumen — **[DISEÑO PROPUESTO]** |
-| `recentMovements` de 5 | Ampliación a 10 (3.2) |
-| Filtros de Movimientos no accesibles por URL | Contrato de filtro viajero (4.3), ejecución en UX-6 — **[DISEÑO PROPUESTO, ejecución diferida]** |
+| Hallazgo                                                   | Cierre propuesto                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H-07 (naming del Resumen "Informes"/"Panel")               | DEC-IA-01 aplicado: módulo **Resumen / Summary**. i18n: `Nav.dashboard` → `"Resumen"` (es) / `"Summary"` (en); `Dashboard.dashboard` → `"Panel"` (es) / `"Dashboard"` (en) y título del `<h1>` del Resumen = `"Resumen"` **[DISEÑO PROPUESTO, i18n es/en en paridad]** |
+| H-17 (TTI no verificable)                                  | Sección 8: protocolo de medición + hipótesis POR PROBAR (ninguna se declara ejecutada)                                                                                                                                                                                 |
+| H-18 (`aria-pressed` en alternadores)                      | Selector de período (4.2) y toggle Mensual/Anual del gráfico (N3) con `aria-pressed`, siguiendo el patrón existente del MonthlyChart **[DISEÑO PROPUESTO]**                                                                                                            |
+| Deficiencia "Resumen débil en N1" (auditoría, sección B.8) | Hero N1 con Resultado + Disponible + variación, sin scroll en móvil, con fuentes de datos visibles (DEC-DS-12)                                                                                                                                                         |
+| Grilla de reportes alta en la página                       | Relocación a N5 "Accesos" (2.1/2.2/2.3); el usuario no pierde el camino hacia los módulos desde el Resumen — **[DISEÑO PROPUESTO]**                                                                                                                                    |
+| `recentMovements` de 5                                     | Ampliación a 10 (3.2)                                                                                                                                                                                                                                                  |
+| Filtros de Movimientos no accesibles por URL               | Contrato de filtro viajero (4.3), ejecución en UX-6 — **[DISEÑO PROPUESTO, ejecución diferida]**                                                                                                                                                                       |
 
 ---
 
@@ -341,13 +344,13 @@ Hallazgo H-17: TTI actual **no es verificable** con los criterios del roadmap (�
 
 ### 10.1 Regla de Oro verificable (5 preguntas en 10 s) — mapeo pregunta → región
 
-| Pregunta (§41) | Región que la responde |
-|---|---|
-| "¿Tengo más o menos plata que el mes pasado, y cuánto?" | N1 hero: Resultado + variación % inline |
-| "¿Cuánto tengo disponible hoy?" | N1 hero: Disponible por moneda |
-| "¿De dónde salió / a dónde se fue la plata?" | N2 desglose: ingresos/gastos + Top 5 + Personal/Negocio |
-| "¿En qué va la tendencia?" | N3 evolución: gráfico 6/12 meses reales |
-| "¿Hay algo que requiera acción?" | N4 atención: Por cobrar / Por pagar + alertas (empty por defecto) |
+| Pregunta (§41)                                          | Región que la responde                                            |
+| ------------------------------------------------------- | ----------------------------------------------------------------- |
+| "¿Tengo más o menos plata que el mes pasado, y cuánto?" | N1 hero: Resultado + variación % inline                           |
+| "¿Cuánto tengo disponible hoy?"                         | N1 hero: Disponible por moneda                                    |
+| "¿De dónde salió / a dónde se fue la plata?"            | N2 desglose: ingresos/gastos + Top 5 + Personal/Negocio           |
+| "¿En qué va la tendencia?"                              | N3 evolución: gráfico 6/12 meses reales                           |
+| "¿Hay algo que requiera acción?"                        | N4 atención: Por cobrar / Por pagar + alertas (empty por defecto) |
 
 Verificación: un usuario que no conoce TwinCap responde las 5 en ≤ 10 s con los wireframes en 375/768/1280 (sesión de prueba con el fundador, sin datos reales).
 
@@ -363,32 +366,32 @@ Verificación: un usuario que no conoce TwinCap responde las 5 en ≤ 10 s con l
 
 ## 11. Tabla de decisiones (DEC-R)
 
-| # | Decisión |
-|---|---|
-| DEC-R-01 | N1 hero = Resultado del período + Disponible por moneda + variación % inline; Sora; sin scroll en móvil. Ejecuta DEC-IA-07 y DEC-DS-02. |
-| DEC-R-02 | Semántica de color SOLO con significado (Resultado ≥ 0/ < 0), siempre con signo explícito adicional; Disponible sin semántica de ganancia. |
-| DEC-R-03 | N2 desglose = ingresos/gastos + Top 5 + split Personal/Negocio + Financiamiento colapsable (se conserva lo existente, se reordena). |
-| DEC-R-04 | N3 evolución = gráfico real 6/12 m con toggle `aria-pressed` y selector de moneda (patrón existente conservado). |
-| DEC-R-05 | N4 atención = Por cobrar / Por pagar + alertas condicionales (máx 3); empty por defecto; formato compacto con [Revisar]. |
+| #        | Decisión                                                                                                                                                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| DEC-R-01 | N1 hero = Resultado del período + Disponible por moneda + variación % inline; Sora; sin scroll en móvil. Ejecuta DEC-IA-07 y DEC-DS-02.                                                                                                                      |
+| DEC-R-02 | Semántica de color SOLO con significado (Resultado ≥ 0/ < 0), siempre con signo explícito adicional; Disponible sin semántica de ganancia.                                                                                                                   |
+| DEC-R-03 | N2 desglose = ingresos/gastos + Top 5 + split Personal/Negocio + Financiamiento colapsable (se conserva lo existente, se reordena).                                                                                                                          |
+| DEC-R-04 | N3 evolución = gráfico real 6/12 m con toggle `aria-pressed` y selector de moneda (patrón existente conservado).                                                                                                                                             |
+| DEC-R-05 | N4 atención = Por cobrar / Por pagar + alertas condicionales (máx 3); empty por defecto; formato compacto con [Revisar].                                                                                                                                     |
 | DEC-R-06 | Alertas: pago vencido (`Payable.dueDate` < hoy ∧ pending > 0), saldo negativo (balance < 0, estado de cuenta + warning en N4), gasto atípico (umbral 1.5×/10 % propuesto). Cobro vencido BLOQUEADO (dominio congelado; por cobrar se ordena por antigüedad). |
-| DEC-R-07 | Extensiones de snapshot server-side exactas (3.2): `result`, variaciones %, `receivables`/`payables`, `recentMovements` 10, `dataAsOf`. Cero cambios de dominio/repos. |
-| DEC-R-08 | Selector de período Mes/Año/12m server-side; default mes civil; ventana ampliada para 12m (mismo repo); timezone civil del cliente explícita (A2). |
-| DEC-R-09 | Contrato de filtro viajero `?periodo=&mes=&cuenta=&categoria=`; Movimientos lo consume como estado inicial en UX-6 (ejecución diferida, registrada). |
-| DEC-R-10 | Acciones rápidas: header en desktop; barra inferior fija en móvil (Nuevo movimiento primario). Evita perder el acceso en vistas largas (lección 2 del benchmark). |
-| DEC-R-11 | Estados por región (sección 7) con `aria-busy` regional y error parcial; sin barra de progreso de objetivos (no existen en el dominio). |
-| DEC-R-12 | Grilla de reportes relocada a N5 "Accesos" (renaming según DEC-IA-01); el acceso a cada módulo se conserva desde el Resumen. |
+| DEC-R-07 | Extensiones de snapshot server-side exactas (3.2): `result`, variaciones %, `receivables`/`payables`, `recentMovements` 10, `dataAsOf`. Cero cambios de dominio/repos.                                                                                       |
+| DEC-R-08 | Selector de período Mes/Año/12m server-side; default mes civil; ventana ampliada para 12m (mismo repo); timezone civil del cliente explícita (A2).                                                                                                           |
+| DEC-R-09 | Contrato de filtro viajero `?periodo=&mes=&cuenta=&categoria=`; Movimientos lo consume como estado inicial en UX-6 (ejecución diferida, registrada).                                                                                                         |
+| DEC-R-10 | Acciones rápidas: header en desktop; barra inferior fija en móvil (Nuevo movimiento primario). Evita perder el acceso en vistas largas (lección 2 del benchmark).                                                                                            |
+| DEC-R-11 | Estados por región (sección 7) con `aria-busy` regional y error parcial; sin barra de progreso de objetivos (no existen en el dominio).                                                                                                                      |
+| DEC-R-12 | Grilla de reportes relocada a N5 "Accesos" (renaming según DEC-IA-01); el acceso a cada módulo se conserva desde el Resumen.                                                                                                                                 |
 
 ---
 
 ## 12. Descendencia a otras fases (no ejecutar aquí)
 
-| Fase | Qué recibe de este diseño |
-|---|---|
-| UX-6 (Detalle de movimientos) | Contrato de filtro viajero como estado inicial; `searchParams` en la ruta |
-| UX-7 (Por pagar / payables) | Consumo del contrato viajero para la alerta de pago vencido |
-| UX-10 (Componentes finos) | Skeleton regional por Suspense; barra de acciones móvil vs FAB de feedback |
-| UX-11/12 (Consistencia y TTI) | Resultados de la medición 8.1; validación de la Regla de Oro con datos reales |
-| Backlog (post-freeze) | `dueDate` en `CreditGranted`/`Sale` para la alerta de cobro vencido (ver 3.3); objetivos financieros si el producto los adopta (ver 7) |
+| Fase                          | Qué recibe de este diseño                                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| UX-6 (Detalle de movimientos) | Contrato de filtro viajero como estado inicial; `searchParams` en la ruta                                                              |
+| UX-7 (Por pagar / payables)   | Consumo del contrato viajero para la alerta de pago vencido                                                                            |
+| UX-10 (Componentes finos)     | Skeleton regional por Suspense; barra de acciones móvil vs FAB de feedback                                                             |
+| UX-11/12 (Consistencia y TTI) | Resultados de la medición 8.1; validación de la Regla de Oro con datos reales                                                          |
+| Backlog (post-freeze)         | `dueDate` en `CreditGranted`/`Sale` para la alerta de cobro vencido (ver 3.3); objetivos financieros si el producto los adopta (ver 7) |
 
 ---
 
@@ -404,4 +407,4 @@ Verificación: un usuario que no conoce TwinCap responde las 5 en ≤ 10 s con l
 
 ---
 
-*Documento de diseño propuesto — sujeto a aprobación. Al aprobarse, las extensiones de snapshot (3.2) abrirán la fase de implementación UX-5 siguiendo el protocolo de ronda.*
+_Documento de diseño propuesto — sujeto a aprobación. Al aprobarse, las extensiones de snapshot (3.2) abrirán la fase de implementación UX-5 siguiendo el protocolo de ronda._
