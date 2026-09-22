@@ -432,3 +432,22 @@ uneven heights breaking the grid; the outer wrapper adds 24px side margins at
 - [x] U7: verification — tsc 0, eslint clean on all touched paths, prettier
       clean on touched files, targeted suites green (dashboard components 7,
       core dashboard 40, app 133). Push/PR: feat/post-ux-round-3.
+
+### Cluster 9 round 2 (owner feedback after PR #15 preview)
+
+- [x] U1 FIXED: root cause found and closed. The whole-page double scroll +
+      giant blank was NOT in dashboard content: the MonthlyChart sr-only
+      summary table is position:absolute (the sr-only utility); with no
+      positioned ancestor its containing block is the page itself, so it
+      escaped main's overflow-auto and stretched documentElement.scrollHeight
+      (doc 2832 vs viewport 720). Fix: monthly-chart Card gets
+      className="relative" (commit 754a3c8). Repro spec now asserts doc<=vh+40
+      and measures body children + absolute outliers (342ea68). Verified:
+      doc=720 after fix.
+- [x] U8 hero hierarchy (owner): "¿Cuánto tengo disponible?" dominates via
+      font-display text-2xl/3xl figures; "Flujo de caja del mes" renders
+      PER-CURRENCY server-computed result rows (same level/row rhythm,
+      secondary size, semantic color) — replaces the single-COP giant figure
+      (commit 03a2155). No new i18n keys.
+- [x] U9 lists narrower still: movements/transfers max-w-5xl → max-w-3xl
+      (commit 1ab2089). Sales list unchanged (pending owner call).
