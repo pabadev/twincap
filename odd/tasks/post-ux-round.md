@@ -372,3 +372,12 @@ stride 3/6). Verified stroke-/fill-income/expese utilities derive from the
 
 - [x] U5: verification (tsc 0, eslint clean, prettier clean, targeted tests
       green 4+3+2+2) + push/PR on a fresh branch from master.
+
+## Cluster 8 delivery
+
+PR #14 (feat/post-ux-round-2 -> master, 5 commits f583b3a..17d28ab) MERGED.
+CI: Quality pass, Vercel pass; E2E failed once on duplicate-opening
+(concurrency timing sensitivity — known flaky class R15) and PASSED on the
+re-run 3m12s; Vercel Production deployment == success after merge
+(master 3dcdbed). Reports-grid removal, asymmetric Top, button-bodied
+Ver todos link and native SVG line chart are LIVE in production.
