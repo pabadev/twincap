@@ -1,5 +1,6 @@
 import type { UserDocument } from "../models/user";
 import { User } from "../../core/domain/user";
+import type { Currency } from "../../core/domain/currency";
 
 /** Convert a Mongoose UserDocument to a domain User entity. */
 export function toUserEntity(doc: UserDocument): User {
@@ -9,6 +10,7 @@ export function toUserEntity(doc: UserDocument): User {
     passwordHash: doc.passwordHash,
     name: doc.name,
     locale: doc.locale,
+    defaultCurrency: doc.defaultCurrency as Currency | undefined,
     emailVerified: doc.emailVerified,
     sessionVersion: doc.sessionVersion ?? 0,
     createdAt: doc.createdAt,
@@ -22,6 +24,7 @@ export function toUserDocData(entity: User): Record<string, unknown> {
     passwordHash: entity.passwordHash,
     name: entity.name,
     locale: entity.locale,
+    defaultCurrency: entity.defaultCurrency,
     emailVerified: entity.emailVerified ?? false,
     sessionVersion: entity.sessionVersion ?? 0,
   };

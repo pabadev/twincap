@@ -20,7 +20,9 @@ import { FormField } from "../../../../components/ui/form-field";
 import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
+import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Modal } from "../../../../components/ui/modal";
+import { Trash2 } from "lucide-react";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { formatAmount } from "../../../../lib/format";
 import { toDateInputValue } from "../../../../lib/date";
@@ -326,14 +328,14 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                   </FormField>
                 </div>
                 {lineItems.length > 1 && (
-                  <button
-                    type="button"
+                  <ActionIconButton
+                    icon={Trash2}
+                    label={t("remove")}
+                    tone="danger"
                     onClick={() => removeLineItem(idx)}
                     disabled={isPending}
-                    className="mb-0.5 text-xs text-danger hover:text-danger/80"
-                  >
-                    {t("remove")}
-                  </button>
+                    className="mb-0.5"
+                  />
                 )}
               </div>
             ))}

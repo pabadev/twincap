@@ -134,3 +134,35 @@ describe("DashboardContent chart toggles (R-9/R-10a, H-18)", () => {
     }
   });
 });
+
+// Ronda POST-UX §21: an extremely large account balance must stay visible
+// inside its card (the Card root clips overflow) — wrapping with aligned
+// digits, never truncated or hidden.
+describe("DashboardContent account balance overflow (§21)", () => {
+  it("renders very large balances with break-words and tabular-nums", async () => {
+    const bigBalanceSnapshot = {
+      ...mockSnapshot,
+      accountBalances: [
+        {
+          id: "a1",
+          name: "Checking",
+          currency: "COP",
+          isFixed: false,
+          balance: 99999999999999,
+        },
+      ],
+    };
+    const { getDashboardSnapshotAction } = await import("../../app/(main)/dashboard/actions");
+    vi.mocked(getDashboardSnapshotAction).mockResolvedValue(bigBalanceSnapshot);
+
+    const { container } = mount(
+      <DashboardContent {...baseProps} initialSnapshot={bigBalanceSnapshot} />,
+    );
+    const balanceSpan = container.querySelector<HTMLElement>(".tabular-nums");
+    expect(balanceSpan).not.toBeNull();
+    expect(balanceSpan!.className).toContain("break-words");
+    expect(balanceSpan!.className).toContain("min-w-0");
+    // The full figure is present in the DOM (nothing hidden/clipped away).
+    expect(balanceSpan!.textContent).toContain("99");
+  });
+});

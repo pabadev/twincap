@@ -52,7 +52,7 @@ async function setInitialBalanceInUI(
   amount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
@@ -70,7 +70,7 @@ async function expectAccountBalance(
   copAmount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await expect(row).toContainText(copAmount);
 }
 

@@ -4,19 +4,19 @@ import type {
   CurrencyBreakdown,
   AttentionTotals,
   OverduePayable,
-} from './dashboard-types';
-import type { SerializedCategory } from '../../domain/category';
-import type { Movement } from '../../domain/movement';
-import { computeDashboardSummary } from '../compute-dashboard-summary';
-import { computeCategorySummary } from '../compute-category-summary';
-import { computeYearlyEvolution } from '../compute-yearly-evolution';
-import { computeContextSummary } from '../compute-context-summary';
-import { countsTowardEconomicResult } from '../economic-result';
-import { sumSafeMinorUnits } from '../../domain/money';
+} from "./dashboard-types";
+import type { SerializedCategory } from "../../domain/category";
+import type { Movement } from "../../domain/movement";
+import { computeDashboardSummary } from "../compute-dashboard-summary";
+import { computeCategorySummary } from "../compute-category-summary";
+import { computeYearlyEvolution } from "../compute-yearly-evolution";
+import { computeContextSummary } from "../compute-context-summary";
+import { countsTowardEconomicResult } from "../economic-result";
+import { sumSafeMinorUnits } from "../../domain/money";
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
 function utcMonthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 /**
@@ -39,7 +39,11 @@ export interface BuildDashboardSnapshotInput {
   movements: Movement[];
   filters: DashboardFilters;
   locale: string;
-  /** Currency used when no single account is selected — `accounts[0]?.currency ?? 'COP'`. */
+  /**
+   * Currency used when no single account is selected. The caller resolves it
+   * from the first account or falls back to `DEFAULT_CURRENCY` (currency.ts).
+   * Never a hardcoded string — the fallback is explicit and traceable.
+   */
   primaryCurrency: string;
   /** Resolves a category id to its display label (real, synthetic, or fallback). */
   resolveCategoryLabel: (categoryId: string) => string;
@@ -78,22 +82,12 @@ export interface BuildDashboardSnapshotInput {
  * — never a raw Mongo pipeline — so the financial figures cannot diverge from
  * the authoritative use cases.
  */
-export function buildDashboardSnapshot(
-  input: BuildDashboardSnapshotInput,
-): DashboardSnapshot {
-  const {
-    accounts,
-    movements,
-    filters,
-    primaryCurrency,
-    resolveCategoryLabel,
-  } = input;
+export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): DashboardSnapshot {
+  const { accounts, movements, filters, primaryCurrency, resolveCategoryLabel } = input;
 
   // A2: ONE canonical "civil now" (the client's calendar date) shared by every
   // current-period computation below — same shift as isFutureBusinessDate.
-  const civilNow = new Date(
-    Date.now() - (input.tzOffsetMinutes ?? 0) * 60_000,
-  );
+  const civilNow = new Date(Date.now() - (input.tzOffsetMinutes ?? 0) * 60_000);
 
   // Filtered movements — scope / accountId / categoryId only. There is NO
   // period/date-range filter anymore (N2, Fase 5 pre-beta audit): every
@@ -106,22 +100,16 @@ export function buildDashboardSnapshot(
   //     current civil year.
   let filteredMovements = movements;
 
-  if (filters.scope !== 'all') {
-    filteredMovements = filteredMovements.filter(
-      (m) => m.context === filters.scope,
-    );
+  if (filters.scope !== "all") {
+    filteredMovements = filteredMovements.filter((m) => m.context === filters.scope);
   }
 
-  if (filters.accountId !== 'all') {
-    filteredMovements = filteredMovements.filter(
-      (m) => m.accountId === filters.accountId,
-    );
+  if (filters.accountId !== "all") {
+    filteredMovements = filteredMovements.filter((m) => m.accountId === filters.accountId);
   }
 
-  if (filters.categoryId !== 'all') {
-    filteredMovements = filteredMovements.filter(
-      (m) => m.categoryId === filters.categoryId,
-    );
+  if (filters.categoryId !== "all") {
+    filteredMovements = filteredMovements.filter((m) => m.categoryId === filters.categoryId);
   }
 
   // N2: clip the scope/account/category-filtered set to the current civil
@@ -130,15 +118,11 @@ export function buildDashboardSnapshot(
   // movement-period-filter.ts (Date.UTC keys + tzOffsetMinutes shift) — the
   // movements page keeps its own period/range filters untouched.
   const currentMonthKey = utcMonthKey(civilNow);
-  const monthlyMovements = filteredMovements.filter(
-    (m) => utcMonthKey(m.date) === currentMonthKey,
-  );
+  const monthlyMovements = filteredMovements.filter((m) => utcMonthKey(m.date) === currentMonthKey);
 
   // Account balances — narrowed to the selected account when applicable.
   const accountBalances =
-    filters.accountId !== 'all'
-      ? accounts.filter((a) => a.id === filters.accountId)
-      : accounts;
+    filters.accountId !== "all" ? accounts.filter((a) => a.id === filters.accountId) : accounts;
 
   // Multi-currency breakdown for SummaryCards. Balances come from every
   // account; income/expenses are the CURRENT-MONTH economic flows
@@ -174,7 +158,7 @@ export function buildDashboardSnapshot(
       expenses: 0,
       result: 0,
     };
-    if (m.type === 'income') {
+    if (m.type === "income") {
       entry.income = sumSafeMinorUnits(
         [entry.income, m.amount.amount],
         `Dashboard income breakdown (${cur})`,
@@ -198,14 +182,14 @@ export function buildDashboardSnapshot(
   const currencyBreakdown: CurrencyBreakdown[] = Array.from(byCurrency.entries())
     .map(([currency, data]) => ({ currency, ...data }))
     .sort((a, b) =>
-      a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
+      a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
     );
 
   // Aggregation currency scope: the selected account's currency when one is
   // active, else the primary (first) account's currency.
   const currency =
-    filters.accountId !== 'all'
-      ? accounts.find((a) => a.id === filters.accountId)?.currency ?? primaryCurrency
+    filters.accountId !== "all"
+      ? (accounts.find((a) => a.id === filters.accountId)?.currency ?? primaryCurrency)
       : primaryCurrency;
 
   // N1: Personal/Business split — only when no context filter is active, over
@@ -213,7 +197,7 @@ export function buildDashboardSnapshot(
   // split is now multi-currency: computeContextSummary aggregates by
   // context × currency (no single-currency scope).
   const contextSummary =
-    filters.scope === 'all'
+    filters.scope === "all"
       ? computeContextSummary({
           movements: monthlyMovements,
           now: civilNow,
@@ -269,11 +253,11 @@ export function buildDashboardSnapshot(
     if (countsTowardEconomicResult(m)) economicCurrencies.add(m.amount.currency);
   }
   const distinctCurrencies = Array.from(economicCurrencies).sort((a, b) =>
-    a === 'COP' ? -1 : b === 'COP' ? 1 : a.localeCompare(b),
+    a === "COP" ? -1 : b === "COP" ? 1 : a.localeCompare(b),
   );
 
   let chartCurrencies: string[] | undefined;
-  let chartDataByCurrency: DashboardSnapshot['chartDataByCurrency'];
+  let chartDataByCurrency: DashboardSnapshot["chartDataByCurrency"];
   if (distinctCurrencies.length > 1) {
     chartCurrencies = distinctCurrencies;
     chartDataByCurrency = {};
@@ -298,13 +282,10 @@ export function buildDashboardSnapshot(
   // 10 rows for the Resumen N5 detail list.
   const recentMovements = monthlyMovements.slice(0, 10).map((m) => ({
     id: m.id,
-    type: m.type as 'income' | 'expense',
+    type: m.type as "income" | "expense",
     amount: m.amount.amount,
     currency: m.amount.currency,
-    date:
-      typeof m.date === 'string'
-        ? m.date
-        : new Date(m.date).toISOString(),
+    date: typeof m.date === "string" ? m.date : new Date(m.date).toISOString(),
     categoryName: resolveCategoryLabel(m.categoryId),
   }));
 
@@ -317,28 +298,39 @@ export function buildDashboardSnapshot(
     if (cg.writtenOff) continue;
     const cur = cg.pending.currency;
     const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
-    entry.receivables += cg.pending.amount;
+    // R15.3.1 P1.3: per-currency attention sums go through sumSafeMinorUnits
+    // — same overflow protection as every other monetary aggregation.
+    entry.receivables = sumSafeMinorUnits(
+      [entry.receivables, cg.pending.amount],
+      `Dashboard receivables breakdown (${cur})`,
+    );
     attentionByCurrency.set(cur, entry);
   }
 
   for (const cr of input.creditsReceived ?? []) {
     const cur = cr.pending.currency;
     const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
-    entry.payables += cr.pending.amount;
+    entry.payables = sumSafeMinorUnits(
+      [entry.payables, cr.pending.amount],
+      `Dashboard payables breakdown (${cur})`,
+    );
     attentionByCurrency.set(cur, entry);
   }
 
   for (const p of input.payables ?? []) {
     const cur = p.pending.currency;
     const entry = attentionByCurrency.get(cur) ?? { receivables: 0, payables: 0 };
-    entry.payables += p.pending.amount;
+    entry.payables = sumSafeMinorUnits(
+      [entry.payables, p.pending.amount],
+      `Dashboard payables breakdown (${cur})`,
+    );
     attentionByCurrency.set(cur, entry);
   }
 
   const attentionTotals: AttentionTotals[] = Array.from(attentionByCurrency.entries())
     .map(([currency, data]) => ({ currency, ...data }))
     .sort((a, b) =>
-      a.currency === 'COP' ? -1 : b.currency === 'COP' ? 1 : a.currency.localeCompare(b.currency),
+      a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
     );
 
   // N4 (UX-5): overdue payables — dueDate before the civil now with pending

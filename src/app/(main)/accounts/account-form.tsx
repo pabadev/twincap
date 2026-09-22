@@ -1,24 +1,28 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { CURRENCIES } from '../../../core/domain/currency';
-import { createAccountAction } from './actions';
-import { IdempotencyField } from '../../../components/ui/idempotency-field';
-import { Input } from '../../../components/ui/input';
-import { Select } from '../../../components/ui/select';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { useActionError } from '../../../lib/use-action-error';
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useT } from "../../../i18n/client";
+import { CURRENCIES } from "../../../core/domain/currency";
+import { createAccountAction } from "./actions";
+import { IdempotencyField } from "../../../components/ui/idempotency-field";
+import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { useActionError } from "../../../lib/use-action-error";
 
-export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
-  const [state, formAction, isPending] = useActionState(
-    createAccountAction,
-    null,
-  );
-  const t = useT('Accounts');
-  const tToast = useT('Toast');
+export function AccountForm({
+  defaultCurrency,
+  onSuccess,
+}: {
+  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  defaultCurrency?: string;
+  onSuccess?: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(createAccountAction, null);
+  const t = useT("Accounts");
+  const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
@@ -27,7 +31,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       router.refresh();
       onSuccess?.();
     }
@@ -35,7 +39,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
 
   useEffect(() => {
     if (state?.error) {
-      addToast(translateError(state.error), 'error');
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
@@ -46,7 +50,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
         id="name"
         name="name"
         type="text"
-        label={t('accountName')}
+        label={t("accountName")}
         required
         disabled={isPending}
       />
@@ -54,9 +58,10 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
       <Select
         id="currency"
         name="currency"
-        label={t('currency')}
+        label={t("currency")}
         required
         disabled={isPending}
+        defaultValue={defaultCurrency}
         options={CURRENCIES.map((c) => ({ value: c, label: c }))}
       />
 
@@ -64,7 +69,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
         id="initialBalance"
         name="initialBalance"
         type="number"
-        label={t('initialBalance')}
+        label={t("initialBalance")}
         min="0"
         defaultValue="0"
         disabled={isPending}
@@ -77,7 +82,7 @@ export function AccountForm({ onSuccess }: { onSuccess?: () => void }) {
         disabled={isPending}
         loading={isPending}
       >
-        {isPending ? t('creating') : t('createAccount')}
+        {isPending ? t("creating") : t("createAccount")}
       </Button>
     </form>
   );

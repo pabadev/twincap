@@ -35,7 +35,7 @@ const CatalogItemSchema = new Schema<CatalogItemDoc>(
     currency: {
       type: String,
       required: true,
-      enum: ["COP", "USD", "MXN", "EUR"],
+      enum: ["COP", "USD", "MXN", "EUR", "BRL"],
     },
     type: {
       type: String,

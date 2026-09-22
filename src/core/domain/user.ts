@@ -1,4 +1,5 @@
 import { ValidationError } from "./errors";
+import type { Currency } from "./currency";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,6 +15,8 @@ export interface UserInput {
   createdAt: Date;
   name?: string;
   locale?: string;
+  /** User's preferred currency for new operations (optional). */
+  defaultCurrency?: Currency;
   /** Whether the user has verified ownership of their email (B2). `undefined` === false. */
   emailVerified?: boolean;
   /** Server-only session invalidation version (R14-F §13). `undefined` == 0. */
@@ -28,6 +31,7 @@ export class User {
   readonly createdAt: Date;
   readonly name?: string;
   readonly locale?: string;
+  readonly defaultCurrency?: Currency;
   readonly emailVerified?: boolean;
   readonly sessionVersion: number;
 
@@ -48,6 +52,7 @@ export class User {
     this.createdAt = input.createdAt;
     this.name = input.name?.trim() || undefined;
     this.locale = input.locale || undefined;
+    this.defaultCurrency = input.defaultCurrency;
     this.emailVerified = input.emailVerified;
     this.sessionVersion = input.sessionVersion ?? 0;
   }
@@ -58,6 +63,7 @@ export class User {
       email: this.email,
       name: this.name,
       locale: this.locale,
+      defaultCurrency: this.defaultCurrency,
       createdAt: this.createdAt,
       emailVerified: this.emailVerified ?? false,
     };

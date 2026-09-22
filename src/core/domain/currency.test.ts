@@ -9,7 +9,7 @@ import {
 
 describe("currency", () => {
   it("supports exactly the seeded currency list", () => {
-    expect(CURRENCIES).toEqual(["COP", "USD", "MXN", "EUR"]);
+    expect(CURRENCIES).toEqual(["COP", "USD", "MXN", "EUR", "BRL"]);
   });
 
   it("uses exponent 0 for COP (no minor-unit decimals)", () => {

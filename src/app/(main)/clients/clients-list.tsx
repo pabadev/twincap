@@ -8,7 +8,6 @@ import { Icon } from "../../../components/ui/icon";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Modal } from "../../../components/ui/modal";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
-import { Table, TableShell, THead, Th, TBody, Td } from "../../../components/ui/table";
 import { MovementCard } from "../../../components/ui/movement-card";
 import { Search, Pencil } from "lucide-react";
 
@@ -61,6 +60,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
             </div>
             <input
               type="text"
+              aria-label={t("searchPlaceholder")}
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -87,51 +87,12 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         <EmptyState icon={<Icon icon={Search} size="xl" />} title={t("noResults")} />
       )}
 
-      <TableShell className="max-sm:hidden">
-        <Table className="min-w-[500px]">
-          <THead>
-            <tr>
-              <Th>{t("name")}</Th>
-              <Th>{t("phone")}</Th>
-              <Th>{t("email")}</Th>
-              <Th align="right">{tCommon("actions")}</Th>
-            </tr>
-          </THead>
-          <TBody>
-            {filteredClients.map((client) => (
-              <tr key={client.id}>
-                <Td>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                    {client.name}
-                  </span>
-                  {client.note && <span className="ml-2 text-xs text-zinc-400">{client.note}</span>}
-                </Td>
-                <Td className="text-sm text-zinc-600 dark:text-zinc-300">{client.phone || "—"}</Td>
-                <Td className="text-sm text-zinc-600 dark:text-zinc-300">{client.email || "—"}</Td>
-                <Td align="right">
-                  <div className="flex items-center justify-end gap-1">
-                    <ActionIconButton
-                      icon={Pencil}
-                      label={tCommon("edit")}
-                      tone="primary"
-                      onClick={() => setEditingClient(client)}
-                    />
-                    <DeleteClientButton clientId={client.id} />
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </TBody>
-        </Table>
-      </TableShell>
-
-      {/* Card variant (<640px) */}
-      <div className="space-y-3 sm:hidden">
+      {/* Cards are the only representation (product decision 2026-09-21). */}
+      <div className="space-y-3">
         {filteredClients.map((client) => (
           <MovementCard
             key={client.id}
             id={client.id}
-            className="sm:hidden"
             fields={[
               {
                 key: "name",

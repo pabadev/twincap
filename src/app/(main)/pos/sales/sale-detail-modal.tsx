@@ -77,14 +77,6 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
           <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                {t("saleIdLabel")}
-              </dt>
-              <dd className="break-all font-mono text-xs text-zinc-900 dark:text-white">
-                {snapshot.id}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 {tCommon("date")}
               </dt>
               <dd className="text-zinc-900 dark:text-white">{formatDate(snapshot.date, locale)}</dd>
@@ -135,10 +127,10 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               {t("lineItems")}
             </h3>
-            <div className="overflow-x-auto">
-              {/* Compact modal table: keeps its bespoke cells (pb-1 / py-1.5,
-                  text-xs header rows) — only the `<table>` element fits the
-                  ui/table contract here. */}
+            {/* Desktop (>=640px): compact modal table keeps its bespoke cells
+                (pb-1 / py-1.5, text-xs header rows) — only the `<table>`
+                element fits the ui/table contract here. */}
+            <div className="max-sm:hidden overflow-x-auto">
               <Table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -163,6 +155,29 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                   ))}
                 </tbody>
               </Table>
+            </div>
+
+            {/* Mobile (<640px): line items as stacked rows — 4 columns in a
+                size-lg modal is cramped at card width (§20). Row 1: item name;
+                row 2: qty × unit price; row 3: subtotal. */}
+            <div className="space-y-2 sm:hidden">
+              {snapshot.items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
+                >
+                  <div className="font-medium text-zinc-900 dark:text-white">
+                    {item.itemName ?? t("itemDeleted")}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    {t("qty")}: {item.quantity} ×{" "}
+                    {formatAmount(item.unitPrice.amount, item.unitPrice.currency, locale)}
+                  </div>
+                  <div className="mt-1 text-right font-medium tabular-nums text-zinc-900 dark:text-white">
+                    {formatAmount(item.subtotal, snapshot.currency, locale)}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

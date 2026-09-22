@@ -14,12 +14,16 @@ import { useT } from "../../i18n/client";
 import type { MovementType } from "../../core/domain/movement";
 import type { SerializedAccount } from "../../core/domain/account";
 import type { SerializedCategory } from "../../core/domain/category";
+import type { SerializedCatalogItem } from "../../core/domain/catalog";
+import type { SerializedClient } from "../../core/domain/client";
 import { listAccountsAction, listCategoriesAction } from "./movements/actions";
+import { getSaleFormDataAction } from "./pos/sales/actions";
 import { MovementForm } from "./movements/movement-form";
+import { SaleForm } from "./pos/sales/sale-form";
 import { resolveDefaultAccountId } from "../../lib/movement-form";
 import { Modal } from "../../components/ui/modal";
 import { Icon } from "../../components/ui/icon";
-import { Plus, TrendingUp, TrendingDown, X } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, X, ShoppingCart } from "lucide-react";
 
 export interface QuickMovementOptions {
   /** Preset movement type so the user starts directly on income or expense. */
@@ -50,9 +54,25 @@ interface FormDataPayload {
   categories: SerializedCategory[];
 }
 
-export function GlobalMovementProvider({ children }: { children: ReactNode }) {
+interface SaleFormDataPayload {
+  catalogItems: SerializedCatalogItem[];
+  accounts: SerializedAccount[];
+  clients: SerializedClient[];
+}
+
+export function GlobalMovementProvider({
+  children,
+  defaultCurrency,
+}: {
+  children: ReactNode;
+  /** User's preferred currency for new operations. */
+  defaultCurrency?: string;
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [preset, setPreset] = useState<QuickMovementOptions>({});
+  const [posModalOpen, setPosModalOpen] = useState(false);
+  const [posData, setPosData] = useState<SaleFormDataPayload | null>(null);
+  const [posLoadState, setPosLoadState] = useState<LoadState>("idle");
   const [dialOpen, setDialOpen] = useState(false);
   const [data, setData] = useState<FormDataPayload | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
@@ -61,6 +81,7 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
 
   const tMovements = useT("Movements");
   const tCommon = useT("Common");
+  const tSales = useT("Sales");
   const tToast = useT("Toast");
   const tErrors = useT("Errors");
 
@@ -70,7 +91,29 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
     setModalOpen(true);
   }, []);
 
-  const closeModal = useCallback(() => setModalOpen(false), []);
+  // Beta feedback: "Venta POS" must behave like Ingreso/Egreso — open the
+  // associated form in place instead of navigating away from the current view.
+  const openPosSale = useCallback(() => {
+    setDialOpen(false);
+    setPosModalOpen(true);
+  }, []);
+
+  const closePosModal = useCallback(() => {
+    setPosModalOpen(false);
+    // §16 pattern: drop cached reference data on close so the next open
+    // fetches fresh catalog/accounts/clients.
+    setPosData(null);
+    setPosLoadState("idle");
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    // §16: invalidate the cached reference data on close so the next open
+    // fetches fresh accounts/categories. Without this, a category created
+    // elsewhere (e.g. /categories page) would not appear in the FAB form
+    // until a full page refresh.
+    setData(null);
+  }, []);
 
   useEffect(() => {
     if (!modalOpen || data !== null || loadState === "error") return;
@@ -90,6 +133,22 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [modalOpen, data, loadState]);
+
+  useEffect(() => {
+    if (!posModalOpen || posData !== null || posLoadState === "error") return;
+    let active = true;
+    void (async () => {
+      try {
+        const payload = await getSaleFormDataAction();
+        if (active) setPosData(payload);
+      } catch {
+        if (active) setPosLoadState("error");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [posModalOpen, posData, posLoadState]);
 
   useEffect(() => {
     if (!dialOpen) return;
@@ -116,8 +175,10 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
     <GlobalMovementContext.Provider value={value}>
       {children}
 
-      {/* Floating quick action — speed dial for direct income/expense entry */}
-      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex flex-col items-end gap-3 lg:bottom-8 lg:right-8">
+      {/* Floating quick action — speed dial for direct income/expense entry.
+          §24: vertical menu spacing kept moderately tight (gap-2 outer,
+          gap-1.5 between options) while touch targets stay 44px (h-11). */}
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex flex-col items-end gap-2 lg:bottom-8 lg:right-8">
         {dialOpen && (
           <>
             <div className="fixed inset-0" aria-hidden="true" onClick={() => setDialOpen(false)} />
@@ -125,13 +186,25 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               id="quick-movement-menu"
               role="group"
               aria-label={tMovements("quickAddMenu")}
-              className="relative flex flex-col items-end gap-2"
+              className="relative flex flex-col items-end gap-1.5"
             >
               <button
                 ref={firstOptionRef}
                 type="button"
+                onClick={openPosSale}
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("quickAddPosSale")}
+              >
+                <Icon icon={ShoppingCart} size="sm" className="text-income" />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                  {tMovements("quickAddPosSale")}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => openQuickMovement({ type: "income" })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("income")}
               >
                 <Icon icon={TrendingUp} size="sm" className="text-income" />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
@@ -141,7 +214,8 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: "expense" })}
-                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                aria-label={tMovements("expense")}
               >
                 <Icon icon={TrendingDown} size="sm" className="text-expense" />
                 <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
@@ -193,7 +267,40 @@ export function GlobalMovementProvider({ children }: { children: ReactNode }) {
             categories={data.categories}
             defaultAccountId={resolveDefaultAccountId(preset.accountId, data.accounts)}
             defaultType={preset.type}
+            defaultCurrency={defaultCurrency}
             onSuccess={closeModal}
+          />
+        )}
+      </Modal>
+
+      {/* Shared POS sale form — same in-place pattern as the movement modal.
+          SaleForm reuses the list page's form component (no logic duplicated)
+          and closes itself via onDone after a successful create. */}
+      <Modal open={posModalOpen} onClose={closePosModal} title={tSales("createSale")} size="lg">
+        {posLoadState === "error" ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{tToast("operationFailed")}</p>
+            <button
+              type="button"
+              onClick={() => setPosLoadState("idle")}
+              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              {tErrors("retry")}
+            </button>
+          </div>
+        ) : posData === null ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+            {tCommon("loading")}
+          </p>
+        ) : posData.accounts.length === 0 ? (
+          // Same account-needed guidance as the movement modal (H-10 style).
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{tMovements("noAccounts")}</p>
+        ) : (
+          <SaleForm
+            catalogItems={posData.catalogItems}
+            accounts={posData.accounts}
+            clients={posData.clients}
+            onDone={closePosModal}
           />
         )}
       </Modal>

@@ -1,15 +1,19 @@
-'use client';
+"use client";
 
-import { Card } from '../ui/card';
-import { Icon } from '../ui/icon';
-import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, User, Briefcase } from 'lucide-react';
-import { useT } from '../../i18n/client';
-import { formatAmount } from '../../lib/format';
-import type { ContextSummary, ContextCurrencySummary } from '../../core/application/compute-context-summary';
+import { Card } from "../ui/card";
+import { Icon } from "../ui/icon";
+import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, User, Briefcase } from "lucide-react";
+import { useT } from "../../i18n/client";
+import { formatAmount } from "../../lib/format";
+import { DEFAULT_CURRENCY } from "../../core/domain/currency";
+import type {
+  ContextSummary,
+  ContextCurrencySummary,
+} from "../../core/application/compute-context-summary";
 // R14-K §14c: the breakdown type lives in core; re-exported here so the
 // presentation layer keeps its stable import path.
-import type { CurrencyBreakdown } from '../../core/application/dashboard/dashboard-types';
-export type { CurrencyBreakdown } from '../../core/application/dashboard/dashboard-types';
+import type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
+export type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
 
 interface SummaryCardsProps {
   currency: string;
@@ -33,7 +37,7 @@ function MultiCurrencyValue({
   className,
 }: {
   items: CurrencyBreakdown[];
-  field: 'balance' | 'income' | 'expenses';
+  field: "balance" | "income" | "expenses";
   sign?: string;
   locale: string;
   className?: string;
@@ -46,8 +50,10 @@ function MultiCurrencyValue({
     // is at most one currency to sum.
     const total = items.length === 1 ? items[0][field] : 0;
     return (
-      <p className={`text-base sm:text-lg font-semibold leading-tight ${className ?? ''}`}>
-        {sign}{formatAmount(total, items[0]?.currency ?? 'COP', locale)}
+      <p className={`text-base sm:text-lg font-semibold leading-tight ${className ?? ""}`}>
+        {/* §13: explicit fallback via DEFAULT_CURRENCY — no silent hardcoded string. */}
+        {sign}
+        {formatAmount(total, items[0]?.currency ?? DEFAULT_CURRENCY, locale)}
       </p>
     );
   }
@@ -57,8 +63,12 @@ function MultiCurrencyValue({
         const val = item[field];
         if (val === 0) return null;
         return (
-          <span key={item.currency} className={`text-xs sm:text-sm font-medium leading-tight ${className ?? ''}`}>
-            {sign}{formatAmount(val, item.currency, locale)}
+          <span
+            key={item.currency}
+            className={`text-xs sm:text-sm font-medium leading-tight ${className ?? ""}`}
+          >
+            {sign}
+            {formatAmount(val, item.currency, locale)}
           </span>
         );
       })}
@@ -89,12 +99,16 @@ function ContextCurrencyRows({
     return (
       <>
         <p className="text-[11px] sm:text-xs leading-tight text-income">
-          {incomeLabel}:{' '}
-          <span className="font-semibold">+{formatAmount(it.monthlyIncome, it.currency, locale)}</span>
+          {incomeLabel}:{" "}
+          <span className="font-semibold">
+            +{formatAmount(it.monthlyIncome, it.currency, locale)}
+          </span>
         </p>
         <p className="text-[11px] sm:text-xs leading-tight text-expense">
-          {expensesLabel}:{' '}
-          <span className="font-semibold">−{formatAmount(it.monthlyExpenses, it.currency, locale)}</span>
+          {expensesLabel}:{" "}
+          <span className="font-semibold">
+            −{formatAmount(it.monthlyExpenses, it.currency, locale)}
+          </span>
         </p>
       </>
     );
@@ -104,14 +118,18 @@ function ContextCurrencyRows({
       <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">{incomeLabel}:</p>
       {items.map((it) => (
         <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-income">
-          <span className="font-semibold">+{formatAmount(it.monthlyIncome, it.currency, locale)}</span>{' '}
+          <span className="font-semibold">
+            +{formatAmount(it.monthlyIncome, it.currency, locale)}
+          </span>{" "}
           <span className="text-zinc-400">{it.currency}</span>
         </p>
       ))}
       <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">{expensesLabel}:</p>
       {items.map((it) => (
         <p key={it.currency} className="text-[11px] sm:text-xs leading-tight text-expense">
-          <span className="font-semibold">−{formatAmount(it.monthlyExpenses, it.currency, locale)}</span>{' '}
+          <span className="font-semibold">
+            −{formatAmount(it.monthlyExpenses, it.currency, locale)}
+          </span>{" "}
           <span className="text-zinc-400">{it.currency}</span>
         </p>
       ))}
@@ -129,31 +147,36 @@ export function SummaryCards({
   currencyBreakdown,
   contextSummary,
 }: SummaryCardsProps) {
-  const t = useT('Dashboard');
+  const t = useT("Dashboard");
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
   // A11: the cross-currency `totalBalance` sum is gone. In mono-currency mode
   // the single currency's balance IS the total (the sum of every account
   // balance, all in that currency); multi-currency renders the per-currency
   // breakdown instead. No cross-currency arithmetic anywhere.
   const monoBalance =
-    currencyBreakdown && currencyBreakdown.length > 0
-      ? currencyBreakdown[0].balance
-      : 0;
-  const balanceClass =
-    monoBalance < 0 ? 'text-expense' : 'text-zinc-900 dark:text-zinc-100';
+    currencyBreakdown && currencyBreakdown.length > 0 ? currencyBreakdown[0].balance : 0;
+  const balanceClass = monoBalance < 0 ? "text-expense" : "text-zinc-900 dark:text-zinc-100";
 
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-income/10 p-2">
               <Icon icon={TrendingUp} size="md" className="text-income" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('incomeThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                {t("incomeThisMonth")}
+              </p>
               {multi ? (
-                <MultiCurrencyValue items={currencyBreakdown!} field="income" sign="+" locale={locale} className="text-income" />
+                <MultiCurrencyValue
+                  items={currencyBreakdown!}
+                  field="income"
+                  sign="+"
+                  locale={locale}
+                  className="text-income"
+                />
               ) : (
                 <p className="text-base sm:text-lg font-semibold text-income leading-tight">
                   +{formatAmount(monthlyIncome, currency, locale)}
@@ -163,15 +186,23 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-expense/10 p-2">
               <Icon icon={TrendingDown} size="md" className="text-expense" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('expensesThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                {t("expensesThisMonth")}
+              </p>
               {multi ? (
-                <MultiCurrencyValue items={currencyBreakdown!} field="expenses" sign="−" locale={locale} className="text-expense" />
+                <MultiCurrencyValue
+                  items={currencyBreakdown!}
+                  field="expenses"
+                  sign="−"
+                  locale={locale}
+                  className="text-expense"
+                />
               ) : (
                 <p className="text-base sm:text-lg font-semibold text-expense leading-tight">
                   −{formatAmount(monthlyExpenses, currency, locale)}
@@ -181,15 +212,22 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={Wallet} size="md" className="text-info" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('totalBalance')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                {t("totalBalance")}
+              </p>
               {multi ? (
-                <MultiCurrencyValue items={currencyBreakdown!} field="balance" locale={locale} className="text-zinc-900 dark:text-zinc-100" />
+                <MultiCurrencyValue
+                  items={currencyBreakdown!}
+                  field="balance"
+                  locale={locale}
+                  className="text-zinc-900 dark:text-zinc-100"
+                />
               ) : (
                 <p className={`text-base sm:text-lg font-semibold leading-tight ${balanceClass}`}>
                   {formatAmount(monoBalance, currency, locale)}
@@ -199,20 +237,26 @@ export function SummaryCards({
           </div>
         </Card>
 
-        <Card className="p-3 sm:p-4">
+        <Card contentClassName="p-3 sm:p-4">
           <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={ArrowLeftRight} size="md" className="text-info" />
             </div>
             <div className="min-w-0 flex flex-col gap-0.5">
-              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('financingThisMonth')}</p>
+              <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                {t("financingThisMonth")}
+              </p>
               <p className="text-[11px] sm:text-xs leading-tight text-income">
-                {t('financingReceived')}:{' '}
-                <span className="font-semibold">+{formatAmount(financingInflow, currency, locale)}</span>
+                {t("financingReceived")}:{" "}
+                <span className="font-semibold">
+                  +{formatAmount(financingInflow, currency, locale)}
+                </span>
               </p>
               <p className="text-[11px] sm:text-xs leading-tight text-expense">
-                {t('financingGranted')}:{' '}
-                <span className="font-semibold">−{formatAmount(financingOutflow, currency, locale)}</span>
+                {t("financingGranted")}:{" "}
+                <span className="font-semibold">
+                  −{formatAmount(financingOutflow, currency, locale)}
+                </span>
               </p>
             </div>
           </div>
@@ -225,36 +269,40 @@ export function SummaryCards({
       {(contextSummary?.personal || contextSummary?.business) && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {contextSummary.personal && (
-            <Card className="p-3 sm:p-4">
+            <Card contentClassName="p-3 sm:p-4">
               <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={User} size="md" className="text-income" />
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
-                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('filterScopePersonal')}</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                    {t("filterScopePersonal")}
+                  </p>
                   <ContextCurrencyRows
                     items={contextSummary.personal}
                     locale={locale}
-                    incomeLabel={t('income')}
-                    expensesLabel={t('expenses')}
+                    incomeLabel={t("income")}
+                    expensesLabel={t("expenses")}
                   />
                 </div>
               </div>
             </Card>
           )}
           {contextSummary.business && (
-            <Card className="p-3 sm:p-4">
+            <Card contentClassName="p-3 sm:p-4">
               <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:items-center sm:gap-3">
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={Briefcase} size="md" className="text-income" />
                 </div>
                 <div className="min-w-0 flex flex-col gap-0.5">
-                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">{t('filterScopeBusiness')}</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
+                    {t("filterScopeBusiness")}
+                  </p>
                   <ContextCurrencyRows
                     items={contextSummary.business}
                     locale={locale}
-                    incomeLabel={t('income')}
-                    expensesLabel={t('expenses')}
+                    incomeLabel={t("income")}
+                    expensesLabel={t("expenses")}
                   />
                 </div>
               </div>

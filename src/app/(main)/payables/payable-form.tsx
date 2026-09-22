@@ -1,39 +1,47 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { createPayableAction } from './actions';
-import { IdempotencyField } from '../../../components/ui/idempotency-field';
-import type { SerializedAccount } from '../../../core/domain/account';
-import { CURRENCIES, DEFAULT_CURRENCY } from '../../../core/domain/currency';
-import type { Currency } from '../../../core/domain/currency';
-import { Input } from '../../../components/ui/input';
-import { Select } from '../../../components/ui/select';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { useActionError } from '../../../lib/use-action-error';
-import { toDateInputValue } from '../../../lib/date';
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useT } from "../../../i18n/client";
+import { createPayableAction } from "./actions";
+import { IdempotencyField } from "../../../components/ui/idempotency-field";
+import type { SerializedAccount } from "../../../core/domain/account";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../../../core/domain/currency";
+import type { Currency } from "../../../core/domain/currency";
+import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { useActionError } from "../../../lib/use-action-error";
+import { toDateInputValue } from "../../../lib/date";
 
-export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccount[]; onSuccess?: () => void }) {
-  const [state, formAction, isPending] = useActionState(
-    createPayableAction,
-    null,
-  );
-  const t = useT('Payables');
-  const tCommon = useT('Common');
-  const tToast = useT('Toast');
+export function PayableForm({
+  accounts,
+  defaultCurrency,
+  onSuccess,
+}: {
+  accounts: SerializedAccount[];
+  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  defaultCurrency?: string;
+  onSuccess?: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(createPayableAction, null);
+  const t = useT("Payables");
+  const tCommon = useT("Common");
+  const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
 
-  const [currency, setCurrency] = useState<Currency>(accounts[0]?.currency ?? DEFAULT_CURRENCY);
+  const [currency, setCurrency] = useState<Currency>(
+    accounts[0]?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY,
+  );
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       router.refresh();
       onSuccess?.();
     }
@@ -41,7 +49,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
 
   useEffect(() => {
     if (state?.error) {
-      addToast(translateError(state.error), 'error');
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
@@ -53,7 +61,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
         id="counterparty"
         name="counterparty"
         type="text"
-        label={t('counterparty')}
+        label={t("counterparty")}
         required
         disabled={isPending}
       />
@@ -63,7 +71,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
           id="total"
           name="total"
           type="number"
-          label={t('total', { currency })}
+          label={t("total", { currency })}
           min="1"
           required
           disabled={isPending}
@@ -72,7 +80,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
         <Select
           id="currency"
           name="currency"
-          label={t('currency')}
+          label={t("currency")}
           required
           disabled={isPending}
           value={currency}
@@ -84,10 +92,10 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
       <Select
         id="accountId"
         name="accountId"
-        label={t('accountId')}
+        label={t("accountId")}
         required
         disabled={isPending}
-        placeholder={tCommon('select')}
+        placeholder={tCommon("select")}
         options={accounts.map((a) => ({
           value: a.id,
           label: `${a.name} (${a.currency})`,
@@ -98,7 +106,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
         id="initialPayment"
         name="initialPayment"
         type="number"
-        label={t('initialPayment', { currency })}
+        label={t("initialPayment", { currency })}
         min="0"
         step="1"
         defaultValue={0}
@@ -110,29 +118,17 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
           id="date"
           name="date"
           type="date"
-          label={t('date')}
+          label={t("date")}
           required
           disabled={isPending}
           defaultValue={toDateInputValue()}
           max={toDateInputValue()}
         />
 
-        <Input
-          id="dueDate"
-          name="dueDate"
-          type="date"
-          label={t('dueDate')}
-          disabled={isPending}
-        />
+        <Input id="dueDate" name="dueDate" type="date" label={t("dueDate")} disabled={isPending} />
       </div>
 
-      <Input
-        id="note"
-        name="note"
-        type="text"
-        label={t('note')}
-        disabled={isPending}
-      />
+      <Input id="note" name="note" type="text" label={t("note")} disabled={isPending} />
 
       <Button
         type="submit"
@@ -141,7 +137,7 @@ export function PayableForm({ accounts, onSuccess }: { accounts: SerializedAccou
         disabled={isPending}
         loading={isPending}
       >
-        {isPending ? t('creating') : t('addPayableBtn')}
+        {isPending ? t("creating") : t("addPayableBtn")}
       </Button>
     </form>
   );

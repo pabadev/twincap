@@ -6,6 +6,7 @@ export interface UserDoc {
   passwordHash: string;
   name?: string;
   locale?: string;
+  defaultCurrency?: string;
   emailVerified?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -35,7 +36,12 @@ const UserSchema = new Schema<UserDoc>(
     locale: {
       type: String,
       required: false,
-      enum: ['es', 'en'],
+      enum: ["es", "en"],
+    },
+    defaultCurrency: {
+      type: String,
+      required: false,
+      enum: ["COP", "USD", "MXN", "EUR", "BRL"],
     },
     emailVerified: {
       type: Boolean,
@@ -49,5 +55,4 @@ const UserSchema = new Schema<UserDoc>(
   { timestamps: true },
 );
 
-export const UserModel =
-  mongoose.models["User"] || mongoose.model<UserDoc>("User", UserSchema);
+export const UserModel = mongoose.models["User"] || mongoose.model<UserDoc>("User", UserSchema);

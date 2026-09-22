@@ -42,7 +42,7 @@ async function setInitialBalanceInUI(
   amount: string,
 ): Promise<void> {
   await page.goto("/accounts");
-  const row = page.locator("tr", { hasText: accountName });
+  const row = page.locator("[data-id]", { hasText: accountName });
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
@@ -79,7 +79,7 @@ async function createMovementInUI(
 
   await dialog.getByLabel("Account").selectOption({ label: `${account} (COP)` });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
-  await dialog.getByLabel("Category").selectOption({ label: category });
+  await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Add Movement" }).click();
@@ -101,7 +101,9 @@ test.describe("R15.3 §11 — Saldo negativo", () => {
 
     // Seed a modest positive opening: COP 5,000 on the default Efectivo account.
     await setInitialBalanceInUI(page, "Efectivo", "5000");
-    await expect(page.locator("tr", { hasText: "Efectivo" }).first()).toContainText(/COP\s+5,000/);
+    await expect(page.locator("[data-id]", { hasText: "Efectivo" }).first()).toContainText(
+      /COP\s+5,000/,
+    );
 
     // Register an EXPENSE ABOVE the balance (COP 10,000 vs 5,000 available).
     // §11: the movement is recorded as reality — no "insufficient funds"
@@ -118,7 +120,7 @@ test.describe("R15.3 §11 — Saldo negativo", () => {
     // list, NBSP-safe regex, expense badge, category, note). NOTE: the row has
     // no account cell — the movements list renders date, amount, category,
     // note, type (no per-row account column).
-    const movementRow = page.locator("tr", { hasText: "slice7-negative" });
+    const movementRow = page.locator("[data-id]", { hasText: "slice7-negative" });
     await expect(movementRow).toContainText(/[−-]COP\s+10,000/);
     await expect(movementRow).toContainText("Expense");
     await expect(movementRow).toContainText("Comida");
@@ -126,7 +128,7 @@ test.describe("R15.3 §11 — Saldo negativo", () => {
     // /accounts: the derived balance is NEGATIVE — "-COP 5,000" (Intl ASCII
     // minus). The value is derived from signed movements; nothing is blocked.
     await page.goto("/accounts");
-    const efectivoRow = page.locator("tr", { hasText: "Efectivo" }).first();
+    const efectivoRow = page.locator("[data-id]", { hasText: "Efectivo" }).first();
     await expect(efectivoRow).toContainText(/-COP\s+5,000/);
 
     // Persistence: a full reload still shows the derived negative balance.

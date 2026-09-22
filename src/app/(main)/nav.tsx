@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   BarChart3,
   MessageSquare,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useTheme } from "../../components/theme-provider";
 import { Logo } from "../../components/ui/logo";
@@ -44,8 +45,7 @@ interface NavItem {
 }
 
 // Four-tier IA (DEC-IA-02/03/04/10): Tier 1 Comprensión renders without a
-// header; Tiers 2-4 lead with a group header span. `/transfers` leaves the
-// nav on purpose (route stays reachable via Movimientos).
+// header; Tiers 2-4 lead with a group header span.
 const NAV_GROUPS: readonly { headerKey: string | null; items: readonly NavItem[] }[] = [
   {
     headerKey: null,
@@ -55,6 +55,12 @@ const NAV_GROUPS: readonly { headerKey: string | null; items: readonly NavItem[]
         href: "/movements",
         key: "movements",
         icon: List,
+        color: "text-zinc-600 dark:text-zinc-400",
+      },
+      {
+        href: "/transfers",
+        key: "transfers",
+        icon: ArrowLeftRight,
         color: "text-zinc-600 dark:text-zinc-400",
       },
     ],

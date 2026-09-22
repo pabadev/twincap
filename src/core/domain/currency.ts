@@ -1,9 +1,9 @@
 /**
  * ISO 4217 currency codes supported by TwinCap.
  * Money amounts are stored as integer minor units per each currency's
- * exponent (COP has 0 decimals; USD, MXN, EUR have 2).
+ * exponent (COP has 0 decimals; BRL, USD, MXN, EUR have 2).
  */
-export const CURRENCIES = ["COP", "USD", "MXN", "EUR"] as const;
+export const CURRENCIES = ["COP", "USD", "MXN", "EUR", "BRL"] as const;
 
 export type Currency = (typeof CURRENCIES)[number];
 
@@ -16,6 +16,7 @@ export const CURRENCY_EXPONENTS: Record<Currency, number> = {
   USD: 2,
   MXN: 2,
   EUR: 2,
+  BRL: 2,
 };
 
 export function isCurrency(value: string): value is Currency {
