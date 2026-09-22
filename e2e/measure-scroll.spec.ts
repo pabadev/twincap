@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { registerUser, confirmMoneyAction, confirmDialog } from "./helpers";
+import { registerUser, confirmMoneyAction } from "./helpers";
 
 /**
  * Throwaway measurement spec: reproduces the "blank space below the content"
