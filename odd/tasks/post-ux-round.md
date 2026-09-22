@@ -451,3 +451,7 @@ uneven heights breaking the grid; the outer wrapper adds 24px side margins at
       (commit 03a2155). No new i18n keys.
 - [x] U9 lists narrower still: movements/transfers max-w-5xl → max-w-3xl
       (commit 1ab2089). Sales list unchanged (pending owner call).
+### Cluster 9 round 2 addendum
+- [x] U10: shell-width contract updated — 2xl cap on BOTH (main) and
+      (analytics) layouts; RSL-1/2 comment amended with the beta round-3
+      owner decision. Unblocked the Quality gate (shell-width.test).
