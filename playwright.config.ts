@@ -1,6 +1,8 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 const CI = Boolean(process.env.CI);
+// beta round 3: standalone E2E port so a dev server on :3000 is never reused.
+const PORT = Number(process.env.E2E_PORT ?? 3000);
 
 /**
  * R12-C3 E2E config (Slice 1 — Infra + Auth + Accounts).
@@ -9,7 +11,7 @@ const CI = Boolean(process.env.CI);
  * Serial (workers: 1) is critical for the rate-limiter count determinism.
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
   // Serial execution: many specs register users against the shared
   // register:unknown rate-limit counter and share the test DB state.
   fullyParallel: false,
@@ -26,36 +28,33 @@ export default defineConfig({
   // isolation). Playwright re-runs only the failed test against fresh state;
   // a test failing twice is a real failure, not masked by this.
   retries: 1,
-  reporter: CI
-    ? 'github'
-    : [
-        ['list'],
-        ['html', { open: 'never' }],
-      ],
+  reporter: CI ? "github" : [["list"], ["html", { open: "never" }]],
 
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${PORT}`,
+    trace: "retain-on-failure",
+    video: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
 
   webServer: {
-    command: 'pnpm e2e:server',
-    port: 3000,
+    // PORT is honored by `next start` itself (E2E_PORT lets the suite run on a
+    // dedicated port when a dev server occupies :3000).
+    command: `pnpm exec next build && pnpm exec next start -p ${PORT}`,
+    port: PORT,
     reuseExistingServer: !CI,
     // `next build && next start` on a loaded dev machine takes ~3-4 min
     // (typecheck + Turbopack build + static gen); 120s was too tight.
     timeout: 300_000,
   },
 
-  globalSetup: './e2e/global-setup.ts',
-  globalTeardown: './e2e/global-teardown.ts',
+  globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
 });

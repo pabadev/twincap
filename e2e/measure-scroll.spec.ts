@@ -279,6 +279,53 @@ test("measure dashboard scroll metrics with rich data", async ({ page }) => {
       doc: document.documentElement.scrollHeight,
       body: document.body.scrollHeight,
       vh: window.innerHeight,
+      // Direct body children with scrollHeight > viewport → the whole-page
+      // blank-scroll culprit lives at THIS level (outside the h-screen
+      // layout wrapper), not inside main.
+      bodyChildren: Array.from(document.body.children).map((el) => ({
+        tag: el.tagName,
+        id: el.id,
+        cls: (typeof el.className === "string" ? el.className : "").slice(0, 60),
+        rectH: Math.round(el.getBoundingClientRect().height),
+        scrollH: el.scrollHeight,
+      })),
+      htmlOverflow: getComputedStyle(document.documentElement).overflow,
+      bodyOverflow: getComputedStyle(document.body).overflow,
+      // <html>-level suspects: non-body children and absolutely positioned
+      // elements whose containing block is the ICB (they can extend
+      // documentElement.scrollHeight without touching body.scrollHeight).
+      htmlKids: Array.from(document.documentElement.children)
+        .filter((el) => el !== document.body)
+        .map((el) => ({
+          tag: el.tagName,
+          id: el.id,
+          cls: (typeof el.className === "string" ? el.className : "").slice(0, 40),
+          rectH: Math.round(el.getBoundingClientRect().height),
+          scrollH: el.scrollHeight,
+          top: Math.round(el.getBoundingClientRect().top),
+        })),
+      absOutliers: Array.from(document.querySelectorAll("body *"))
+        .filter((el) => {
+          const pos = getComputedStyle(el).position;
+          return pos === "absolute" || pos === "relative";
+        })
+        .map((el) => ({
+          tag: el.tagName,
+          cls: (typeof el.className === "string"
+            ? el.className.split(" ").slice(0, 3).join(" ")
+            : ""
+          ).slice(0, 60),
+          top: Math.round(el.getBoundingClientRect().top),
+          bottom: Math.round(el.getBoundingClientRect().bottom),
+        }))
+        .filter((x) => x.bottom > 720)
+        .sort((a, b) => b.bottom - a.bottom)
+        .slice(0, 10),
+      wrapperRectH: Math.round(
+        document.querySelector("main")?.parentElement?.parentElement?.getBoundingClientRect()
+          .height ?? 0,
+      ),
+      wrapperScrollH: document.querySelector("main")?.parentElement?.parentElement?.scrollHeight,
       mainScroll: main?.scrollHeight,
       mainH: main?.getBoundingClientRect().height,
       mainOverflowY: main ? getComputedStyle(main).overflowY : "-",
@@ -306,6 +353,11 @@ test("measure dashboard scroll metrics with rich data", async ({ page }) => {
     };
   });
   console.log("DASH:", JSON.stringify(dash, null, 1));
+  if (dash.doc > dash.vh + 40) {
+    throw new Error(
+      `Document-level overflow reproduced: doc=${dash.doc} vs viewport ${dash.vh} — blank scroll exists at BODY level`,
+    );
+  }
 
   // Also dump visible section headings to confirm what rendered
   const sections = await page.evaluate(() => {
