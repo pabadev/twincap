@@ -546,3 +546,12 @@ collection EMPTY — known-browser effect boundary error produces no stored
 trace (reportClientError client path appears not to have fired) — honest
 unavailability; /clients hardening is preventive. NOT planned in this PR:
 eposca** equipment.
+
+### Owner decisions closed (2026-09-22)
+
+- Sales list width: owner picked max-w-3xl (commit ecf967e, direct master).
+- E2E test-user cleanup in the dev/Atlas DB authorized by owner: cascade
+  scan found 8 users (7 e2e-* + 1 measure-*@test.local, workspaces via
+  memberships) -> 120 docs deleted (users 8, workspaces 8, memberships 8,
+  accounts 15, categories 64, movements 17); remaining test users: 0.
+  Filters bound strictly to those user ids/workspace ids.
