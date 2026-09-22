@@ -87,8 +87,10 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         <EmptyState icon={<Icon icon={Search} size="xl" />} title={t("noResults")} />
       )}
 
-      {/* Cards are the only representation (product decision 2026-09-21). */}
-      <div className="space-y-3">
+      {/* Cards are the only representation (product decision 2026-09-21).
+          Beta round 3: non-chronological card sets arrange in two columns on
+          PC/laptop. */}
+      <div className="grid gap-3 sm:grid-cols-2">
         {filteredClients.map((client) => (
           <MovementCard
             key={client.id}

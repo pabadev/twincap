@@ -63,8 +63,10 @@ export default async function AccountsPage() {
         />
       )}
 
-      {/* Cards are the only representation (product decision 2026-09-21). */}
-      <div className="space-y-3">
+      {/* Cards are the only representation (product decision 2026-09-21).
+          Beta round 3: non-chronological card sets arrange in two columns on
+          PC/laptop (grid, equal-height rows applied per grid row). */}
+      <div className="grid gap-3 sm:grid-cols-2">
         {accounts.map((account) => {
           const balance = balances.get(account.id) ?? 0;
           return (
