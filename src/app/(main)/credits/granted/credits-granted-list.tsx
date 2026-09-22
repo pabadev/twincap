@@ -171,8 +171,10 @@ export function CreditsGrantedList({
           {filtered.length === 0 && credits.length > 0 && <EmptyState title={t("noResults")} />}
 
           {/* Product decision 2026-09-21: cards everywhere; on PC the cards
-              may arrange in a 2-column grid. */}
-          <div className="grid gap-3 md:grid-cols-2 md:items-start">
+              may arrange in a 2-column grid. Beta round 3: equal card heights
+              per row (grid default stretch) so lighter cards don't break the
+              grid's symmetry. */}
+          <div className="grid gap-3 md:grid-cols-2">
             {filtered.map((credit) => {
               const isExpanded = expandedId === credit.id;
               const pending = credit.pending;

@@ -171,7 +171,7 @@ export function PayablesList({
 
           {filtered.length === 0 && payables.length > 0 && <EmptyState title={t("noResults")} />}
 
-          <div className="grid gap-3 md:grid-cols-2 md:items-start">
+          <div className="grid gap-3 md:grid-cols-2">
             {filtered.map((payable) => {
               const isExpanded = expandedId === payable.id;
               const pending = payable.pending;

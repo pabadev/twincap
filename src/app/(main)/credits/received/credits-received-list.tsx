@@ -165,7 +165,7 @@ export function CreditsReceivedList({
 
           {/* Product decision 2026-09-21: cards everywhere; on PC the cards
               may arrange in a 2-column grid. */}
-          <div className="grid gap-3 md:grid-cols-2 md:items-start">
+          <div className="grid gap-3 md:grid-cols-2">
             {filtered.map((credit) => {
               const isExpanded = expandedId === credit.id;
               const pending = credit.pending;
