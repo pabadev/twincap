@@ -451,7 +451,9 @@ uneven heights breaking the grid; the outer wrapper adds 24px side margins at
       (commit 03a2155). No new i18n keys.
 - [x] U9 lists narrower still: movements/transfers max-w-5xl → max-w-3xl
       (commit 1ab2089). Sales list unchanged (pending owner call).
+
 ### Cluster 9 round 2 addendum
+
 - [x] U10: shell-width contract updated — 2xl cap on BOTH (main) and
       (analytics) layouts; RSL-1/2 comment amended with the beta round-3
       owner decision. Unblocked the Quality gate (shell-width.test).
@@ -497,7 +499,7 @@ Objective: fix the 6 findings of the fourth beta feedback chain
 
 ### Phase B — data integrity + diagnosis (findings 5/1)
 
-- [ ] B1 (F5): same-day ordering residual gaps — linked legs share ONE
+- [x] B1 (F5): same-day ordering residual gaps — linked legs share ONE
       `now` (create-transfer.ts:203, create-sale.ts:145, abono flows): give
       each linked leg a distinct createdAt (+1ms); append cheap `_id: -1`
       tiebreaker to the 2-key sorts; NEW backfill script
@@ -505,10 +507,42 @@ Objective: fix the 6 findings of the fourth beta feedback chain
       for legacy docs missing it; dry-run default, --apply, fail-closed
       pattern of prior index scripts). Atlas --apply requires my own
       authorization after dry-run.
-- [ ] B2 (F1): /clients error diagnosis — harden Client domain mapper
-      (core/domain/client.ts:36-38 null phone/email/note -> ?? "")
-      + defend page.tsx:23 workspaceId non-null assertion; then query the
+- [x] B2 (F1): /clients error diagnosis — harden Client domain mapper
+      (core/domain/client.ts:36-38 null phone/email/note -> ?? "") + defend page.tsx:23 workspaceId non-null assertion; then query the
       errorevents collection via the existing monitor pipeline for
       fingerprint path=/clients (read-only) to close the root cause with
       the real stack; record findings here and report to owner.
-- [ ] B3: verification + full-suite run (≥45 min timeout) + docs/commits.
+- [x] B3: verification + full-suite run (≥45 min timeout) + docs/commits.
+
+### Cluster 10 delivery (beta round 4)
+
+PR #16 (feat/beta-round-4 -> master) MERGED after all gates green: master CI
+Quality pass + E2E pass; Vercel Production success. Commits: a2c3ff9 (A1
+sale-form client option list + overflow), 4803728 (A2 currency suffix split),
+efab801 (A3 tap-to-show), f97ff6d/6414058 (B1/B2), 44dd7fb (lint gate fix:
+setState-in-effect replaced by merged useMemo localClients), 0e1e66e (A2
+follow-up: Intl sign travels with the first rendered part — restored negative
+balances "-COP 5,000" split rendering; caught by E2E negative-balance CI).
+Full suite 1617/1617 (161 files), build OK. B1 backfill dry-run on Atlas:
+0 movements missing createdAt (nothing to apply). B2 errorevents probe:
+collection EMPTY — the /clients error produced no stored trace
+(reportClientError client path appears not to have fired) — honest
+unavailability; /clients hardening is preventive. Finding 1 root cause
+remains open pending a reproduction with telemetry: if the user sees it
+again, the reportError pipeline payload (or a console screenshot) will pin it.
+
+### Cluster 10 delivery (beta round 4)
+
+PR #16 (feat/beta-round-4 -> master) MERGED after all gates green: master CI
+Quality pass + E2E pass; Vercel Production success. Commits: a2c3ff9 (A1
+sale-form styolling options autofix), 4803728 (A2 currency suffix split),
+efab801 (A3 tap-to-show), f97ff6d/6414058 (B1/B2), 44dd7fb (lint gate fix:
+setState-in-effect replaced by merged useMemo localClients), 0e1e66e (A2
+follow-up: Intl sign travels with the first rendered part — restored negative
+balances "-COP 5,000" split rendering; caught by E2E negative-balance CI).
+Full suite 1617/1617 (161 files), build OK. B1 backfill dry-run on Atlas:
+0 movements missing createdAt (nothing to apply). B2 errorevents probe:
+collection EMPTY — known-browser effect boundary error produces no stored
+trace (reportClientError client path appears not to have fired) — honest
+unavailability; /clients hardening is preventive. NOT planned in this PR:
+eposca** equipment.
