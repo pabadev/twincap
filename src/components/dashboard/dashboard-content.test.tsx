@@ -166,4 +166,31 @@ describe("DashboardContent account balance overflow (§21)", () => {
     // The full figure is present in the DOM (nothing hidden/clipped away).
     expect(balanceSpan!.textContent).toContain("99");
   });
+
+  // A2 (F4): the currency suffix must be in its own whitespace-nowrap span
+  // so it never wraps alone at narrow widths.
+  it("renders the currency suffix with whitespace-nowrap to prevent solo wrap", async () => {
+    const bigBalanceSnapshot = {
+      ...mockSnapshot,
+      accountBalances: [
+        {
+          id: "a1",
+          name: "Checking",
+          currency: "COP",
+          isFixed: false,
+          balance: 99999999999999,
+        },
+      ],
+    };
+    const { getDashboardSnapshotAction } = await import("../../app/(main)/dashboard/actions");
+    vi.mocked(getDashboardSnapshotAction).mockResolvedValue(bigBalanceSnapshot);
+
+    const { container } = mount(
+      <DashboardContent {...baseProps} initialSnapshot={bigBalanceSnapshot} />,
+    );
+    // Find the suffix span (whitespace-nowrap + shrink-0).
+    const suffixSpan = container.querySelector<HTMLElement>(".whitespace-nowrap.shrink-0");
+    expect(suffixSpan).not.toBeNull();
+    expect(suffixSpan!.textContent).toBe("COP");
+  });
 });

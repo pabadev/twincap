@@ -16,7 +16,7 @@ import { Icon } from "../ui/icon";
 import { TouchTarget } from "../ui/touch-target";
 import { Wallet, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
-import { formatAmount } from "../../lib/format";
+import { formatAmountParts } from "../../lib/format";
 import { useT } from "../../i18n/client";
 import type { SerializedCategory } from "../../core/domain/category";
 import type { CurrencyTotal } from "../../core/application/compute-category-summary";
@@ -354,31 +354,45 @@ export function DashboardContent({
           </Card>
         ) : (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {accountBalances.map((account) => (
-              <Card key={account.id} title={account.name}>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                    {account.currency}
-                  </span>
-                  {/* §21: min-w-0 + break-words keep very large balances inside
-                      the card (the Card root clips overflow); tabular-nums
-                      keeps digits aligned; mobile steps the size down. Never
-                      truncate or hide the figure. */}
-                  <span
-                    className={`min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl ${
-                      account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
-                    }`}
-                  >
-                    {formatAmount(account.balance, account.currency, locale)}
-                  </span>
-                  {account.isFixed && (
-                    <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t("fixed")}
+            {accountBalances.map((account) => {
+              const parts = formatAmountParts(account.balance, account.currency, locale);
+              return (
+                <Card key={account.id} title={account.name}>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                      {account.currency}
                     </span>
-                  )}
-                </div>
-              </Card>
-            ))}
+                    {/* §21 + A2 (F4): min-w-0 + break-words keep very large
+                        balances inside the card (the Card root clips overflow);
+                        tabular-nums keeps digits aligned; the currency suffix
+                        is in its own whitespace-nowrap span so it never wraps
+                        alone. Mobile steps the size down. */}
+                    <span
+                      className={`min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl ${
+                        account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
+                      }`}
+                    >
+                      {parts.suffixFirst ? (
+                        <>
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                          <span>{parts.amount}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{parts.amount}</span>{" "}
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                        </>
+                      )}
+                    </span>
+                    {account.isFixed && (
+                      <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        {t("fixed")}
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

@@ -18,6 +18,48 @@ export function formatAmount(amount: number, currency: string, locale: string): 
 }
 
 /**
+ * A2 (F4): split a formatted money value into amount and currency suffix so
+ * the suffix can be rendered with `whitespace-nowrap shrink-0` to prevent it
+ * from wrapping onto its own line at narrow widths (§21 refinement).
+ *
+ * Intl `style:'currency'` emits the currency token in different positions:
+ * - es: "$1.234.567,89 COP" (symbol+amount first, code last)
+ * - en: "COP 1,234,567.89" (code first, symbol+amount last)
+ *
+ * This helper detects the currency code position and returns:
+ * - `amount`: the numeric part with symbol (may wrap internally)
+ * - `suffix`: the currency code token (never wraps alone)
+ *
+ * The caller renders them in locale-honest order (suffix after amount in es,
+ * before in en) by concatenating in the original formatted order.
+ */
+export function formatAmountParts(
+  amount: number,
+  currency: string,
+  locale: string,
+): { amount: string; suffix: string; suffixFirst: boolean } {
+  const formatted = formatAmount(amount, currency, locale);
+  // The currency code is typically 3 uppercase letters. Detect its position.
+  const codeMatch = formatted.match(/\b([A-Z]{3})\b/);
+  if (!codeMatch || codeMatch.index === undefined) {
+    // Fallback: no currency code found, return as-is with empty suffix.
+    return { amount: formatted, suffix: "", suffixFirst: false };
+  }
+  const suffix = codeMatch[1];
+  const codeIndex = codeMatch.index;
+  const beforeCode = formatted.slice(0, codeIndex).trim();
+  const afterCode = formatted.slice(codeIndex + suffix.length).trim();
+
+  if (codeIndex === 0) {
+    // en-style: "COP 1,234,567.89" — code first, amount after.
+    return { amount: afterCode, suffix, suffixFirst: true };
+  } else {
+    // es-style: "$1.234.567,89 COP" — amount first, code last.
+    return { amount: beforeCode, suffix, suffixFirst: false };
+  }
+}
+
+/**
  * Format a BUSINESS date using Intl.DateTimeFormat.
  *
  * Business dates (movement/transfer/credit/sale/payable dates) are stored as
