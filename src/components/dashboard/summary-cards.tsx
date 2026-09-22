@@ -286,12 +286,7 @@ export function SummaryCards({
                 />
               ) : (
                 <p className="text-base sm:text-lg font-semibold text-income leading-tight">
-                  <MoneyValue
-                    amount={monthlyIncome}
-                    currency={currency}
-                    locale={locale}
-                    sign="+"
-                  />
+                  <MoneyValue amount={monthlyIncome} currency={currency} locale={locale} sign="+" />
                 </p>
               )}
             </div>

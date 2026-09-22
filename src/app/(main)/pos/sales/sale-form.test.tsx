@@ -233,9 +233,7 @@ describe("SaleForm client auto-select (A1 F2+F3)", () => {
     // The new client must be in the select options and selected.
     const clientSelect = container.querySelector<HTMLSelectElement>("#clientId");
     expect(clientSelect).not.toBeNull();
-    const optionValues = Array.from(clientSelect!.querySelectorAll("option")).map(
-      (o) => o.value,
-    );
+    const optionValues = Array.from(clientSelect!.querySelectorAll("option")).map((o) => o.value);
     expect(optionValues).toContain("cli-new");
     expect(clientSelect!.value).toBe("cli-new");
   });

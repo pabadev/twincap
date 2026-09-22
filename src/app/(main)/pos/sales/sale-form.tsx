@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../../i18n/client";
 import { useActionError } from "../../../../lib/use-action-error";
@@ -59,17 +59,15 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   // the parent (either the /sales page or the FAB's cached posData in
   // global-movement-provider.tsx); after handleClientCreated the new client
   // never enters the prop, so the select would not list it. A local state
-  // initialized from the prop and reconciled on prop changes keeps both
-  // routes working without touching the parent.
-  const [clientOptions, setClientOptions] = useState<SerializedClient[]>(clients);
-  useEffect(() => {
-    setClientOptions((prev) => {
-      // Reconcile: if the prop is a superset (e.g. after router.refresh()),
-      // adopt it; otherwise keep the local additions.
-      if (clients.length >= prev.length) return clients;
-      return prev;
-    });
-  }, [clients]);
+  // tracks locally added clients; the final options merge prop + local.
+  const [localClients, setLocalClients] = useState<SerializedClient[]>([]);
+  const clientOptions = useMemo(() => {
+    // Merge prop clients with locally added ones, deduping by id.
+    const map = new Map<string, SerializedClient>();
+    for (const c of clients) map.set(c.id, c);
+    for (const c of localClients) map.set(c.id, c);
+    return Array.from(map.values());
+  }, [clients, localClients]);
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -107,7 +105,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
   function handleClientCreated(client?: SerializedClient) {
     setShowClientForm(false);
     if (client) {
-      setClientOptions((prev) => {
+      setLocalClients((prev) => {
         if (prev.some((c) => c.id === client.id)) return prev;
         return [...prev, client];
       });
@@ -340,9 +338,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                         type="number"
                         min="1"
                         value={li.quantity}
-                        onChange={(e) =>
-                          updateLineItem(idx, "quantity", Number(e.target.value))
-                        }
+                        onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
                         disabled={isPending}
                       />
                     </FormField>
@@ -353,9 +349,7 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
                         type="number"
                         min="1"
                         value={li.unitPrice}
-                        onChange={(e) =>
-                          updateLineItem(idx, "unitPrice", Number(e.target.value))
-                        }
+                        onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
                         disabled={isPending}
                       />
                     </FormField>

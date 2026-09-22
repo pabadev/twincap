@@ -242,41 +242,37 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
         })}
 
         {/* Selected point value label */}
-        {selected && (() => {
-          const pos = getLabelPosition(selected.index, selected.series);
-          if (!pos) return null;
-          const d = data[selected.index];
-          const isIncome = selected.series === "income";
-          const valueText =
-            pos.value > 0
-              ? `${isIncome ? "+" : "−"}${compactFormatter.format(pos.value)}`
-              : "—";
-          return (
-            <g>
-              {/* Background pill for readability */}
-              <rect
-                x={pos.x - 24}
-                y={pos.y - 10}
-                width={48}
-                height={16}
-                rx={4}
-                className="fill-white/90 dark:fill-zinc-900/90"
-              />
-              <text
-                x={pos.x}
-                y={pos.y + 2}
-                textAnchor="middle"
-                className={`text-[10px] font-semibold tabular-nums ${
-                  isIncome
-                    ? "fill-income"
-                    : "fill-expense"
-                } dark:fill-current`}
-              >
-                {valueText}
-              </text>
-            </g>
-          );
-        })()}
+        {selected &&
+          (() => {
+            const pos = getLabelPosition(selected.index, selected.series);
+            if (!pos) return null;
+            const isIncome = selected.series === "income";
+            const valueText =
+              pos.value > 0 ? `${isIncome ? "+" : "−"}${compactFormatter.format(pos.value)}` : "—";
+            return (
+              <g>
+                {/* Background pill for readability */}
+                <rect
+                  x={pos.x - 24}
+                  y={pos.y - 10}
+                  width={48}
+                  height={16}
+                  rx={4}
+                  className="fill-white/90 dark:fill-zinc-900/90"
+                />
+                <text
+                  x={pos.x}
+                  y={pos.y + 2}
+                  textAnchor="middle"
+                  className={`text-[10px] font-semibold tabular-nums ${
+                    isIncome ? "fill-income" : "fill-expense"
+                  } dark:fill-current`}
+                >
+                  {valueText}
+                </text>
+              </g>
+            );
+          })()}
       </svg>
 
       {/* Non-visual access: the same series as screen-reader text. */}
