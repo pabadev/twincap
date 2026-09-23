@@ -560,6 +560,7 @@ eposca** equipment.
 
 Commits on master (direct, all-gates-green): 06c7a1d, 1d2c60e, abcfa7b,
 03e716d, 244ffeb. Owner confirmed + approved 2026-09-23.
+
 - Chart tap label: 2x full-exact value (no compact), large only on mobile
   (sm: 10-unit variant), vertically centered via dominantBaseline=central;
   sync pill resize + generous X clamp.
@@ -567,11 +568,11 @@ Commits on master (direct, all-gates-green): 06c7a1d, 1d2c60e, abcfa7b,
   each series color, visual blend where lines overlap; drawn behind lines.
 - Accounts module cards adopted the dashboard account-card format (Card +
   title + currency caps + large tabular balance split via formatAmountParts
-  + footer action row); data-id preserved on a wrapper div for the E2E
-  selectors. Fijo badge absolute overlay (right-3 top-3 z-10) -> equal
-  heights across the grid. responsive-lists.test.ts CARD_MARKER updated
-  (accounts expects '<Card') after 2 master CI failures from the stale
-  MovementCard text marker (Vercel had deployed regardless).
+  - footer action row); data-id preserved on a wrapper div for the E2E
+    selectors. Fijo badge absolute overlay (right-3 top-3 z-10) -> equal
+    heights across the grid. responsive-lists.test.ts CARD_MARKER updated
+    (accounts expects '<Card') after 2 master CI failures from the stale
+    MovementCard text marker (Vercel had deployed regardless).
 - Movimientos recientes half-width on lg (lg:w-[calc(50%-12px)]) symmetric
   with the income summary table.
 - List headers (Movements/Transfers) stack on mobile (flex-col items-start
@@ -582,3 +583,95 @@ Commits on master (direct, all-gates-green): 06c7a1d, 1d2c60e, abcfa7b,
 Two owner decisions executed en route: E2E test users cleanup in the dev
 Atlas DB (8 users found via memberships, 120 docs cascade-deleted, 0
 remaining) and sales list width max-w-3xl (ecf967e).
+
+## Cluster 12 — Beta round 6 (un-committed draft)
+
+Branch: feat/ui-round-6 (from master). Three work units, one commit each.
+
+### C1 — Skeletons (loading.tsx) updated to current design
+
+- [x] movements/transfers/sales loading: max-w-3xl containers with header row,
+      filter grid, and 5 card skeletons (h-20 rounded-lg).
+- [x] payables/credits-received/credits-granted loading: max-w-6xl with 2-col
+      grid (md:grid-cols-2) and 4 detailed card skeletons (header + 3 label
+      rows + footer strip).
+- [x] catalog loading: max-w-6xl with search input skeleton and 5 card
+      skeletons.
+- [x] categories loading: max-w-6xl with 2-col grid (lg:grid-cols-2) and
+      section headers + 3 card skeletons per section.
+- [x] accounts loading: max-w-6xl with sm:grid-cols-2 and 4 card skeletons
+      (title + currency/balance + footer action strip).
+- [x] clients loading: already correct (max-w-6xl, grid, rounded-lg) — no
+      changes.
+- Verification: tsc 0 errors; prettier clean on all 9 touched loading files;
+  eslint clean on touched dirs.
+
+### C2 — Filters behind mobile button + resumen header consolidation
+
+- [x] Dashboard: Filters toggle moved into header row alongside "Dejar
+      comentario" button; both use ml-auto to hug the right on wide screens;
+      standalone filters row deleted (freed vertical space); aria-expanded/
+      aria-controls and active-count badge preserved.
+- [x] Movements + Transfers: filter block hidden on mobile behind a "Filters"
+      toggle button (CSS dual render: sm:hidden collapsible default CLOSED +
+      hidden sm:block always-visible bar on desktop); toggle mirrors Dashboard
+      pattern (aria-expanded, active filter count badge computed from existing
+      filter state).
+- [x] i18n: Movements.filters / Transfers.filters added (es: "Filtros",
+      en: "Filters"); messages-parity 4/4 green.
+- Verification: tsc 0 errors; prettier clean on all 5 touched files; eslint
+  clean; messages-parity 4/4; targeted vitest 92/92 across 18 files
+  (dashboard, movements, transfers, credits, **tests**).
+
+### C3 — Credits granted card: stretch the BODY, pin the ACTION ROW
+
+- [x] credits-granted-list: root card div now flex h-full flex-col; body gets
+      flex-1 (stretch consumes extra height); footer action row gets mt-auto
+      (pins to bottom with natural fixed height).
+- [x] credits-received-list: identical structure — applied same fix for
+      symmetry.
+- [x] payables-list: identical structure — applied same fix for symmetry.
+- Verification: tsc 0 errors; prettier clean on all 3 touched files; eslint
+  clean; visual result: body absorbs variable height, footer stays aligned
+  at the bottom across all cards in the grid row.
+
+### Cluster 12 commits
+
+- 5fb2cad: feat(ui): update loading skeletons to match current list designs
+  (9 files, +272 -42)
+- 71710b3: feat(ui): consolidate filters toggle into header row + mobile
+  collapsible (5 files, +262 -99)
+- e5f1037: feat(ui): pin footer action row in credit/payable cards (3 files,
+  +9 -9)
+
+### Cluster 12 verification evidence
+
+- pnpm exec tsc --noEmit: 0 errors
+- pnpm exec prettier --check (17 touched files): All matched files use
+  Prettier code style!
+- pnpm exec eslint (touched dirs): 0 errors
+- pnpm run parity: 4/4 tests passed
+- pnpm exec vitest run (targeted): 92/92 tests passed across 18 files
+  (dashboard, movements, transfers, credits, **tests**)
+
+## Cluster 12b — Beta round 6b (un-committed draft)
+
+Branch: feat/ui-round-6b (from master). One work unit, one commit.
+
+### C1 — Mobile Filters toggle on 4 remaining list views
+
+- [x] payables-list: mobile Filters toggle (aria-expanded/aria-controls,
+      active-count badge from statusFilter + search); collapsible bar with
+      -mobile suffix ids; desktop bar wrapped with hidden sm:flex.
+- [x] credits-received-list: same pattern; id "credits-received-filters".
+- [x] credits-granted-list: same pattern (statusFilter includes "writtenOff");
+      id "credits-granted-filters".
+- [x] sale-list: same pattern (statusFilter "all"|"paid"|"credit");
+      id "sales-filters".
+- [x] i18n: Payables.filters / CreditsReceived.filters / CreditsGranted.filters
+      / Sales.filters added (es: "Filtros", en: "Filters"); messages-parity
+      4/4 green.
+- Verification: tsc 0 errors; prettier clean on 6 touched files; eslint clean
+  on touched dirs; messages-parity 4/4; targeted vitest 48/48 across 11 files
+  (payables, credits, pos/sales — no test adjustments needed because the
+  mobile bar is conditionally rendered with filtersOpen=false default).
