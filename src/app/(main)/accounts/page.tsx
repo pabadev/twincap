@@ -73,7 +73,15 @@ export default async function AccountsPage() {
           const balance = balances.get(account.id) ?? 0;
           const parts = formatAmountParts(balance, account.currency, locale);
           return (
-            <div key={account.id} data-id={account.id}>
+            <div key={account.id} data-id={account.id} className="relative">
+              {/* Beta round 4: the "Fijo" badge is an overlay pinned to the
+                  card's top-right corner (z-10, absolute) so it never adds a
+                  row and keeps every card the same height in the grid. */}
+              {account.isFixed && (
+                <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                  {t("fixed")}
+                </span>
+              )}
               <Card title={account.name}>
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
@@ -93,11 +101,6 @@ export default async function AccountsPage() {
                       </>
                     )}
                   </span>
-                  {account.isFixed && (
-                    <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t("fixed")}
-                    </span>
-                  )}
                 </div>
                 <div className="mt-3 flex items-center gap-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
                   <RenameAccountButton accountId={account.id} accountName={account.name} />
