@@ -185,13 +185,13 @@ export function CreditsReceivedList({
               return (
                 <div
                   key={credit.id}
-                  className={`overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? "opacity-60" : ""}`}
+                  className={`flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900 ${isPaid ? "opacity-60" : ""}`}
                 >
                   {/* Beta feedback: the collapsed card follows the Movements
                       card format — row 1 identity + chevron, then label/value
                       rows, then a bordered footer with count + actions. */}
                   <div
-                    className="cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="flex-1 cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
                     onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -262,7 +262,7 @@ export function CreditsReceivedList({
                     </dl>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
+                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
                     <span className="text-xs text-zinc-400">
                       {credit.abonos?.length}{" "}
                       {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}

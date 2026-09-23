@@ -244,15 +244,37 @@ export function DashboardContent({
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
-        <button
-          type="button"
-          onClick={() => setFeedbackOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          <MessageSquare className="h-4 w-4" />
-          {tFeedback("openFeedback")}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <MessageSquare className="h-4 w-4" />
+            {tFeedback("openFeedback")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="dashboard-filters"
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {t("filters")}
+            {activeFilterCount > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+      {activeFilterCount > 0 && (
+        <div className="-mt-4">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("filtersActive")}</span>
+        </div>
+      )}
 
       {/* Onboarding banner — shown only while the user still has just the
           seeded fixed Cash account. */}
@@ -276,30 +298,6 @@ export function DashboardContent({
           </div>
         </Card>
       )}
-
-      {/* Filters — collapsed behind a toggle so the N1 hero owns the first
-          viewport (the hero DOES react to filters: server rebuilds the
-          currency breakdown with the active filter set). */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((v) => !v)}
-          aria-expanded={filtersOpen}
-          aria-controls="dashboard-filters"
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          {t("filters")}
-          {activeFilterCount > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-        {activeFilterCount > 0 && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("filtersActive")}</span>
-        )}
-      </div>
 
       {filtersOpen && (
         <div id="dashboard-filters">
