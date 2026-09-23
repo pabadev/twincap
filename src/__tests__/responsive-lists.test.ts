@@ -14,6 +14,17 @@ const CARD_LIST_FILES = [
   "src/app/(main)/categories/page.tsx",
 ];
 
+// Beta round 4 (owner decision 2026-09-23 merged in 03e716d context): the
+// accounts module adopted the dashboard account-card format (ui Card with
+// title/currency/balance), replacing the MovementCard variant. Intent is
+// unchanged: cards on every breakpoint, no desktop table.
+const CARD_MARKER: Record<string, string> = {
+  "src/app/(main)/accounts/page.tsx": "<Card",
+};
+function cardMarkerFor(file: string): string {
+  return CARD_MARKER[file] ?? "MovementCard";
+}
+
 const GRID_LIST_FILES = [
   "src/app/(main)/credits/received/credits-received-list.tsx",
   "src/app/(main)/credits/granted/credits-granted-list.tsx",
@@ -34,7 +45,7 @@ for (const file of CARD_LIST_FILES) {
     });
 
     it("renders cards on every breakpoint (no mobile-only hiding)", () => {
-      expect(src).toContain("MovementCard");
+      expect(src).toContain(cardMarkerFor(file));
       expect(src).not.toContain("space-y-3 sm:hidden");
       expect(src).not.toContain('className="sm:hidden"');
     });
