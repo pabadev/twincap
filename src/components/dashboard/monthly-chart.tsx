@@ -120,13 +120,14 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
     const fontSize = mobile ? 20 : 10;
     const pillW = valueText.length * fontSize * 0.58 + fontSize;
     const pillH = fontSize + 8;
+    const rectY = pos.y - pillH + fontSize / 3;
     const hiddenClass = mobile ? "sm:hidden" : "hidden sm:block";
     return (
       <g className={hiddenClass}>
         {/* Background pill for readability */}
         <rect
           x={pos.x - pillW / 2}
-          y={pos.y - pillH + fontSize / 3}
+          y={rectY}
           width={pillW}
           height={pillH}
           rx={5}
@@ -134,7 +135,8 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
         />
         <text
           x={pos.x}
-          y={pos.y + 2}
+          y={rectY + pillH / 2}
+          dominantBaseline="central"
           textAnchor="middle"
           fontSize={fontSize}
           className={`font-semibold tabular-nums ${
@@ -196,6 +198,30 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
               </text>
             </g>
           );
+        })}
+
+        {/* Soft area shading under each line (owner 2026-09-22): gradient of
+            the series color fading downward; overlapping areas blend visually
+            due to alpha (no compositing tricks needed). Drawn behind the
+            lines and the dot-marked baseline. */}
+        <defs>
+          <linearGradient id="tc-area-income" x1={0} y1={0} x2={0} y2={1}>
+            <stop offset="0%" className="[stop-color:var(--color-income)]" stopOpacity={0.3} />
+            <stop offset="100%" className="[stop-color:var(--color-income)]" stopOpacity={0.02} />
+          </linearGradient>
+          <linearGradient id="tc-area-expenses" x1={0} y1={0} x2={0} y2={1}>
+            <stop offset="0%" className="[stop-color:var(--color-expense)]" stopOpacity={0.3} />
+            <stop offset="100%" className="[stop-color:var(--color-expense)]" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        {(
+          [
+            { id: "tc-area-income", get: (d: MonthData) => d.income },
+            { id: "tc-area-expenses", get: (d: MonthData) => d.expenses },
+          ] as const
+        ).map(({ id, get }) => {
+          const closed = `${linePath(get)} L${toX(data.length - 1)},${toY(0)} L${toX(0)},${toY(0)} Z`;
+          return <path key={id} d={`M${closed}`} fill={`url(#${id})`} stroke="none" />;
         })}
 
         {/* Progression lines: income (solid), expenses (dashed). */}

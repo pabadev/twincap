@@ -80,3 +80,4 @@ El observador lee el encabezado tal cual; el usuario ve solo su pantalla. Una so
 
 - Volcar los resultados por usuario en la **tabla pendiente de `docs/UX-11-VALIDATION-REPORT.md` (Part B)** — sección "Usability results".
 - No modificar código; los hallazgos van al verdicto/bloques PENDING FOUNDER.
+a

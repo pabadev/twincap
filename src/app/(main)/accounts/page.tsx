@@ -16,10 +16,10 @@ import { AccountsPageClient } from "./accounts-page-client";
 import { DeleteAccountButton } from "./delete-account-button";
 import { InitialBalanceButton } from "./initial-balance-button";
 import { RenameAccountButton } from "./rename-account-button";
-import { formatAmount } from "../../../lib/format";
+import { formatAmountParts } from "../../../lib/format";
 import { EmptyState } from "../../../components/ui/empty-state";
+import { Card } from "../../../components/ui/card";
 import { Icon } from "../../../components/ui/icon";
-import { MovementCard } from "../../../components/ui/movement-card";
 import { Wallet } from "lucide-react";
 
 export default async function AccountsPage() {
@@ -64,56 +64,50 @@ export default async function AccountsPage() {
       )}
 
       {/* Cards are the only representation (product decision 2026-09-21).
-          Beta round 3: non-chronological card sets arrange in two columns on
-          PC/laptop (grid, equal-height rows applied per grid row). */}
+          Beta round 4: same visual format as the dashboard "¿Dónde está mi
+          dinero?" account cards (Card + currency caps + large balance +
+          fixed badge), keeping the rename/initial-balance/delete actions as
+          a footer row. */}
       <div className="grid gap-3 sm:grid-cols-2">
         {accounts.map((account) => {
           const balance = balances.get(account.id) ?? 0;
+          const parts = formatAmountParts(balance, account.currency, locale);
           return (
-            <MovementCard
-              key={account.id}
-              id={account.id}
-              fields={[
-                {
-                  key: "name",
-                  label: t("name"),
-                  value: account.name,
-                  primary: true,
-                },
-                {
-                  key: "currency",
-                  label: t("currency"),
-                  value: account.currency,
-                },
-                ...(account.isFixed
-                  ? [
-                      {
-                        key: "fixed",
-                        label: t("fixed"),
-                        value: t("fixed"),
-                        className:
-                          "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-                      },
-                    ]
-                  : []),
-                {
-                  key: "balance",
-                  label: t("balance"),
-                  value: formatAmount(balance, account.currency, locale),
-                  className: balance >= 0 ? "text-income" : "text-expense",
-                  primary: true,
-                },
-              ]}
-              actions={
-                <div className="flex items-center gap-1">
+            <div key={account.id} data-id={account.id}>
+              <Card title={account.name}>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                    {account.currency}
+                  </span>
+                  <span className="min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl">
+                    {parts.sign}
+                    {parts.suffixFirst ? (
+                      <>
+                        <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                        <span>{parts.amount}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{parts.amount}</span>{" "}
+                        <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                      </>
+                    )}
+                  </span>
+                  {account.isFixed && (
+                    <span className="mt-1 inline-block w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      {t("fixed")}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center gap-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
                   <RenameAccountButton accountId={account.id} accountName={account.name} />
                   {!balances.has(account.id) && (
                     <InitialBalanceButton accountId={account.id} currency={account.currency} />
                   )}
                   {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
                 </div>
-              }
-            />
+              </Card>
+            </div>
           );
         })}
       </div>
