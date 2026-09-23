@@ -262,7 +262,8 @@
     "emptyTitle": "No hay movimientos aún",
     "emptyDescription": "Registra tu primer movimiento para empezar a registrar.",
     "emptyNoAccountsTitle": "No tienes cuentas aún",
-    "emptyNoAccountsDescription": "Crea una cuenta primero para registrar movimientos."
+    "emptyNoAccountsDescription": "Crea una cuenta primero para registrar movimientos.",
+    "filters": "Filtros"
   },
   "SystemNotes": {
     "opening": "Saldo inicial de la cuenta",
@@ -325,7 +326,8 @@
     "registerAnyway": "Registrar de todas formas",
     "warningCurrentBalance": "Saldo actual",
     "warningOperation": "Operación",
-    "warningProjectedBalance": "Nuevo saldo"
+    "warningProjectedBalance": "Nuevo saldo",
+    "filters": "Filtros"
   },
   "CreditsReceived": {
     "title": "Créditos Recibidos",

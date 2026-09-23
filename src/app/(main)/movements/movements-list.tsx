@@ -15,7 +15,7 @@ import { Icon } from "../../../components/ui/icon";
 import { Button } from "../../../components/ui/button";
 import { TouchTarget } from "../../../components/ui/touch-target";
 import { MovementCard } from "../../../components/ui/movement-card";
-import { ArrowLeftRight, Download, Loader2 } from "lucide-react";
+import { ArrowLeftRight, Download, Loader2, SlidersHorizontal } from "lucide-react";
 import { useQuickMovement } from "../global-movement-provider";
 import { EditMovementModal } from "./edit-movement-modal";
 import {
@@ -80,6 +80,7 @@ export function MovementsList({
   const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
   const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Movements");
   const tCommon = useT("Common");
   const tSystemNotes = useT("SystemNotes");
@@ -87,6 +88,14 @@ export function MovementsList({
   const locale = useLocale();
   const { addToast } = useToast();
   const { openQuickMovement } = useQuickMovement();
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedAccountId !== "all") count++;
+    if (selectedScope !== "all") count++;
+    if (selectedType !== "all") count++;
+    return count;
+  }, [selectedAccountId, selectedScope, selectedType]);
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -199,67 +208,154 @@ export function MovementsList({
 
       {/* Account selector + scope filter + type filter */}
       {accounts.length > 0 && (
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <label
-              htmlFor="account-select"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+        <>
+          {/* Mobile: toggle button */}
+          <div className="mb-4 sm:hidden">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-controls="movements-filters"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              {t("account")}
-            </label>
-            <Select
-              id="account-select"
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              options={[
-                { value: "all", label: t("allAccounts") },
-                ...accounts.map((a) => ({
-                  value: a.id,
-                  label: `${a.name} (${a.currency})`,
-                })),
-              ]}
-            />
+              <SlidersHorizontal className="h-4 w-4" />
+              {t("filters")}
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
-          <div>
-            <label
-              htmlFor="scope-select"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              {t("scope")}
-            </label>
-            {/* D3: with a specific account selected its scope governs — the
-                Ámbito filter only applies while 'all accounts' is active. */}
-            <Select
-              id="scope-select"
-              value={selectedScope}
-              disabled={selectedAccountId !== "all"}
-              onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
-              options={[
-                { value: "all", label: t("scopeAll") },
-                { value: "Personal", label: t("scopePersonal") },
-                { value: "Business", label: t("scopeBusiness") },
-              ]}
-            />
+
+          {/* Mobile: collapsible filter bar */}
+          {filtersOpen && (
+            <div id="movements-filters" className="mb-6 sm:hidden">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label
+                    htmlFor="account-select-mobile"
+                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    {t("account")}
+                  </label>
+                  <Select
+                    id="account-select-mobile"
+                    value={selectedAccountId}
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    options={[
+                      { value: "all", label: t("allAccounts") },
+                      ...accounts.map((a) => ({
+                        value: a.id,
+                        label: `${a.name} (${a.currency})`,
+                      })),
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="scope-select-mobile"
+                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    {t("scope")}
+                  </label>
+                  <Select
+                    id="scope-select-mobile"
+                    value={selectedScope}
+                    disabled={selectedAccountId !== "all"}
+                    onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
+                    options={[
+                      { value: "all", label: t("scopeAll") },
+                      { value: "Personal", label: t("scopePersonal") },
+                      { value: "Business", label: t("scopeBusiness") },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="type-select-mobile"
+                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    {t("type")}
+                  </label>
+                  <Select
+                    id="type-select-mobile"
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
+                    options={[
+                      { value: "all", label: t("scopeAll") },
+                      { value: "income", label: t("income") },
+                      { value: "expense", label: t("expense") },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: always visible filter bar */}
+          <div className="mb-6 hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-3">
+            <div>
+              <label
+                htmlFor="account-select"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                {t("account")}
+              </label>
+              <Select
+                id="account-select"
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(e.target.value)}
+                options={[
+                  { value: "all", label: t("allAccounts") },
+                  ...accounts.map((a) => ({
+                    value: a.id,
+                    label: `${a.name} (${a.currency})`,
+                  })),
+                ]}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="scope-select"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                {t("scope")}
+              </label>
+              {/* D3: with a specific account selected its scope governs — the
+                  Ámbito filter only applies while 'all accounts' is active. */}
+              <Select
+                id="scope-select"
+                value={selectedScope}
+                disabled={selectedAccountId !== "all"}
+                onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
+                options={[
+                  { value: "all", label: t("scopeAll") },
+                  { value: "Personal", label: t("scopePersonal") },
+                  { value: "Business", label: t("scopeBusiness") },
+                ]}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="type-select"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                {t("type")}
+              </label>
+              <Select
+                id="type-select"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
+                options={[
+                  { value: "all", label: t("scopeAll") },
+                  { value: "income", label: t("income") },
+                  { value: "expense", label: t("expense") },
+                ]}
+              />
+            </div>
           </div>
-          <div>
-            <label
-              htmlFor="type-select"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              {t("type")}
-            </label>
-            <Select
-              id="type-select"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
-              options={[
-                { value: "all", label: t("scopeAll") },
-                { value: "income", label: t("income") },
-                { value: "expense", label: t("expense") },
-              ]}
-            />
-          </div>
-        </div>
+        </>
       )}
 
       {accounts.length === 0 && movements.length === 0 ? (

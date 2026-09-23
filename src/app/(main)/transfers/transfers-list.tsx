@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useT, useLocale } from "../../../i18n/client";
 import type { SerializedAccount } from "../../../core/domain/account";
 import type { SerializedTransfer } from "../../../core/domain/transfer";
@@ -13,7 +13,7 @@ import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
 import { MovementCard } from "../../../components/ui/movement-card";
-import { ArrowRightLeft, Pencil } from "lucide-react";
+import { ArrowRightLeft, Pencil, SlidersHorizontal } from "lucide-react";
 
 function accountName(accounts: SerializedAccount[], id: string): string {
   const acc = accounts.find((a) => a.id === id);
@@ -41,9 +41,17 @@ export function TransfersList({
   const [editingTransfer, setEditingTransfer] = useState<SerializedTransfer | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Transfers");
   const tCommon = useT("Common");
   const locale = useLocale();
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (dateFrom) count++;
+    if (dateTo) count++;
+    return count;
+  }, [dateFrom, dateTo]);
 
   const filtered = transfers.filter((transfer) => {
     if (dateFrom && new Date(transfer.date).getTime() < new Date(dateFrom).getTime()) return false;
@@ -91,8 +99,65 @@ export function TransfersList({
         />
       ) : (
         <>
-          {/* Filter bar */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Mobile: toggle button */}
+          <div className="mb-4 sm:hidden">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-controls="transfers-filters"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {t("filters")}
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile: collapsible filter bar */}
+          {filtersOpen && (
+            <div id="transfers-filters" className="mb-4 sm:hidden">
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  <label
+                    htmlFor="transfers-filter-date-from-mobile"
+                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                  >
+                    {t("filterDateFrom")}
+                  </label>
+                  <input
+                    id="transfers-filter-date-from-mobile"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="transfers-filter-date-to-mobile"
+                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                  >
+                    {t("filterDateTo")}
+                  </label>
+                  <input
+                    id="transfers-filter-date-to-mobile"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: always visible filter bar */}
+          <div className="mb-4 hidden flex-wrap items-center gap-3 sm:flex">
             <div>
               <label
                 htmlFor="transfers-filter-date-from"
