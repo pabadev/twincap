@@ -555,3 +555,30 @@ eposca** equipment.
   memberships) -> 120 docs deleted (users 8, workspaces 8, memberships 8,
   accounts 15, categories 64, movements 17); remaining test users: 0.
   Filters bound strictly to those user ids/workspace ids.
+
+## Cluster 11 — Beta round 5 (owner UI refinements, confirmed+approved)
+
+Commits on master (direct, all-gates-green): 06c7a1d, 1d2c60e, abcfa7b,
+03e716d, 244ffeb. Owner confirmed + approved 2026-09-23.
+- Chart tap label: 2x full-exact value (no compact), large only on mobile
+  (sm: 10-unit variant), vertically centered via dominantBaseline=central;
+  sync pill resize + generous X clamp.
+- Area shading under income/expense lines: alpha gradients (0.3->0.02) of
+  each series color, visual blend where lines overlap; drawn behind lines.
+- Accounts module cards adopted the dashboard account-card format (Card +
+  title + currency caps + large tabular balance split via formatAmountParts
+  + footer action row); data-id preserved on a wrapper div for the E2E
+  selectors. Fijo badge absolute overlay (right-3 top-3 z-10) -> equal
+  heights across the grid. responsive-lists.test.ts CARD_MARKER updated
+  (accounts expects '<Card') after 2 master CI failures from the stale
+  MovementCard text marker (Vercel had deployed regardless).
+- Movimientos recientes half-width on lg (lg:w-[calc(50%-12px)]) symmetric
+  with the income summary table.
+- List headers (Movements/Transfers) stack on mobile (flex-col items-start
+  gap-2, sm+ row) -> no more right overflow of header action buttons.
+- Sale form: unit price label single-line via new FormField labelClassName
+  (whitespace-nowrap). i18n: Movements.addCategoryInline -> Create category.
+
+Two owner decisions executed en route: E2E test users cleanup in the dev
+Atlas DB (8 users found via memberships, 120 docs cascade-deleted, 0
+remaining) and sales list width max-w-3xl (ecf967e).
