@@ -378,7 +378,8 @@
     "filterPending": "Pendiente",
     "filterPaid": "Pagado",
     "filterSearch": "Buscar contraparte...",
-    "noResults": "No se encontraron créditos con estos filtros"
+    "noResults": "No se encontraron créditos con estos filtros",
+    "filters": "Filtros"
   },
   "CreditsGranted": {
     "title": "Créditos Otorgados",
@@ -435,7 +436,8 @@
     "filterWrittenOff": "Incobrable",
     "capital": "Capital",
     "interest": "Interés",
-    "noResults": "No se encontraron créditos con estos filtros"
+    "noResults": "No se encontraron créditos con estos filtros",
+    "filters": "Filtros"
   },
   "Payables": {
     "title": "Cuentas por pagar",
@@ -476,7 +478,8 @@
     "filterPending": "Pendiente",
     "filterPaid": "Pagado",
     "filterSearch": "Buscar proveedor...",
-    "noResults": "No se encontraron cuentas con estos filtros"
+    "noResults": "No se encontraron cuentas con estos filtros",
+    "filters": "Filtros"
   },
   "Catalog": {
     "title": "Catálogo",
@@ -558,7 +561,8 @@
     "newClient": "Nuevo cliente",
     "newItem": "Nuevo artículo",
     "createClient": "Crear cliente",
-    "createItem": "Crear artículo"
+    "createItem": "Crear artículo",
+    "filters": "Filtros"
   },
   "Export": {
     "button": "Exportar CSV",

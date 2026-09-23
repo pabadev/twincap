@@ -22,7 +22,7 @@ import { Button } from "../../../../components/ui/button";
 import { Badge } from "../../../../components/ui/badge";
 import { Select } from "../../../../components/ui/select";
 import { Table } from "../../../../components/ui/table";
-import { ChevronDown, CreditCard, Pencil } from "lucide-react";
+import { ChevronDown, CreditCard, Pencil, SlidersHorizontal } from "lucide-react";
 
 export function CreditsGrantedList({
   accounts,
@@ -45,9 +45,12 @@ export function CreditsGrantedList({
     "all",
   );
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("CreditsGranted");
   const tCommon = useT("Common");
   const locale = useLocale();
+
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (search ? 1 : 0);
 
   const filtered = credits.filter((credit) => {
     if (dateFrom && new Date(credit.date).getTime() < new Date(dateFrom).getTime()) return false;
@@ -96,8 +99,103 @@ export function CreditsGrantedList({
         />
       ) : (
         <>
-          {/* Filter bar */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Mobile: toggle button */}
+          <div className="mb-4 sm:hidden">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-controls="credits-granted-filters"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {t("filters")}
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile: collapsible filter bar */}
+          {filtersOpen && (
+            <div id="credits-granted-filters" className="mb-6 sm:hidden">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label
+                    htmlFor="credits-granted-filter-date-from-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterDateFrom")}
+                  </label>
+                  <input
+                    id="credits-granted-filter-date-from-mobile"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="credits-granted-filter-date-to-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterDateTo")}
+                  </label>
+                  <input
+                    id="credits-granted-filter-date-to-mobile"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="credits-granted-filter-status-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterStatus")}
+                  </label>
+                  <Select
+                    id="credits-granted-filter-status-mobile"
+                    options={[
+                      { value: "all", label: t("filterAllStatus") },
+                      { value: "pending", label: t("filterPending") },
+                      { value: "paid", label: t("filterPaid") },
+                      { value: "writtenOff", label: t("filterWrittenOff") },
+                    ]}
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(e.target.value as "all" | "pending" | "paid" | "writtenOff")
+                    }
+                    className="w-40"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="credits-granted-filter-search-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterSearch")}
+                  </label>
+                  <input
+                    id="credits-granted-filter-search-mobile"
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={t("filterSearch")}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: always visible filter bar */}
+          <div className="mb-4 hidden flex-wrap items-center gap-3 sm:flex">
             <div>
               <label
                 htmlFor="credits-granted-filter-date-from"

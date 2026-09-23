@@ -378,7 +378,8 @@
     "filterPending": "Pending",
     "filterPaid": "Paid",
     "filterSearch": "Search counterparty...",
-    "noResults": "No credits found with these filters"
+    "noResults": "No credits found with these filters",
+    "filters": "Filters"
   },
   "CreditsGranted": {
     "title": "Credits Granted",
@@ -435,7 +436,8 @@
     "filterWrittenOff": "Written off",
     "capital": "Principal",
     "interest": "Interest",
-    "noResults": "No credits found with these filters"
+    "noResults": "No credits found with these filters",
+    "filters": "Filters"
   },
   "Payables": {
     "title": "Payables",
@@ -476,7 +478,8 @@
     "filterPending": "Pending",
     "filterPaid": "Paid",
     "filterSearch": "Search supplier...",
-    "noResults": "No payables found with these filters"
+    "noResults": "No payables found with these filters",
+    "filters": "Filters"
   },
   "Catalog": {
     "title": "Catalog",
@@ -558,7 +561,8 @@
     "newClient": "New client",
     "newItem": "New item",
     "createClient": "Create client",
-    "createItem": "Create item"
+    "createItem": "Create item",
+    "filters": "Filters"
   },
   "Export": {
     "button": "Export CSV",
