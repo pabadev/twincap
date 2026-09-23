@@ -17,7 +17,7 @@ import { Modal } from "../../../../components/ui/modal";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Select } from "../../../../components/ui/select";
-import { Eye, ShoppingCart, Download, Loader2 } from "lucide-react";
+import { Eye, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-react";
 import { downloadCsv } from "../../../../lib/download-csv";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { exportSalesCsvAction } from "./actions";
@@ -49,10 +49,13 @@ export function SaleList({
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "credit">("all");
   const [search, setSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Sales");
   const tExport = useT("Export");
   const locale = useLocale();
   const { addToast } = useToast();
+
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (search ? 1 : 0);
 
   const clientMap = new Map(clients.map((c) => [c.id, c.name]));
   const catalogMap = new Map(catalogItems.map((ci) => [ci.id, ci.name]));
@@ -154,8 +157,100 @@ export function SaleList({
         />
       ) : (
         <>
-          {/* Filter bar */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Mobile: toggle button */}
+          <div className="mb-4 sm:hidden">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-controls="sales-filters"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {t("filters")}
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile: collapsible filter bar */}
+          {filtersOpen && (
+            <div id="sales-filters" className="mb-6 sm:hidden">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label
+                    htmlFor="sale-filter-dateFrom-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterDateFrom")}
+                  </label>
+                  <input
+                    id="sale-filter-dateFrom-mobile"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="sale-filter-dateTo-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterDateTo")}
+                  </label>
+                  <input
+                    id="sale-filter-dateTo-mobile"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="sale-filter-status-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterStatus")}
+                  </label>
+                  <Select
+                    id="sale-filter-status-mobile"
+                    options={[
+                      { value: "all", label: t("filterAllStatus") },
+                      { value: "paid", label: t("filterPaid") },
+                      { value: "credit", label: t("filterCredit") },
+                    ]}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as "all" | "paid" | "credit")}
+                    className="w-40"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="sale-filter-search-mobile"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                  >
+                    {t("filterSearch")}
+                  </label>
+                  <input
+                    id="sale-filter-search-mobile"
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={t("filterSearch")}
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: always visible filter bar */}
+          <div className="mb-4 hidden flex-wrap items-center gap-3 sm:flex">
             <div>
               <label
                 htmlFor="sale-filter-dateFrom"
