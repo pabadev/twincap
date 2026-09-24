@@ -145,6 +145,21 @@ export function SaleForm({
     return Array.from(map.values());
   }, [clients, localClients]);
 
+  // C12-3d: same pattern as localClients — the `catalogItems` prop is a
+  // one-shot snapshot from the parent (provider cache or page data). When the
+  // user creates a new catalog item from inside the form, the prop does NOT
+  // update until the modal is closed and reopened. A local state tracks
+  // locally created items; the effective list merges prop + local so the
+  // searcher dropdown and the table's name lookup include the new item
+  // immediately (no page refresh, no stale-cache row with empty name/price).
+  const [localCatalogItems, setLocalCatalogItems] = useState<SerializedCatalogItem[]>([]);
+  const effectiveCatalogItems = useMemo(() => {
+    const map = new Map<string, SerializedCatalogItem>();
+    for (const item of catalogItems) map.set(item.id, item);
+    for (const item of localCatalogItems) map.set(item.id, item);
+    return Array.from(map.values());
+  }, [catalogItems, localCatalogItems]);
+
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
@@ -188,9 +203,9 @@ export function SaleForm({
   // So we show ALL catalog items in the dropdown, but mark which are in-cart.
   const filteredItems = useMemo(() => {
     const q = normalizeForSearch(searchQuery);
-    if (!q) return catalogItems;
-    return catalogItems.filter((item) => normalizeForSearch(item.name).includes(q));
-  }, [catalogItems, searchQuery]);
+    if (!q) return effectiveCatalogItems;
+    return effectiveCatalogItems.filter((item) => normalizeForSearch(item.name).includes(q));
+  }, [effectiveCatalogItems, searchQuery]);
 
   // C12-3c: dirty detection — the form has unsaved changes when any field
   // deviates from its initial value. Initial state is an empty cart, default
@@ -226,16 +241,36 @@ export function SaleForm({
     }
   }
 
-  // C12-3c: when a new catalog item is created from inside the form, add it
-  // to the cart immediately (it's the item the user was looking for).
+  // C12-3c + C12-3d: when a new catalog item is created from inside the form,
+  // register it in the local catalog state (so the searcher options include it
+  // immediately) AND add it to the cart (auto-select, POS pattern). The
+  // returned snapshot from createCatalogItemAction carries name/price/currency;
+  // if any required field is missing, refuse to render a broken row — fail
+  // loudly in development so the bug is visible, skip silently in production.
   function handleItemCreated(item?: SerializedCatalogItem) {
     setShowItemForm(false);
-    if (item) {
-      addToCart(item);
-      setCurrency(item.unitPrice.currency);
-      // Clear the search so the combobox is ready for the next item.
-      setSearchQuery("");
+    if (!item) return;
+    const hasName = typeof item.name === "string" && item.name.length > 0;
+    const hasPrice =
+      item.unitPrice != null &&
+      typeof item.unitPrice.amount === "number" &&
+      Number.isFinite(item.unitPrice.amount);
+    if (!hasName || !hasPrice) {
+      if (process.env.NODE_ENV === "development") {
+        throw new Error(
+          `Created catalog item is missing required fields (name=${hasName}, price=${hasPrice})`,
+        );
+      }
+      return;
     }
+    setLocalCatalogItems((prev) => {
+      if (prev.some((i) => i.id === item.id)) return prev;
+      return [...prev, item];
+    });
+    addToCart(item);
+    setCurrency(item.unitPrice.currency);
+    // Clear the search so the combobox is ready for the next item.
+    setSearchQuery("");
   }
 
   const updateLineItem = useCallback(
@@ -274,7 +309,7 @@ export function SaleForm({
   }
 
   function handleSearchFocus() {
-    if (searchQuery.length > 0 || catalogItems.length > 0) {
+    if (searchQuery.length > 0 || effectiveCatalogItems.length > 0) {
       setIsComboOpen(true);
     }
   }
@@ -368,14 +403,18 @@ export function SaleForm({
   const submitBlocked = isPending || needsClient || initialPaymentInvalid;
 
   // Helper: look up catalog item by id (for displaying name in the table).
+  // Uses the effective (merged) catalog so locally created items resolve too.
   const catalogMap = useMemo(() => {
     const map = new Map<string, SerializedCatalogItem>();
-    for (const item of catalogItems) map.set(item.id, item);
+    for (const item of effectiveCatalogItems) map.set(item.id, item);
     return map;
-  }, [catalogItems]);
+  }, [effectiveCatalogItems]);
 
   return (
-    <div>
+    // C12-3d: root fills the modal body on desktop (lg:h-full) so the internal
+    // grid can pin the footer and scroll only the table rows. On mobile the
+    // root has no height constraint — the modal body scrolls naturally.
+    <div className="flex flex-col lg:h-full">
       {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
           another <form>, and browsers would bind the inner controls to the outer
           form, so the create buttons would never submit (no-op). */}
@@ -387,7 +426,7 @@ export function SaleForm({
             return;
           }
         }}
-        className="space-y-4"
+        className="flex flex-1 flex-col space-y-4 lg:h-full lg:space-y-0"
       >
         <IdempotencyField />
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
@@ -402,11 +441,18 @@ export function SaleForm({
             lg+ the form becomes a grid: LEFT = cart/line items, RIGHT = settings
             (row 1) + sticky summary (row 2). DOM order matches mobile order;
             desktop placement is via grid positioning. */}
-        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:space-y-0">
+        {/* C12-3d: grid wrapper fills the remaining form space on desktop
+            (flex-1 min-h-0) and splits into two rows: row 1 = columns (cart +
+            settings), row 2 = footer. On mobile it's a natural flex column
+            with space-y-4; the modal body scrolls. */}
+        <div className="flex flex-1 flex-col space-y-4 lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[1fr_auto] lg:gap-6 lg:space-y-0">
           {/* Cart / line items.
-              Mobile: first section. Desktop: left column, row 1. */}
-          <div className="lg:col-start-1 lg:row-start-1">
-            <div className="mb-2 flex items-center justify-between">
+              Mobile: first section. Desktop: left column, row 1.
+              C12-3d: on desktop the left column is a flex column that fills
+              row 1 (min-h-0 so it can shrink below its content size). The
+              table rows container inside it is the ONLY scroll region. */}
+          <div className="flex flex-col lg:col-start-1 lg:row-start-1 lg:min-h-0">
+            <div className="mb-2 flex shrink-0 items-center justify-between">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 {t("lineItems")}
               </label>
@@ -496,10 +542,18 @@ export function SaleForm({
             {/* C12-3c: table of selected items. Semantic <table> with one global
                 header. Mobile: stacked card layout with aria-labels on inputs. */}
             {lineItems.length > 0 && (
-              <div className="mt-4">
-                {/* Desktop table header — hidden on mobile */}
+              // C12-3d: scroll-isolated table container. On desktop it fills
+              // the remaining left-column space (flex-1 min-h-0) and scrolls
+              // internally (overflow-y-auto). The desktop header row is sticky
+              // at the top of this container. On mobile it flows naturally
+              // (no overflow constraint, no max-height).
+              <div
+                className="mt-4 flex flex-1 flex-col overflow-y-auto lg:min-h-0"
+                data-testid="table-rows-container"
+              >
+                {/* Desktop table header — hidden on mobile, sticky on desktop */}
                 <div
-                  className="hidden items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:flex dark:text-zinc-400"
+                  className="sticky top-0 z-10 hidden items-center gap-2 border-b border-surface-border bg-surface-card pb-2 text-xs font-medium text-zinc-600 lg:flex dark:bg-surface-card dark:text-zinc-400"
                   aria-hidden="true"
                 >
                   <div className="min-w-0 flex-1">{t("item")}</div>
@@ -513,8 +567,12 @@ export function SaleForm({
                 <div className="space-y-3 lg:space-y-0">
                   {lineItems.map((li, idx) => {
                     const item = catalogMap.get(li.itemId);
-                    const itemName = item?.name ?? "";
-                    const itemType = item?.type;
+                    // C12-3d: defensive — a row without a resolved catalog item
+                    // would render empty name/price. Skip it (the local catalog
+                    // state should always include items added to the cart).
+                    if (!item) return null;
+                    const itemName = item.name;
+                    const itemType = item.type;
                     const subtotal = li.quantity * li.unitPrice;
                     const isPriceFocused = focusedPriceIdx === idx;
                     const priceDisplay = isPriceFocused
@@ -617,8 +675,15 @@ export function SaleForm({
           </div>
 
           {/* Settings: payment, account, client, initial payment, date.
-              Mobile: second section. Desktop: right column, row 1. */}
-          <div className="space-y-4 lg:col-start-2 lg:row-start-1">
+              Mobile: second section. Desktop: right column, row 1.
+              C12-3d: min-height on desktop reserves space for the dynamic
+              credit fields (initial payment) so the column doesn't jump when
+              the user toggles payment mode. The column's height is independent
+              of the items list on the left. */}
+          <div
+            className="space-y-4 lg:col-start-2 lg:row-start-1 lg:min-h-[18rem]"
+            data-testid="right-column"
+          >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <Select
                 id="paymentMode"
@@ -722,10 +787,16 @@ export function SaleForm({
           </div>
 
           {/* Summary + main actions.
-              Mobile: third section (after settings). Desktop: right column, row 2,
-              sticky at the bottom of the modal scroll area so the total and the
-              create button are always reachable without scrolling. */}
-          <div className="lg:col-start-2 lg:row-start-2 lg:sticky lg:bottom-0 lg:z-10 lg:border-t lg:border-surface-border lg:bg-surface-card lg:pt-4">
+              Mobile: third section (after settings). Desktop: row 2 spanning
+              both columns, pinned at the bottom of the modal grid. Because the
+              grid row is `auto` and the grid itself is constrained by the
+              form's h-full, this footer is always visible without scrolling.
+              On mobile it flows naturally (no sticky — keeps touch UX usable).
+          */}
+          <div
+            className="shrink-0 border-t border-surface-border pt-4 lg:col-start-1 lg:col-span-2 lg:row-start-2 lg:border-t lg:bg-surface-card lg:pt-4 dark:border-zinc-700 dark:bg-surface-card"
+            data-testid="sale-footer"
+          >
             {/* C12-3b: TOTAL in prominent position right before footer actions */}
             <div className="mb-3 text-right text-lg font-semibold text-zinc-900 dark:text-white">
               {t("total")} {formatAmount(total, currency, locale)}

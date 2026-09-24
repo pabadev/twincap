@@ -44,8 +44,30 @@ vi.mock("../../clients/client-form", () => ({
   ),
 }));
 
+// C12-3d: the CatalogForm mock renders a trigger button that calls onDone with
+// a fully-formed item snapshot (name + price + currency), simulating the
+// createCatalogItemAction return value. Tests use this to verify immediate
+// propagation into the searcher options and the cart table.
+const newCatalogItem: SerializedCatalogItem = {
+  id: "cat-new",
+  workspaceId: "ws-1",
+  name: "New Item",
+  unitPrice: { amount: 5000, currency: "COP" },
+  type: "product",
+  stock: 5,
+  createdAt: new Date(0),
+};
+
 vi.mock("../catalog/catalog-form", () => ({
-  CatalogForm: () => null,
+  CatalogForm: ({ onDone }: { onDone?: (item?: SerializedCatalogItem) => void }) => (
+    <button
+      type="button"
+      data-testid="create-catalog-trigger"
+      onClick={() => onDone?.(newCatalogItem)}
+    >
+      Create Item
+    </button>
+  ),
 }));
 
 // A1 (F2+F3): a newly created client must appear in the select options and
@@ -387,27 +409,28 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
     expect(settingsSection!.querySelector("#date")).not.toBeNull();
   });
 
-  it("places the summary + actions in a sticky bottom section at lg+", () => {
+  it("places the summary + actions in a footer pinned at the bottom of the grid at lg+ (C12-3d)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    const summarySection = container.querySelector(
-      ".lg\\:col-start-2.lg\\:row-start-2.lg\\:sticky",
-    );
-    expect(summarySection).not.toBeNull();
-    expect(summarySection!.textContent).toContain("total");
-    const submitBtn = [...summarySection!.querySelectorAll("button")].find(
+    // C12-3d: the footer spans both columns in grid row 2 (auto height),
+    // pinned at the bottom because the grid itself is constrained by the
+    // form's h-full. No longer `lg:sticky` — the grid row placement handles it.
+    const footerSection = container.querySelector(".lg\\:col-span-2.lg\\:row-start-2");
+    expect(footerSection).not.toBeNull();
+    expect(footerSection!.textContent).toContain("total");
+    const submitBtn = [...footerSection!.querySelectorAll("button")].find(
       (b) => b.type === "submit",
     );
     expect(submitBtn).toBeDefined();
   });
 
-  it("renders the total amount in the sticky summary section", () => {
+  it("renders the total amount in the pinned footer section", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     // Add an item so the total is non-zero.
     selectFromSearch(container, 0);
-    const summarySection = container.querySelector(".lg\\:col-start-2.lg\\:row-start-2");
-    expect(summarySection!.textContent).toContain("total");
+    const footerSection = container.querySelector(".lg\\:col-span-2.lg\\:row-start-2");
+    expect(footerSection!.textContent).toContain("total");
     // Total = 1 item × qty 1 × unitPrice 1000 = 1000 COP.
-    expect(summarySection!.textContent).toContain("1000");
+    expect(footerSection!.textContent).toContain("1000");
   });
 
   it("preserves mobile DOM order: cart → settings → summary", () => {
@@ -649,5 +672,168 @@ describe("SaleForm POS search-add pattern (C12-3c)", () => {
     const options = listbox!.querySelectorAll('[role="option"]');
     expect(options.length).toBe(1);
     expect(options[0].textContent).toContain("Item B");
+  });
+});
+
+// C12-3d: immediate propagation — a catalog item created from inside the form
+// must appear in the searcher options immediately (no page refresh) and the
+// table row must render with name and price (no empty/undefined cells).
+describe("SaleForm catalog propagation (C12-3d)", () => {
+  it("created item appears in searcher options immediately after creation", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+
+    // Open the catalog creation modal.
+    const createItemBtn = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("createNewItem"),
+    );
+    expect(createItemBtn).toBeDefined();
+    act(() => {
+      createItemBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The mocked CatalogForm renders a trigger that calls onDone with the new item.
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="create-catalog-trigger"]',
+    );
+    expect(trigger).not.toBeNull();
+    act(() => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The new item must be in the searcher options.
+    const searchInput = container.querySelector<HTMLInputElement>("#item-search")!;
+    act(() => {
+      searchInput.focus();
+    });
+    const listbox = container.querySelector("#item-search-listbox");
+    expect(listbox).not.toBeNull();
+    const options = listbox!.querySelectorAll('[role="option"]');
+    const optionTexts = Array.from(options).map((o) => o.textContent);
+    expect(optionTexts.some((t) => t?.includes("New Item"))).toBe(true);
+    // Original items are still present.
+    expect(optionTexts.some((t) => t?.includes("Item A"))).toBe(true);
+    expect(optionTexts.some((t) => t?.includes("Item B"))).toBe(true);
+  });
+
+  it("created item is auto-added to the cart with correct name and price (no undefined row)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+
+    // Trigger creation.
+    const createItemBtn = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("createNewItem"),
+    );
+    act(() => {
+      createItemBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="create-catalog-trigger"]',
+    );
+    act(() => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The new item must be in the cart (qty input exists).
+    const qtyInputs = container.querySelectorAll<HTMLInputElement>('input[id^="qty-"]');
+    expect(qtyInputs.length).toBe(1);
+    expect(qtyInputs[0].value).toBe("1");
+
+    // The row must show the item name (not empty/undefined).
+    // Desktop: plain text in table cell. Mobile: title text.
+    const nameTexts = container.querySelectorAll(".min-w-0.truncate");
+    expect(nameTexts.length).toBe(1);
+    expect(nameTexts[0].textContent).toBe("New Item");
+    expect(nameTexts[0].textContent).not.toContain("undefined");
+
+    // The price input must show the catalog price (5000), not 0 or NaN.
+    const priceInput = container.querySelector<HTMLInputElement>('input[id^="price-"]');
+    expect(priceInput).not.toBeNull();
+    expect(priceInput!.value).toContain("5000");
+  });
+
+  it("created item currency is propagated to the form state", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+
+    const createItemBtn = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("createNewItem"),
+    );
+    act(() => {
+      createItemBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="create-catalog-trigger"]',
+    );
+    act(() => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    // The subtotal cell should format in COP (the new item's currency).
+    const subtotalCells = container.querySelectorAll(
+      ".hidden.w-24.text-right.text-sm.text-zinc-700.sm\\:block.sm\\:w-28",
+    );
+    expect(subtotalCells.length).toBe(1);
+    expect(subtotalCells[0].textContent).toContain("5000");
+    expect(subtotalCells[0].textContent).toContain("COP");
+  });
+});
+
+// C12-3d: scroll isolation & fixed structure — the modal layout must expose
+// class-based hooks for the scroll-isolated table, the stable right column,
+// and the pinned footer. jsdom does not compute styles, so we assert classes.
+describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
+  it("table rows container has overflow-y-auto for scroll isolation on desktop", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer).not.toBeNull();
+    expect(rowsContainer!.className).toContain("overflow-y-auto");
+  });
+
+  it("desktop table header has sticky top-0 classes for sticky positioning", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    // The sticky header is the desktop-only header row inside the scroll container.
+    const stickyHeader = container.querySelector(".sticky.top-0.lg\\:flex");
+    expect(stickyHeader).not.toBeNull();
+    expect(stickyHeader!.className).toContain("bg-surface-card");
+    expect(stickyHeader!.className).toContain("z-10");
+  });
+
+  it("right column has min-height on desktop for stable layout", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const rightColumn = container.querySelector('[data-testid="right-column"]');
+    expect(rightColumn).not.toBeNull();
+    expect(rightColumn!.className).toContain("lg:min-h-[18rem]");
+  });
+
+  it("footer spans both grid columns and is pinned at row 2", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const footer = container.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("lg:col-span-2");
+    expect(footer!.className).toContain("lg:row-start-2");
+    expect(footer!.className).toContain("shrink-0");
+  });
+
+  it("form root fills modal body on desktop (lg:h-full)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    expect(form!.className).toContain("lg:h-full");
+  });
+
+  it("credit hint has legible amber color and is placed under the client selector", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    switchPaymentMode(container, "on-credit");
+    const hint = container.querySelector<HTMLElement>("#clientId-hint");
+    expect(hint).not.toBeNull();
+    // Amber tint for legibility in both light and dark mode.
+    expect(hint!.className).toMatch(/text-amber-(400|600)/);
+    // The hint is a <p> rendered by FormField AFTER the <Select>, so it's
+    // visually under the client selector. Verify DOM order: label → select → hint.
+    const parent = hint!.parentElement!;
+    const children = Array.from(parent.children);
+    const hintIdx = children.indexOf(hint!);
+    // The hint should not be the first child (label and select come before it).
+    expect(hintIdx).toBeGreaterThan(0);
   });
 });
