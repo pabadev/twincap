@@ -4,6 +4,7 @@ import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SaleForm } from "./sale-form";
+import { Modal } from "../../../../components/ui/modal";
 import type { SerializedAccount } from "../../../../core/domain/account";
 import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
 import type { SerializedClient } from "../../../../core/domain/client";
@@ -808,11 +809,13 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     expect(rowsContainer!.contains(headerRow!)).toBe(false);
   });
 
-  it("right column has overflow-y-auto for independent scroll on desktop", () => {
+  it("right column is fixed (no scroll) with min-h-0 chain on desktop", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const rightColumn = container.querySelector('[data-testid="right-column"]');
     expect(rightColumn).not.toBeNull();
-    expect(rightColumn!.className).toContain("overflow-y-auto");
+    // C12-3f: right column is FIXED (no scroll), all fields visible 100% of the time.
+    expect(rightColumn!.className).toContain("overflow-hidden");
+    expect(rightColumn!.className).toContain("min-h-0");
   });
 
   it("footer is shrink-0 with border-top and matches modal background", () => {
@@ -848,5 +851,108 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     const hintIdx = children.indexOf(hint!);
     // The hint should not be the first child (label and select come before it).
     expect(hintIdx).toBeGreaterThan(0);
+  });
+});
+
+// C12-3f: layout invariants — the modal must have a definite height/width at
+// desktop, the min-h-0 chain must be present on every flex/grid descendant
+// between dialog and rows-scroll container, and the header/footer must be
+// fixed (shrink-0) with the rows container as the ONLY scroll region.
+describe("SaleForm layout invariants (C12-3f)", () => {
+  // Helper to wrap SaleForm in a Modal (as it's used in production).
+  function mountWithModal(node: ReactNode) {
+    return mount(
+      <Modal open={true} onClose={() => {}} title="Crear venta" variant="workspace">
+        {node}
+      </Modal>,
+    );
+  }
+
+  it("dialog has definite height and width classes at desktop breakpoint", () => {
+    const { container } = mountWithModal(<SaleForm {...baseProps} />);
+    // The dialog is the [role="dialog"] element rendered by Modal.
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    // C12-3f: workspace variant sets lg:h-[85vh] and lg:w-[92vw] lg:max-w-[1080px].
+    expect(dialog!.className).toContain("lg:h-[85vh]");
+    expect(dialog!.className).toContain("lg:w-[92vw]");
+    expect(dialog!.className).toContain("lg:max-w-[1080px]");
+  });
+
+  it("body wrapper has min-h-0 chain for flex/grid sizing", () => {
+    const { container } = mountWithModal(<SaleForm {...baseProps} />);
+    // The body wrapper is the modal-body-workspace element.
+    const bodyWrapper = container.querySelector('[data-testid="modal-body-workspace"]');
+    expect(bodyWrapper).not.toBeNull();
+    expect(bodyWrapper!.className).toContain("min-h-0");
+    expect(bodyWrapper!.className).toContain("flex-1");
+    expect(bodyWrapper!.className).toContain("overflow-hidden");
+  });
+
+  it("rows container has overflow-y-auto + min-h-0 for scroll isolation", () => {
+    const { container } = mountWithModal(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer).not.toBeNull();
+    expect(rowsContainer!.className).toContain("overflow-y-auto");
+    expect(rowsContainer!.className).toContain("min-h-0");
+    expect(rowsContainer!.className).toContain("flex-1");
+  });
+
+  it("header and footer are shrink-0 (fixed, never scroll away)", () => {
+    const { container } = mountWithModal(<SaleForm {...baseProps} />);
+    // Modal header (title + X button).
+    const modalHeader = container.querySelector('[role="dialog"] > .relative.z-10');
+    expect(modalHeader).not.toBeNull();
+    expect(modalHeader!.className).toContain("shrink-0");
+    // Sale footer (Total + actions).
+    const footer = container.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("shrink-0");
+    expect(footer!.className).toContain("relative");
+    expect(footer!.className).toContain("z-10");
+  });
+
+  it("right column is overflow-hidden (no scroll, all fields visible)", () => {
+    const { container } = mountWithModal(<SaleForm {...baseProps} />);
+    const rightColumn = container.querySelector('[data-testid="right-column"]');
+    expect(rightColumn).not.toBeNull();
+    expect(rightColumn!.className).toContain("overflow-hidden");
+    expect(rightColumn!.className).toContain("min-h-0");
+  });
+
+  it("with many rows (40 items), footer/header remain siblings of scroll container", () => {
+    // Render 40 items to stress-test the layout.
+    const manyItems: SerializedCatalogItem[] = Array.from({ length: 40 }, (_, i) => ({
+      id: `item-${i}`,
+      workspaceId: "ws-1",
+      name: `Item ${i}`,
+      unitPrice: { amount: 1000 + i, currency: "COP" },
+      type: "product",
+      stock: 10,
+      createdAt: new Date(0),
+    }));
+    const { container } = mountWithModal(<SaleForm {...baseProps} catalogItems={manyItems} />);
+    // Add all 40 items to the cart.
+    for (let i = 0; i < 40; i++) {
+      selectFromSearch(container, 0);
+    }
+    // The rows container must exist and be the ONLY scroll region.
+    const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer).not.toBeNull();
+    expect(rowsContainer!.className).toContain("overflow-y-auto");
+    // The footer must be a sibling of the grid wrapper (not inside rows container).
+    const footer = container.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    expect(rowsContainer!.contains(footer!)).toBe(false);
+    // The modal header must be a sibling of the body (not inside rows container).
+    const modalHeader = container.querySelector('[role="dialog"] > .relative.z-10');
+    expect(modalHeader).not.toBeNull();
+    expect(rowsContainer!.contains(modalHeader!)).toBe(false);
+    // The table header row must be a sibling of the rows container (not inside it).
+    const tableWrapper = container.querySelector('[data-testid="table-wrapper"]');
+    const tableHeader = tableWrapper!.querySelector(".hidden.shrink-0.lg\\:grid");
+    expect(tableHeader).not.toBeNull();
+    expect(rowsContainer!.contains(tableHeader!)).toBe(false);
   });
 });

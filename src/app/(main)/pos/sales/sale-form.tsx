@@ -411,9 +411,11 @@ export function SaleForm({
   }, [effectiveCatalogItems]);
 
   return (
-    // C12-3e: root fills the modal body completely (h-full). The modal body
+    // C12-3f: root fills the modal body completely (h-full). The modal body
     // has overflow-hidden (workspace variant), so this root manages the
     // 3-part flex layout: body (flex-1) + footer (shrink-0).
+    // Every flex/grid descendant between dialog and rows-scroll container
+    // MUST carry min-h-0 to break the auto-min-height chain.
     <div className="flex h-full flex-col">
       {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
           another <form>, and browsers would bind the inner controls to the outer
@@ -426,6 +428,7 @@ export function SaleForm({
             return;
           }
         }}
+        /* fixed-region: required min-h-0 chain */
         className="flex min-h-0 flex-1 flex-col"
       >
         <IdempotencyField />
@@ -436,17 +439,25 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        {/* C12-3e: 2-column work area (body). Mobile: natural flow. Desktop:
+        {/* C12-3f: 2-column work area (body). Mobile: natural flow. Desktop:
             grid with left column (articles) and right column (settings).
             The body fills the remaining space (flex-1 min-h-0) and does NOT
-            scroll — internal scroll regions are isolated. */}
-        <div className="flex flex-1 flex-col space-y-4 lg:min-h-0 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:overflow-hidden lg:space-y-0">
+            scroll — internal scroll regions are isolated.
+            fixed-region: required min-h-0 chain */}
+        <div
+          /* fixed-region: required min-h-0 chain */
+          className="flex min-h-0 flex-1 flex-col space-y-4 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:overflow-hidden lg:space-y-0"
+        >
           {/* Cart / line items.
               Mobile: first section. Desktop: left column.
-              C12-3e: on desktop the left column is a flex column that fills
+              C12-3f: on desktop the left column is a flex column that fills
               the available space (min-h-0 so it can shrink). The table rows
-              container inside it is the ONLY scroll region for the table. */}
-          <div className="flex flex-col lg:min-h-0 lg:overflow-hidden">
+              container inside it is the ONLY scroll region for the table.
+              fixed-region: required min-h-0 chain */}
+          <div
+            /* fixed-region: required min-h-0 chain */
+            className="flex min-h-0 flex-col lg:overflow-hidden"
+          >
             <div className="mb-2 flex shrink-0 items-center justify-between">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 {t("lineItems")}
@@ -538,18 +549,21 @@ export function SaleForm({
                 layout with aria-labels on inputs. Desktop: grid-based table
                 with sticky header and scroll-isolated rows container. */}
             {lineItems.length > 0 && (
-              // C12-3e: table wrapper fills the remaining left-column space
+              // C12-3f: table wrapper fills the remaining left-column space
               // (flex-1 min-h-0). On desktop it's a flex column with the
               // header outside the scroll container and the rows container
               // scrolling internally (overflow-y-auto overflow-x-hidden).
+              // fixed-region: required min-h-0 chain
               <div
-                className="mt-4 flex flex-1 flex-col lg:min-h-0 lg:overflow-hidden"
+                /* fixed-region: required min-h-0 chain */
+                className="mt-4 flex min-h-0 flex-1 flex-col lg:overflow-hidden"
                 data-testid="table-wrapper"
               >
-                {/* Desktop table header — hidden on mobile, visible on desktop.
-                    Kept OUTSIDE the scroll container so it's always visible. */}
+                {/* C12-3f: Desktop table header — hidden on mobile, visible on desktop.
+                    Kept OUTSIDE the scroll container (sibling, not sticky) so it's
+                    always visible. Grid template matches rows exactly. */}
                 <div
-                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_70px_100px_100px_40px] dark:text-zinc-400"
+                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_64px_110px_110px_44px] dark:text-zinc-400"
                   aria-hidden="true"
                 >
                   <div className="min-w-0">{t("item")}</div>
@@ -559,9 +573,11 @@ export function SaleForm({
                   <div>{t("actions")}</div>
                 </div>
 
-                {/* Table rows container — scroll-isolated on desktop */}
+                {/* C12-3f: Table rows container — scroll-isolated on desktop.
+                    fixed-region: required min-h-0 chain */}
                 <div
-                  className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden lg:min-h-0 lg:space-y-0"
+                  /* fixed-region: required min-h-0 chain */
+                  className="flex-1 min-h-0 space-y-3 overflow-y-auto overflow-x-hidden lg:space-y-0"
                   data-testid="table-rows-container"
                 >
                   {lineItems.map((li, idx) => {
@@ -581,7 +597,7 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_70px_100px_100px_40px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
+                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_64px_110px_110px_44px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
                       >
                         {/* Item name — plain text (no dropdown) */}
                         <div className="min-w-0 flex-1 lg:min-w-0">
@@ -675,10 +691,15 @@ export function SaleForm({
 
           {/* Settings: payment, account, client, initial payment, date.
               Mobile: second section. Desktop: right column.
-              C12-3e: on desktop the right column scrolls independently
-              (overflow-y-auto) for dynamic critical fields. */}
-          <div className="space-y-4 overflow-y-auto lg:pr-2" data-testid="right-column">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              C12-3f: on desktop the right column is FIXED (no scroll).
+              Compact vertical rhythm so all fields fit inside 85vh.
+              fixed-region: required min-h-0 chain */}
+          <div
+            /* fixed-region: required min-h-0 chain */
+            className="min-h-0 space-y-3 overflow-hidden lg:pr-2"
+            data-testid="right-column"
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:gap-2">
               <Select
                 id="paymentMode"
                 name="paymentMode"
@@ -708,7 +729,7 @@ export function SaleForm({
             </div>
 
             <div>
-              <div className="mb-1 flex items-center justify-end">
+              <div className="mb-0.5 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setShowClientForm(true)}
@@ -781,12 +802,12 @@ export function SaleForm({
           </div>
         </div>
 
-        {/* C12-3e: footer pinned at the bottom of the modal. Total right-aligned
-            + action buttons. Shrink-0 ensures it never scrolls away. Border-top
-            uses themed surface-border (not literal white/10) to match the
-            modal's dark/light token. Background matches modal (surface-card). */}
+        {/* C12-3f: footer pinned at the bottom of the modal. Total right-aligned
+            + action buttons. Shrink-0 ensures it never scrolls away. Relative z-10
+            keeps it above content. Border-top uses themed surface-border.
+            Background matches modal (surface-card). */}
         <div
-          className="shrink-0 border-t border-surface-border bg-surface-card p-4"
+          className="relative z-10 shrink-0 border-t border-surface-border bg-surface-card p-4"
           data-testid="sale-footer"
         >
           {/* C12-3b: TOTAL in prominent position right before footer actions */}

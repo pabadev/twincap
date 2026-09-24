@@ -87,12 +87,12 @@ export function Modal({
 
   if (!open) return null;
 
-  // C12-3e: workspace variant pins header/footer and isolates internal scroll
-  // regions. The dialog is capped to 85vh with a 960px max width (90vw fluid),
-  // and the body stops scrolling so the consumer can manage its own regions.
+  // C12-3f: workspace variant pins header/footer and isolates internal scroll
+  // regions. The dialog has a DEFINITE height at desktop (lg:h-[85vh]) so the
+  // flex chain is bounded end-to-end. Width is 92vw capped at 1080px.
   const isWorkspace = variant === "workspace";
-  const dialogSizeClass = isWorkspace ? "w-[90vw] max-w-[960px]" : sizeClasses[size];
-  const dialogHeightClass = isWorkspace ? "max-h-[85vh]" : "max-h-full";
+  const dialogSizeClass = isWorkspace ? "lg:w-[92vw] lg:max-w-[1080px]" : sizeClasses[size];
+  const dialogHeightClass = isWorkspace ? "lg:h-[85vh] max-h-[85vh]" : "max-h-full";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -107,7 +107,8 @@ export function Modal({
         aria-label={title}
         aria-labelledby={titleId}
       >
-        <div className="mb-4 flex shrink-0 items-center justify-between">
+        {/* C12-3f: header pinned top with z-10 so content never covers it */}
+        <div className="relative z-10 mb-4 flex shrink-0 items-center justify-between">
           <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-white">
             {title}
           </h2>
@@ -128,10 +129,24 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className={`min-h-0 flex-1 ${isWorkspace ? "overflow-hidden" : "overflow-y-auto"}`}>
+        {/* C12-3f: body fills remaining space with min-h-0 chain */}
+        <div
+          className={`min-h-0 flex-1 ${isWorkspace ? "overflow-hidden" : "overflow-y-auto"}`}
+          data-testid={isWorkspace ? "modal-body-workspace" : undefined}
+        >
           {children}
         </div>
-        {actions && <div className="mt-6 flex shrink-0 justify-end gap-3">{actions}</div>}
+        {/* C12-3f: footer pinned bottom with z-10, bg matches modal surface */}
+        {actions && (
+          <div
+            className={`relative z-10 mt-6 flex shrink-0 justify-end gap-3 ${
+              isWorkspace ? "border-t border-surface-border bg-surface-card pt-4" : ""
+            }`}
+            data-testid={isWorkspace ? "modal-footer-workspace" : undefined}
+          >
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   );
