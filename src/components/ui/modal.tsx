@@ -4,7 +4,7 @@ import { useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useT } from "../../i18n/client";
 import { useFocusTrap } from "./focus-trap";
 
-type ModalSize = "sm" | "md" | "lg";
+type ModalSize = "sm" | "md" | "lg" | "xl";
 
 interface ModalProps {
   open: boolean;
@@ -16,7 +16,7 @@ interface ModalProps {
   children: ReactNode;
   actions?: ReactNode;
   closeLabel?: string;
-  /** Dialog max width: sm → max-w-sm, md → max-w-md (default), lg → max-w-2xl. */
+  /** Dialog max width: sm → max-w-sm, md → max-w-md (default), lg → max-w-2xl, xl → max-w-5xl. */
   size?: ModalSize;
   /**
    * Optional close-guard: when provided, ESC / backdrop / X call this instead
@@ -31,6 +31,7 @@ const sizeClasses: Record<ModalSize, string> = {
   sm: "max-w-sm",
   md: "max-w-md",
   lg: "max-w-2xl",
+  xl: "max-w-5xl",
 };
 
 export function Modal({

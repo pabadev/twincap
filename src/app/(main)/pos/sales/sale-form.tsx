@@ -247,209 +247,227 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select
-            id="paymentMode"
-            name="paymentMode"
-            label={t("paymentMode")}
-            required
-            disabled={isPending}
-            value={paymentMode}
-            onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-            options={PAYMENT_MODES.map((m) => ({
-              value: m,
-              label: m === "paid-in-full" ? t("paidInFull") : t("onCredit"),
-            }))}
-          />
+        {/* C12-3: responsive two-zone layout. Mobile keeps the original single-column
+            flow (settings → line items → summary). At lg+ the form becomes a grid:
+            LEFT = cart/line items, RIGHT = settings (row 1) + sticky summary (row 2).
+            DOM order matches mobile order; desktop placement is via grid positioning. */}
+        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:space-y-0">
+          {/* Settings: payment, account, client, initial payment, date.
+              Mobile: first section. Desktop: right column, row 1. */}
+          <div className="space-y-4 lg:col-start-2 lg:row-start-1">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <Select
+                id="paymentMode"
+                name="paymentMode"
+                label={t("paymentMode")}
+                required
+                disabled={isPending}
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+                options={PAYMENT_MODES.map((m) => ({
+                  value: m,
+                  label: m === "paid-in-full" ? t("paidInFull") : t("onCredit"),
+                }))}
+              />
 
-          <Select
-            id="accountId"
-            name="accountId"
-            label={t("account")}
-            required
-            disabled={isPending}
-            placeholder={tCommon("select")}
-            options={accounts.map((a) => ({
-              value: a.id,
-              label: a.name,
-            }))}
-          />
-        </div>
+              <Select
+                id="accountId"
+                name="accountId"
+                label={t("account")}
+                required
+                disabled={isPending}
+                placeholder={tCommon("select")}
+                options={accounts.map((a) => ({
+                  value: a.id,
+                  label: a.name,
+                }))}
+              />
+            </div>
 
-        <div>
-          <div className="mb-1 flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setShowClientForm(true)}
-              disabled={isPending}
-              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
-            >
-              {t("createClient")}
-            </button>
-          </div>
-          <FormField
-            id="clientId"
-            label={t("client")}
-            hint={needsClient ? t("clientRequiredForCredit") : undefined}
-          >
-            <Select
-              required={isOnCredit}
-              disabled={isPending}
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              options={[
-                { value: "", label: t("generalClient") },
-                ...clientOptions.map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                })),
-              ]}
-            />
-          </FormField>
-        </div>
+            <div>
+              <div className="mb-1 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowClientForm(true)}
+                  disabled={isPending}
+                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+                >
+                  {t("createClient")}
+                </button>
+              </div>
+              <FormField
+                id="clientId"
+                label={t("client")}
+                hint={needsClient ? t("clientRequiredForCredit") : undefined}
+              >
+                <Select
+                  required={isOnCredit}
+                  disabled={isPending}
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  options={[
+                    { value: "", label: t("generalClient") },
+                    ...clientOptions.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    })),
+                  ]}
+                />
+              </FormField>
+            </div>
 
-        {isOnCredit && (
-          <FormField
-            id="initialPayment"
-            label={`${t("initialPayment")} (${currency})`}
-            error={
-              initialPaymentInvalid
-                ? parsedInitialPayment > total
-                  ? t("initialPaymentExceedsTotal")
-                  : tError("invalidData")
-                : undefined
-            }
-          >
+            {isOnCredit && (
+              <FormField
+                id="initialPayment"
+                label={`${t("initialPayment")} (${currency})`}
+                error={
+                  initialPaymentInvalid
+                    ? parsedInitialPayment > total
+                      ? t("initialPaymentExceedsTotal")
+                      : tError("invalidData")
+                    : undefined
+                }
+              >
+                <Input
+                  name="initialPayment"
+                  type="number"
+                  min="0"
+                  required
+                  disabled={isPending}
+                  value={initialPayment}
+                  onChange={(e) => setInitialPayment(e.target.value)}
+                />
+              </FormField>
+            )}
+
             <Input
-              name="initialPayment"
-              type="number"
-              min="0"
+              id="date"
+              name="date"
+              type="date"
+              label={t("date")}
               required
               disabled={isPending}
-              value={initialPayment}
-              onChange={(e) => setInitialPayment(e.target.value)}
+              defaultValue={toDateInputValue()}
+              max={toDateInputValue()}
             />
-          </FormField>
-        )}
+          </div>
 
-        <Input
-          id="date"
-          name="date"
-          type="date"
-          label={t("date")}
-          required
-          disabled={isPending}
-          defaultValue={toDateInputValue()}
-          max={toDateInputValue()}
-        />
+          {/* Cart / line items.
+              Mobile: second section. Desktop: left column, row 1. */}
+          <div className="lg:col-start-1 lg:row-start-1">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                {t("lineItems")}
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowItemForm(true)}
+                  disabled={isPending}
+                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+                >
+                  {t("createItem")}
+                </button>
+                <button
+                  type="button"
+                  onClick={addLineItem}
+                  disabled={isPending}
+                  className="text-xs text-primary hover:text-primary-hover dark:text-primary"
+                >
+                  {t("addItem")}
+                </button>
+              </div>
+            </div>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              {t("lineItems")}
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowItemForm(true)}
-                disabled={isPending}
-                className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
-              >
-                {t("createItem")}
-              </button>
-              <button
-                type="button"
-                onClick={addLineItem}
-                disabled={isPending}
-                className="text-xs text-primary hover:text-primary-hover dark:text-primary"
-              >
-                {t("addItem")}
-              </button>
+            <div className="space-y-3">
+              {lineItems.map((li, idx) => (
+                <div key={idx} className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <FormField id={`item-${idx}`} label={t("item")} showLabel={idx === 0}>
+                      <Select
+                        value={li.itemId}
+                        onChange={(e) => handleItemSelect(idx, e.target.value)}
+                        disabled={isPending}
+                        placeholder={tCommon("select")}
+                        options={catalogItems.map((item) => ({
+                          value: item.id,
+                          label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
+                        }))}
+                      />
+                    </FormField>
+                  </div>
+                  {/* A1 (F3): qty/price/remove group wraps at <sm so the row
+                      stays inside the modal budget (~272px) instead of
+                      overflowing horizontally. At sm+ the group is inline. */}
+                  <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:flex-nowrap">
+                    <div className="w-16 sm:w-20">
+                      <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={li.quantity}
+                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
+                          disabled={isPending}
+                        />
+                      </FormField>
+                    </div>
+                    <div className="w-20 sm:w-28">
+                      <FormField
+                        id={`price-${idx}`}
+                        label={t("unitPrice")}
+                        showLabel={idx === 0}
+                        labelClassName="whitespace-nowrap"
+                      >
+                        <Input
+                          type="number"
+                          min="1"
+                          value={li.unitPrice}
+                          onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
+                          disabled={isPending}
+                        />
+                      </FormField>
+                    </div>
+                    {lineItems.length > 1 && (
+                      <ActionIconButton
+                        icon={Trash2}
+                        label={t("remove")}
+                        tone="danger"
+                        onClick={() => removeLineItem(idx)}
+                        disabled={isPending}
+                        className="mb-0.5"
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-3">
-            {lineItems.map((li, idx) => (
-              <div key={idx} className="flex flex-wrap items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <FormField id={`item-${idx}`} label={t("item")} showLabel={idx === 0}>
-                    <Select
-                      value={li.itemId}
-                      onChange={(e) => handleItemSelect(idx, e.target.value)}
-                      disabled={isPending}
-                      placeholder={tCommon("select")}
-                      options={catalogItems.map((item) => ({
-                        value: item.id,
-                        label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
-                      }))}
-                    />
-                  </FormField>
-                </div>
-                {/* A1 (F3): qty/price/remove group wraps at <sm so the row
-                    stays inside the modal budget (~272px) instead of
-                    overflowing horizontally. At sm+ the group is inline. */}
-                <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:flex-nowrap">
-                  <div className="w-16 sm:w-20">
-                    <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={li.quantity}
-                        onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
-                        disabled={isPending}
-                      />
-                    </FormField>
-                  </div>
-                  <div className="w-20 sm:w-28">
-                    <FormField
-                      id={`price-${idx}`}
-                      label={t("unitPrice")}
-                      showLabel={idx === 0}
-                      labelClassName="whitespace-nowrap"
-                    >
-                      <Input
-                        type="number"
-                        min="1"
-                        value={li.unitPrice}
-                        onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
-                        disabled={isPending}
-                      />
-                    </FormField>
-                  </div>
-                  {lineItems.length > 1 && (
-                    <ActionIconButton
-                      icon={Trash2}
-                      label={t("remove")}
-                      tone="danger"
-                      onClick={() => removeLineItem(idx)}
-                      disabled={isPending}
-                      className="mb-0.5"
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Summary + main actions.
+              Mobile: third section (after line items). Desktop: right column, row 2,
+              sticky at the bottom of the modal scroll area so the total and the
+              create button are always reachable without scrolling. */}
+          <div className="lg:col-start-2 lg:row-start-2 lg:sticky lg:bottom-0 lg:z-10 lg:border-t lg:border-surface-border lg:bg-surface-card lg:pt-4">
+            <div className="mb-3 text-right text-sm font-medium text-zinc-900 dark:text-white">
+              {t("total")} {formatAmount(total, currency, locale)}
+            </div>
 
-          <div className="mt-2 text-right text-sm font-medium text-zinc-900 dark:text-white">
-            {t("total")} {formatAmount(total, currency, locale)}
+            <div className="flex items-center gap-3">
+              <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
+                {isPending ? t("creating") : t("createSale")}
+              </Button>
+              {(onDone || onCancel) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isPending}
+                  onClick={onCancel ?? onDone}
+                >
+                  {tCommon("cancel")}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
-            {isPending ? t("creating") : t("createSale")}
-          </Button>
-          {(onDone || onCancel) && (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isPending}
-              onClick={onCancel ?? onDone}
-            >
-              {tCommon("cancel")}
-            </Button>
-          )}
         </div>
       </form>
 

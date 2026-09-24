@@ -329,3 +329,85 @@ describe("SaleForm Cancel button (C12-1)", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 });
+
+// C12-3: desktop POS layout — the form must expose a responsive grid with
+// three zones (settings, cart, summary) so desktop viewports can use the
+// horizontal space without stretching the mobile form. Mobile keeps the
+// original single-column order (settings → cart → summary).
+describe("SaleForm responsive layout (C12-3)", () => {
+  it("wraps the form body in a responsive grid container with lg: breakpoint classes", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    // The grid wrapper is the first child div inside the form (after hidden inputs).
+    const gridWrapper = form!.querySelector(
+      ".lg\\:grid.lg\\:grid-cols-\\[minmax\\(0\\2c 1fr\\)_20rem\\]",
+    );
+    expect(gridWrapper).not.toBeNull();
+  });
+
+  it("places the line items section in the left column at lg+", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // The line items section contains the "addItem" button and the item selects.
+    const cartSection = container.querySelector(".lg\\:col-start-1.lg\\:row-start-1");
+    expect(cartSection).not.toBeNull();
+    expect(cartSection!.querySelector("button")).not.toBeNull();
+    // The "addItem" button lives inside the cart section.
+    const addItemBtn = [...cartSection!.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    expect(addItemBtn).toBeDefined();
+  });
+
+  it("places the settings section (payment, client, date) in the right column at lg+", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const settingsSection = container.querySelector(".lg\\:col-start-2.lg\\:row-start-1");
+    expect(settingsSection).not.toBeNull();
+    // Payment mode select lives inside the settings section.
+    expect(settingsSection!.querySelector("#paymentMode")).not.toBeNull();
+    expect(settingsSection!.querySelector("#clientId")).not.toBeNull();
+    expect(settingsSection!.querySelector("#date")).not.toBeNull();
+  });
+
+  it("places the summary + actions in a sticky bottom section at lg+", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const summarySection = container.querySelector(
+      ".lg\\:col-start-2.lg\\:row-start-2.lg\\:sticky",
+    );
+    expect(summarySection).not.toBeNull();
+    // The total text and the submit button live inside the summary section.
+    expect(summarySection!.textContent).toContain("total");
+    const submitBtn = [...summarySection!.querySelectorAll("button")].find(
+      (b) => b.type === "submit",
+    );
+    expect(submitBtn).toBeDefined();
+  });
+
+  it("renders the total amount in the sticky summary section", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const summarySection = container.querySelector(".lg\\:col-start-2.lg\\:row-start-2");
+    // Total = 1 item × qty 1 × unitPrice 1000 = 1000 COP.
+    expect(summarySection!.textContent).toContain("total");
+    expect(summarySection!.textContent).toContain("1000");
+  });
+
+  it("preserves mobile DOM order: settings → cart → summary", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const gridWrapper = container.querySelector(
+      ".lg\\:grid.lg\\:grid-cols-\\[minmax\\(0\\2c 1fr\\)_20rem\\]",
+    );
+    expect(gridWrapper).not.toBeNull();
+    const children = Array.from(gridWrapper!.children);
+    expect(children.length).toBe(3);
+    // First child: settings (contains #paymentMode)
+    expect(children[0].querySelector("#paymentMode")).not.toBeNull();
+    // Second child: cart (contains addItem button)
+    const addItemBtn = [...children[1].querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    expect(addItemBtn).toBeDefined();
+    // Third child: summary (contains submit button)
+    const submitBtn = children[2].querySelector('button[type="submit"]');
+    expect(submitBtn).not.toBeNull();
+  });
+});
