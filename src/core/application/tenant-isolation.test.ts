@@ -259,6 +259,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }

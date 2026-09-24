@@ -3,6 +3,8 @@ import { type InputHTMLAttributes, forwardRef } from "react";
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  /** Extra classes for the label element (e.g. text-xs for compact layouts). */
+  labelClassName?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -12,6 +14,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     required,
     className = "",
     id,
+    labelClassName,
     "aria-invalid": ariaInvalid,
     "aria-describedby": ariaDescribedBy,
     ...props
@@ -19,13 +22,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   ref,
 ) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+  const labelClasses = labelClassName
+    ? `mb-1 block font-medium text-zinc-700 dark:text-zinc-300 ${labelClassName}`
+    : "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300";
   return (
     <div>
       {label && (
-        <label
-          htmlFor={inputId}
-          className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
+        <label htmlFor={inputId} className={labelClasses}>
           {label}
         </label>
       )}

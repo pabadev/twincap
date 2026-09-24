@@ -210,6 +210,7 @@ function fakeMovementRepo(
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],

@@ -145,7 +145,11 @@ export interface MovementRepository {
   /** @param tx optional transaction handle (R15.1-6e): the movement-docs read
    *   joins the caller's transaction session (snapshot-consistent cascade read
    *   in transactional deleteAccount). */
-  findByAccountId(workspaceId: string, accountId: string, tx?: TransactionHandle): Promise<Movement[]>;
+  findByAccountId(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<Movement[]>;
   /** R15.2 corrective — minimal projected read for the account-balance path
    *  (computeAccountLiveBalance). Same session-aware filter and (date,
    *  createdAt) sort as {@link findByAccountId}, but WITHOUT category/account
@@ -209,7 +213,11 @@ export interface MovementRepository {
    *   count joins the caller's transaction session (the guard runs on the
    *   SAME snapshot as the category read and delete — used by transactional
    *   deleteCategory). */
-  countByCategoryId(workspaceId: string, categoryId: string, tx?: TransactionHandle): Promise<number>;
+  countByCategoryId(
+    workspaceId: string,
+    categoryId: string,
+    tx?: TransactionHandle,
+  ): Promise<number>;
   /** R15.3 §4: count existing 'opening' movements for an account — enforces
    *  the ACC-2 invariant of EXACTLY 0 or 1 initial balances per account.
    *  @param tx optional transaction handle: when present, the count joins the
@@ -223,6 +231,17 @@ export interface MovementRepository {
     accountId: string,
     tx?: TransactionHandle,
   ): Promise<number>;
+  /** C12-2: find the single opening movement for an account, if any.
+   *  Returns null when the account has no opening (never set, or account
+   *  does not exist). The read joins the caller's transaction session when
+   *  a handle is present (snapshot-consistent with the account touch and
+   *  the subsequent CAS update in correctInitialBalance).
+   *  @param tx optional transaction handle; joins the caller's transaction. */
+  findOpeningMovement(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<Movement | null>;
 }
 
 // ─── Transfer ────────────────────────────────────────────────────────
@@ -281,7 +300,11 @@ export interface CreditReceivedRepository {
    * @param tx optional transaction handle (R15); joins the caller's transaction
    *   (Fase 5 editPrincipal cascade).
    */
-  update(credit: CreditReceived, tx?: TransactionHandle, expectedVersion?: number): Promise<CreditReceived>;
+  update(
+    credit: CreditReceived,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<CreditReceived>;
   /**
    * Delete a received credit (cascade use cases; transactional deleteCreditReceived
    * needs it inside the transaction, R15.1 Fase 3).
@@ -290,13 +313,32 @@ export interface CreditReceivedRepository {
   delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  addAbono(workspaceId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  addAbono(
+    workspaceId: string,
+    creditId: string,
+    abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string },
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $set on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  editAbono(workspaceId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  editAbono(
+    workspaceId: string,
+    creditId: string,
+    abonoId: string,
+    updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  deleteAbono(workspaceId: string, creditId: string, abonoId: string, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  deleteAbono(
+    workspaceId: string,
+    creditId: string,
+    abonoId: string,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
 }
 
 // ─── Credit Granted ──────────────────────────────────────────────────
@@ -313,7 +355,11 @@ export interface CreditGrantedRepository {
    * @param tx optional R14-B transaction handle; all writes join the same transaction.
    */
   create(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted>;
-  update(credit: CreditGranted, tx?: TransactionHandle, expectedVersion?: number): Promise<CreditGranted>;
+  update(
+    credit: CreditGranted,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<CreditGranted>;
   /**
    * Delete a granted credit (cascade use cases; transactional deleteSale needs
    * it inside the transaction, Fase 6).
@@ -322,19 +368,60 @@ export interface CreditGrantedRepository {
   delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  addAbono(workspaceId: string, creditId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string; capitalAmount?: number; interestAmount?: number; interestMovementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  addAbono(
+    workspaceId: string,
+    creditId: string,
+    abono: {
+      id: string;
+      amount: number;
+      date: Date;
+      accountId: string;
+      movementId?: string;
+      capitalAmount?: number;
+      interestAmount?: number;
+      interestMovementId?: string;
+    },
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $set on embedded abono by abono.id (design §5).
    *  An explicitly `undefined` value is turned into `$unset` so split fields
    *  (e.g. interestMovementId when a portion drops to zero) can be cleared.
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  editAbono(workspaceId: string, creditId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string; capitalAmount: number; interestAmount: number; interestMovementId: string }>, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  editAbono(
+    workspaceId: string,
+    creditId: string,
+    abonoId: string,
+    updates: Partial<{
+      amount: number;
+      date: Date;
+      movementId: string;
+      capitalAmount: number;
+      interestAmount: number;
+      interestMovementId: string;
+    }>,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  deleteAbono(workspaceId: string, creditId: string, abonoId: string, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  deleteAbono(
+    workspaceId: string,
+    creditId: string,
+    abonoId: string,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** R9/D9.4: mark the credit as written off (`$set` on the writtenOff marker).
    *  @param tx optional transaction handle (R15); joins the caller's transaction
    *  (Fase 5 writeOffCreditGranted: movement + marker). */
-  markWrittenOff(workspaceId: string, creditId: string, writtenOff: { date: Date; movementId: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  markWrittenOff(
+    workspaceId: string,
+    creditId: string,
+    writtenOff: { date: Date; movementId: string },
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
 }
 
 // ─── Payable ─────────────────────────────────────────────────────────
@@ -366,13 +453,32 @@ export interface PayableRepository {
   delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  addAbono(workspaceId: string, payableId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  addAbono(
+    workspaceId: string,
+    payableId: string,
+    abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string },
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $set on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  editAbono(workspaceId: string, payableId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  editAbono(
+    workspaceId: string,
+    payableId: string,
+    abonoId: string,
+    updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  deleteAbono(workspaceId: string, payableId: string, abonoId: string, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  deleteAbono(
+    workspaceId: string,
+    payableId: string,
+    abonoId: string,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
 }
 
 // ─── Client ─────────────────────────────────────────────────────────
@@ -420,11 +526,21 @@ export interface CatalogItemRepository {
    * Atomic stock decrement for products (POS-3). Returns false if insufficient stock.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.
    */
-  decrementStock(workspaceId: string, itemId: string, quantity: number, tx?: TransactionHandle): Promise<boolean>;
+  decrementStock(
+    workspaceId: string,
+    itemId: string,
+    quantity: number,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
   /** Atomic stock increment for products (stock restore on sale delete).
    *  @param tx optional transaction handle (R15); joins the caller's transaction
    *  (Fase 6 deleteSale: stock restore inside the transaction). */
-  incrementStock(workspaceId: string, itemId: string, quantity: number, tx?: TransactionHandle): Promise<void>;
+  incrementStock(
+    workspaceId: string,
+    itemId: string,
+    quantity: number,
+    tx?: TransactionHandle,
+  ): Promise<void>;
 }
 
 // ─── Sale ────────────────────────────────────────────────────────────
@@ -450,13 +566,32 @@ export interface SaleRepository {
   delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /** Atomic $push — idempotent when movementId is provided (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  addAbono(workspaceId: string, saleId: string, abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string }, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  addAbono(
+    workspaceId: string,
+    saleId: string,
+    abono: { id: string; amount: number; date: Date; accountId: string; movementId?: string },
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $set on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  editAbono(workspaceId: string, saleId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  editAbono(
+    workspaceId: string,
+    saleId: string,
+    abonoId: string,
+    updates: Partial<{ amount: number; date: Date; movementId: string }>,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
   /** Atomic $pull on embedded abono by abono.id (design §5).
    *  @param tx optional transaction handle (R15); joins the caller's transaction (Fase 3). */
-  deleteAbono(workspaceId: string, saleId: string, abonoId: string, tx?: TransactionHandle, expectedVersion?: number): Promise<void>;
+  deleteAbono(
+    workspaceId: string,
+    saleId: string,
+    abonoId: string,
+    tx?: TransactionHandle,
+    expectedVersion?: number,
+  ): Promise<void>;
 }
 
 // ─── Workspace ──────────────────────────────────────────────────────

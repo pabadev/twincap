@@ -210,6 +210,68 @@ describe("Modal", () => {
   });
 });
 
+// C12-1: onRequestClose intercepts ESC/X/backdrop so the consumer can gate
+// close attempts (e.g. dirty-check confirmation). When omitted, onClose fires
+// directly — backward-compatible.
+describe("Modal onRequestClose (C12-1)", () => {
+  function GuardedHarness({ initialOpen }: { initialOpen: boolean }) {
+    const [open, setOpen] = useState(initialOpen);
+    const [guarded, setGuarded] = useState(false);
+    return (
+      <div>
+        <button type="button" data-name="trigger" onClick={() => setOpen(true)}>
+          open
+        </button>
+        <span data-name="guarded">{guarded ? "yes" : "no"}</span>
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          onRequestClose={() => setGuarded(true)}
+          title="Guarded dialog"
+        >
+          <p>content</p>
+        </Modal>
+      </div>
+    );
+  }
+
+  it("routes ESC through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("no");
+    pressKey("Escape");
+    // onClose was NOT called (dialog still open), onRequestClose was called.
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("routes backdrop click through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    const backdrop = container.querySelector(".absolute.inset-0.bg-black\\/50")!;
+    act(() => {
+      backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("routes X button click through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    const xButton = container.querySelector<HTMLButtonElement>('[aria-label="close"]')!;
+    act(() => {
+      xButton.click();
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("falls back to onClose when onRequestClose is not provided", () => {
+    const { container } = mount(<ModalHarness initialOpen />);
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    pressKey("Escape");
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+});
+
 describe("MoneyActionConfirmation focus reconciliation (R-4)", () => {
   it("keeps initial focus on the confirm button (S4.1)", () => {
     const { container } = mount(<MacHarness />);
@@ -246,5 +308,50 @@ describe("MoneyActionConfirmation focus reconciliation (R-4)", () => {
     act(() => last.focus());
     pressKey("Tab");
     expect(document.activeElement).toBe(first);
+  });
+});
+
+// C12-3f + C12-3i: the workspace variant backs the POS sale modal. The dialog
+// tightens its padding below sm (p-4) so the compact items grid fits at 375px,
+// and the body scrolls as ONE unit below lg (mobile natural flow) while it is
+// scroll-frozen at lg+ where the sale form manages isolated scroll regions.
+describe("Modal workspace variant (C12-3f + C12-3i)", () => {
+  it("tightens dialog padding below sm (p-4 sm:p-6) for mobile grids", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Workspace" variant="workspace">
+        <p>content</p>
+      </Modal>,
+    );
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog).not.toBeNull();
+    // C12-3i: <sm keeps p-4 (375px fit); sm+ restores the standard p-6 so the
+    // desktop geometry is unchanged.
+    expect(dialog.className).toContain("p-4");
+    expect(dialog.className).toContain("sm:p-6");
+  });
+
+  it("body scrolls naturally below lg and is scroll-frozen at lg+ (workspace)", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Workspace" variant="workspace">
+        <p>content</p>
+      </Modal>,
+    );
+    const body = container.querySelector('[data-testid="modal-body-workspace"]');
+    expect(body).not.toBeNull();
+    expect(body!.className).toContain("overflow-y-auto");
+    expect(body!.className).toContain("lg:overflow-hidden");
+  });
+
+  it("default variant keeps the standard padding and unmarked body (backward-compatible)", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Default">
+        <p>content</p>
+      </Modal>,
+    );
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog.className).toContain("p-6");
+    expect(dialog.className).not.toContain("p-4");
+    // No workspace body hooks on the default variant.
+    expect(dialog.querySelector('[data-testid="modal-body-workspace"]')).toBeNull();
   });
 });

@@ -400,6 +400,35 @@ export class MongoMovementRepository implements MovementRepository {
     ).exec();
   }
 
+  /** C12-2: find the single opening movement for an account. The read joins
+   *  the caller's transaction session when a handle is present (used by
+   *  correctInitialBalance: snapshot-consistent with the account read and
+   *  the subsequent CAS update). */
+  async findOpeningMovement(
+    workspaceId: string,
+    accountId: string,
+    tx?: TransactionHandle,
+  ): Promise<Movement | null> {
+    const session = sessionOf(tx);
+    const doc = await MovementModel.findOne({
+      workspaceId: new Types.ObjectId(workspaceId),
+      accountId: new Types.ObjectId(accountId),
+      "link.kind": "opening",
+    })
+      .session(session ?? null)
+      .exec();
+    if (!doc) return null;
+    const movementDoc = doc as MovementDocument;
+    const { category, currency } = await this.resolveDependencies(
+      workspaceId,
+      movementDoc.categoryId.toString(),
+      movementDoc.accountId.toString(),
+      movementDoc.type,
+      session,
+    );
+    return toMovementEntity(movementDoc, category, currency);
+  }
+
   // ─── Private helpers ───────────────────────────────────────────────
 
   /** Resolve Category + Currency for a single movement.

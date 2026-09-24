@@ -15,6 +15,7 @@ import { connectDb } from "../../../infrastructure/db/connection";
 import { AccountsPageClient } from "./accounts-page-client";
 import { DeleteAccountButton } from "./delete-account-button";
 import { InitialBalanceButton } from "./initial-balance-button";
+import { CorrectInitialBalanceButton } from "./correct-initial-balance-button";
 import { RenameAccountButton } from "./rename-account-button";
 import { formatAmountParts } from "../../../lib/format";
 import { EmptyState } from "../../../components/ui/empty-state";
@@ -106,6 +107,12 @@ export default async function AccountsPage() {
                   <RenameAccountButton accountId={account.id} accountName={account.name} />
                   {!balances.has(account.id) && (
                     <InitialBalanceButton accountId={account.id} currency={account.currency} />
+                  )}
+                  {balances.has(account.id) && (
+                    <CorrectInitialBalanceButton
+                      accountId={account.id}
+                      currency={account.currency}
+                    />
                   )}
                   {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
                 </div>

@@ -22,6 +22,7 @@ import { MovementForm } from "./movements/movement-form";
 import { SaleForm } from "./pos/sales/sale-form";
 import { resolveDefaultAccountId } from "../../lib/movement-form";
 import { Modal } from "../../components/ui/modal";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Icon } from "../../components/ui/icon";
 import { Plus, TrendingUp, TrendingDown, X, ShoppingCart } from "lucide-react";
 
@@ -76,6 +77,10 @@ export function GlobalMovementProvider({
   const [dialOpen, setDialOpen] = useState(false);
   const [data, setData] = useState<FormDataPayload | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
+  // C12-1: close-guard for the POS sale modal — when the form has unsaved
+  // changes, ESC/X/backdrop/Cancel show a confirmation instead of discarding.
+  const [showPosCloseConfirm, setShowPosCloseConfirm] = useState(false);
+  const saleDirtyRef = useRef(false);
   const fabRef = useRef<HTMLButtonElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
 
@@ -104,6 +109,29 @@ export function GlobalMovementProvider({
     // fetches fresh catalog/accounts/clients.
     setPosData(null);
     setPosLoadState("idle");
+    saleDirtyRef.current = false;
+  }, []);
+
+  // C12-1: close-guard handler — called by the Modal's ESC/X/backdrop when
+  // `onRequestClose` is wired. If the sale form has unsaved changes, show a
+  // confirmation; otherwise close directly.
+  const handlePosRequestClose = useCallback(() => {
+    // If the confirmation is already open, ignore — let it handle its own ESC.
+    if (showPosCloseConfirm) return;
+    if (saleDirtyRef.current) {
+      setShowPosCloseConfirm(true);
+    } else {
+      closePosModal();
+    }
+  }, [showPosCloseConfirm, closePosModal]);
+
+  const handlePosConfirmClose = useCallback(() => {
+    setShowPosCloseConfirm(false);
+    closePosModal();
+  }, [closePosModal]);
+
+  const handlePosCancelClose = useCallback(() => {
+    setShowPosCloseConfirm(false);
   }, []);
 
   const closeModal = useCallback(() => {
@@ -275,8 +303,16 @@ export function GlobalMovementProvider({
 
       {/* Shared POS sale form — same in-place pattern as the movement modal.
           SaleForm reuses the list page's form component (no logic duplicated)
-          and closes itself via onDone after a successful create. */}
-      <Modal open={posModalOpen} onClose={closePosModal} title={tSales("createSale")} size="lg">
+          and closes itself via onDone after a successful create.
+          C12-1: onRequestClose gates ESC/X/backdrop through the dirty-check. */}
+      <Modal
+        open={posModalOpen}
+        onClose={closePosModal}
+        onRequestClose={handlePosRequestClose}
+        title={tSales("createSale")}
+        size="xl"
+        variant="workspace"
+      >
         {posLoadState === "error" ? (
           <div className="flex flex-col items-start gap-3">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">{tToast("operationFailed")}</p>
@@ -301,9 +337,25 @@ export function GlobalMovementProvider({
             accounts={posData.accounts}
             clients={posData.clients}
             onDone={closePosModal}
+            onCancel={handlePosRequestClose}
+            dirtyRef={saleDirtyRef}
           />
         )}
       </Modal>
+
+      {/* C12-1: close confirmation — rendered as a sibling of the POS Modal
+          (not nested) so the focus traps don't overlap. The outer Modal stays
+          mounted behind it; the confirmation's own focus trap takes over. */}
+      <ConfirmDialog
+        open={showPosCloseConfirm}
+        onClose={handlePosCancelClose}
+        onConfirm={handlePosConfirmClose}
+        title={tSales("closeSaleTitle")}
+        description={tSales("closeSaleDescription")}
+        confirmLabel={tSales("leaveWithoutSaving")}
+        cancelLabel={tSales("continueEditing")}
+        tone="danger"
+      />
     </GlobalMovementContext.Provider>
   );
 }

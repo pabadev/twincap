@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useT, useLocale } from "../../../../i18n/client";
 import type { SerializedSale } from "../../../../core/domain/sale";
 import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
@@ -14,6 +14,7 @@ import { formatAmount, formatDate } from "../../../../lib/format";
 import { EmptyState } from "../../../../components/ui/empty-state";
 import { Icon } from "../../../../components/ui/icon";
 import { Modal } from "../../../../components/ui/modal";
+import { ConfirmDialog } from "../../../../components/ui/confirm-dialog";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Select } from "../../../../components/ui/select";
@@ -42,6 +43,26 @@ export function SaleList({
   creditInitialPaymentBySaleId,
 }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
+  // C12-1: close-guard for the sale form modal — unsaved changes trigger a
+  // confirmation instead of silent discard.
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const saleDirtyRef = useRef(false);
+  const closeSaleForm = useCallback(() => setShowForm(false), []);
+  const handleSaleRequestClose = useCallback(() => {
+    if (showCloseConfirm) return;
+    if (saleDirtyRef.current) {
+      setShowCloseConfirm(true);
+    } else {
+      closeSaleForm();
+    }
+  }, [showCloseConfirm, closeSaleForm]);
+  const handleConfirmClose = useCallback(() => {
+    setShowCloseConfirm(false);
+    closeSaleForm();
+  }, [closeSaleForm]);
+  const handleCancelClose = useCallback(() => {
+    setShowCloseConfirm(false);
+  }, []);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
@@ -124,14 +145,36 @@ export function SaleList({
         </div>
       </div>
 
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={t("createSale")}>
+      <Modal
+        open={showForm}
+        onClose={closeSaleForm}
+        onRequestClose={handleSaleRequestClose}
+        title={t("createSale")}
+        size="xl"
+        variant="workspace"
+      >
         <SaleForm
           catalogItems={catalogItems}
           accounts={accounts}
           clients={clients}
-          onDone={() => setShowForm(false)}
+          onDone={closeSaleForm}
+          onCancel={handleSaleRequestClose}
+          dirtyRef={saleDirtyRef}
         />
       </Modal>
+
+      {/* C12-1: close confirmation — sibling of the sale Modal to avoid
+          overlapping focus traps. */}
+      <ConfirmDialog
+        open={showCloseConfirm}
+        onClose={handleCancelClose}
+        onConfirm={handleConfirmClose}
+        title={t("closeSaleTitle")}
+        description={t("closeSaleDescription")}
+        confirmLabel={t("leaveWithoutSaving")}
+        cancelLabel={t("continueEditing")}
+        tone="danger"
+      />
 
       <Modal open={!!abonoSaleId} onClose={() => setAbonoSaleId(null)} title={t("addPayment")}>
         {abonoSaleId && (

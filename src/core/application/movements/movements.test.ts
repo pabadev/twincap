@@ -1,22 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMovement } from './create-movement';
-import { updateMovement } from './update-movement';
-import { deleteMovement } from './delete-movement';
-import { listMovements } from './list-movements';
-import { Movement } from '../../domain/movement';
-import { Category } from '../../domain/category';
-import { Account } from '../../domain/account';
-import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError, ConflictError, MOVEMENT_MODIFIED_MSG } from '../../domain/errors';
-import type { MovementRepository, CategoryRepository, AccountRepository } from '../../domain/repositories';
-import type { TransactionHandle } from '../../domain/transaction';
-import type { IdGenerator, UnitOfWork } from '../ports';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createMovement } from "./create-movement";
+import { updateMovement } from "./update-movement";
+import { deleteMovement } from "./delete-movement";
+import { listMovements } from "./list-movements";
+import { Movement } from "../../domain/movement";
+import { Category } from "../../domain/category";
+import { Account } from "../../domain/account";
+import { Money } from "../../domain/money";
+import {
+  NotFoundError,
+  ValidationError,
+  ConflictError,
+  MOVEMENT_MODIFIED_MSG,
+} from "../../domain/errors";
+import type {
+  MovementRepository,
+  CategoryRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { TransactionHandle } from "../../domain/transaction";
+import type { IdGenerator, UnitOfWork } from "../ports";
 
 // ─── Fake factories ────────────────────────────────────────────────
 
 let idCounter = 0;
 
-function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[] } {
+function fakeMovementRepo(
+  overrides: Partial<MovementRepository> = {},
+): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[] } {
   const created: Movement[] = [];
   const updated: Movement[] = [];
   const deleted: string[] = [];
@@ -42,6 +53,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -49,14 +61,19 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
   };
 }
 
-function fakeCategoryRepo(overrides: Partial<CategoryRepository> = {}): CategoryRepository & { categories: Category[] } {
+function fakeCategoryRepo(
+  overrides: Partial<CategoryRepository> = {},
+): CategoryRepository & { categories: Category[] } {
   const categories: Category[] = [];
   return {
     categories,
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByNameAndType: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockImplementation(async (cat: Category) => { categories.push(cat); return cat; }),
+    create: vi.fn().mockImplementation(async (cat: Category) => {
+      categories.push(cat);
+      return cat;
+    }),
     update: vi.fn().mockImplementation(async (cat: Category) => cat),
     delete: vi.fn().mockResolvedValue(undefined),
     touch: vi.fn().mockResolvedValue(true),
@@ -71,29 +88,30 @@ function fakeIdGen(): IdGenerator {
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
-function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}): Category {
+function makeCategory(
+  overrides: Partial<ConstructorParameters<typeof Category>[0]> = {},
+): Category {
   return new Category({
-    id: 'cat-1',
-    workspaceId: 'user-1',
-    name: 'Salary',
-    type: 'income',
+    id: "cat-1",
+    workspaceId: "user-1",
+    name: "Salary",
+    type: "income",
     createdAt: new Date(),
     ...overrides,
   });
 }
 
-function fakeAccountRepo(
-  accounts: Account[] = [],
-): AccountRepository {
+function fakeAccountRepo(accounts: Account[] = []): AccountRepository {
   return {
-    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
-      accounts.find((a) => a.id === id) ?? null,
-    ),
+    findById: vi
+      .fn()
+      .mockImplementation(
+        async (_userId: string, id: string) => accounts.find((a) => a.id === id) ?? null,
+      ),
     findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
@@ -104,29 +122,29 @@ function fakeAccountRepo(
   };
 }
 
-function makeAccount(
-  id: string,
-): Account {
+function makeAccount(id: string): Account {
   return new Account({
     id,
-    workspaceId: 'user-1',
+    workspaceId: "user-1",
     name: `Account ${id}`,
-    currency: 'COP',
+    currency: "COP",
     isFixed: false,
     createdAt: new Date(),
   });
 }
 
-function makeMovement(overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {}): Movement {
+function makeMovement(
+  overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
+): Movement {
   return new Movement({
-    id: 'mov-1',
-    workspaceId: 'user-1',
-    accountId: 'acc-1',
+    id: "mov-1",
+    workspaceId: "user-1",
+    accountId: "acc-1",
     category: makeCategory(),
-    type: 'income',
-    amount: new Money(100000, 'COP'),
+    type: "income",
+    amount: new Money(100000, "COP"),
     date: new Date(),
-    context: 'Personal',
+    context: "Personal",
     createdAt: new Date(),
     ...overrides,
   });
@@ -138,27 +156,27 @@ beforeEach(() => {
 
 // ─── Create ────────────────────────────────────────────────────────
 
-describe('createMovement', () => {
-  it('creates a manual income movement', async () => {
+describe("createMovement", () => {
+  it("creates a manual income movement", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const movement = await createMovement(
-      'user-1',
+      "user-1",
       {
-        accountId: 'acc-1',
-        type: 'income',
+        accountId: "acc-1",
+        type: "income",
         amount: 50000,
-        currency: 'COP',
-        date: new Date('2025-01-15'),
-        note: 'Salary',
-        categoryId: 'cat-1',
-        context: 'Personal',
+        currency: "COP",
+        date: new Date("2025-01-15"),
+        note: "Salary",
+        categoryId: "cat-1",
+        context: "Personal",
       },
       movementRepo,
       categoryRepo,
@@ -168,31 +186,31 @@ describe('createMovement', () => {
     );
 
     expect(movement.amount.amount).toBe(50000);
-    expect(movement.type).toBe('income');
+    expect(movement.type).toBe("income");
     expect(movement.signedAmount).toBe(50000);
-    expect(movement.categoryId).toBe('cat-1');
-    expect(movement.context).toBe('Personal');
+    expect(movement.categoryId).toBe("cat-1");
+    expect(movement.context).toBe("Personal");
     expect(movementRepo.created).toHaveLength(1);
   });
 
-  it('creates a manual expense movement', async () => {
-    const category = makeCategory({ id: 'cat-2', name: 'Food', type: 'expense' });
+  it("creates a manual expense movement", async () => {
+    const category = makeCategory({ id: "cat-2", name: "Food", type: "expense" });
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const movement = await createMovement(
-      'user-1',
+      "user-1",
       {
-        accountId: 'acc-1',
-        type: 'expense',
+        accountId: "acc-1",
+        type: "expense",
         amount: 25000,
-        currency: 'COP',
+        currency: "COP",
         date: new Date(),
-        categoryId: 'cat-2',
+        categoryId: "cat-2",
       },
       movementRepo,
       categoryRepo,
@@ -202,29 +220,29 @@ describe('createMovement', () => {
     );
 
     expect(movement.amount.amount).toBe(25000);
-    expect(movement.type).toBe('expense');
+    expect(movement.type).toBe("expense");
     expect(movement.signedAmount).toBe(-25000);
   });
 
-  it('accepts context from the form input', async () => {
+  it("accepts context from the form input", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const movement = await createMovement(
-      'user-1',
+      "user-1",
       {
-        accountId: 'acc-1',
-        type: 'income',
+        accountId: "acc-1",
+        type: "income",
         amount: 50000,
-        currency: 'COP',
+        currency: "COP",
         date: new Date(),
-        categoryId: 'cat-1',
-        context: 'Business',
+        categoryId: "cat-1",
+        context: "Business",
       },
       movementRepo,
       categoryRepo,
@@ -233,27 +251,27 @@ describe('createMovement', () => {
       fakeUow(),
     );
 
-    expect(movement.context).toBe('Business');
+    expect(movement.context).toBe("Business");
   });
 
-  it('allows undefined context for system-linked movements', async () => {
+  it("allows undefined context for system-linked movements", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const movement = await createMovement(
-      'user-1',
+      "user-1",
       {
-        accountId: 'acc-1',
-        type: 'income',
+        accountId: "acc-1",
+        type: "income",
         amount: 50000,
-        currency: 'COP',
+        currency: "COP",
         date: new Date(),
-        categoryId: 'cat-1',
+        categoryId: "cat-1",
       },
       movementRepo,
       categoryRepo,
@@ -265,7 +283,7 @@ describe('createMovement', () => {
     expect(movement.context).toBeUndefined();
   });
 
-  it('throws NotFoundError when the account does not exist (D3 tenant guard)', async () => {
+  it("throws NotFoundError when the account does not exist (D3 tenant guard)", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
@@ -276,14 +294,14 @@ describe('createMovement', () => {
 
     await expect(
       createMovement(
-        'user-1',
+        "user-1",
         {
-          accountId: 'acc-missing',
-          type: 'income',
+          accountId: "acc-missing",
+          type: "income",
           amount: 50000,
-          currency: 'COP',
+          currency: "COP",
           date: new Date(),
-          categoryId: 'cat-1',
+          categoryId: "cat-1",
         },
         movementRepo,
         categoryRepo,
@@ -294,25 +312,25 @@ describe('createMovement', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('throws ValidationError when amount is 0', async () => {
+  it("throws ValidationError when amount is 0", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createMovement(
-        'user-1',
+        "user-1",
         {
-          accountId: 'acc-1',
-          type: 'income',
+          accountId: "acc-1",
+          type: "income",
           amount: 0,
-          currency: 'COP',
+          currency: "COP",
           date: new Date(),
-          categoryId: 'cat-1',
+          categoryId: "cat-1",
         },
         movementRepo,
         categoryRepo,
@@ -323,25 +341,25 @@ describe('createMovement', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('throws ValidationError when category type does not match movement type (MOV-2)', async () => {
-    const expenseCategory = makeCategory({ id: 'cat-exp', name: 'Food', type: 'expense' });
+  it("throws ValidationError when category type does not match movement type (MOV-2)", async () => {
+    const expenseCategory = makeCategory({ id: "cat-exp", name: "Food", type: "expense" });
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(expenseCategory),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createMovement(
-        'user-1',
+        "user-1",
         {
-          accountId: 'acc-1',
-          type: 'income', // income movement with expense category
+          accountId: "acc-1",
+          type: "income", // income movement with expense category
           amount: 50000,
-          currency: 'COP',
+          currency: "COP",
           date: new Date(),
-          categoryId: 'cat-exp',
+          categoryId: "cat-exp",
         },
         movementRepo,
         categoryRepo,
@@ -352,24 +370,24 @@ describe('createMovement', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('throws ValidationError when category not found', async () => {
+  it("throws ValidationError when category not found", async () => {
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createMovement(
-        'user-1',
+        "user-1",
         {
-          accountId: 'acc-1',
-          type: 'income',
+          accountId: "acc-1",
+          type: "income",
           amount: 50000,
-          currency: 'COP',
+          currency: "COP",
           date: new Date(),
-          categoryId: 'missing',
+          categoryId: "missing",
         },
         movementRepo,
         categoryRepo,
@@ -380,7 +398,7 @@ describe('createMovement', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('touches the category before inserting (R15.3 §9)', async () => {
+  it("touches the category before inserting (R15.3 §9)", async () => {
     const category = makeCategory();
     const touchCategory = vi.fn().mockResolvedValue(true);
     const movementRepo = fakeMovementRepo();
@@ -388,18 +406,18 @@ describe('createMovement', () => {
       findById: vi.fn().mockResolvedValue(category),
       touch: touchCategory,
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await createMovement(
-      'user-1',
+      "user-1",
       {
-        accountId: 'acc-1',
-        type: 'income',
+        accountId: "acc-1",
+        type: "income",
         amount: 50000,
-        currency: 'COP',
+        currency: "COP",
         date: new Date(),
-        categoryId: 'cat-1',
+        categoryId: "cat-1",
       },
       movementRepo,
       categoryRepo,
@@ -410,30 +428,30 @@ describe('createMovement', () => {
 
     // Shared-document write BEFORE the insert: the category is the conflict
     // point against a concurrent deleteCategory.
-    expect(touchCategory).toHaveBeenCalledWith('user-1', 'cat-1', expect.anything());
+    expect(touchCategory).toHaveBeenCalledWith("user-1", "cat-1", expect.anything());
     expect(movementRepo.created).toHaveLength(1);
   });
 
-  it('throws ValidationError when the category was deleted concurrently (touch fails, R15.3 §9)', async () => {
+  it("throws ValidationError when the category was deleted concurrently (touch fails, R15.3 §9)", async () => {
     const category = makeCategory();
     const movementRepo = fakeMovementRepo();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
       touch: vi.fn().mockResolvedValue(false),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createMovement(
-        'user-1',
+        "user-1",
         {
-          accountId: 'acc-1',
-          type: 'income',
+          accountId: "acc-1",
+          type: "income",
           amount: 50000,
-          currency: 'COP',
+          currency: "COP",
           date: new Date(),
-          categoryId: 'cat-1',
+          categoryId: "cat-1",
         },
         movementRepo,
         categoryRepo,
@@ -448,8 +466,8 @@ describe('createMovement', () => {
 
 // ─── Update ────────────────────────────────────────────────────────
 
-describe('updateMovement', () => {
-  it('updates amount and recalculates signedAmount', async () => {
+describe("updateMovement", () => {
+  it("updates amount and recalculates signedAmount", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -460,8 +478,8 @@ describe('updateMovement', () => {
     });
 
     const updated = await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', amount: 75000 },
+      "user-1",
+      { movementId: "mov-1", amount: 75000 },
       movementRepo,
       categoryRepo,
       fakeAccountRepo(),
@@ -473,7 +491,7 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(1);
   });
 
-  it('R15.3.2 P2-6: amount=0 is rejected instead of silently keeping the old amount (0 is falsy)', async () => {
+  it("R15.3.2 P2-6: amount=0 is rejected instead of silently keeping the old amount (0 is falsy)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -485,18 +503,18 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', amount: 0 },
+        "user-1",
+        { movementId: "mov-1", amount: 0 },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
         fakeUow(),
       ),
-    ).rejects.toThrow('Amount must be greater than zero');
+    ).rejects.toThrow("Amount must be greater than zero");
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('R15.3.2 P2-6: negative amount is rejected', async () => {
+  it("R15.3.2 P2-6: negative amount is rejected", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -508,18 +526,18 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', amount: -100 },
+        "user-1",
+        { movementId: "mov-1", amount: -100 },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
         fakeUow(),
       ),
-    ).rejects.toThrow('Amount must be greater than zero');
+    ).rejects.toThrow("Amount must be greater than zero");
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('updates note', async () => {
+  it("updates note", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -530,18 +548,18 @@ describe('updateMovement', () => {
     });
 
     const updated = await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', note: 'Updated note' },
+      "user-1",
+      { movementId: "mov-1", note: "Updated note" },
       movementRepo,
       categoryRepo,
       fakeAccountRepo(),
       fakeUow(),
     );
 
-    expect(updated.note).toBe('Updated note');
+    expect(updated.note).toBe("Updated note");
   });
 
-  it('throws NotFoundError when movement does not exist', async () => {
+  it("throws NotFoundError when movement does not exist", async () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
@@ -549,8 +567,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'missing', amount: 50000 },
+        "user-1",
+        { movementId: "missing", amount: 50000 },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
@@ -559,9 +577,9 @@ describe('updateMovement', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('throws ValidationError for system-linked movements (MOV-5)', async () => {
+  it("throws ValidationError for system-linked movements (MOV-5)", async () => {
     const existing = makeMovement({
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
@@ -570,8 +588,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', amount: 50000 },
+        "user-1",
+        { movementId: "mov-1", amount: 50000 },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
@@ -580,9 +598,9 @@ describe('updateMovement', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('throws ValidationError when new category type does not match (MOV-2)', async () => {
+  it("throws ValidationError when new category type does not match (MOV-2)", async () => {
     const existing = makeMovement();
-    const expenseCategory = makeCategory({ id: 'cat-exp', type: 'expense' });
+    const expenseCategory = makeCategory({ id: "cat-exp", type: "expense" });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
@@ -592,8 +610,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', categoryId: 'cat-exp' },
+        "user-1",
+        { movementId: "mov-1", categoryId: "cat-exp" },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
@@ -602,7 +620,7 @@ describe('updateMovement', () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it('throws ValidationError when moving to an account with a different currency (ACC-1)', async () => {
+  it("throws ValidationError when moving to an account with a different currency (ACC-1)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -613,10 +631,10 @@ describe('updateMovement', () => {
     });
     const accountRepo = fakeAccountRepo([
       new Account({
-        id: 'acc-usd',
-        workspaceId: 'user-1',
-        name: 'USD Account',
-        currency: 'USD',
+        id: "acc-usd",
+        workspaceId: "user-1",
+        name: "USD Account",
+        currency: "USD",
         isFixed: false,
         createdAt: new Date(),
       }),
@@ -624,8 +642,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', accountId: 'acc-usd' },
+        "user-1",
+        { movementId: "mov-1", accountId: "acc-usd" },
         movementRepo,
         categoryRepo,
         accountRepo,
@@ -635,7 +653,7 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('throws NotFoundError when the new account does not exist (D3)', async () => {
+  it("throws NotFoundError when the new account does not exist (D3)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -648,8 +666,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', accountId: 'acc-missing' },
+        "user-1",
+        { movementId: "mov-1", accountId: "acc-missing" },
         movementRepo,
         categoryRepo,
         accountRepo,
@@ -659,7 +677,7 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('moves a movement to another account and touches the new account (R15.3 §7)', async () => {
+  it("moves a movement to another account and touches the new account (R15.3 §7)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const touchAccount = vi.fn().mockResolvedValue(true);
@@ -670,27 +688,27 @@ describe('updateMovement', () => {
       findById: vi.fn().mockResolvedValue(category),
     });
     const accountRepo = {
-      ...fakeAccountRepo([makeAccount('acc-2')]),
+      ...fakeAccountRepo([makeAccount("acc-2")]),
       touch: touchAccount,
     };
 
     const updated = await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', accountId: 'acc-2' },
+      "user-1",
+      { movementId: "mov-1", accountId: "acc-2" },
       movementRepo,
       categoryRepo,
       accountRepo,
       fakeUow(),
     );
 
-    expect(updated.accountId).toBe('acc-2');
+    expect(updated.accountId).toBe("acc-2");
     // Shared-document write BEFORE the movement update: the account is the
     // conflict point against a concurrent deleteAccount.
-    expect(touchAccount).toHaveBeenCalledWith('user-1', 'acc-2', expect.anything());
+    expect(touchAccount).toHaveBeenCalledWith("user-1", "acc-2", expect.anything());
     expect(movementRepo.updated).toHaveLength(1);
   });
 
-  it('throws NotFoundError when the new account was deleted concurrently (touch fails, R15.3 §7)', async () => {
+  it("throws NotFoundError when the new account was deleted concurrently (touch fails, R15.3 §7)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -702,14 +720,14 @@ describe('updateMovement', () => {
     // The account exists at read time but is gone when touched (the delete
     // committed in between) — the conflict point must fail the edit.
     const accountRepo = {
-      ...fakeAccountRepo([makeAccount('acc-2')]),
+      ...fakeAccountRepo([makeAccount("acc-2")]),
       touch: vi.fn().mockResolvedValue(false),
     };
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', accountId: 'acc-2' },
+        "user-1",
+        { movementId: "mov-1", accountId: "acc-2" },
         movementRepo,
         categoryRepo,
         accountRepo,
@@ -719,7 +737,7 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('touches the current account on amount-only edits (R15.3 §7)', async () => {
+  it("touches the current account on amount-only edits (R15.3 §7)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const touchAccount = vi.fn().mockResolvedValue(true);
@@ -730,13 +748,13 @@ describe('updateMovement', () => {
       findById: vi.fn().mockResolvedValue(category),
     });
     const accountRepo = {
-      ...fakeAccountRepo([makeAccount('acc-1')]),
+      ...fakeAccountRepo([makeAccount("acc-1")]),
       touch: touchAccount,
     };
 
     await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', amount: 5000 },
+      "user-1",
+      { movementId: "mov-1", amount: 5000 },
       movementRepo,
       categoryRepo,
       accountRepo,
@@ -744,13 +762,13 @@ describe('updateMovement', () => {
     );
 
     // The current account's balance changes — it is the conflict point.
-    expect(touchAccount).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(touchAccount).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
     expect(movementRepo.updated).toHaveLength(1);
   });
 
-  it('touches the new category when reassigning (R15.3 §8)', async () => {
+  it("touches the new category when reassigning (R15.3 §8)", async () => {
     const existing = makeMovement();
-    const categoryB = makeCategory({ id: 'cat-b' });
+    const categoryB = makeCategory({ id: "cat-b" });
     const touchCategory = vi.fn().mockResolvedValue(true);
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
@@ -761,8 +779,8 @@ describe('updateMovement', () => {
     });
 
     await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', categoryId: 'cat-b' },
+      "user-1",
+      { movementId: "mov-1", categoryId: "cat-b" },
       movementRepo,
       categoryRepo,
       fakeAccountRepo(),
@@ -771,13 +789,13 @@ describe('updateMovement', () => {
 
     // Shared-document write BEFORE the movement update: the category is the
     // conflict point against a concurrent deleteCategory.
-    expect(touchCategory).toHaveBeenCalledWith('user-1', 'cat-b', expect.anything());
+    expect(touchCategory).toHaveBeenCalledWith("user-1", "cat-b", expect.anything());
     expect(movementRepo.updated).toHaveLength(1);
   });
 
-  it('throws NotFoundError when the new category was deleted concurrently (touch fails, R15.3 §8)', async () => {
+  it("throws NotFoundError when the new category was deleted concurrently (touch fails, R15.3 §8)", async () => {
     const existing = makeMovement();
-    const categoryB = makeCategory({ id: 'cat-b' });
+    const categoryB = makeCategory({ id: "cat-b" });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
@@ -788,8 +806,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', categoryId: 'cat-b' },
+        "user-1",
+        { movementId: "mov-1", categoryId: "cat-b" },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
@@ -799,9 +817,9 @@ describe('updateMovement', () => {
     expect(movementRepo.updated).toHaveLength(0);
   });
 
-  it('touches both new account and new category when changing both (R15.3 §7/§8)', async () => {
+  it("touches both new account and new category when changing both (R15.3 §7/§8)", async () => {
     const existing = makeMovement();
-    const categoryB = makeCategory({ id: 'cat-b' });
+    const categoryB = makeCategory({ id: "cat-b" });
     const touchAccount = vi.fn().mockResolvedValue(true);
     const touchCategory = vi.fn().mockResolvedValue(true);
     const movementRepo = fakeMovementRepo({
@@ -812,26 +830,26 @@ describe('updateMovement', () => {
       touch: touchCategory,
     });
     const accountRepo = {
-      ...fakeAccountRepo([makeAccount('acc-2')]),
+      ...fakeAccountRepo([makeAccount("acc-2")]),
       touch: touchAccount,
     };
 
     const updated = await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', accountId: 'acc-2', categoryId: 'cat-b' },
+      "user-1",
+      { movementId: "mov-1", accountId: "acc-2", categoryId: "cat-b" },
       movementRepo,
       categoryRepo,
       accountRepo,
       fakeUow(),
     );
 
-    expect(updated.accountId).toBe('acc-2');
-    expect(touchAccount).toHaveBeenCalledWith('user-1', 'acc-2', expect.anything());
-    expect(touchCategory).toHaveBeenCalledWith('user-1', 'cat-b', expect.anything());
+    expect(updated.accountId).toBe("acc-2");
+    expect(touchAccount).toHaveBeenCalledWith("user-1", "acc-2", expect.anything());
+    expect(touchCategory).toHaveBeenCalledWith("user-1", "cat-b", expect.anything());
     expect(movementRepo.updated).toHaveLength(1);
   });
 
-  it('does not touch account or category on cosmetic-only edits (R15.3 §7/§8)', async () => {
+  it("does not touch account or category on cosmetic-only edits (R15.3 §7/§8)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -841,13 +859,13 @@ describe('updateMovement', () => {
       findById: vi.fn().mockResolvedValue(category),
     });
     const accountRepo = {
-      ...fakeAccountRepo([makeAccount('acc-1')]),
+      ...fakeAccountRepo([makeAccount("acc-1")]),
       touch: vi.fn().mockResolvedValue(true),
     };
 
     await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', note: 'Just a note' },
+      "user-1",
+      { movementId: "mov-1", note: "Just a note" },
       movementRepo,
       categoryRepo,
       accountRepo,
@@ -861,7 +879,7 @@ describe('updateMovement', () => {
 
   // ── Optimistic concurrency (R15.3.1 P2) ──────────────────────────
 
-  it('CAS-updates against the version the client read (R15.3.1 P2)', async () => {
+  it("CAS-updates against the version the client read (R15.3.1 P2)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -872,8 +890,8 @@ describe('updateMovement', () => {
     });
 
     await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', note: 'Edited note', version: 3 },
+      "user-1",
+      { movementId: "mov-1", note: "Edited note", version: 3 },
       movementRepo,
       categoryRepo,
       fakeAccountRepo(),
@@ -882,15 +900,11 @@ describe('updateMovement', () => {
 
     // The client version must reach the repository as the CAS expectedVersion.
     const updateSpy = movementRepo.update as unknown as ReturnType<typeof vi.fn>;
-    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [
-      Movement,
-      unknown,
-      number,
-    ];
+    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [Movement, unknown, number];
     expect(expectedVersion).toBe(3);
   });
 
-  it('falls back to the freshly-read version when the client sends none (R15.3.1 P2)', async () => {
+  it("falls back to the freshly-read version when the client sends none (R15.3.1 P2)", async () => {
     const existing = makeMovement({ version: 7 });
     const category = makeCategory();
     const movementRepo = fakeMovementRepo({
@@ -901,8 +915,8 @@ describe('updateMovement', () => {
     });
 
     await updateMovement(
-      'user-1',
-      { movementId: 'mov-1', note: 'Edited note' },
+      "user-1",
+      { movementId: "mov-1", note: "Edited note" },
       movementRepo,
       categoryRepo,
       fakeAccountRepo(),
@@ -911,15 +925,11 @@ describe('updateMovement', () => {
 
     // No client version → the version just loaded guards the in-flight write.
     const updateSpy = movementRepo.update as unknown as ReturnType<typeof vi.fn>;
-    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [
-      Movement,
-      unknown,
-      number,
-    ];
+    const [, , expectedVersion] = updateSpy.mock.calls[0] as unknown as [Movement, unknown, number];
     expect(expectedVersion).toBe(7);
   });
 
-  it('propagates ConflictError when the movement was modified concurrently (R15.3.1 P2)', async () => {
+  it("propagates ConflictError when the movement was modified concurrently (R15.3.1 P2)", async () => {
     const existing = makeMovement();
     const category = makeCategory();
     // The repository's CAS rejects the stale write (the client read an older
@@ -935,8 +945,8 @@ describe('updateMovement', () => {
 
     await expect(
       updateMovement(
-        'user-1',
-        { movementId: 'mov-1', note: 'Stale edit', version: 0 },
+        "user-1",
+        { movementId: "mov-1", note: "Stale edit", version: 0 },
         movementRepo,
         categoryRepo,
         fakeAccountRepo(),
@@ -949,36 +959,36 @@ describe('updateMovement', () => {
 
 // ─── Delete ────────────────────────────────────────────────────────
 
-describe('deleteMovement', () => {
-  it('deletes a manual movement and touches its account (R15.3.2)', async () => {
+describe("deleteMovement", () => {
+  it("deletes a manual movement and touches its account (R15.3.2)", async () => {
     const existing = makeMovement();
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
     const accountRepo = fakeAccountRepo();
 
-    await deleteMovement('user-1', 'mov-1', movementRepo, accountRepo, fakeUow());
+    await deleteMovement("user-1", "mov-1", movementRepo, accountRepo, fakeUow());
 
-    expect(movementRepo.deleted).toContain('mov-1');
-    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(movementRepo.deleted).toContain("mov-1");
+    expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
     expect(accountRepo.touch).toHaveBeenCalledTimes(1);
   });
 
-  it('throws NotFoundError when movement does not exist', async () => {
+  it("throws NotFoundError when movement does not exist", async () => {
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
     const accountRepo = fakeAccountRepo();
 
     await expect(
-      deleteMovement('user-1', 'missing', movementRepo, accountRepo, fakeUow()),
+      deleteMovement("user-1", "missing", movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
     expect(accountRepo.touch).not.toHaveBeenCalled();
   });
 
-  it('throws ValidationError for system-linked movements (MOV-5)', async () => {
+  it("throws ValidationError for system-linked movements (MOV-5)", async () => {
     const existing = makeMovement({
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
     const movementRepo = fakeMovementRepo({
       findById: vi.fn().mockResolvedValue(existing),
@@ -986,7 +996,7 @@ describe('deleteMovement', () => {
     const accountRepo = fakeAccountRepo();
 
     await expect(
-      deleteMovement('user-1', 'mov-1', movementRepo, accountRepo, fakeUow()),
+      deleteMovement("user-1", "mov-1", movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(ValidationError);
     expect(accountRepo.touch).not.toHaveBeenCalled();
   });
@@ -994,25 +1004,25 @@ describe('deleteMovement', () => {
 
 // ─── List ──────────────────────────────────────────────────────────
 
-describe('listMovements', () => {
-  it('returns movements for a specific account', async () => {
-    const movements = [makeMovement({ id: 'm1' }), makeMovement({ id: 'm2' })];
+describe("listMovements", () => {
+  it("returns movements for a specific account", async () => {
+    const movements = [makeMovement({ id: "m1" }), makeMovement({ id: "m2" })];
     const movementRepo = fakeMovementRepo({
       findByAccountId: vi.fn().mockResolvedValue(movements),
     });
 
-    const result = await listMovements('user-1', 'acc-1', movementRepo);
+    const result = await listMovements("user-1", "acc-1", movementRepo);
 
     expect(result).toHaveLength(2);
-    expect(movementRepo.findByAccountId).toHaveBeenCalledWith('user-1', 'acc-1');
+    expect(movementRepo.findByAccountId).toHaveBeenCalledWith("user-1", "acc-1");
   });
 
-  it('returns empty array when account has no movements', async () => {
+  it("returns empty array when account has no movements", async () => {
     const movementRepo = fakeMovementRepo({
       findByAccountId: vi.fn().mockResolvedValue([]),
     });
 
-    const result = await listMovements('user-1', 'acc-1', movementRepo);
+    const result = await listMovements("user-1", "acc-1", movementRepo);
 
     expect(result).toHaveLength(0);
   });

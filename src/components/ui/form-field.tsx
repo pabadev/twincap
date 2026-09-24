@@ -17,6 +17,8 @@ interface FormFieldProps {
   error?: string;
   /** Neutral helper text announced via aria-describedby. */
   hint?: string;
+  /** Extra classes for the hint paragraph (e.g. warning tint for credit-mode hint). */
+  hintClassName?: string;
   /** Default true; false → decorative aria-hidden column header (line rows 2+). */
   showLabel?: boolean;
   /** Extra classes for the label element (e.g. whitespace-nowrap for tight line rows). */
@@ -32,6 +34,7 @@ export function FormField({
   disabled,
   error,
   hint,
+  hintClassName,
   showLabel = true,
   labelClassName,
   children,
@@ -80,7 +83,14 @@ export function FormField({
       )}
       {control}
       {hint && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p
+          id={`${id}-hint`}
+          className={
+            hintClassName
+              ? `mt-1 text-xs ${hintClassName}`
+              : "mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+          }
+        >
           {hint}
         </p>
       )}

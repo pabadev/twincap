@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCategory } from './create-category';
-import { updateCategory } from './update-category';
-import { deleteCategory } from './delete-category';
-import { listCategories } from './list-categories';
-import { Category } from '../../domain/category';
-import { NotFoundError, ConflictError } from '../../domain/errors';
-import type { CategoryRepository, MovementRepository } from '../../domain/repositories';
-import type { TransactionHandle } from '../../domain/transaction';
-import type { IdGenerator, UnitOfWork } from '../ports';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createCategory } from "./create-category";
+import { updateCategory } from "./update-category";
+import { deleteCategory } from "./delete-category";
+import { listCategories } from "./list-categories";
+import { Category } from "../../domain/category";
+import { NotFoundError, ConflictError } from "../../domain/errors";
+import type { CategoryRepository, MovementRepository } from "../../domain/repositories";
+import type { TransactionHandle } from "../../domain/transaction";
+import type { IdGenerator, UnitOfWork } from "../ports";
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -16,8 +16,7 @@ let idCounter = 0;
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
@@ -50,9 +49,7 @@ function fakeCategoryRepo(
   };
 }
 
-function fakeMovementRepo(
-  overrides: Partial<MovementRepository> = {},
-): MovementRepository {
+function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
@@ -64,6 +61,7 @@ function fakeMovementRepo(
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -75,12 +73,14 @@ function fakeIdGen(): IdGenerator {
   return { generate: () => `id-${++idCounter}` };
 }
 
-function makeCategory(overrides: Partial<ConstructorParameters<typeof Category>[0]> = {}): Category {
+function makeCategory(
+  overrides: Partial<ConstructorParameters<typeof Category>[0]> = {},
+): Category {
   return new Category({
-    id: 'cat-1',
-    workspaceId: 'user-1',
-    name: 'Salary',
-    type: 'income',
+    id: "cat-1",
+    workspaceId: "user-1",
+    name: "Salary",
+    type: "income",
     createdAt: new Date(),
     ...overrides,
   });
@@ -92,24 +92,24 @@ beforeEach(() => {
 
 // ─── Create ────────────────────────────────────────────────────────
 
-describe('createCategory', () => {
-  it('creates a category with the given name and type', async () => {
+describe("createCategory", () => {
+  it("creates a category with the given name and type", async () => {
     const categoryRepo = fakeCategoryRepo();
     const ids = fakeIdGen();
 
     const category = await createCategory(
-      'user-1',
-      { name: 'Salary', type: 'income' },
+      "user-1",
+      { name: "Salary", type: "income" },
       categoryRepo,
       ids,
     );
 
-    expect(category.name).toBe('Salary');
-    expect(category.type).toBe('income');
+    expect(category.name).toBe("Salary");
+    expect(category.type).toBe("income");
     expect(categoryRepo.created).toHaveLength(1);
   });
 
-  it('throws ConflictError on duplicate name+type', async () => {
+  it("throws ConflictError on duplicate name+type", async () => {
     const existing = makeCategory();
     const categoryRepo = fakeCategoryRepo({
       findByNameAndType: vi.fn().mockResolvedValue(existing),
@@ -117,86 +117,81 @@ describe('createCategory', () => {
     const ids = fakeIdGen();
 
     await expect(
-      createCategory(
-        'user-1',
-        { name: 'Salary', type: 'income' },
-        categoryRepo,
-        ids,
-      ),
+      createCategory("user-1", { name: "Salary", type: "income" }, categoryRepo, ids),
     ).rejects.toThrow(ConflictError);
   });
 
-  it('trims whitespace from name', async () => {
+  it("trims whitespace from name", async () => {
     const categoryRepo = fakeCategoryRepo();
     const ids = fakeIdGen();
 
     const category = await createCategory(
-      'user-1',
-      { name: '  Salary  ', type: 'income' },
+      "user-1",
+      { name: "  Salary  ", type: "income" },
       categoryRepo,
       ids,
     );
 
-    expect(category.name).toBe('Salary');
+    expect(category.name).toBe("Salary");
   });
 });
 
 // ─── Update ────────────────────────────────────────────────────────
 
-describe('updateCategory', () => {
-  it('updates the category name', async () => {
+describe("updateCategory", () => {
+  it("updates the category name", async () => {
     const existing = makeCategory();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
 
     const updated = await updateCategory(
-      'user-1',
-      { categoryId: 'cat-1', name: 'New Salary' },
+      "user-1",
+      { categoryId: "cat-1", name: "New Salary" },
       categoryRepo,
     );
 
-    expect(updated.name).toBe('New Salary');
-    expect(updated.type).toBe('income'); // type unchanged
+    expect(updated.name).toBe("New Salary");
+    expect(updated.type).toBe("income"); // type unchanged
     expect(categoryRepo.updated).toHaveLength(1);
   });
 
-  it('throws NotFoundError when category does not exist', async () => {
+  it("throws NotFoundError when category does not exist", async () => {
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
 
     await expect(
-      updateCategory('user-1', { categoryId: 'missing', name: 'X' }, categoryRepo),
+      updateCategory("user-1", { categoryId: "missing", name: "X" }, categoryRepo),
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('throws ConflictError on duplicate name+type', async () => {
+  it("throws ConflictError on duplicate name+type", async () => {
     const existing = makeCategory();
-    const duplicate = makeCategory({ id: 'cat-2', name: 'Freelance' });
+    const duplicate = makeCategory({ id: "cat-2", name: "Freelance" });
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(existing),
       findByNameAndType: vi.fn().mockResolvedValue(duplicate),
     });
 
     await expect(
-      updateCategory('user-1', { categoryId: 'cat-1', name: 'Freelance' }, categoryRepo),
+      updateCategory("user-1", { categoryId: "cat-1", name: "Freelance" }, categoryRepo),
     ).rejects.toThrow(ConflictError);
   });
 
-  it('allows keeping the same name without uniqueness check', async () => {
+  it("allows keeping the same name without uniqueness check", async () => {
     const existing = makeCategory();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
 
     const updated = await updateCategory(
-      'user-1',
-      { categoryId: 'cat-1', name: 'Salary' },
+      "user-1",
+      { categoryId: "cat-1", name: "Salary" },
       categoryRepo,
     );
 
-    expect(updated.name).toBe('Salary');
+    expect(updated.name).toBe("Salary");
     // findByNameAndType should not be called when name hasn't changed
     expect(categoryRepo.findByNameAndType).not.toHaveBeenCalled();
   });
@@ -204,20 +199,20 @@ describe('updateCategory', () => {
 
 // ─── Delete ────────────────────────────────────────────────────────
 
-describe('deleteCategory', () => {
-  it('deletes a category with no movements', async () => {
+describe("deleteCategory", () => {
+  it("deletes a category with no movements", async () => {
     const category = makeCategory();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
     });
     const movementRepo = fakeMovementRepo();
 
-    await deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo, fakeUow());
+    await deleteCategory("user-1", "cat-1", categoryRepo, movementRepo, fakeUow());
 
-    expect(categoryRepo.deleted).toContain('cat-1');
+    expect(categoryRepo.deleted).toContain("cat-1");
   });
 
-  it('throws ConflictError when category has movements', async () => {
+  it("throws ConflictError when category has movements", async () => {
     const category = makeCategory();
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(category),
@@ -227,37 +222,37 @@ describe('deleteCategory', () => {
     });
 
     await expect(
-      deleteCategory('user-1', 'cat-1', categoryRepo, movementRepo, fakeUow()),
+      deleteCategory("user-1", "cat-1", categoryRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
-  it('throws NotFoundError when category does not exist', async () => {
+  it("throws NotFoundError when category does not exist", async () => {
     const categoryRepo = fakeCategoryRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteCategory('user-1', 'missing', categoryRepo, movementRepo, fakeUow()),
+      deleteCategory("user-1", "missing", categoryRepo, movementRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 });
 
 // ─── List ──────────────────────────────────────────────────────────
 
-describe('listCategories', () => {
-  it('returns all categories for the user', async () => {
+describe("listCategories", () => {
+  it("returns all categories for the user", async () => {
     const categories = [
-      makeCategory({ id: 'c1', name: 'Salary' }),
-      makeCategory({ id: 'c2', name: 'Freelance' }),
+      makeCategory({ id: "c1", name: "Salary" }),
+      makeCategory({ id: "c2", name: "Freelance" }),
     ];
     const categoryRepo = fakeCategoryRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue(categories),
     });
 
-    const result = await listCategories('user-1', categoryRepo);
+    const result = await listCategories("user-1", categoryRepo);
 
     expect(result).toHaveLength(2);
-    expect(categoryRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
+    expect(categoryRepo.findByWorkspaceId).toHaveBeenCalledWith("user-1");
   });
 });

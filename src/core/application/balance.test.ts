@@ -18,6 +18,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: vi.fn().mockResolvedValue([]),
     findByWorkspaceIdForBalance: vi.fn().mockResolvedValue([]),
@@ -26,9 +27,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
 }
 
 /** Every parent repo resolves nothing by default → movements are orphans. */
-function fakeDeps(
-  overrides: Partial<LiveBalanceDeps> = {},
-): LiveBalanceDeps {
+function fakeDeps(overrides: Partial<LiveBalanceDeps> = {}): LiveBalanceDeps {
   return {
     transferRepo: { findById: vi.fn().mockResolvedValue(null) },
     creditReceivedRepo: { findById: vi.fn().mockResolvedValue(null) },
@@ -134,16 +133,20 @@ describe("getUserBalances", () => {
     });
     const deps = fakeDeps({
       transferRepo: {
-        findById: vi.fn().mockImplementation(async (_ws: string, id: string) =>
-          id === "tr-live" ? { id: "tr-live" } : null,
-        ),
+        findById: vi
+          .fn()
+          .mockImplementation(async (_ws: string, id: string) =>
+            id === "tr-live" ? { id: "tr-live" } : null,
+          ),
       },
       saleRepo: {
-        findById: vi.fn().mockImplementation(async (_ws: string, id: string) =>
-          id === "sale-live"
-            ? { id: "sale-live", accountId: "acc-2", date: new Date(), total: { amount: 50000 } }
-            : null,
-        ),
+        findById: vi
+          .fn()
+          .mockImplementation(async (_ws: string, id: string) =>
+            id === "sale-live"
+              ? { id: "sale-live", accountId: "acc-2", date: new Date(), total: { amount: 50000 } }
+              : null,
+          ),
       },
     });
 
@@ -178,12 +181,7 @@ describe("getUserBalances", () => {
       findByWorkspaceIdForBalance: vi.fn().mockResolvedValue(movements),
     });
 
-    const balances = await getUserBalances(
-      "user-1",
-      [{ id: "acc-1" }],
-      repo,
-      fakeDeps(),
-    );
+    const balances = await getUserBalances("user-1", [{ id: "acc-1" }], repo, fakeDeps());
 
     expect(balances.get("acc-1")).toBe(300);
     expect(balances.has("acc-ghost")).toBe(false);
@@ -223,8 +221,8 @@ describe("getUserBalances", () => {
       findByAccountIdForBalance: vi.fn().mockResolvedValue(movements),
     });
 
-    await expect(
-      computeAccountLiveBalance("user-1", "acc-1", repo, fakeDeps()),
-    ).rejects.toThrow(/unsafe minor-units value/);
+    await expect(computeAccountLiveBalance("user-1", "acc-1", repo, fakeDeps())).rejects.toThrow(
+      /unsafe minor-units value/,
+    );
   });
 });
