@@ -199,6 +199,9 @@
     "setInitialBalance": "Set Initial Balance",
     "setInitialBalanceDescription": "Set the balance this account starts with.",
     "balanceToSet": "Balance to set",
+    "correctInitialBalance": "Correct opening balance",
+    "correctInitialBalanceDescription": "Edit the opening balance of this account. Movement history is preserved and the change is recorded in the audit log.",
+    "newBalance": "New balance",
     "saving": "Saving...",
     "confirmDelete": "Delete this account? This cannot be undone.",
     "emptyTitle": "No accounts yet",
@@ -297,7 +300,9 @@
     "negativeBalanceTitle": "Insufficient balance in the account",
     "projectedNegativeWarning": "This expense will leave the account balance negative. You can continue if you want.",
     "setInitialBalanceTitle": "Confirm initial balance",
-    "setInitialBalanceDescription": "The account initial balance will be set to {amount}."
+    "setInitialBalanceDescription": "The account initial balance will be set to {amount}.",
+    "correctInitialBalanceTitle": "Confirm correction",
+    "correctInitialBalanceDescription": "The account opening balance will be corrected to {amount}. History is preserved."
   },
   "Transfers": {
     "title": "Transfers",
@@ -626,6 +631,7 @@
     "accountUpdated": "Account updated",
     "accountDeleted": "Account deleted",
     "initialBalanceSet": "Initial balance set",
+    "initialBalanceCorrected": "Opening balance corrected",
     "categoryCreated": "Category created",
     "categoryUpdated": "Category updated",
     "categoryDeleted": "Category deleted",

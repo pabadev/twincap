@@ -199,6 +199,9 @@
     "setInitialBalance": "Establecer saldo inicial",
     "setInitialBalanceDescription": "Asigna el saldo con el que inicia esta cuenta.",
     "balanceToSet": "Saldo a establecer",
+    "correctInitialBalance": "Corregir saldo inicial",
+    "correctInitialBalanceDescription": "Modifica el saldo inicial de esta cuenta. El historial de movimientos se conserva y el cambio queda registrado en la auditoría.",
+    "newBalance": "Nuevo saldo",
     "saving": "Guardando...",
     "confirmDelete": "¿Eliminar esta cuenta? Esta acción no se puede deshacer.",
     "emptyTitle": "No tienes cuentas aún",
@@ -297,7 +300,9 @@
     "negativeBalanceTitle": "Saldo insuficiente en la cuenta",
     "projectedNegativeWarning": "Este gasto dejará el saldo de la cuenta en negativo. Puedes continuar si lo deseas.",
     "setInitialBalanceTitle": "Confirmar saldo inicial",
-    "setInitialBalanceDescription": "Se fijará el saldo inicial de la cuenta en {amount}."
+    "setInitialBalanceDescription": "Se fijará el saldo inicial de la cuenta en {amount}.",
+    "correctInitialBalanceTitle": "Confirmar corrección",
+    "correctInitialBalanceDescription": "El saldo inicial de la cuenta se corregirá a {amount}. El historial se conserva."
   },
   "Transfers": {
     "title": "Transferencias",
@@ -626,6 +631,7 @@
     "accountUpdated": "Cuenta actualizada",
     "accountDeleted": "Cuenta eliminada",
     "initialBalanceSet": "Saldo inicial establecido",
+    "initialBalanceCorrected": "Saldo inicial corregido",
     "categoryCreated": "Categoría creada",
     "categoryUpdated": "Categoría actualizada",
     "categoryDeleted": "Categoría eliminada",

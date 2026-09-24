@@ -1,24 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createAccount } from './create-account';
-import { updateAccount } from './update-account';
-import { deleteAccount } from './delete-account';
-import { setInitialAccountBalance } from './set-initial-balance';
-import { listAccounts } from './list-accounts';
-import { Account } from '../../domain/account';
-import { Category } from '../../domain/category';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { openingCategory } from '../../domain/synthetic-categories';
-import { NotFoundError, ValidationError, ConflictError } from '../../domain/errors';
-import type { AccountRepository, MovementRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { TransactionHandle } from '../../domain/transaction';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createAccount } from "./create-account";
+import { updateAccount } from "./update-account";
+import { deleteAccount } from "./delete-account";
+import { setInitialAccountBalance } from "./set-initial-balance";
+import { correctInitialBalance } from "./correct-initial-balance";
+import { listAccounts } from "./list-accounts";
+import { Account } from "../../domain/account";
+import { Category } from "../../domain/category";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { openingCategory } from "../../domain/synthetic-categories";
+import { NotFoundError, ValidationError, ConflictError } from "../../domain/errors";
+import type { AccountRepository, MovementRepository } from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { TransactionHandle } from "../../domain/transaction";
 
 // ─── Fake factories ────────────────────────────────────────────────
 
 let idCounter = 0;
 
-function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRepository & { created: Account[]; deleted: string[] } {
+function fakeAccountRepo(
+  overrides: Partial<AccountRepository> = {},
+): AccountRepository & { created: Account[]; deleted: string[] } {
   const created: Account[] = [];
   const deleted: string[] = [];
   return {
@@ -41,7 +44,9 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
   };
 }
 
-function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository & { created: unknown[] } {
+function fakeMovementRepo(
+  overrides: Partial<MovementRepository> = {},
+): MovementRepository & { created: unknown[] } {
   const created: unknown[] = [];
   return {
     created,
@@ -58,6 +63,7 @@ function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): Movement
     deleteByRefId: vi.fn().mockResolvedValue(0),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -74,17 +80,16 @@ function fakeIdGen(): IdGenerator {
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
 function makeAccount(overrides: Partial<ConstructorParameters<typeof Account>[0]> = {}): Account {
   return new Account({
-    id: 'acc-1',
-    workspaceId: 'user-1',
-    name: 'My Account',
-    currency: 'COP',
+    id: "acc-1",
+    workspaceId: "user-1",
+    name: "My Account",
+    currency: "COP",
     isFixed: false,
     createdAt: new Date(),
     ...overrides,
@@ -95,18 +100,18 @@ function makeMovement(
   overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
 ): Movement {
   return new Movement({
-    id: 'mov-1',
-    workspaceId: 'user-1',
-    accountId: 'acc-1',
+    id: "mov-1",
+    workspaceId: "user-1",
+    accountId: "acc-1",
     category: new Category({
-      id: 'cat-1',
-      workspaceId: 'user-1',
-      name: 'Initial',
-      type: 'income',
+      id: "cat-1",
+      workspaceId: "user-1",
+      name: "Initial",
+      type: "income",
       createdAt: new Date(),
     }),
-    type: 'income',
-    amount: new Money(50000, 'COP'),
+    type: "income",
+    amount: new Money(50000, "COP"),
     date: new Date(),
     createdAt: new Date(),
     ...overrides,
@@ -119,36 +124,36 @@ beforeEach(() => {
 
 // ─── Create ────────────────────────────────────────────────────────
 
-describe('createAccount', () => {
-  it('creates an account with the given name and currency', async () => {
+describe("createAccount", () => {
+  it("creates an account with the given name and currency", async () => {
     const accountRepo = fakeAccountRepo();
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
     const account = await createAccount(
-      'user-1',
-      { name: 'Ahorros', currency: 'COP', initialBalance: 0 },
+      "user-1",
+      { name: "Ahorros", currency: "COP", initialBalance: 0 },
       accountRepo,
       movementRepo,
       ids,
       fakeUow(),
     );
 
-    expect(account.name).toBe('Ahorros');
-    expect(account.currency).toBe('COP');
+    expect(account.name).toBe("Ahorros");
+    expect(account.currency).toBe("COP");
     expect(account.isFixed).toBe(false);
     expect(accountRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('creates an opening movement when initialBalance > 0', async () => {
+  it("creates an opening movement when initialBalance > 0", async () => {
     const accountRepo = fakeAccountRepo();
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
     const account = await createAccount(
-      'user-1',
-      { name: 'Ahorros', currency: 'COP', initialBalance: 50000 },
+      "user-1",
+      { name: "Ahorros", currency: "COP", initialBalance: 50000 },
       accountRepo,
       movementRepo,
       ids,
@@ -158,20 +163,23 @@ describe('createAccount', () => {
     expect(accountRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(1);
 
-    const movement = movementRepo.created[0] as { type: string; link: { kind: string; refId: string } };
-    expect(movement.type).toBe('income');
-    expect(movement.link.kind).toBe('opening');
+    const movement = movementRepo.created[0] as {
+      type: string;
+      link: { kind: string; refId: string };
+    };
+    expect(movement.type).toBe("income");
+    expect(movement.link.kind).toBe("opening");
     expect(movement.link.refId).toBe(account.id);
   });
 
-  it('does not create a movement when initialBalance is 0', async () => {
+  it("does not create a movement when initialBalance is 0", async () => {
     const accountRepo = fakeAccountRepo();
     const movementRepo = fakeMovementRepo();
     const ids = fakeIdGen();
 
     await createAccount(
-      'user-1',
-      { name: 'Ahorros', currency: 'COP', initialBalance: 0 },
+      "user-1",
+      { name: "Ahorros", currency: "COP", initialBalance: 0 },
       accountRepo,
       movementRepo,
       ids,
@@ -181,23 +189,23 @@ describe('createAccount', () => {
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('propagates the opening-movement failure — real rollback replaces the R8 manual compensation (R15-F6)', async () => {
+  it("propagates the opening-movement failure — real rollback replaces the R8 manual compensation (R15-F6)", async () => {
     const accountRepo = fakeAccountRepo();
     const movementRepo = fakeMovementRepo({
-      create: vi.fn().mockRejectedValue(new Error('db down')),
+      create: vi.fn().mockRejectedValue(new Error("db down")),
     });
     const ids = fakeIdGen();
 
     await expect(
       createAccount(
-        'user-1',
-        { name: 'Ahorros', currency: 'COP', initialBalance: 50000 },
+        "user-1",
+        { name: "Ahorros", currency: "COP", initialBalance: 50000 },
         accountRepo,
         movementRepo,
         ids,
         fakeUow(),
       ),
-    ).rejects.toThrow('db down');
+    ).rejects.toThrow("db down");
 
     // R15-F6 removes the manual compensation (accountRepo.delete). The write
     // phase is now a transaction; the createAccount use case NO LONGER calls
@@ -210,60 +218,60 @@ describe('createAccount', () => {
 
 // ─── Update ────────────────────────────────────────────────────────
 
-describe('updateAccount', () => {
-  it('updates the account name', async () => {
+describe("updateAccount", () => {
+  it("updates the account name", async () => {
     const existing = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(existing),
     });
 
     const updated = await updateAccount(
-      'user-1',
-      { accountId: 'acc-1', name: 'New Name' },
+      "user-1",
+      { accountId: "acc-1", name: "New Name" },
       accountRepo,
     );
 
-    expect(updated.name).toBe('New Name');
+    expect(updated.name).toBe("New Name");
     expect(accountRepo.created.length + accountRepo.deleted.length).toBe(0);
   });
 
-  it('throws NotFoundError when account does not exist', async () => {
+  it("throws NotFoundError when account does not exist", async () => {
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
 
     await expect(
-      updateAccount('user-1', { accountId: 'missing', name: 'X' }, accountRepo),
+      updateAccount("user-1", { accountId: "missing", name: "X" }, accountRepo),
     ).rejects.toThrow(NotFoundError);
   });
 });
 
 // ─── Delete ────────────────────────────────────────────────────────
 
-describe('deleteAccount', () => {
-  it('deletes a non-fixed account with no references', async () => {
+describe("deleteAccount", () => {
+  it("deletes a non-fixed account with no references", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow());
+    await deleteAccount("user-1", "acc-1", accountRepo, fakeMovementRepo(), fakeUow());
 
-    expect(accountRepo.deleted).toContain('acc-1');
+    expect(accountRepo.deleted).toContain("acc-1");
   });
 
-  it('rejects deletion of fixed accounts', async () => {
+  it("rejects deletion of fixed accounts", async () => {
     const fixed = makeAccount({ isFixed: true });
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(fixed),
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow()),
+      deleteAccount("user-1", "acc-1", accountRepo, fakeMovementRepo(), fakeUow()),
     ).rejects.toThrow(ValidationError);
   });
 
-  it('rejects deletion when account has references', async () => {
+  it("rejects deletion when account has references", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -271,15 +279,15 @@ describe('deleteAccount', () => {
     });
 
     await expect(
-      deleteAccount('user-1', 'acc-1', accountRepo, fakeMovementRepo(), fakeUow()),
+      deleteAccount("user-1", "acc-1", accountRepo, fakeMovementRepo(), fakeUow()),
     ).rejects.toThrow(ConflictError);
   });
 
-  it('deletes a non-fixed account and cascades its opening movements', async () => {
+  it("deletes a non-fixed account and cascades its opening movements", async () => {
     const account = makeAccount();
     const opening = makeMovement({
-      id: 'mov-opening',
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      id: "mov-opening",
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -288,17 +296,17 @@ describe('deleteAccount', () => {
       findByAccountId: vi.fn().mockResolvedValue([opening]),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
+    await deleteAccount("user-1", "acc-1", accountRepo, movementRepo, fakeUow());
 
-    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening', expect.anything());
-    expect(accountRepo.deleted).toContain('acc-1');
+    expect(movementRepo.delete).toHaveBeenCalledWith("user-1", "mov-opening", expect.anything());
+    expect(accountRepo.deleted).toContain("acc-1");
   });
 
-  it('cascades openings before deleting the account', async () => {
+  it("cascades openings before deleting the account", async () => {
     const account = makeAccount();
     const opening = makeMovement({
-      id: 'mov-opening',
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      id: "mov-opening",
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
     const order: string[] = [];
     const accountRepo = fakeAccountRepo({
@@ -311,41 +319,41 @@ describe('deleteAccount', () => {
     const movementRepo = fakeMovementRepo({
       findByAccountId: vi.fn().mockResolvedValue([opening]),
       delete: vi.fn().mockImplementation(async () => {
-        order.push('movement:mov-opening');
+        order.push("movement:mov-opening");
       }),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
+    await deleteAccount("user-1", "acc-1", accountRepo, movementRepo, fakeUow());
 
-    expect(order).toEqual(['movement:mov-opening', 'account:acc-1']);
+    expect(order).toEqual(["movement:mov-opening", "account:acc-1"]);
   });
 
-  it('is tolerant when an opening no longer exists', async () => {
+  it("is tolerant when an opening no longer exists", async () => {
     const account = makeAccount();
     const opening = makeMovement({
-      id: 'mov-opening',
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      id: "mov-opening",
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
     });
     const movementRepo = fakeMovementRepo({
       findByAccountId: vi.fn().mockResolvedValue([opening]),
-      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement mov-opening not found')),
+      delete: vi.fn().mockRejectedValue(new NotFoundError("Movement mov-opening not found")),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
+    await deleteAccount("user-1", "acc-1", accountRepo, movementRepo, fakeUow());
 
-    expect(accountRepo.deleted).toContain('acc-1');
+    expect(accountRepo.deleted).toContain("acc-1");
   });
 
-  it('only deletes openings, not other movements', async () => {
+  it("only deletes openings, not other movements", async () => {
     const account = makeAccount();
     const opening = makeMovement({
-      id: 'mov-opening',
-      link: { kind: 'opening', refId: 'acc-1', opId: 'op-1' },
+      id: "mov-opening",
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
     });
-    const manual = makeMovement({ id: 'mov-manual' });
+    const manual = makeMovement({ id: "mov-manual" });
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
     });
@@ -353,17 +361,17 @@ describe('deleteAccount', () => {
       findByAccountId: vi.fn().mockResolvedValue([opening, manual]),
     });
 
-    await deleteAccount('user-1', 'acc-1', accountRepo, movementRepo, fakeUow());
+    await deleteAccount("user-1", "acc-1", accountRepo, movementRepo, fakeUow());
 
     expect(movementRepo.delete).toHaveBeenCalledTimes(1);
-    expect(movementRepo.delete).toHaveBeenCalledWith('user-1', 'mov-opening', expect.anything());
+    expect(movementRepo.delete).toHaveBeenCalledWith("user-1", "mov-opening", expect.anything());
   });
 });
 
 // ─── Set Initial Balance ────────────────────────────────────────────
 
-describe('setInitialAccountBalance', () => {
-  it('creates the opening with the correct pattern on a clean account', async () => {
+describe("setInitialAccountBalance", () => {
+  it("creates the opening with the correct pattern on a clean account", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -372,8 +380,8 @@ describe('setInitialAccountBalance', () => {
     const ids = fakeIdGen();
 
     await setInitialAccountBalance(
-      'user-1',
-      { accountId: 'acc-1', amount: 50000 },
+      "user-1",
+      { accountId: "acc-1", amount: 50000 },
       accountRepo,
       movementRepo,
       ids,
@@ -384,24 +392,24 @@ describe('setInitialAccountBalance', () => {
     expect(movementRepo.create).toHaveBeenCalledTimes(1);
 
     const created = movementRepo.created[0]! as Movement;
-    expect(created.type).toBe('income');
-    expect(created.context).toBe('Personal');
-    expect(created.link?.kind).toBe('opening');
-    expect(created.link?.refId).toBe('acc-1');
+    expect(created.type).toBe("income");
+    expect(created.context).toBe("Personal");
+    expect(created.link?.kind).toBe("opening");
+    expect(created.link?.refId).toBe("acc-1");
     expect(created.link?.opId).toBeTruthy();
     expect(created.amount.amount).toBe(50000);
-    expect(created.amount.currency).toBe('COP');
+    expect(created.amount.currency).toBe("COP");
     expect(created.categoryId).toBe(openingCategory().id);
-    expect(created.accountId).toBe('acc-1');
+    expect(created.accountId).toBe("acc-1");
     // R15.3 §4: el guard de unicidad corre dentro de la tx, ANTES del insert.
     expect(movementRepo.countOpeningMovements).toHaveBeenCalledWith(
-      'user-1',
-      'acc-1',
+      "user-1",
+      "acc-1",
       expect.anything(),
     );
   });
 
-  it('returns the created movement', async () => {
+  it("returns the created movement", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -409,8 +417,8 @@ describe('setInitialAccountBalance', () => {
     const movementRepo = fakeMovementRepo();
 
     const movement = await setInitialAccountBalance(
-      'user-1',
-      { accountId: 'acc-1', amount: 30000 },
+      "user-1",
+      { accountId: "acc-1", amount: 30000 },
       accountRepo,
       movementRepo,
       fakeIdGen(),
@@ -420,7 +428,7 @@ describe('setInitialAccountBalance', () => {
     expect(movement).toBe(movementRepo.created[0]);
   });
 
-  it('rejects an amount <= 0 without creating anything', async () => {
+  it("rejects an amount <= 0 without creating anything", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -429,8 +437,8 @@ describe('setInitialAccountBalance', () => {
 
     await expect(
       setInitialAccountBalance(
-        'user-1',
-        { accountId: 'acc-1', amount: 0 },
+        "user-1",
+        { accountId: "acc-1", amount: 0 },
         accountRepo,
         movementRepo,
         fakeIdGen(),
@@ -440,7 +448,7 @@ describe('setInitialAccountBalance', () => {
     expect(movementRepo.create).not.toHaveBeenCalled();
   });
 
-  it('rejects an account with existing activity with ConflictError', async () => {
+  it("rejects an account with existing activity with ConflictError", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -450,8 +458,8 @@ describe('setInitialAccountBalance', () => {
 
     await expect(
       setInitialAccountBalance(
-        'user-1',
-        { accountId: 'acc-1', amount: 10000 },
+        "user-1",
+        { accountId: "acc-1", amount: 10000 },
         accountRepo,
         movementRepo,
         fakeIdGen(),
@@ -463,7 +471,7 @@ describe('setInitialAccountBalance', () => {
     expect(movementRepo.countOpeningMovements).not.toHaveBeenCalled();
   });
 
-  it('rejects an account that already has an opening movement (R15.3 §4 / ACC-2)', async () => {
+  it("rejects an account that already has an opening movement (R15.3 §4 / ACC-2)", async () => {
     const account = makeAccount();
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
@@ -475,8 +483,8 @@ describe('setInitialAccountBalance', () => {
 
     await expect(
       setInitialAccountBalance(
-        'user-1',
-        { accountId: 'acc-1', amount: 10000 },
+        "user-1",
+        { accountId: "acc-1", amount: 10000 },
         accountRepo,
         movementRepo,
         fakeIdGen(),
@@ -486,7 +494,7 @@ describe('setInitialAccountBalance', () => {
     expect(movementRepo.create).not.toHaveBeenCalled();
   });
 
-  it('rejects an unknown account with NotFoundError', async () => {
+  it("rejects an unknown account with NotFoundError", async () => {
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(null),
     });
@@ -494,8 +502,8 @@ describe('setInitialAccountBalance', () => {
 
     await expect(
       setInitialAccountBalance(
-        'user-1',
-        { accountId: 'missing', amount: 10000 },
+        "user-1",
+        { accountId: "missing", amount: 10000 },
         accountRepo,
         movementRepo,
         fakeIdGen(),
@@ -505,16 +513,16 @@ describe('setInitialAccountBalance', () => {
     expect(movementRepo.create).not.toHaveBeenCalled();
   });
 
-  it('uses the currency of the account', async () => {
-    const account = makeAccount({ currency: 'USD' });
+  it("uses the currency of the account", async () => {
+    const account = makeAccount({ currency: "USD" });
     const accountRepo = fakeAccountRepo({
       findById: vi.fn().mockResolvedValue(account),
     });
     const movementRepo = fakeMovementRepo();
 
     await setInitialAccountBalance(
-      'user-1',
-      { accountId: 'acc-1', amount: 100 },
+      "user-1",
+      { accountId: "acc-1", amount: 100 },
       accountRepo,
       movementRepo,
       fakeIdGen(),
@@ -522,22 +530,195 @@ describe('setInitialAccountBalance', () => {
     );
 
     const created = movementRepo.created[0]! as Movement;
-    expect(created.amount.currency).toBe('USD');
+    expect(created.amount.currency).toBe("USD");
   });
 });
 
 // ─── List ──────────────────────────────────────────────────────────
 
-describe('listAccounts', () => {
-  it('returns all accounts for the user', async () => {
-    const accounts = [makeAccount({ id: 'a1' }), makeAccount({ id: 'a2' })];
+describe("listAccounts", () => {
+  it("returns all accounts for the user", async () => {
+    const accounts = [makeAccount({ id: "a1" }), makeAccount({ id: "a2" })];
     const accountRepo = fakeAccountRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     });
 
-    const result = await listAccounts('user-1', accountRepo);
+    const result = await listAccounts("user-1", accountRepo);
 
     expect(result).toHaveLength(2);
-    expect(accountRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
+    expect(accountRepo.findByWorkspaceId).toHaveBeenCalledWith("user-1");
+  });
+});
+
+// ─── Correct Initial Balance (C12-2) ──────────────────────────────
+
+describe("correctInitialBalance", () => {
+  const opening = () =>
+    makeMovement({
+      id: "mov-opening",
+      link: { kind: "opening", refId: "acc-1", opId: "op-1" },
+      version: 0,
+    });
+
+  it("updates the opening movement amount and touches the account", async () => {
+    const account = makeAccount();
+    const existing = opening();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findOpeningMovement: vi.fn().mockResolvedValue(existing),
+    });
+
+    const result = await correctInitialBalance(
+      "user-1",
+      { accountId: "acc-1", newAmount: 75000 },
+      accountRepo,
+      movementRepo,
+      fakeUow(),
+    );
+
+    expect(result.amount.amount).toBe(75000);
+    expect(result.amount.currency).toBe("COP");
+    expect(result.id).toBe("mov-opening");
+    expect(result.link?.kind).toBe("opening");
+    // CAS: the update is called with the existing version.
+    expect(movementRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "mov-opening" }),
+      expect.anything(),
+      0,
+    );
+    // Account touched as the last write.
+    expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
+  });
+
+  it("rejects newAmount <= 0 without touching anything", async () => {
+    const accountRepo = fakeAccountRepo();
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      correctInitialBalance(
+        "user-1",
+        { accountId: "acc-1", newAmount: 0 },
+        accountRepo,
+        movementRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    expect(movementRepo.update).not.toHaveBeenCalled();
+    expect(accountRepo.touch).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown account with NotFoundError", async () => {
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(null),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      correctInitialBalance(
+        "user-1",
+        { accountId: "missing", newAmount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects when account has no opening movement (routes to set-initial-balance)", async () => {
+    const account = makeAccount();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findOpeningMovement: vi.fn().mockResolvedValue(null),
+    });
+
+    await expect(
+      correctInitialBalance(
+        "user-1",
+        { accountId: "acc-1", newAmount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(movementRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("uses the account currency (not a user-supplied one)", async () => {
+    const account = makeAccount({ currency: "USD" });
+    const existing = opening();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findOpeningMovement: vi.fn().mockResolvedValue(existing),
+    });
+
+    const result = await correctInitialBalance(
+      "user-1",
+      { accountId: "acc-1", newAmount: 100 },
+      accountRepo,
+      movementRepo,
+      fakeUow(),
+    );
+
+    expect(result.amount.currency).toBe("USD");
+  });
+
+  it("propagates ConflictError from CAS when movement was concurrently modified", async () => {
+    const account = makeAccount();
+    const existing = opening();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findOpeningMovement: vi.fn().mockResolvedValue(existing),
+      update: vi
+        .fn()
+        .mockRejectedValue(new ConflictError("Movement was modified by another operation")),
+    });
+
+    await expect(
+      correctInitialBalance(
+        "user-1",
+        { accountId: "acc-1", newAmount: 10000 },
+        accountRepo,
+        movementRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ConflictError);
+    // Account touch should NOT happen when the CAS fails (it is the last write).
+    expect(accountRepo.touch).not.toHaveBeenCalled();
+  });
+
+  it("preserves the opening movement identity (id, link, date, category)", async () => {
+    const account = makeAccount();
+    const existing = opening();
+    const accountRepo = fakeAccountRepo({
+      findById: vi.fn().mockResolvedValue(account),
+    });
+    const movementRepo = fakeMovementRepo({
+      findOpeningMovement: vi.fn().mockResolvedValue(existing),
+    });
+
+    const result = await correctInitialBalance(
+      "user-1",
+      { accountId: "acc-1", newAmount: 99000 },
+      accountRepo,
+      movementRepo,
+      fakeUow(),
+    );
+
+    expect(result.id).toBe("mov-opening");
+    expect(result.link?.kind).toBe("opening");
+    expect(result.link?.refId).toBe("acc-1");
+    expect(result.link?.opId).toBe("op-1");
+    expect(result.categoryId).toBe(openingCategory().id);
+    expect(result.date).toBe(existing.date);
+    expect(result.createdAt).toBe(existing.createdAt);
   });
 });

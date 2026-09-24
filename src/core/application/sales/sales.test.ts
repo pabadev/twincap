@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createSale } from './create-sale';
-import { addSaleAbono } from './add-sale-abono';
-import { deleteSaleAbono } from './delete-sale-abono';
-import { deleteSale } from './delete-sale';
-import { listSales } from './list-sales';
-import { Sale } from '../../domain/sale';
-import { CreditGranted } from '../../domain/credit-granted';
-import { Client } from '../../domain/client';
-import { Movement } from '../../domain/movement';
-import { Account } from '../../domain/account';
-import { Money } from '../../domain/money';
-import { CatalogItem } from '../../domain/catalog';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createSale } from "./create-sale";
+import { addSaleAbono } from "./add-sale-abono";
+import { deleteSaleAbono } from "./delete-sale-abono";
+import { deleteSale } from "./delete-sale";
+import { listSales } from "./list-sales";
+import { Sale } from "../../domain/sale";
+import { CreditGranted } from "../../domain/credit-granted";
+import { Client } from "../../domain/client";
+import { Movement } from "../../domain/movement";
+import { Account } from "../../domain/account";
+import { Money } from "../../domain/money";
+import { CatalogItem } from "../../domain/catalog";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
 import type {
   SaleRepository,
   CatalogItemRepository,
@@ -19,9 +19,9 @@ import type {
   ClientRepository,
   CreditGrantedRepository,
   AccountRepository,
-} from '../../domain/repositories';
-import type { TransactionHandle } from '../../domain/transaction';
-import type { IdGenerator, UnitOfWork } from '../ports';
+} from "../../domain/repositories";
+import type { TransactionHandle } from "../../domain/transaction";
+import type { IdGenerator, UnitOfWork } from "../ports";
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -35,14 +35,27 @@ interface AbonoRecord {
   movementId?: string;
 }
 
-function fakeSaleRepo(
-  overrides: Partial<SaleRepository> = {},
-): SaleRepository & { created: Sale[]; updated: Sale[]; deleted: string[]; abonosAdded: { saleId: string; abono: AbonoRecord }[]; abonosEdited: { saleId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[]; abonosDeleted: { saleId: string; abonoId: string }[] } {
+function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository & {
+  created: Sale[];
+  updated: Sale[];
+  deleted: string[];
+  abonosAdded: { saleId: string; abono: AbonoRecord }[];
+  abonosEdited: {
+    saleId: string;
+    abonoId: string;
+    updates: Partial<{ amount: number; date: Date; movementId: string }>;
+  }[];
+  abonosDeleted: { saleId: string; abonoId: string }[];
+} {
   const created: Sale[] = [];
   const updated: Sale[] = [];
   const deleted: string[] = [];
   const abonosAdded: { saleId: string; abono: AbonoRecord }[] = [];
-  const abonosEdited: { saleId: string; abonoId: string; updates: Partial<{ amount: number; date: Date; movementId: string }> }[] = [];
+  const abonosEdited: {
+    saleId: string;
+    abonoId: string;
+    updates: Partial<{ amount: number; date: Date; movementId: string }>;
+  }[] = [];
   const abonosDeleted: { saleId: string; abonoId: string }[] = [];
   return {
     created,
@@ -64,22 +77,33 @@ function fakeSaleRepo(
     delete: vi.fn().mockImplementation(async (_userId: string, id: string) => {
       deleted.push(id);
     }),
-    addAbono: vi.fn().mockImplementation(async (_userId: string, saleId: string, abono: AbonoRecord) => {
-      abonosAdded.push({ saleId, abono });
-    }),
-    editAbono: vi.fn().mockImplementation(async (_userId: string, saleId: string, abonoId: string, updates: Partial<{ amount: number; date: Date; movementId: string }>) => {
-      abonosEdited.push({ saleId, abonoId, updates });
-    }),
-    deleteAbono: vi.fn().mockImplementation(async (_userId: string, saleId: string, abonoId: string) => {
-      abonosDeleted.push({ saleId, abonoId });
-    }),
+    addAbono: vi
+      .fn()
+      .mockImplementation(async (_userId: string, saleId: string, abono: AbonoRecord) => {
+        abonosAdded.push({ saleId, abono });
+      }),
+    editAbono: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _userId: string,
+          saleId: string,
+          abonoId: string,
+          updates: Partial<{ amount: number; date: Date; movementId: string }>,
+        ) => {
+          abonosEdited.push({ saleId, abonoId, updates });
+        },
+      ),
+    deleteAbono: vi
+      .fn()
+      .mockImplementation(async (_userId: string, saleId: string, abonoId: string) => {
+        abonosDeleted.push({ saleId, abonoId });
+      }),
     ...overrides,
   };
 }
 
-function fakeCatalogRepo(
-  overrides: Partial<CatalogItemRepository> = {},
-) {
+function fakeCatalogRepo(overrides: Partial<CatalogItemRepository> = {}) {
   const decremented: { itemId: string; quantity: number }[] = [];
   const incremented: { itemId: string; quantity: number }[] = [];
 
@@ -95,21 +119,28 @@ function fakeCatalogRepo(
     create: vi.fn().mockImplementation(async (item: CatalogItem) => item),
     update: vi.fn().mockImplementation(async (item: CatalogItem) => item),
     delete: vi.fn().mockResolvedValue(undefined),
-    decrementStock: vi.fn().mockImplementation(async (_userId: string, itemId: string, quantity: number) => {
-      decremented.push({ itemId, quantity });
-      return state.shouldDecrement;
-    }),
-    incrementStock: vi.fn().mockImplementation(async (_userId: string, itemId: string, quantity: number) => {
-      incremented.push({ itemId, quantity });
-    }),
+    decrementStock: vi
+      .fn()
+      .mockImplementation(async (_userId: string, itemId: string, quantity: number) => {
+        decremented.push({ itemId, quantity });
+        return state.shouldDecrement;
+      }),
+    incrementStock: vi
+      .fn()
+      .mockImplementation(async (_userId: string, itemId: string, quantity: number) => {
+        incremented.push({ itemId, quantity });
+      }),
     ...overrides,
   };
   return repo;
 }
 
-function fakeMovementRepo(
-  overrides: Partial<MovementRepository> = {},
-): MovementRepository & { created: Movement[]; updated: Movement[]; deleted: string[]; deletedByRefId: string[] } {
+function fakeMovementRepo(overrides: Partial<MovementRepository> = {}): MovementRepository & {
+  created: Movement[];
+  updated: Movement[];
+  deleted: string[];
+  deletedByRefId: string[];
+} {
   const created: Movement[] = [];
   const updated: Movement[] = [];
   const deleted: string[] = [];
@@ -140,6 +171,7 @@ function fakeMovementRepo(
     }),
     countByCategoryId: vi.fn().mockResolvedValue(0),
     countOpeningMovements: vi.fn().mockResolvedValue(0),
+    findOpeningMovement: vi.fn().mockResolvedValue(null),
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
@@ -154,8 +186,7 @@ function fakeIdGen(): IdGenerator {
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
@@ -163,12 +194,12 @@ function fakeClientRepo(
   overrides: Partial<ClientRepository> = {},
 ): ClientRepository & { client: Client } {
   const client = new Client({
-    id: 'client-1',
-    workspaceId: 'user-1',
-    name: 'Juan Pérez',
-    phone: '',
-    email: '',
-    note: '',
+    id: "client-1",
+    workspaceId: "user-1",
+    name: "Juan Pérez",
+    phone: "",
+    email: "",
+    note: "",
     createdAt: new Date(),
   });
   return {
@@ -210,13 +241,13 @@ function fakeCreditGrantedRepo(
   };
 }
 
-function fakeAccountRepo(
-  accounts: Account[] = [],
-): AccountRepository {
+function fakeAccountRepo(accounts: Account[] = []): AccountRepository {
   return {
-    findById: vi.fn().mockImplementation(async (_userId: string, id: string) =>
-      accounts.find((a) => a.id === id) ?? null,
-    ),
+    findById: vi
+      .fn()
+      .mockImplementation(
+        async (_userId: string, id: string) => accounts.find((a) => a.id === id) ?? null,
+      ),
     findByWorkspaceId: vi.fn().mockResolvedValue(accounts),
     create: vi.fn().mockImplementation(async (account: Account) => account),
     update: vi.fn().mockImplementation(async (account: Account) => account),
@@ -227,14 +258,12 @@ function fakeAccountRepo(
   };
 }
 
-function makeAccount(
-  id: string,
-): Account {
+function makeAccount(id: string): Account {
   return new Account({
     id,
-    workspaceId: 'user-1',
+    workspaceId: "user-1",
     name: `Account ${id}`,
-    currency: 'COP',
+    currency: "COP",
     isFixed: false,
     createdAt: new Date(),
   });
@@ -246,12 +275,12 @@ function makeSale(
 ): Sale {
   return new Sale(
     {
-      id: 'sale-1',
-      workspaceId: 'user-1',
-      items: [{ itemId: 'item-1', quantity: 2, unitPrice: new Money(50000, 'COP') }],
-      date: new Date('2025-06-01'),
-      paymentMode: 'on-credit',
-      accountId: 'acc-1',
+      id: "sale-1",
+      workspaceId: "user-1",
+      items: [{ itemId: "item-1", quantity: 2, unitPrice: new Money(50000, "COP") }],
+      date: new Date("2025-06-01"),
+      paymentMode: "on-credit",
+      accountId: "acc-1",
       createdAt: new Date(),
       ...overrides,
     },
@@ -263,11 +292,11 @@ function makeProduct(
   overrides: Partial<ConstructorParameters<typeof CatalogItem>[0]> = {},
 ): CatalogItem {
   return new CatalogItem({
-    id: 'item-1',
-    workspaceId: 'user-1',
-    name: 'Product A',
-    unitPrice: new Money(50000, 'COP'),
-    type: 'product',
+    id: "item-1",
+    workspaceId: "user-1",
+    name: "Product A",
+    unitPrice: new Money(50000, "COP"),
+    type: "product",
     stock: 10,
     createdAt: new Date(),
     ...overrides,
@@ -278,11 +307,11 @@ function makeService(
   overrides: Partial<ConstructorParameters<typeof CatalogItem>[0]> = {},
 ): CatalogItem {
   return new CatalogItem({
-    id: 'item-2',
-    workspaceId: 'user-1',
-    name: 'Service B',
-    unitPrice: new Money(30000, 'COP'),
-    type: 'service',
+    id: "item-2",
+    workspaceId: "user-1",
+    name: "Service B",
+    unitPrice: new Money(30000, "COP"),
+    type: "service",
     createdAt: new Date(),
     ...overrides,
   });
@@ -294,8 +323,8 @@ beforeEach(() => {
 
 // ─── Create Sale ────────────────────────────────────────────────────
 
-describe('createSale', () => {
-  it('creates a paid-in-full sale with line items and income movement (POS-2, POS-4)', async () => {
+describe("createSale", () => {
+  it("creates a paid-in-full sale with line items and income movement (POS-2, POS-4)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -304,17 +333,17 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-1', quantity: 2, unitPrice: 50000 }],
-        accountId: 'acc-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'paid-in-full',
-        currency: 'COP',
+        items: [{ itemId: "item-1", quantity: 2, unitPrice: 50000 }],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
       },
       saleRepo,
       catalogRepo,
@@ -327,21 +356,21 @@ describe('createSale', () => {
     );
 
     expect(sale.total).toBe(100000);
-    expect(sale.paymentMode).toBe('paid-in-full');
+    expect(sale.paymentMode).toBe("paid-in-full");
     expect(saleRepo.created).toHaveLength(1);
     expect(movementRepo.created).toHaveLength(1);
-    expect(movementRepo.created[0].type).toBe('income');
+    expect(movementRepo.created[0].type).toBe("income");
     expect(movementRepo.created[0].amount.amount).toBe(100000);
-    expect(movementRepo.created[0].link?.kind).toBe('salePayment');
+    expect(movementRepo.created[0].link?.kind).toBe("salePayment");
     expect(creditRepo.created).toHaveLength(0);
     expect(catalogRepo.decremented).toHaveLength(1);
     expect(catalogRepo.decremented[0].quantity).toBe(2);
     // R15.2: the collection account was touched inside the tx — the
     // delete-race conflict point (matrix row 31).
-    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
   });
 
-  it('rejects fractional line-item quantities — Sale aggregate integer rule (R15.3.1 P3)', async () => {
+  it("rejects fractional line-item quantities — Sale aggregate integer rule (R15.3.1 P3)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -350,17 +379,17 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1.5, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'paid-in-full',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1.5, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -378,7 +407,7 @@ describe('createSale', () => {
     expect(catalogRepo.decremented).toHaveLength(0);
   });
 
-  it('rejects a paid-in-full sale carrying an initial payment (H14)', async () => {
+  it("rejects a paid-in-full sale carrying an initial payment (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -387,18 +416,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'paid-in-full',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "COP",
           initialPayment: 10000,
         },
         saleRepo,
@@ -415,7 +444,7 @@ describe('createSale', () => {
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('creates an on-credit sale with a linked credit and no movements when initialPayment is omitted (H14)', async () => {
+  it("creates an on-credit sale with a linked credit and no movements when initialPayment is omitted (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -424,18 +453,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-        accountId: 'acc-1',
-        clientId: 'client-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'on-credit',
-        currency: 'COP',
+        items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+        accountId: "acc-1",
+        clientId: "client-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "on-credit",
+        currency: "COP",
       },
       saleRepo,
       catalogRepo,
@@ -447,7 +476,7 @@ describe('createSale', () => {
       fakeUow(),
     );
 
-    expect(sale.paymentMode).toBe('on-credit');
+    expect(sale.paymentMode).toBe("on-credit");
     expect(movementRepo.created).toHaveLength(0);
     expect(saleRepo.created).toHaveLength(1);
     // R5-D0: principal = total (the credit owns the whole debt; no abonos yet).
@@ -458,7 +487,7 @@ describe('createSale', () => {
     expect(creditRepo.created[0].saleId).toBe(sale.id);
   });
 
-  it('rejects an on-credit sale without a client (H14)', async () => {
+  it("rejects an on-credit sale without a client (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -467,18 +496,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -494,7 +523,7 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
   });
 
-  it('rejects an on-credit sale with an unknown client (H14)', async () => {
+  it("rejects an on-credit sale with an unknown client (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -505,19 +534,19 @@ describe('createSale', () => {
       findById: vi.fn().mockResolvedValue(null),
     });
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          clientId: 'missing-client',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          clientId: "missing-client",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -533,7 +562,7 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
   });
 
-  it('rejects an initial payment greater than the total (H14)', async () => {
+  it("rejects an initial payment greater than the total (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -542,19 +571,19 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          clientId: 'client-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          clientId: "client-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
           initialPayment: 60000,
         },
         saleRepo,
@@ -573,7 +602,7 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
   });
 
-  it('rejects a negative initial payment (H14)', async () => {
+  it("rejects a negative initial payment (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -582,19 +611,19 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          clientId: 'client-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          clientId: "client-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
           initialPayment: -1,
         },
         saleRepo,
@@ -610,7 +639,7 @@ describe('createSale', () => {
     expect(creditRepo.created).toHaveLength(0);
   });
 
-  it('on-credit with initialPayment > 0 records it as the credit FIRST abono and one credit abono movement (R5-D0/R5-D0b)', async () => {
+  it("on-credit with initialPayment > 0 records it as the credit FIRST abono and one credit abono movement (R5-D0/R5-D0b)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -619,18 +648,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const sale = await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-1', quantity: 3, unitPrice: 50000 }],
-        accountId: 'acc-1',
-        clientId: 'client-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'on-credit',
-        currency: 'COP',
+        items: [{ itemId: "item-1", quantity: 3, unitPrice: 50000 }],
+        accountId: "acc-1",
+        clientId: "client-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "on-credit",
+        currency: "COP",
         initialPayment: 20000,
       },
       saleRepo,
@@ -645,11 +674,11 @@ describe('createSale', () => {
 
     // Exactly one income movement = initialPayment, linked to the CREDIT.
     expect(movementRepo.created).toHaveLength(1);
-    expect(movementRepo.created[0].type).toBe('income');
+    expect(movementRepo.created[0].type).toBe("income");
     expect(movementRepo.created[0].amount.amount).toBe(20000);
-    expect(movementRepo.created[0].accountId).toBe('acc-1');
-    expect(movementRepo.created[0].context).toBe('Business');
-    expect(movementRepo.created[0].link?.kind).toBe('creditGrantedAbono');
+    expect(movementRepo.created[0].accountId).toBe("acc-1");
+    expect(movementRepo.created[0].context).toBe("Business");
+    expect(movementRepo.created[0].link?.kind).toBe("creditGrantedAbono");
     expect(movementRepo.created[0].link?.refId).toBe(creditRepo.created[0].id);
     // I12: the initial-payment abono stays traceable to the originating sale.
     expect(movementRepo.created[0].link?.saleId).toBe(sale.id);
@@ -663,14 +692,14 @@ describe('createSale', () => {
     expect(credit.abonos[0].amount.amount).toBe(20000);
     expect(credit.pending).toBe(130000);
     expect(credit.saleId).toBe(sale.id);
-    expect(credit.counterparty).toBe('Juan Pérez');
-    expect(credit.accountId).toBe('acc-1');
+    expect(credit.counterparty).toBe("Juan Pérez");
+    expect(credit.accountId).toBe("acc-1");
 
     // Invariant: pending == total − Σ abonos (R5-D0).
     expect(credit.pending).toBe(150000 - 20000);
   });
 
-  it('on-credit with initialPayment = 0 creates no movement (H14)', async () => {
+  it("on-credit with initialPayment = 0 creates no movement (H14)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -679,18 +708,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-        accountId: 'acc-1',
-        clientId: 'client-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'on-credit',
-        currency: 'COP',
+        items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+        accountId: "acc-1",
+        clientId: "client-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "on-credit",
+        currency: "COP",
         initialPayment: 0,
       },
       saleRepo,
@@ -710,7 +739,7 @@ describe('createSale', () => {
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('allows initialPayment = total: credit born paid-in-full with first abono = total and one income movement (R5-D0b)', async () => {
+  it("allows initialPayment = total: credit born paid-in-full with first abono = total and one income movement (R5-D0b)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -719,18 +748,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-        accountId: 'acc-1',
-        clientId: 'client-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'on-credit',
-        currency: 'COP',
+        items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+        accountId: "acc-1",
+        clientId: "client-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "on-credit",
+        currency: "COP",
         initialPayment: 50000,
       },
       saleRepo,
@@ -752,15 +781,15 @@ describe('createSale', () => {
     // abono; exactly one credit-abono income movement (no separate salePayment).
     expect(movementRepo.created).toHaveLength(1);
     const movement = movementRepo.created[0];
-    expect(movement.type).toBe('income');
+    expect(movement.type).toBe("income");
     expect(movement.amount.amount).toBe(50000);
-    expect(movement.link?.kind).toBe('creditGrantedAbono');
+    expect(movement.link?.kind).toBe("creditGrantedAbono");
     expect(movement.link?.refId).toBe(creditRepo.created[0].id);
     // I12: saleId traces the abono to the sale even when it pays the full debt.
     expect(movement.link?.saleId).toBe(creditRepo.created[0].saleId);
   });
 
-  it('allows services without stock decrement (POS-3)', async () => {
+  it("allows services without stock decrement (POS-3)", async () => {
     const service = makeService();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -769,18 +798,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await createSale(
-      'user-1',
+      "user-1",
       {
-        items: [{ itemId: 'item-2', quantity: 1, unitPrice: 30000 }],
-        accountId: 'acc-1',
-        clientId: 'client-1',
-        date: new Date('2025-06-01'),
-        paymentMode: 'on-credit',
-        currency: 'COP',
+        items: [{ itemId: "item-2", quantity: 1, unitPrice: 30000 }],
+        accountId: "acc-1",
+        clientId: "client-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "on-credit",
+        currency: "COP",
       },
       saleRepo,
       catalogRepo,
@@ -795,7 +824,7 @@ describe('createSale', () => {
     expect(catalogRepo.decremented).toHaveLength(0);
   });
 
-  it('rejects sale when product stock is insufficient (POS-3)', async () => {
+  it("rejects sale when product stock is insufficient (POS-3)", async () => {
     const product = makeProduct({ stock: 1 });
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -805,19 +834,19 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 5, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          clientId: 'client-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 5, unitPrice: 50000 }],
+          accountId: "acc-1",
+          clientId: "client-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -832,7 +861,7 @@ describe('createSale', () => {
     expect(saleRepo.created).toHaveLength(0);
   });
 
-  it('rejects when sale currency differs from the collection account (ACC-1)', async () => {
+  it("rejects when sale currency differs from the collection account (ACC-1)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -841,18 +870,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // COP
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]); // COP
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'paid-in-full',
-          currency: 'USD', // declared USD on a COP account
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "USD", // declared USD on a COP account
         },
         saleRepo,
         catalogRepo,
@@ -869,8 +898,8 @@ describe('createSale', () => {
     expect(catalogRepo.decremented).toHaveLength(0);
   });
 
-  it('rejects when a catalog item currency differs from the collection account (ACC-1)', async () => {
-    const product = makeProduct({ unitPrice: new Money(50000, 'USD') }); // USD item
+  it("rejects when a catalog item currency differs from the collection account (ACC-1)", async () => {
+    const product = makeProduct({ unitPrice: new Money(50000, "USD") }); // USD item
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(product),
@@ -878,18 +907,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // COP
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]); // COP
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'paid-in-full',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -905,7 +934,7 @@ describe('createSale', () => {
     expect(catalogRepo.decremented).toHaveLength(0);
   });
 
-  it('throws NotFoundError when a catalog item does not exist', async () => {
+  it("throws NotFoundError when a catalog item does not exist", async () => {
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
       findById: vi.fn().mockResolvedValue(null),
@@ -913,18 +942,18 @@ describe('createSale', () => {
     const movementRepo = fakeMovementRepo();
     const clientRepo = fakeClientRepo();
     const creditRepo = fakeCreditGrantedRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-missing', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'paid-in-full',
-          currency: 'COP',
+          items: [{ itemId: "item-missing", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "COP",
         },
         saleRepo,
         catalogRepo,
@@ -940,7 +969,7 @@ describe('createSale', () => {
     expect(catalogRepo.decremented).toHaveLength(0);
   });
 
-  it('rolls back the whole sale when a later write fails (R14-B)', async () => {
+  it("rolls back the whole sale when a later write fails (R14-B)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -952,22 +981,22 @@ describe('createSale', () => {
     // (and BEFORE the initial-payment movement) in the write order.
     const creditRepo = fakeCreditGrantedRepo({
       create: vi.fn().mockImplementation(async () => {
-        throw new Error('boom later (credit write fails)');
+        throw new Error("boom later (credit write fails)");
       }),
     });
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       createSale(
-        'user-1',
+        "user-1",
         {
-          items: [{ itemId: 'item-1', quantity: 1, unitPrice: 50000 }],
-          accountId: 'acc-1',
-          clientId: 'client-1',
-          date: new Date('2025-06-01'),
-          paymentMode: 'on-credit',
-          currency: 'COP',
+          items: [{ itemId: "item-1", quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          clientId: "client-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "on-credit",
+          currency: "COP",
           initialPayment: 20000,
         },
         saleRepo,
@@ -979,7 +1008,7 @@ describe('createSale', () => {
         accountRepo,
         fakeUow(),
       ),
-    ).rejects.toThrow('boom later (credit write fails)');
+    ).rejects.toThrow("boom later (credit write fails)");
 
     // Stock decrement + sale create ran BEFORE the credit failure; the
     // initial-payment movement (AFTER the credit) never ran. The real
@@ -993,142 +1022,151 @@ describe('createSale', () => {
 
 // ─── Add Sale Abono ────────────────────────────────────────────────
 
-describe('addSaleAbono', () => {
-  it('adds an abono and creates income movement (POS-4)', async () => {
+describe("addSaleAbono", () => {
+  it("adds an abono and creates income movement (POS-4)", async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     const result = await addSaleAbono(
-      'user-1',
-      'sale-1',
-      { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+      "user-1",
+      "sale-1",
+      { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
       saleRepo,
       movementRepo,
       ids,
-      accountRepo, fakeUow());
+      accountRepo,
+      fakeUow(),
+    );
 
     expect(result.abonos).toHaveLength(1);
     expect(result.abonos[0].amount.amount).toBe(25000);
     expect(result.pending).toBe(75000);
     expect(saleRepo.addAbono).toHaveBeenCalledOnce();
     expect(movementRepo.created).toHaveLength(1);
-    expect(movementRepo.created[0].type).toBe('income');
-    expect(movementRepo.created[0].link?.kind).toBe('salePayment');
+    expect(movementRepo.created[0].type).toBe("income");
+    expect(movementRepo.created[0].link?.kind).toBe("salePayment");
   });
 
-  it('sets context to Business (hardcoded) regardless of account', async () => {
+  it("sets context to Business (hardcoded) regardless of account", async () => {
     const sale = makeSale(); // sale.accountId = acc-1
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([
-      makeAccount('acc-1'),
-      makeAccount('acc-biz'),
-    ]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1"), makeAccount("acc-biz")]);
     const ids = fakeIdGen();
 
     await addSaleAbono(
-      'user-1',
-      'sale-1',
-      { amount: 25000, currency: 'COP', accountId: 'acc-biz', date: new Date('2025-07-01') },
+      "user-1",
+      "sale-1",
+      { amount: 25000, currency: "COP", accountId: "acc-biz", date: new Date("2025-07-01") },
       saleRepo,
       movementRepo,
       ids,
-      accountRepo, fakeUow());
+      accountRepo,
+      fakeUow(),
+    );
 
     const movement = movementRepo.created[0];
-    expect(movement.accountId).toBe('acc-biz');
-    expect(movement.context).toBe('Business');
+    expect(movement.accountId).toBe("acc-biz");
+    expect(movement.context).toBe("Business");
   });
 
-  it('rejects abono exceeding pending amount (POS-5)', async () => {
+  it("rejects abono exceeding pending amount (POS-5)", async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       addSaleAbono(
-        'user-1',
-        'sale-1',
-        { amount: 150000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        "user-1",
+        "sale-1",
+        { amount: 150000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
         saleRepo,
         movementRepo,
         ids,
-        accountRepo, fakeUow()),
+        accountRepo,
+        fakeUow(),
+      ),
     ).rejects.toThrow(ConflictError);
   });
 
-  it('rejects when sale not found', async () => {
+  it("rejects when sale not found", async () => {
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       addSaleAbono(
-        'user-1',
-        'missing',
-        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date() },
+        "user-1",
+        "missing",
+        { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date() },
         saleRepo,
         movementRepo,
         ids,
-accountRepo, fakeUow()),
-      ).rejects.toThrow(NotFoundError);
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(NotFoundError);
   });
 
-  it('rejects abono currency that differs from the sale currency (ACC-1)', async () => {
+  it("rejects abono currency that differs from the sale currency (ACC-1)", async () => {
     const sale = makeSale(); // sale.accountId = acc-1 (COP)
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]);
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
     const ids = fakeIdGen();
 
     await expect(
       addSaleAbono(
-        'user-1',
-        'sale-1',
-        { amount: 25000, currency: 'USD', accountId: 'acc-1', date: new Date('2025-07-01') },
+        "user-1",
+        "sale-1",
+        { amount: 25000, currency: "USD", accountId: "acc-1", date: new Date("2025-07-01") },
         saleRepo,
         movementRepo,
         ids,
-        accountRepo, fakeUow()),
+        accountRepo,
+        fakeUow(),
+      ),
     ).rejects.toThrow(ValidationError);
     expect(saleRepo.addAbono).not.toHaveBeenCalled();
     expect(movementRepo.created).toHaveLength(0);
   });
 
-  it('throws NotFoundError when the sale account does not exist (D3)', async () => {
-    const sale = makeSale({ accountId: 'acc-sale' });
+  it("throws NotFoundError when the sale account does not exist (D3)", async () => {
+    const sale = makeSale({ accountId: "acc-sale" });
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
-    const accountRepo = fakeAccountRepo([makeAccount('acc-1')]); // acc-sale missing
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]); // acc-sale missing
     const ids = fakeIdGen();
 
     await expect(
       addSaleAbono(
-        'user-1',
-        'sale-1',
-        { amount: 25000, currency: 'COP', accountId: 'acc-1', date: new Date('2025-07-01') },
+        "user-1",
+        "sale-1",
+        { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
         saleRepo,
         movementRepo,
         ids,
-        accountRepo, fakeUow()),
+        accountRepo,
+        fakeUow(),
+      ),
     ).rejects.toThrow(NotFoundError);
     expect(saleRepo.addAbono).not.toHaveBeenCalled();
   });
@@ -1136,30 +1174,50 @@ accountRepo, fakeUow()),
 
 // ─── Delete Sale Abono ─────────────────────────────────────────────
 
-describe('deleteSaleAbono', () => {
+describe("deleteSaleAbono", () => {
   const accountRepo = fakeAccountRepo();
-  it('removes abono and reverses linked movement (POS-6)', async () => {
+  it("removes abono and reverses linked movement (POS-6)", async () => {
     const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+      {
+        id: "ab-1",
+        amount: new Money(25000, "COP"),
+        date: new Date("2025-07-01"),
+        accountId: "acc-1",
+        movementId: "mov-1",
+      },
     ]);
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo();
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
+    const result = await deleteSaleAbono(
+      "user-1",
+      "sale-1",
+      "ab-1",
+      saleRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
-    expect(movementRepo.deleted).toContain('mov-1');
+    expect(movementRepo.deleted).toContain("mov-1");
     // R15.3.2 Fase 4: the abono account is touched as the last write.
-    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
   });
 
-  it('deletes the linked movement BEFORE pulling the abono (R5-B atomicity)', async () => {
+  it("deletes the linked movement BEFORE pulling the abono (R5-B atomicity)", async () => {
     const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+      {
+        id: "ab-1",
+        amount: new Money(25000, "COP"),
+        date: new Date("2025-07-01"),
+        accountId: "acc-1",
+        movementId: "mov-1",
+      },
     ]);
     const deleteAbonoMock = vi.fn().mockImplementation(async () => {});
     const deleteMovementMock = vi.fn().mockImplementation(async () => {});
@@ -1169,60 +1227,89 @@ describe('deleteSaleAbono', () => {
     });
     const movementRepo = fakeMovementRepo({ delete: deleteMovementMock });
 
-    await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
+    await deleteSaleAbono(
+      "user-1",
+      "sale-1",
+      "ab-1",
+      saleRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
 
-    expect(deleteMovementMock.mock.invocationCallOrder[0])
-      .toBeLessThan(deleteAbonoMock.mock.invocationCallOrder[0]);
+    expect(deleteMovementMock.mock.invocationCallOrder[0]).toBeLessThan(
+      deleteAbonoMock.mock.invocationCallOrder[0],
+    );
   });
 
-  it('tolerates an already-missing movement when deleting an abono (R5-B)', async () => {
+  it("tolerates an already-missing movement when deleting an abono (R5-B)", async () => {
     const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+      {
+        id: "ab-1",
+        amount: new Money(25000, "COP"),
+        date: new Date("2025-07-01"),
+        accountId: "acc-1",
+        movementId: "mov-1",
+      },
     ]);
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo({
-      delete: vi.fn().mockRejectedValue(new NotFoundError('Movement not found')),
+      delete: vi.fn().mockRejectedValue(new NotFoundError("Movement not found")),
     });
 
-    const result = await deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow());
+    const result = await deleteSaleAbono(
+      "user-1",
+      "sale-1",
+      "ab-1",
+      saleRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
 
     expect(result.abonos).toHaveLength(0);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
     expect(movementRepo.deleted).toHaveLength(0);
   });
 
-  it('propagates non-NotFound movement errors WITHOUT pulling the abono (R5-B)', async () => {
+  it("propagates non-NotFound movement errors WITHOUT pulling the abono (R5-B)", async () => {
     const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-1' },
+      {
+        id: "ab-1",
+        amount: new Money(25000, "COP"),
+        date: new Date("2025-07-01"),
+        accountId: "acc-1",
+        movementId: "mov-1",
+      },
     ]);
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
     const movementRepo = fakeMovementRepo({
-      delete: vi.fn().mockRejectedValue(new Error('db down')),
+      delete: vi.fn().mockRejectedValue(new Error("db down")),
     });
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow()),
-    ).rejects.toThrow('db down');
+      deleteSaleAbono("user-1", "sale-1", "ab-1", saleRepo, movementRepo, accountRepo, fakeUow()),
+    ).rejects.toThrow("db down");
 
     expect(saleRepo.deleteAbono).not.toHaveBeenCalled();
   });
 
-  it('rejects when sale not found', async () => {
+  it("rejects when sale not found", async () => {
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'missing', 'ab-1', saleRepo, movementRepo, accountRepo, fakeUow()),
+      deleteSaleAbono("user-1", "missing", "ab-1", saleRepo, movementRepo, accountRepo, fakeUow()),
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('rejects when abono not found', async () => {
+  it("rejects when abono not found", async () => {
     const sale = makeSale();
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
@@ -1230,19 +1317,33 @@ describe('deleteSaleAbono', () => {
     const movementRepo = fakeMovementRepo();
 
     await expect(
-      deleteSaleAbono('user-1', 'sale-1', 'missing-abono', saleRepo, movementRepo, accountRepo, fakeUow()),
+      deleteSaleAbono(
+        "user-1",
+        "sale-1",
+        "missing-abono",
+        saleRepo,
+        movementRepo,
+        accountRepo,
+        fakeUow(),
+      ),
     ).rejects.toThrow(NotFoundError);
   });
 });
 
 // ─── Delete Sale ───────────────────────────────────────────────────
 
-describe('deleteSale', () => {
+describe("deleteSale", () => {
   const accountRepo = fakeAccountRepo();
-  it('deletes sale, reverses movements, and restores stock (POS-8)', async () => {
+  it("deletes sale, reverses movements, and restores stock (POS-8)", async () => {
     const product = makeProduct();
     const sale = makeSale({}, [
-      { id: 'ab-1', amount: new Money(25000, 'COP'), date: new Date(), accountId: 'acc-1', movementId: 'mov-abono' },
+      {
+        id: "ab-1",
+        amount: new Money(25000, "COP"),
+        date: new Date(),
+        accountId: "acc-1",
+        movementId: "mov-abono",
+      },
     ]);
 
     const saleRepo = fakeSaleRepo({
@@ -1254,38 +1355,59 @@ describe('deleteSale', () => {
     const movementRepo = fakeMovementRepo();
     const creditRepo = fakeCreditGrantedRepo();
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow());
+    await deleteSale(
+      "user-1",
+      "sale-1",
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      creditRepo,
+      accountRepo,
+      fakeUow(),
+    );
 
     expect(catalogRepo.incremented).toHaveLength(1);
     expect(catalogRepo.incremented[0].quantity).toBe(2); // restore 2 units
     // Robust cascade: delete by refId (format-agnostic), not by individual ids.
-    expect(movementRepo.deletedByRefId).toContain('sale-1');
+    expect(movementRepo.deletedByRefId).toContain("sale-1");
     expect(movementRepo.deleteByRefId).toHaveBeenCalled();
     expect(movementRepo.deleted).toHaveLength(0);
-    expect(saleRepo.deleted).toContain('sale-1');
+    expect(saleRepo.deleted).toContain("sale-1");
     // R15.3.2 Fase 4: all accounts affected by the cascade are touched as the
     // last write (sale account = abono account here, deduped to a single touch).
-    expect(accountRepo.touch).toHaveBeenCalledWith('user-1', 'acc-1', expect.anything());
+    expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
   });
 
-  it('cascade-deletes the linked credit and ALL its movements when deleting an on-credit sale (R5-D0c)', async () => {
+  it("cascade-deletes the linked credit and ALL its movements when deleting an on-credit sale (R5-D0c)", async () => {
     const product = makeProduct();
     // NEW model: the sale owns no abonos; its credit owns the debt.
     const sale = makeSale({});
     const credit = new CreditGranted(
       {
-        id: 'cg-1',
-        workspaceId: 'user-1',
-        counterparty: 'Juan Pérez',
-        principal: new Money(150000, 'COP'),
-        accountId: 'acc-1',
-        date: new Date('2025-06-01'),
-        saleId: 'sale-1',
+        id: "cg-1",
+        workspaceId: "user-1",
+        counterparty: "Juan Pérez",
+        principal: new Money(150000, "COP"),
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        saleId: "sale-1",
         createdAt: new Date(),
       },
       [
-        { id: 'ab-init', amount: new Money(20000, 'COP'), date: new Date('2025-06-01'), accountId: 'acc-1', movementId: 'mov-initial' },
-        { id: 'ab-2', amount: new Money(30000, 'COP'), date: new Date('2025-07-01'), accountId: 'acc-1', movementId: 'mov-abono' },
+        {
+          id: "ab-init",
+          amount: new Money(20000, "COP"),
+          date: new Date("2025-06-01"),
+          accountId: "acc-1",
+          movementId: "mov-initial",
+        },
+        {
+          id: "ab-2",
+          amount: new Money(30000, "COP"),
+          date: new Date("2025-07-01"),
+          accountId: "acc-1",
+          movementId: "mov-abono",
+        },
       ],
     );
 
@@ -1300,33 +1422,48 @@ describe('deleteSale', () => {
       findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
     });
 
-    await deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow());
+    await deleteSale(
+      "user-1",
+      "sale-1",
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      creditRepo,
+      accountRepo,
+      fakeUow(),
+    );
 
     // deleteByRefId covers the sale (legacy salePayment) AND the credit
     // (initial payment + credit abonos) — both refIds.
-    expect(movementRepo.deletedByRefId).toContain('sale-1');
-    expect(movementRepo.deletedByRefId).toContain('cg-1');
+    expect(movementRepo.deletedByRefId).toContain("sale-1");
+    expect(movementRepo.deletedByRefId).toContain("cg-1");
     expect(movementRepo.deleted).toHaveLength(0);
-    expect(creditRepo.deleted).toContain('cg-1');
-    expect(saleRepo.deleted).toContain('sale-1');
+    expect(creditRepo.deleted).toContain("cg-1");
+    expect(saleRepo.deleted).toContain("sale-1");
   });
 
-  it('tolerates a movement that is already gone — no orphan, no false error (R5-D0c)', async () => {
+  it("tolerates a movement that is already gone — no orphan, no false error (R5-D0c)", async () => {
     const product = makeProduct();
     const sale = makeSale({});
     const credit = new CreditGranted(
       {
-        id: 'cg-1',
-        workspaceId: 'user-1',
-        counterparty: 'Juan Pérez',
-        principal: new Money(50000, 'COP'),
-        accountId: 'acc-1',
-        date: new Date('2025-06-01'),
-        saleId: 'sale-1',
+        id: "cg-1",
+        workspaceId: "user-1",
+        counterparty: "Juan Pérez",
+        principal: new Money(50000, "COP"),
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        saleId: "sale-1",
         createdAt: new Date(),
       },
       [
-        { id: 'ab-init', amount: new Money(20000, 'COP'), date: new Date('2025-06-01'), accountId: 'acc-1', movementId: 'mov-initial' },
+        {
+          id: "ab-init",
+          amount: new Money(20000, "COP"),
+          date: new Date("2025-06-01"),
+          accountId: "acc-1",
+          movementId: "mov-initial",
+        },
       ],
     );
 
@@ -1343,17 +1480,26 @@ describe('deleteSale', () => {
     });
 
     await expect(
-      deleteSale('user-1', 'sale-1', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow()),
+      deleteSale(
+        "user-1",
+        "sale-1",
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        creditRepo,
+        accountRepo,
+        fakeUow(),
+      ),
     ).resolves.toBeUndefined();
 
-    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'sale-1', expect.anything());
-    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith('user-1', 'cg-1', expect.anything());
-    expect(creditRepo.deleted).toContain('cg-1');
-    expect(saleRepo.deleted).toContain('sale-1');
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith("user-1", "sale-1", expect.anything());
+    expect(movementRepo.deleteByRefId).toHaveBeenCalledWith("user-1", "cg-1", expect.anything());
+    expect(creditRepo.deleted).toContain("cg-1");
+    expect(saleRepo.deleted).toContain("sale-1");
     expect(catalogRepo.incremented).toHaveLength(1);
   });
 
-  it('rejects when sale not found', async () => {
+  it("rejects when sale not found", async () => {
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([]),
     });
@@ -1362,24 +1508,33 @@ describe('deleteSale', () => {
     const creditRepo = fakeCreditGrantedRepo();
 
     await expect(
-      deleteSale('user-1', 'missing', saleRepo, catalogRepo, movementRepo, creditRepo, accountRepo, fakeUow()),
+      deleteSale(
+        "user-1",
+        "missing",
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        creditRepo,
+        accountRepo,
+        fakeUow(),
+      ),
     ).rejects.toThrow(NotFoundError);
   });
 });
 
 // ─── List Sales ────────────────────────────────────────────────────
 
-describe('listSales', () => {
-  it('returns all sales for user', async () => {
-    const sale1 = makeSale({ id: 'sale-1' });
-    const sale2 = makeSale({ id: 'sale-2' });
+describe("listSales", () => {
+  it("returns all sales for user", async () => {
+    const sale1 = makeSale({ id: "sale-1" });
+    const sale2 = makeSale({ id: "sale-2" });
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale1, sale2]),
     });
 
-    const result = await listSales('user-1', saleRepo);
+    const result = await listSales("user-1", saleRepo);
 
     expect(result).toHaveLength(2);
-    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith('user-1');
+    expect(saleRepo.findByWorkspaceId).toHaveBeenCalledWith("user-1");
   });
 });

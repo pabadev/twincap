@@ -17,7 +17,12 @@ import type {
 } from "../../core/domain/repositories";
 import type { Transfer } from "../../core/domain/transfer";
 import type { Movement } from "../../core/domain/movement";
-import { MOVEMENT_LINK_KINDS, MOVEMENT_LINK_KIND_REGISTRY, type MovementLinkKind, type MovementLinkKindMeta } from "../../core/domain/movement";
+import {
+  MOVEMENT_LINK_KINDS,
+  MOVEMENT_LINK_KIND_REGISTRY,
+  type MovementLinkKind,
+  type MovementLinkKindMeta,
+} from "../../core/domain/movement";
 import type { CreditReceived } from "../../core/domain/credit-received";
 import type { CreditGranted } from "../../core/domain/credit-granted";
 import type { Sale } from "../../core/domain/sale";
@@ -49,15 +54,14 @@ function fakeMovementRepo(movements: Movement[]): MovementRepository {
     deleteByRefId: async () => 0,
     countByCategoryId: async () => 0,
     countOpeningMovements: async () => 0,
+    findOpeningMovement: async () => null,
     findPaged: async () => ({ items: [], nextCursor: null }),
     findByWorkspaceIdAndDateRange: async () => [],
     findByWorkspaceIdForBalance: async () => [],
   };
 }
 
-function fakeCreditReceivedRepo(
-  credits: CreditReceived[],
-): CreditReceivedRepository {
+function fakeCreditReceivedRepo(credits: CreditReceived[]): CreditReceivedRepository {
   return {
     findById: async () => null,
     findByWorkspaceId: async () => credits,
@@ -70,9 +74,7 @@ function fakeCreditReceivedRepo(
   };
 }
 
-function fakeCreditGrantedRepo(
-  credits: CreditGranted[],
-): CreditGrantedRepository {
+function fakeCreditGrantedRepo(credits: CreditGranted[]): CreditGrantedRepository {
   return {
     findById: async () => null,
     findByWorkspaceId: async () => credits,
@@ -212,9 +214,7 @@ function makeCreditGranted(overrides: Partial<CreditGranted> = {}): CreditGrante
   } as unknown as CreditGranted;
 }
 
-function makeCreditReceived(
-  overrides: Partial<CreditReceived> = {},
-): CreditReceived {
+function makeCreditReceived(overrides: Partial<CreditReceived> = {}): CreditReceived {
   return {
     id: "cr1",
     workspaceId: "u1",
@@ -667,9 +667,7 @@ describe("reconcile", () => {
       expect(actions).toHaveLength(1);
       expect(actions[0].type).toBe("flag");
       expect(actions[0].entityId).toBe("m12");
-      expect(actions[0].details).toEqual(
-        expect.objectContaining({ candidatesCount: 2 }),
-      );
+      expect(actions[0].details).toEqual(expect.objectContaining({ candidatesCount: 2 }));
     });
 
     it("flags a movement with a link kind outside the registry — §15 fail-closed", async () => {
@@ -835,9 +833,7 @@ describe("reconcile", () => {
       payables: "pay1",
     };
 
-    function makeParentsForKind(
-      kind: MovementLinkKindMeta["parentCollection"],
-    ): {
+    function makeParentsForKind(kind: MovementLinkKindMeta["parentCollection"]): {
       transferRepo: TransferRepository;
       creditReceivedRepo: CreditReceivedRepository;
       creditGrantedRepo: CreditGrantedRepository;
@@ -854,15 +850,9 @@ describe("reconcile", () => {
       const creditGrantedRepo = fakeCreditGrantedRepo(
         kind === "credits-granted" ? [makeCreditGranted({ id: "cg1" })] : [],
       );
-      const saleRepo = fakeSaleRepo(
-        kind === "sales" ? [makeSale({ id: "s1" })] : [],
-      );
-      const accountRepo = fakeAccountRepo(
-        kind === "accounts" ? [makeAccount({ id: "acc1" })] : [],
-      );
-      const payableRepo = fakePayableRepo(
-        kind === "payables" ? [makePayable({ id: "pay1" })] : [],
-      );
+      const saleRepo = fakeSaleRepo(kind === "sales" ? [makeSale({ id: "s1" })] : []);
+      const accountRepo = fakeAccountRepo(kind === "accounts" ? [makeAccount({ id: "acc1" })] : []);
+      const payableRepo = fakePayableRepo(kind === "payables" ? [makePayable({ id: "pay1" })] : []);
       return {
         transferRepo,
         creditReceivedRepo,

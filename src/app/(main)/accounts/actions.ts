@@ -1,24 +1,25 @@
-'use server';
+"use server";
 
 import {
   createAccount,
   updateAccount,
   deleteAccount,
   setInitialAccountBalance,
-} from '../../../core/application/accounts';
-import type { CreateAccountInput } from '../../../core/application/accounts';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { revalidatePath } from 'next/cache';
-import { handleActionError } from '../../../lib/handle-action-error';
-import { withAudit } from '../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
-import { trackAnalytics } from '../../../lib/track-analytics';
+  correctInitialBalance,
+} from "../../../core/application/accounts";
+import type { CreateAccountInput } from "../../../core/application/accounts";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { claimIdempotency, releaseIdempotency } from "../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { revalidatePath } from "next/cache";
+import { handleActionError } from "../../../lib/handle-action-error";
+import { withAudit } from "../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
+import { trackAnalytics } from "../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -27,35 +28,40 @@ export async function createAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const name = formData.get('name') as string;
-  const currency = formData.get('currency') as CreateAccountInput['currency'];
-  const initialBalance = Number(formData.get('initialBalance') || '0');
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const name = formData.get("name") as string;
+  const currency = formData.get("currency") as CreateAccountInput["currency"];
+  const initialBalance = Number(formData.get("initialBalance") || "0");
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createAccount');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createAccount");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createAccount',
-        entityType: 'account',
-        result: 'duplicate',
+        action: "createAccount",
+        entityType: "account",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createAccount', entityType: 'account', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createAccount",
+        entityType: "account",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
@@ -73,19 +79,19 @@ export async function createAccountAction(
     // key stays consumed. A post-commit failure (revalidate/trackAnalytics)
     // must NEVER release it or a retry would re-execute the mutation.
     committed = true;
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
     // R13-G: track account creation (analytics, best-effort).
-    await trackAnalytics('accountCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("accountCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'createAccount');
+      await releaseIdempotency(user.userId, idempotencyKey, "createAccount");
     }
     return handleActionError(error);
   }
 
-  return { success: 'accountCreated' };
+  return { success: "accountCreated" };
 }
 
 export async function updateAccountAction(
@@ -93,10 +99,10 @@ export async function updateAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const accountId = formData.get('accountId') as string;
-  const name = formData.get('name') as string;
+  const accountId = formData.get("accountId") as string;
+  const name = formData.get("name") as string;
 
   try {
     await connectDb();
@@ -107,21 +113,21 @@ export async function updateAccountAction(
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'updateAccount', entityType: 'account', userId: user.userId },
+      { action: "updateAccount", entityType: "account", userId: user.userId },
       () => {
         const accountRepo = new MongoAccountRepository();
         return updateAccount(user.workspaceId!, { accountId, name }, accountRepo);
       },
     );
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
-    revalidatePath('/transfers');
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
+    revalidatePath("/transfers");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'accountUpdated' };
+  return { success: "accountUpdated" };
 }
 
 export async function deleteAccountAction(
@@ -129,31 +135,37 @@ export async function deleteAccountAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const accountId = formData.get('accountId') as string;
+  const accountId = formData.get("accountId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteAccount', entityType: 'account', userId: user.userId },
+      { action: "deleteAccount", entityType: "account", userId: user.userId },
       () => {
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
-        return deleteAccount(user.workspaceId!, accountId, accountRepo, movementRepo, new MongoUnitOfWork());
+        return deleteAccount(
+          user.workspaceId!,
+          accountId,
+          accountRepo,
+          movementRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
-    revalidatePath('/transfers');
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
+    revalidatePath("/transfers");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'accountDeleted' };
+  return { success: "accountDeleted" };
 }
 
 export async function setInitialBalanceAction(
@@ -161,34 +173,39 @@ export async function setInitialBalanceAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const accountId = formData.get('accountId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const accountId = formData.get("accountId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   let committed = false;
   try {
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "setInitialBalance");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'setInitialBalance',
-        entityType: 'account',
-        result: 'duplicate',
+        action: "setInitialBalance",
+        entityType: "account",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'setInitialBalance', entityType: 'account', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "setInitialBalance",
+        entityType: "account",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const accountRepo = new MongoAccountRepository();
         const movementRepo = new MongoMovementRepository();
@@ -206,15 +223,82 @@ export async function setInitialBalanceAction(
     // key stays consumed. A post-commit failure (revalidate) must NEVER
     // release it or a retry would re-execute the mutation.
     committed = true;
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     if (!committed) {
-      await releaseIdempotency(user.userId, idempotencyKey, 'setInitialBalance');
+      await releaseIdempotency(user.userId, idempotencyKey, "setInitialBalance");
     }
     return handleActionError(error);
   }
 
-  return { success: 'initialBalanceSet' };
+  return { success: "initialBalanceSet" };
+}
+
+export async function correctInitialBalanceAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "error.unauthorized" };
+
+  const accountId = formData.get("accountId") as string;
+  const newAmount = Number(formData.get("newAmount") || "0");
+  const idempotencyKey = formData.get("idempotencyKey") as string;
+  if (!idempotencyKey) {
+    return { error: "error.idempotencyKeyRequired" };
+  }
+
+  let committed = false;
+  try {
+    await connectDb();
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "correctInitialBalance");
+    if (!claimed) {
+      await new MongoOperationLogger().log({
+        userId: user.userId,
+        action: "correctInitialBalance",
+        entityType: "account",
+        result: "duplicate",
+        correlationId: idempotencyKey ?? undefined,
+        occurredAt: new Date(),
+      });
+      return { error: "error.duplicateRequest" };
+    }
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      {
+        action: "correctInitialBalance",
+        entityType: "account",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
+      () => {
+        const accountRepo = new MongoAccountRepository();
+        const movementRepo = new MongoMovementRepository();
+        return correctInitialBalance(
+          user.workspaceId!,
+          { accountId, newAmount },
+          accountRepo,
+          movementRepo,
+          new MongoUnitOfWork(),
+        );
+      },
+    );
+    // R15.3.1 (P1.2): the financial mutation has COMMITTED — the idempotency
+    // key stays consumed. A post-commit failure (revalidate) must NEVER
+    // release it or a retry would re-execute the mutation.
+    committed = true;
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
+  } catch (error) {
+    if (!committed) {
+      await releaseIdempotency(user.userId, idempotencyKey, "correctInitialBalance");
+    }
+    return handleActionError(error);
+  }
+
+  return { success: "initialBalanceCorrected" };
 }
