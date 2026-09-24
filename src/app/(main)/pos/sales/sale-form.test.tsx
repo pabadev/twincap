@@ -391,7 +391,7 @@ describe("SaleForm responsive layout (C12-3)", () => {
     expect(summarySection!.textContent).toContain("1000");
   });
 
-  it("preserves mobile DOM order: settings → cart → summary", () => {
+  it("preserves mobile DOM order: cart → settings → summary (C12-3b flow)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const gridWrapper = container.querySelector(
       ".lg\\:grid.lg\\:grid-cols-\\[minmax\\(0\\2c 1fr\\)_20rem\\]",
@@ -399,15 +399,123 @@ describe("SaleForm responsive layout (C12-3)", () => {
     expect(gridWrapper).not.toBeNull();
     const children = Array.from(gridWrapper!.children);
     expect(children.length).toBe(3);
-    // First child: settings (contains #paymentMode)
-    expect(children[0].querySelector("#paymentMode")).not.toBeNull();
-    // Second child: cart (contains addItem button)
-    const addItemBtn = [...children[1].querySelectorAll("button")].find(
+    // First child: cart (contains addItem button) — C12-3b: articles first
+    const addItemBtn = [...children[0].querySelectorAll("button")].find(
       (b) => b.textContent === "addItem",
     );
     expect(addItemBtn).toBeDefined();
+    // Second child: settings (contains #paymentMode)
+    expect(children[1].querySelector("#paymentMode")).not.toBeNull();
     // Third child: summary (contains submit button)
     const submitBtn = children[2].querySelector('button[type="submit"]');
     expect(submitBtn).not.toBeNull();
+  });
+});
+
+// C12-3b: visual hierarchy refinements — desktop table layout, action hierarchy,
+// numeric formatting, and styling improvements.
+describe("SaleForm visual hierarchy (C12-3b)", () => {
+  it("renders a desktop header row with column labels (hidden on mobile)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // The header row is hidden on mobile (hidden class) but present in DOM.
+    const headerRow = container.querySelector(
+      ".hidden.items-center.gap-2.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:flex",
+    );
+    expect(headerRow).not.toBeNull();
+    // Header contains column labels: item, qty, unitPrice, subtotal
+    expect(headerRow!.textContent).toContain("item");
+    expect(headerRow!.textContent).toContain("qty");
+    expect(headerRow!.textContent).toContain("unitPrice");
+    expect(headerRow!.textContent).toContain("subtotal");
+  });
+
+  it("renders subtotal column per line item on desktop (hidden on mobile)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // Add a second line item to test multiple rows
+    const addItem = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    act(() => {
+      addItem!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    // Subtotal columns are hidden on mobile (hidden class) but present in DOM.
+    const subtotalCells = container.querySelectorAll(
+      ".hidden.w-24.text-right.text-sm.text-zinc-700.sm\\:block.sm\\:w-28",
+    );
+    expect(subtotalCells.length).toBe(2); // One per line item
+  });
+
+  it("renders delete button with neutral base styling (red on hover)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // Add a second line item to show the delete button
+    const addItem = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    act(() => {
+      addItem!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const removeBtn = container.querySelector<HTMLButtonElement>('button[aria-label="remove"]');
+    expect(removeBtn).not.toBeNull();
+    // Base styling: neutral gray (text-zinc-400 or text-zinc-500), not danger
+    expect(removeBtn!.className).toMatch(/text-zinc-(400|500)/);
+    // Hover styling: danger red (hover:text-danger)
+    expect(removeBtn!.className).toContain("hover:text-danger");
+  });
+
+  it("renders 'Agregar artículo' as a secondary button (not a text link)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const addItemBtn = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    expect(addItemBtn).toBeDefined();
+    // Secondary button has variant="secondary" classes
+    expect(addItemBtn!.className).toContain("bg-zinc-100");
+    expect(addItemBtn!.className).toContain("text-zinc-700");
+  });
+
+  it("renders 'Crear artículo' as a discreet text link (not competing with Agregar)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const createItemBtn = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "createItem",
+    );
+    expect(createItemBtn).toBeDefined();
+    // Discreet link styling: small text, muted color, not a filled button
+    expect(createItemBtn!.className).toContain("text-xs");
+    expect(createItemBtn!.className).toMatch(/text-zinc-(400|500)/);
+    // Should NOT have button variant classes (bg-primary, bg-zinc-100, etc.)
+    expect(createItemBtn!.className).not.toContain("bg-primary");
+    expect(createItemBtn!.className).not.toContain("bg-zinc-100");
+  });
+
+  it("renders unit price input as text type with inputMode decimal (format-on-blur)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const priceInput = container.querySelector<HTMLInputElement>('input[id^="price-"]');
+    expect(priceInput).not.toBeNull();
+    // C12-3b: changed from type="number" to type="text" with inputMode="decimal"
+    // to support format-on-blur with thousands separators.
+    expect(priceInput!.type).toBe("text");
+    expect(priceInput!.getAttribute("inputmode")).toBe("decimal");
+  });
+
+  it("right-aligns numeric inputs (quantity, unit price) for fast scanning", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const qtyInput = container.querySelector<HTMLInputElement>('input[id^="qty-"]');
+    const priceInput = container.querySelector<HTMLInputElement>('input[id^="price-"]');
+    expect(qtyInput).not.toBeNull();
+    expect(priceInput).not.toBeNull();
+    // Both numeric inputs have text-right class
+    expect(qtyInput!.className).toContain("text-right");
+    expect(priceInput!.className).toContain("text-right");
+  });
+
+  it("applies warning tint to credit-mode client hint when client is missing", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    // Switch to credit mode
+    switchPaymentMode(container, "on-credit");
+    // The hint should have warning styling (amber tint)
+    const hint = container.querySelector<HTMLElement>("#clientId-hint");
+    expect(hint).not.toBeNull();
+    expect(hint!.className).toMatch(/text-amber-(400|600)/);
+    expect(hint!.className).toContain("font-medium");
   });
 });

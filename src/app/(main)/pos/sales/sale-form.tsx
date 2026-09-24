@@ -1,6 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../../i18n/client";
 import { useActionError } from "../../../../lib/use-action-error";
@@ -52,6 +60,38 @@ interface SaleFormProps {
    * closures in the parent's event handler.
    */
   dirtyRef?: MutableRefObject<boolean>;
+}
+
+/**
+ * C12-3b: format a numeric value with thousands separators for display.
+ * Uses Intl.NumberFormat with the current locale. Returns empty string for
+ * non-finite values to avoid rendering "NaN" or "Infinity".
+ */
+function formatNumberDisplay(value: number, locale: string): string {
+  if (!Number.isFinite(value)) return "";
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/**
+ * C12-3b: parse a numeric input defensively. Strips non-numeric characters
+ * except digits, decimal point, and minus sign. Handles pasted formatted
+ * input (e.g. "30.000" or "30,000.50"). Returns NaN if parsing fails.
+ */
+function parseNumericInput(raw: string): number {
+  // Strip everything except digits, decimal point, minus sign
+  const cleaned = raw.replace(/[^0-9.-]/g, "");
+  // Handle multiple decimal points (keep only the first)
+  const parts = cleaned.split(".");
+  if (parts.length > 2) {
+    const integer = parts[0];
+    const decimals = parts.slice(1).join("");
+    const parsed = Number(`${integer}.${decimals}`);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 export function SaleForm({
@@ -119,6 +159,10 @@ export function SaleForm({
     },
   ]);
 
+  // C12-3b: track which unit price input is focused (for format-on-blur).
+  // When focused, show raw value; when blurred, show formatted value.
+  const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
+
   // Dirty detection (C12-1): the form has unsaved changes when any field
   // deviates from its initial value. The preselected first line item (from the
   // catalog) does NOT count as dirty — it is the default, not a user edit.
@@ -182,11 +226,14 @@ export function SaleForm({
     }
   }
 
-  function updateLineItem(index: number, field: keyof LineItem, value: string | number) {
-    setLineItems((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)),
-    );
-  }
+  const updateLineItem = useCallback(
+    (index: number, field: keyof LineItem, value: string | number) => {
+      setLineItems((prev) =>
+        prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)),
+      );
+    },
+    [],
+  );
 
   function addLineItem() {
     setLineItems((prev) => [
@@ -210,6 +257,20 @@ export function SaleForm({
       setCurrency(item.unitPrice.currency);
     }
   }
+
+  // C12-3b: handle unit price input change with defensive parsing.
+  const handlePriceChange = useCallback(
+    (idx: number, raw: string) => {
+      const parsed = parseNumericInput(raw);
+      if (!Number.isNaN(parsed)) {
+        updateLineItem(idx, "unitPrice", parsed);
+      } else if (raw === "" || raw === "-") {
+        // Allow clearing the field temporarily
+        updateLineItem(idx, "unitPrice", 0);
+      }
+    },
+    [updateLineItem],
+  );
 
   const total = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
 
@@ -247,13 +308,159 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        {/* C12-3: responsive two-zone layout. Mobile keeps the original single-column
-            flow (settings → line items → summary). At lg+ the form becomes a grid:
-            LEFT = cart/line items, RIGHT = settings (row 1) + sticky summary (row 2).
-            DOM order matches mobile order; desktop placement is via grid positioning. */}
+        {/* C12-3 + C12-3b: responsive two-zone layout. Mobile keeps the original
+            single-column flow (articles → payment/client → summary). At lg+ the
+            form becomes a grid: LEFT = cart/line items, RIGHT = settings (row 1)
+            + sticky summary (row 2). DOM order matches mobile order; desktop
+            placement is via grid positioning. */}
         <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:space-y-0">
+          {/* Cart / line items.
+              Mobile: first section. Desktop: left column, row 1. */}
+          <div className="lg:col-start-1 lg:row-start-1">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                {t("lineItems")}
+              </label>
+            </div>
+
+            {/* C12-3b: desktop table layout with header row. Mobile keeps stacked
+                cards with labels (labels are the only affordance on mobile). */}
+            <div className="space-y-3 lg:space-y-0">
+              {/* Desktop header row — hidden on mobile */}
+              <div
+                className="hidden items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:flex dark:text-zinc-400"
+                aria-hidden="true"
+              >
+                <div className="min-w-0 flex-1">{t("item")}</div>
+                <div className="w-16 text-right sm:w-20">{t("qty")}</div>
+                <div className="w-24 text-right sm:w-28">{t("unitPrice")}</div>
+                <div className="hidden w-24 text-right sm:block sm:w-28">{t("subtotal")}</div>
+                <div className="w-10" />
+              </div>
+
+              {lineItems.map((li, idx) => {
+                const subtotal = li.quantity * li.unitPrice;
+                const isPriceFocused = focusedPriceIdx === idx;
+                const priceDisplay = isPriceFocused
+                  ? li.unitPrice.toString()
+                  : formatNumberDisplay(li.unitPrice, locale);
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex flex-wrap items-end gap-2 lg:flex-nowrap lg:items-center lg:border-b lg:border-surface-border/50 lg:py-2 lg:last:border-b-0"
+                  >
+                    {/* Item select */}
+                    <div className="min-w-0 flex-1">
+                      <FormField
+                        id={`item-${idx}`}
+                        label={t("item")}
+                        showLabel={idx === 0}
+                        // On desktop, labels are in the header row; hide per-row labels
+                        // at lg+ to avoid repetition.
+                        // We use a responsive approach: show label on mobile, hide on desktop.
+                        // FormField doesn't support responsive showLabel, so we use CSS.
+                      >
+                        <Select
+                          value={li.itemId}
+                          onChange={(e) => handleItemSelect(idx, e.target.value)}
+                          disabled={isPending}
+                          placeholder={tCommon("select")}
+                          options={catalogItems.map((item) => ({
+                            value: item.id,
+                            label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
+                          }))}
+                        />
+                      </FormField>
+                      {/* Mobile-only label for subsequent rows */}
+                      {idx > 0 && (
+                        <div className="mt-1 text-xs text-zinc-500 lg:hidden dark:text-zinc-400">
+                          {t("item")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="w-16 sm:w-20">
+                      <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={li.quantity}
+                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
+                          disabled={isPending}
+                          className="text-right"
+                        />
+                      </FormField>
+                    </div>
+
+                    {/* Unit price — format on blur */}
+                    <div className="w-24 sm:w-28">
+                      <FormField
+                        id={`price-${idx}`}
+                        label={t("unitPrice")}
+                        showLabel={idx === 0}
+                        labelClassName="whitespace-nowrap"
+                      >
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={priceDisplay}
+                          onChange={(e) => handlePriceChange(idx, e.target.value)}
+                          onFocus={() => setFocusedPriceIdx(idx)}
+                          onBlur={() => setFocusedPriceIdx(null)}
+                          disabled={isPending}
+                          className="text-right"
+                        />
+                      </FormField>
+                    </div>
+
+                    {/* Subtotal — desktop only */}
+                    <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 dark:text-zinc-300">
+                      {formatAmount(subtotal, currency, locale)}
+                    </div>
+
+                    {/* Remove button */}
+                    {lineItems.length > 1 && (
+                      <ActionIconButton
+                        icon={Trash2}
+                        label={t("remove")}
+                        tone="neutral"
+                        onClick={() => removeLineItem(idx)}
+                        disabled={isPending}
+                        className="mb-0.5 text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* C12-3b: action hierarchy — "Agregar artículo" as secondary button,
+                "Crear artículo" as discreet link. */}
+            <div className="mt-3 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={addLineItem}
+                disabled={isPending}
+              >
+                {t("addItem")}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setShowItemForm(true)}
+                disabled={isPending}
+                className="text-xs text-zinc-500 hover:text-primary hover:underline dark:text-zinc-400 dark:hover:text-primary"
+              >
+                {t("createItem")}
+              </button>
+            </div>
+          </div>
+
           {/* Settings: payment, account, client, initial payment, date.
-              Mobile: first section. Desktop: right column, row 1. */}
+              Mobile: second section. Desktop: right column, row 1. */}
           <div className="space-y-4 lg:col-start-2 lg:row-start-1">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <Select
@@ -299,6 +506,11 @@ export function SaleForm({
                 id="clientId"
                 label={t("client")}
                 hint={needsClient ? t("clientRequiredForCredit") : undefined}
+                // C12-3b: when credit mode and no client, the hint is a warning —
+                // raise legibility with amber tint.
+                hintClassName={
+                  needsClient ? "text-amber-600 dark:text-amber-400 font-medium" : undefined
+                }
               >
                 <Select
                   required={isOnCredit}
@@ -352,110 +564,19 @@ export function SaleForm({
             />
           </div>
 
-          {/* Cart / line items.
-              Mobile: second section. Desktop: left column, row 1. */}
-          <div className="lg:col-start-1 lg:row-start-1">
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {t("lineItems")}
-              </label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowItemForm(true)}
-                  disabled={isPending}
-                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
-                >
-                  {t("createItem")}
-                </button>
-                <button
-                  type="button"
-                  onClick={addLineItem}
-                  disabled={isPending}
-                  className="text-xs text-primary hover:text-primary-hover dark:text-primary"
-                >
-                  {t("addItem")}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {lineItems.map((li, idx) => (
-                <div key={idx} className="flex flex-wrap items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <FormField id={`item-${idx}`} label={t("item")} showLabel={idx === 0}>
-                      <Select
-                        value={li.itemId}
-                        onChange={(e) => handleItemSelect(idx, e.target.value)}
-                        disabled={isPending}
-                        placeholder={tCommon("select")}
-                        options={catalogItems.map((item) => ({
-                          value: item.id,
-                          label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
-                        }))}
-                      />
-                    </FormField>
-                  </div>
-                  {/* A1 (F3): qty/price/remove group wraps at <sm so the row
-                      stays inside the modal budget (~272px) instead of
-                      overflowing horizontally. At sm+ the group is inline. */}
-                  <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:flex-nowrap">
-                    <div className="w-16 sm:w-20">
-                      <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={li.quantity}
-                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
-                          disabled={isPending}
-                        />
-                      </FormField>
-                    </div>
-                    <div className="w-20 sm:w-28">
-                      <FormField
-                        id={`price-${idx}`}
-                        label={t("unitPrice")}
-                        showLabel={idx === 0}
-                        labelClassName="whitespace-nowrap"
-                      >
-                        <Input
-                          type="number"
-                          min="1"
-                          value={li.unitPrice}
-                          onChange={(e) => updateLineItem(idx, "unitPrice", Number(e.target.value))}
-                          disabled={isPending}
-                        />
-                      </FormField>
-                    </div>
-                    {lineItems.length > 1 && (
-                      <ActionIconButton
-                        icon={Trash2}
-                        label={t("remove")}
-                        tone="danger"
-                        onClick={() => removeLineItem(idx)}
-                        disabled={isPending}
-                        className="mb-0.5"
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Summary + main actions.
-              Mobile: third section (after line items). Desktop: right column, row 2,
+              Mobile: third section (after settings). Desktop: right column, row 2,
               sticky at the bottom of the modal scroll area so the total and the
               create button are always reachable without scrolling. */}
           <div className="lg:col-start-2 lg:row-start-2 lg:sticky lg:bottom-0 lg:z-10 lg:border-t lg:border-surface-border lg:bg-surface-card lg:pt-4">
-            <div className="mb-3 text-right text-sm font-medium text-zinc-900 dark:text-white">
+            {/* C12-3b: TOTAL in prominent position right before footer actions */}
+            <div className="mb-3 text-right text-lg font-semibold text-zinc-900 dark:text-white">
               {t("total")} {formatAmount(total, currency, locale)}
             </div>
 
+            {/* C12-3b: footer action row — Cancelar secondary + Crear venta primary.
+                Both go through the same guarded path (C12-1). */}
             <div className="flex items-center gap-3">
-              <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
-                {isPending ? t("creating") : t("createSale")}
-              </Button>
               {(onDone || onCancel) && (
                 <Button
                   type="button"
@@ -466,6 +587,9 @@ export function SaleForm({
                   {tCommon("cancel")}
                 </Button>
               )}
+              <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
+                {isPending ? t("creating") : t("createSale")}
+              </Button>
             </div>
           </div>
         </div>
