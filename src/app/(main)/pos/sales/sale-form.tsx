@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type MutableRefObject,
+  type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../../i18n/client";
@@ -48,7 +49,7 @@ interface SaleFormProps {
   /** Called after a successful create (sale persisted). Also used as the legacy close path. */
   onDone?: () => void;
   /**
-   * Called when the user explicitly cancels (Cancel button). The parent wires
+   * Called when the user explicitly cancels (Cancel Button). The parent wires
    * this to the dirty-check close-guard so unsaved changes trigger a
    * confirmation instead of silent discard. Falls back to `onDone` when omitted.
    */
@@ -92,6 +93,20 @@ function parseNumericInput(raw: string): number {
   }
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+/**
+ * C12-3c: normalize a string for fuzzy-ish search matching. Lowercases,
+ * strips diacritics, collapses whitespace. Used by the combobox to filter
+ * catalog items as the user types.
+ */
+function normalizeForSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function SaleForm({
@@ -151,47 +166,44 @@ export function SaleForm({
   const [initialPayment, setInitialPayment] = useState<string>("0");
   const [showClientForm, setShowClientForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    {
-      itemId: catalogItems[0]?.id ?? "",
-      quantity: 1,
-      unitPrice: catalogItems[0]?.unitPrice.amount ?? 0,
-    },
-  ]);
+  // C12-3c: start with an empty cart. The user adds items via the top search.
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
 
   // C12-3b: track which unit price input is focused (for format-on-blur).
   // When focused, show raw value; when blurred, show formatted value.
   const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
 
-  // Dirty detection (C12-1): the form has unsaved changes when any field
-  // deviates from its initial value. The preselected first line item (from the
-  // catalog) does NOT count as dirty — it is the default, not a user edit.
-  // The parent reads `dirtyRef` synchronously in the close-guard handler.
-  const initialLineItems = useMemo<LineItem[]>(
-    () => [
-      {
-        itemId: catalogItems[0]?.id ?? "",
-        quantity: 1,
-        unitPrice: catalogItems[0]?.unitPrice.amount ?? 0,
-      },
-    ],
-    [catalogItems],
-  );
+  // C12-3c: combobox state for the top item searcher.
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isComboOpen, setIsComboOpen] = useState(false);
+  const [comboActiveIdx, setComboActiveIdx] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const comboListRef = useRef<HTMLUListElement>(null);
 
+  // Filtered catalog items based on search query. Excludes items already in
+  // the cart (the user can still increment qty via the same selection, but
+  // the dropdown only shows items NOT yet in the cart to avoid confusion —
+  // selecting an already-added item still works via the duplicate logic).
+  // Actually, per spec: selecting an item already in the table increments qty.
+  // So we show ALL catalog items in the dropdown, but mark which are in-cart.
+  const filteredItems = useMemo(() => {
+    const q = normalizeForSearch(searchQuery);
+    if (!q) return catalogItems;
+    return catalogItems.filter((item) => normalizeForSearch(item.name).includes(q));
+  }, [catalogItems, searchQuery]);
+
+  // C12-3c: dirty detection — the form has unsaved changes when any field
+  // deviates from its initial value. Initial state is an empty cart, default
+  // payment mode, no client, default currency, zero initial payment.
   const isDirty = useMemo(() => {
+    if (lineItems.length > 0) return true;
     if (clientId !== "") return true;
     if (paymentMode !== "paid-in-full") return true;
     if (currency !== DEFAULT_CURRENCY) return true;
     if (initialPayment !== "0") return true;
     if (localClients.length > 0) return true;
-    if (lineItems.length !== initialLineItems.length) return true;
-    return lineItems.some(
-      (li, i) =>
-        li.itemId !== initialLineItems[i]?.itemId ||
-        li.quantity !== initialLineItems[i]?.quantity ||
-        li.unitPrice !== initialLineItems[i]?.unitPrice,
-    );
-  }, [lineItems, initialLineItems, clientId, paymentMode, currency, initialPayment, localClients]);
+    return false;
+  }, [lineItems, clientId, paymentMode, currency, initialPayment, localClients]);
 
   // Sync dirty flag to the parent-owned ref so the close-guard handler can
   // read it without stale-closure issues.
@@ -214,15 +226,15 @@ export function SaleForm({
     }
   }
 
+  // C12-3c: when a new catalog item is created from inside the form, add it
+  // to the cart immediately (it's the item the user was looking for).
   function handleItemCreated(item?: SerializedCatalogItem) {
     setShowItemForm(false);
     if (item) {
-      setLineItems((prev) =>
-        prev.map((li, idx) =>
-          idx === 0 ? { ...li, itemId: item.id, unitPrice: item.unitPrice.amount } : li,
-        ),
-      );
+      addToCart(item);
       setCurrency(item.unitPrice.currency);
+      // Clear the search so the combobox is ready for the next item.
+      setSearchQuery("");
     }
   }
 
@@ -235,28 +247,98 @@ export function SaleForm({
     [],
   );
 
-  function addLineItem() {
-    setLineItems((prev) => [
-      ...prev,
-      { itemId: catalogItems[0]?.id ?? "", quantity: 1, unitPrice: 0 },
-    ]);
-  }
-
   function removeLineItem(index: number) {
     setLineItems((prev) => prev.filter((_, idx) => idx !== index));
   }
 
-  function handleItemSelect(index: number, itemId: string) {
-    const item = catalogItems.find((c) => c.id === itemId);
-    if (item) {
-      setLineItems((prev) =>
-        prev.map((li, idx) =>
-          idx === index ? { ...li, itemId, unitPrice: item.unitPrice.amount } : li,
-        ),
-      );
-      setCurrency(item.unitPrice.currency);
+  // C12-3c: add an item to the cart. If it's already there, increment qty.
+  // Otherwise append a new row with qty=1 and the catalog unit price.
+  function addToCart(item: SerializedCatalogItem) {
+    setLineItems((prev) => {
+      const existing = prev.findIndex((li) => li.itemId === item.id);
+      if (existing >= 0) {
+        return prev.map((li, idx) =>
+          idx === existing ? { ...li, quantity: li.quantity + 1 } : li,
+        );
+      }
+      return [...prev, { itemId: item.id, quantity: 1, unitPrice: item.unitPrice.amount }];
+    });
+    setCurrency(item.unitPrice.currency);
+  }
+
+  // C12-3c: combobox handlers.
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+    setIsComboOpen(true);
+    setComboActiveIdx(-1);
+  }
+
+  function handleSearchFocus() {
+    if (searchQuery.length > 0 || catalogItems.length > 0) {
+      setIsComboOpen(true);
     }
   }
+
+  function handleSearchBlur() {
+    // Delay closing so click on option can register.
+    setTimeout(() => setIsComboOpen(false), 150);
+  }
+
+  function selectComboItem(item: SerializedCatalogItem) {
+    addToCart(item);
+    // Keep the dropdown open so the user can keep adding items (POS pattern).
+    // Clear the search so the full catalog is shown for the next selection.
+    setSearchQuery("");
+    setComboActiveIdx(-1);
+    // Return focus to the search input for the next item.
+    searchInputRef.current?.focus();
+  }
+
+  function handleSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (!isComboOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setIsComboOpen(true);
+        setComboActiveIdx(0);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setComboActiveIdx((prev) => (prev < filteredItems.length - 1 ? prev + 1 : 0));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setComboActiveIdx((prev) => (prev > 0 ? prev - 1 : filteredItems.length - 1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (comboActiveIdx >= 0 && comboActiveIdx < filteredItems.length) {
+          selectComboItem(filteredItems[comboActiveIdx]);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        e.stopPropagation();
+        setIsComboOpen(false);
+        setComboActiveIdx(-1);
+        break;
+    }
+  }
+
+  // Scroll the active option into view when navigating with arrow keys.
+  useEffect(() => {
+    if (!isComboOpen || comboActiveIdx < 0) return;
+    const list = comboListRef.current;
+    if (!list) return;
+    const active = list.children[comboActiveIdx] as HTMLElement | undefined;
+    // jsdom does not implement scrollIntoView; guard for test environments.
+    if (active && typeof active.scrollIntoView === "function") {
+      active.scrollIntoView({ block: "nearest" });
+    }
+  }, [comboActiveIdx, isComboOpen]);
 
   // C12-3b: handle unit price input change with defensive parsing.
   const handlePriceChange = useCallback(
@@ -285,6 +367,13 @@ export function SaleForm({
       parsedInitialPayment > total);
   const submitBlocked = isPending || needsClient || initialPaymentInvalid;
 
+  // Helper: look up catalog item by id (for displaying name in the table).
+  const catalogMap = useMemo(() => {
+    const map = new Map<string, SerializedCatalogItem>();
+    for (const item of catalogItems) map.set(item.id, item);
+    return map;
+  }, [catalogItems]);
+
   return (
     <div>
       {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
@@ -308,11 +397,11 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        {/* C12-3 + C12-3b: responsive two-zone layout. Mobile keeps the original
-            single-column flow (articles → payment/client → summary). At lg+ the
-            form becomes a grid: LEFT = cart/line items, RIGHT = settings (row 1)
-            + sticky summary (row 2). DOM order matches mobile order; desktop
-            placement is via grid positioning. */}
+        {/* C12-3 + C12-3b + C12-3c: responsive two-zone layout. Mobile keeps the
+            original single-column flow (articles → payment/client → summary). At
+            lg+ the form becomes a grid: LEFT = cart/line items, RIGHT = settings
+            (row 1) + sticky summary (row 2). DOM order matches mobile order;
+            desktop placement is via grid positioning. */}
         <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6 lg:space-y-0">
           {/* Cart / line items.
               Mobile: first section. Desktop: left column, row 1. */}
@@ -323,140 +412,208 @@ export function SaleForm({
               </label>
             </div>
 
-            {/* C12-3b: desktop table layout with header row. Mobile keeps stacked
-                cards with labels (labels are the only affordance on mobile). */}
-            <div className="space-y-3 lg:space-y-0">
-              {/* Desktop header row — hidden on mobile */}
-              <div
-                className="hidden items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:flex dark:text-zinc-400"
-                aria-hidden="true"
-              >
-                <div className="min-w-0 flex-1">{t("item")}</div>
-                <div className="w-16 text-right sm:w-20">{t("qty")}</div>
-                <div className="w-24 text-right sm:w-28">{t("unitPrice")}</div>
-                <div className="hidden w-24 text-right sm:block sm:w-28">{t("subtotal")}</div>
-                <div className="w-10" />
-              </div>
-
-              {lineItems.map((li, idx) => {
-                const subtotal = li.quantity * li.unitPrice;
-                const isPriceFocused = focusedPriceIdx === idx;
-                const priceDisplay = isPriceFocused
-                  ? li.unitPrice.toString()
-                  : formatNumberDisplay(li.unitPrice, locale);
-
-                return (
-                  <div
-                    key={idx}
-                    className="flex flex-wrap items-end gap-2 lg:flex-nowrap lg:items-center lg:border-b lg:border-surface-border/50 lg:py-2 lg:last:border-b-0"
-                  >
-                    {/* Item select */}
-                    <div className="min-w-0 flex-1">
-                      <FormField
-                        id={`item-${idx}`}
-                        label={t("item")}
-                        showLabel={idx === 0}
-                        // On desktop, labels are in the header row; hide per-row labels
-                        // at lg+ to avoid repetition.
-                        // We use a responsive approach: show label on mobile, hide on desktop.
-                        // FormField doesn't support responsive showLabel, so we use CSS.
-                      >
-                        <Select
-                          value={li.itemId}
-                          onChange={(e) => handleItemSelect(idx, e.target.value)}
-                          disabled={isPending}
-                          placeholder={tCommon("select")}
-                          options={catalogItems.map((item) => ({
-                            value: item.id,
-                            label: `${item.name} (${tCatalog(`type_${item.type}`)})`,
-                          }))}
-                        />
-                      </FormField>
-                      {/* Mobile-only label for subsequent rows */}
-                      {idx > 0 && (
-                        <div className="mt-1 text-xs text-zinc-500 lg:hidden dark:text-zinc-400">
-                          {t("item")}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="w-16 sm:w-20">
-                      <FormField id={`qty-${idx}`} label={t("qty")} showLabel={idx === 0}>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={li.quantity}
-                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
-                          disabled={isPending}
-                          className="text-right"
-                        />
-                      </FormField>
-                    </div>
-
-                    {/* Unit price — format on blur */}
-                    <div className="w-24 sm:w-28">
-                      <FormField
-                        id={`price-${idx}`}
-                        label={t("unitPrice")}
-                        showLabel={idx === 0}
-                        labelClassName="whitespace-nowrap"
-                      >
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={priceDisplay}
-                          onChange={(e) => handlePriceChange(idx, e.target.value)}
-                          onFocus={() => setFocusedPriceIdx(idx)}
-                          onBlur={() => setFocusedPriceIdx(null)}
-                          disabled={isPending}
-                          className="text-right"
-                        />
-                      </FormField>
-                    </div>
-
-                    {/* Subtotal — desktop only */}
-                    <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 dark:text-zinc-300">
-                      {formatAmount(subtotal, currency, locale)}
-                    </div>
-
-                    {/* Remove button */}
-                    {lineItems.length > 1 && (
-                      <ActionIconButton
-                        icon={Trash2}
-                        label={t("remove")}
-                        tone="neutral"
-                        onClick={() => removeLineItem(idx)}
-                        disabled={isPending}
-                        className="mb-0.5 text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
-                      />
-                    )}
-                  </div>
-                );
-              })}
+            {/* C12-3c: single top search combobox. Replaces the per-row <Select>
+                dropdowns and the "Agregar artículo" button. Selecting an item
+                adds it to the cart (or increments qty if duplicate). */}
+            <div className="relative">
+              <Input
+                ref={searchInputRef}
+                id="item-search"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={t("searchOrAddItem")}
+                disabled={isPending}
+                role="combobox"
+                aria-expanded={isComboOpen}
+                aria-controls="item-search-listbox"
+                aria-activedescendant={
+                  comboActiveIdx >= 0 ? `item-search-option-${comboActiveIdx}` : undefined
+                }
+                aria-autocomplete="list"
+                autoComplete="off"
+              />
+              {isComboOpen && (
+                <ul
+                  ref={comboListRef}
+                  id="item-search-listbox"
+                  role="listbox"
+                  className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-surface-border bg-surface-card py-1 shadow-lg"
+                >
+                  {filteredItems.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
+                      {t("noItemsFound")}
+                    </li>
+                  ) : (
+                    filteredItems.map((item, idx) => {
+                      const inCart = lineItems.some((li) => li.itemId === item.id);
+                      const isActive = idx === comboActiveIdx;
+                      return (
+                        <li
+                          key={item.id}
+                          id={`item-search-option-${idx}`}
+                          role="option"
+                          aria-selected={isActive}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            selectComboItem(item);
+                          }}
+                          onMouseEnter={() => setComboActiveIdx(idx)}
+                          className={`cursor-pointer px-3 py-2 text-sm ${
+                            isActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                          } ${inCart ? "italic" : ""}`}
+                        >
+                          <span>{item.name}</span>
+                          <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            ({tCatalog(`type_${item.type}`)})
+                          </span>
+                          {inCart && <span className="ml-2 text-xs text-primary">✓</span>}
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              )}
             </div>
 
-            {/* C12-3b: action hierarchy — "Agregar artículo" as secondary button,
-                "Crear artículo" as discreet link. */}
-            <div className="mt-3 flex items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={addLineItem}
-                disabled={isPending}
-              >
-                {t("addItem")}
-              </Button>
+            {/* C12-3c: discreet "+ Crear nuevo artículo" link near the searcher. */}
+            <div className="mt-2">
               <button
                 type="button"
                 onClick={() => setShowItemForm(true)}
                 disabled={isPending}
                 className="text-xs text-zinc-500 hover:text-primary hover:underline dark:text-zinc-400 dark:hover:text-primary"
               >
-                {t("createItem")}
+                {t("createNewItem")}
               </button>
             </div>
+
+            {/* C12-3c: table of selected items. Semantic <table> with one global
+                header. Mobile: stacked card layout with aria-labels on inputs. */}
+            {lineItems.length > 0 && (
+              <div className="mt-4">
+                {/* Desktop table header — hidden on mobile */}
+                <div
+                  className="hidden items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:flex dark:text-zinc-400"
+                  aria-hidden="true"
+                >
+                  <div className="min-w-0 flex-1">{t("item")}</div>
+                  <div className="w-16 text-right sm:w-20">{t("qty")}</div>
+                  <div className="w-24 text-right sm:w-28">{t("unitPrice")}</div>
+                  <div className="hidden w-24 text-right sm:block sm:w-28">{t("subtotal")}</div>
+                  <div className="w-10">{t("actions")}</div>
+                </div>
+
+                {/* Table rows */}
+                <div className="space-y-3 lg:space-y-0">
+                  {lineItems.map((li, idx) => {
+                    const item = catalogMap.get(li.itemId);
+                    const itemName = item?.name ?? "";
+                    const itemType = item?.type;
+                    const subtotal = li.quantity * li.unitPrice;
+                    const isPriceFocused = focusedPriceIdx === idx;
+                    const priceDisplay = isPriceFocused
+                      ? li.unitPrice.toString()
+                      : formatNumberDisplay(li.unitPrice, locale);
+
+                    return (
+                      <div
+                        key={li.itemId}
+                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:flex-nowrap lg:items-center lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
+                      >
+                        {/* Item name — plain text (no dropdown) */}
+                        <div className="min-w-0 flex-1">
+                          {/* Mobile: show item name as title */}
+                          <div className="text-sm font-medium text-zinc-900 lg:hidden dark:text-white">
+                            {itemName}
+                            {itemType && (
+                              <span className="ml-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                ({tCatalog(`type_${itemType}`)})
+                              </span>
+                            )}
+                          </div>
+                          {/* Desktop: plain text in table cell */}
+                          <div className="hidden min-w-0 truncate text-sm text-zinc-700 lg:block dark:text-zinc-300">
+                            {itemName}
+                          </div>
+                        </div>
+
+                        {/* Quantity */}
+                        <div className="w-16 sm:w-20">
+                          <label
+                            htmlFor={`qty-${idx}`}
+                            className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
+                          >
+                            {t("qty")}
+                          </label>
+                          <Input
+                            id={`qty-${idx}`}
+                            type="number"
+                            min="1"
+                            value={li.quantity}
+                            onChange={(e) =>
+                              updateLineItem(idx, "quantity", Number(e.target.value))
+                            }
+                            disabled={isPending}
+                            className="text-right"
+                            aria-label={itemName ? `${t("qty")} ${itemName}` : t("qty")}
+                          />
+                        </div>
+
+                        {/* Unit price — format on blur */}
+                        <div className="w-24 sm:w-28">
+                          <label
+                            htmlFor={`price-${idx}`}
+                            className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
+                          >
+                            {t("unitPrice")}
+                          </label>
+                          <Input
+                            id={`price-${idx}`}
+                            type="text"
+                            inputMode="decimal"
+                            value={priceDisplay}
+                            onChange={(e) => handlePriceChange(idx, e.target.value)}
+                            onFocus={() => setFocusedPriceIdx(idx)}
+                            onBlur={() => setFocusedPriceIdx(null)}
+                            disabled={isPending}
+                            className="text-right"
+                            aria-label={itemName ? `${t("unitPrice")} ${itemName}` : t("unitPrice")}
+                          />
+                        </div>
+
+                        {/* Subtotal — formatted text, right-aligned */}
+                        <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 dark:text-zinc-300">
+                          {formatAmount(subtotal, currency, locale)}
+                        </div>
+                        {/* Mobile subtotal */}
+                        <div className="text-right text-sm font-medium text-zinc-700 lg:hidden dark:text-zinc-300">
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {t("subtotal")}:{" "}
+                          </span>
+                          {formatAmount(subtotal, currency, locale)}
+                        </div>
+
+                        {/* Remove button */}
+                        <ActionIconButton
+                          icon={Trash2}
+                          label={t("remove")}
+                          tone="neutral"
+                          onClick={() => removeLineItem(idx)}
+                          disabled={isPending}
+                          className="mb-0.5 text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Settings: payment, account, client, initial payment, date.
