@@ -311,6 +311,7 @@ export function GlobalMovementProvider({
         onRequestClose={handlePosRequestClose}
         title={tSales("createSale")}
         size="xl"
+        variant="workspace"
       >
         {posLoadState === "error" ? (
           <div className="flex flex-col items-start gap-3">

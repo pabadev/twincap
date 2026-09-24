@@ -381,20 +381,21 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
     const form = container.querySelector("form");
     expect(form).not.toBeNull();
     // The grid wrapper is the first child div inside the form (after hidden inputs).
-    const gridWrapper = form!.querySelector(
-      ".lg\\:grid.lg\\:grid-cols-\\[minmax\\(0\\2c 1fr\\)_20rem\\]",
-    );
+    const gridWrapper = form!.querySelector(".lg\\:grid.lg\\:grid-cols-\\[1fr_320px\\]");
     expect(gridWrapper).not.toBeNull();
   });
 
   it("places the line items section (search + table) in the left column at lg+", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    const cartSection = container.querySelector(".lg\\:col-start-1.lg\\:row-start-1");
-    expect(cartSection).not.toBeNull();
+    // C12-3e: left column is the first child of the grid wrapper.
+    const form = container.querySelector("form");
+    const gridWrapper = form!.querySelector(".lg\\:grid.lg\\:grid-cols-\\[1fr_320px\\]");
+    const cartSection = gridWrapper!.children[0] as HTMLElement;
+    expect(cartSection).toBeDefined();
     // The search combobox lives inside the cart section.
-    expect(cartSection!.querySelector("#item-search")).not.toBeNull();
+    expect(cartSection.querySelector("#item-search")).not.toBeNull();
     // The "createNewItem" link lives inside the cart section.
-    const createItemBtn = [...cartSection!.querySelectorAll("button")].find(
+    const createItemBtn = [...cartSection.querySelectorAll("button")].find(
       (b) => b.textContent === "createNewItem",
     );
     expect(createItemBtn).toBeDefined();
@@ -402,19 +403,18 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
 
   it("places the settings section (payment, client, date) in the right column at lg+", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    const settingsSection = container.querySelector(".lg\\:col-start-2.lg\\:row-start-1");
+    const settingsSection = container.querySelector('[data-testid="right-column"]');
     expect(settingsSection).not.toBeNull();
     expect(settingsSection!.querySelector("#paymentMode")).not.toBeNull();
     expect(settingsSection!.querySelector("#clientId")).not.toBeNull();
     expect(settingsSection!.querySelector("#date")).not.toBeNull();
   });
 
-  it("places the summary + actions in a footer pinned at the bottom of the grid at lg+ (C12-3d)", () => {
+  it("places the summary + actions in a footer pinned at the bottom of the form (C12-3e)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    // C12-3d: the footer spans both columns in grid row 2 (auto height),
-    // pinned at the bottom because the grid itself is constrained by the
-    // form's h-full. No longer `lg:sticky` — the grid row placement handles it.
-    const footerSection = container.querySelector(".lg\\:col-span-2.lg\\:row-start-2");
+    // C12-3e: the footer is outside the grid, as a sibling of the grid wrapper.
+    // It's shrink-0 with border-top, pinned at the bottom of the form.
+    const footerSection = container.querySelector('[data-testid="sale-footer"]');
     expect(footerSection).not.toBeNull();
     expect(footerSection!.textContent).toContain("total");
     const submitBtn = [...footerSection!.querySelectorAll("button")].find(
@@ -427,26 +427,28 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     // Add an item so the total is non-zero.
     selectFromSearch(container, 0);
-    const footerSection = container.querySelector(".lg\\:col-span-2.lg\\:row-start-2");
+    const footerSection = container.querySelector('[data-testid="sale-footer"]');
     expect(footerSection!.textContent).toContain("total");
     // Total = 1 item × qty 1 × unitPrice 1000 = 1000 COP.
     expect(footerSection!.textContent).toContain("1000");
   });
 
-  it("preserves mobile DOM order: cart → settings → summary", () => {
+  it("preserves mobile DOM order: cart → settings → footer", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    const gridWrapper = container.querySelector(
-      ".lg\\:grid.lg\\:grid-cols-\\[minmax\\(0\\2c 1fr\\)_20rem\\]",
-    );
+    const form = container.querySelector("form");
+    // C12-3e: form contains grid wrapper + footer. Grid wrapper contains cart + settings.
+    const gridWrapper = form!.querySelector(".lg\\:grid.lg\\:grid-cols-\\[1fr_320px\\]");
     expect(gridWrapper).not.toBeNull();
-    const children = Array.from(gridWrapper!.children);
-    expect(children.length).toBe(3);
+    const gridChildren = Array.from(gridWrapper!.children);
+    expect(gridChildren.length).toBe(2);
     // First child: cart (contains search combobox)
-    expect(children[0].querySelector("#item-search")).not.toBeNull();
+    expect(gridChildren[0].querySelector("#item-search")).not.toBeNull();
     // Second child: settings (contains #paymentMode)
-    expect(children[1].querySelector("#paymentMode")).not.toBeNull();
-    // Third child: summary (contains submit button)
-    const submitBtn = children[2].querySelector('button[type="submit"]');
+    expect(gridChildren[1].querySelector("#paymentMode")).not.toBeNull();
+    // Footer is a sibling of the grid wrapper.
+    const footer = form!.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    const submitBtn = footer!.querySelector('button[type="submit"]');
     expect(submitBtn).not.toBeNull();
   });
 });
@@ -458,9 +460,10 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     // Add an item so the table renders.
     selectFromSearch(container, 0);
-    // The header row is hidden on mobile (hidden class) but present in DOM.
+    // C12-3e: the header row is hidden on mobile (hidden class) but present in DOM.
+    // It's outside the scroll container (not sticky) and uses grid layout.
     const headerRow = container.querySelector(
-      ".hidden.items-center.gap-2.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:flex",
+      ".hidden.shrink-0.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:grid",
     );
     expect(headerRow).not.toBeNull();
     expect(headerRow!.textContent).toContain("item");
@@ -530,7 +533,9 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     switchPaymentMode(container, "on-credit");
     const hint = container.querySelector<HTMLElement>("#clientId-hint");
     expect(hint).not.toBeNull();
-    expect(hint!.className).toMatch(/text-amber-(400|600)/);
+    // C12-3e: amber-500 (#F59E0B) per spec, font-size 0.825rem.
+    expect(hint!.className).toContain("text-amber-500");
+    expect(hint!.className).toContain("text-[0.825rem]");
     expect(hint!.className).toContain("font-medium");
   });
 });
@@ -786,39 +791,47 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
     expect(rowsContainer).not.toBeNull();
     expect(rowsContainer!.className).toContain("overflow-y-auto");
+    expect(rowsContainer!.className).toContain("overflow-x-hidden");
   });
 
-  it("desktop table header has sticky top-0 classes for sticky positioning", () => {
+  it("desktop table header is outside the scroll container (not sticky)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    // The sticky header is the desktop-only header row inside the scroll container.
-    const stickyHeader = container.querySelector(".sticky.top-0.lg\\:flex");
-    expect(stickyHeader).not.toBeNull();
-    expect(stickyHeader!.className).toContain("bg-surface-card");
-    expect(stickyHeader!.className).toContain("z-10");
+    // C12-3e: the header is a sibling of the rows container, not inside it.
+    // It's hidden on mobile and uses grid layout on desktop.
+    const tableWrapper = container.querySelector('[data-testid="table-wrapper"]');
+    expect(tableWrapper).not.toBeNull();
+    const headerRow = tableWrapper!.querySelector(".hidden.shrink-0.lg\\:grid");
+    expect(headerRow).not.toBeNull();
+    // The header is NOT inside the scroll container.
+    const rowsContainer = tableWrapper!.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer!.contains(headerRow!)).toBe(false);
   });
 
-  it("right column has min-height on desktop for stable layout", () => {
+  it("right column has overflow-y-auto for independent scroll on desktop", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const rightColumn = container.querySelector('[data-testid="right-column"]');
     expect(rightColumn).not.toBeNull();
-    expect(rightColumn!.className).toContain("lg:min-h-[18rem]");
+    expect(rightColumn!.className).toContain("overflow-y-auto");
   });
 
-  it("footer spans both grid columns and is pinned at row 2", () => {
+  it("footer is shrink-0 with border-top and matches modal background", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const footer = container.querySelector('[data-testid="sale-footer"]');
     expect(footer).not.toBeNull();
-    expect(footer!.className).toContain("lg:col-span-2");
-    expect(footer!.className).toContain("lg:row-start-2");
     expect(footer!.className).toContain("shrink-0");
+    expect(footer!.className).toContain("border-t");
+    expect(footer!.className).toContain("border-surface-border");
+    expect(footer!.className).toContain("bg-surface-card");
   });
 
-  it("form root fills modal body on desktop (lg:h-full)", () => {
+  it("form root fills modal body on desktop (h-full)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
-    const form = container.querySelector("form");
-    expect(form).not.toBeNull();
-    expect(form!.className).toContain("lg:h-full");
+    const root = container.querySelector("form")!.parentElement;
+    expect(root).not.toBeNull();
+    expect(root!.className).toContain("h-full");
+    expect(root!.className).toContain("flex");
+    expect(root!.className).toContain("flex-col");
   });
 
   it("credit hint has legible amber color and is placed under the client selector", () => {
@@ -826,8 +839,8 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     switchPaymentMode(container, "on-credit");
     const hint = container.querySelector<HTMLElement>("#clientId-hint");
     expect(hint).not.toBeNull();
-    // Amber tint for legibility in both light and dark mode.
-    expect(hint!.className).toMatch(/text-amber-(400|600)/);
+    // C12-3e: amber-500 (#F59E0B) for legibility in both light and dark mode.
+    expect(hint!.className).toContain("text-amber-500");
     // The hint is a <p> rendered by FormField AFTER the <Select>, so it's
     // visually under the client selector. Verify DOM order: label → select → hint.
     const parent = hint!.parentElement!;

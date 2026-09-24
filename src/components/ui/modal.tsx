@@ -5,6 +5,7 @@ import { useT } from "../../i18n/client";
 import { useFocusTrap } from "./focus-trap";
 
 type ModalSize = "sm" | "md" | "lg" | "xl";
+type ModalVariant = "default" | "workspace";
 
 interface ModalProps {
   open: boolean;
@@ -18,6 +19,13 @@ interface ModalProps {
   closeLabel?: string;
   /** Dialog max width: sm → max-w-sm, md → max-w-md (default), lg → max-w-2xl, xl → max-w-5xl. */
   size?: ModalSize;
+  /**
+   * Layout variant. "default" (default) keeps the standard scrollable body.
+   * "workspace" opts into a fixed-height 3-part flex layout (header/body/footer)
+   * where the body does NOT scroll — the consumer manages internal scroll regions.
+   * Used by the POS sale form to pin the footer and isolate table scroll.
+   */
+  variant?: ModalVariant;
   /**
    * Optional close-guard: when provided, ESC / backdrop / X call this instead
    * of `onClose`. The consumer decides whether to actually close (e.g. after a
@@ -43,6 +51,7 @@ export function Modal({
   actions,
   closeLabel,
   size = "md",
+  variant = "default",
   onRequestClose,
 }: ModalProps) {
   const tCommon = useT("Common");
@@ -78,6 +87,13 @@ export function Modal({
 
   if (!open) return null;
 
+  // C12-3e: workspace variant pins header/footer and isolates internal scroll
+  // regions. The dialog is capped to 85vh with a 960px max width (90vw fluid),
+  // and the body stops scrolling so the consumer can manage its own regions.
+  const isWorkspace = variant === "workspace";
+  const dialogSizeClass = isWorkspace ? "w-[90vw] max-w-[960px]" : sizeClasses[size];
+  const dialogHeightClass = isWorkspace ? "max-h-[85vh]" : "max-h-full";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -85,7 +101,7 @@ export function Modal({
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
         ref={dialogRef}
-        className={`relative flex max-h-full w-full ${sizeClasses[size]} flex-col rounded-lg border border-surface-border bg-surface-card p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
+        className={`relative flex ${dialogHeightClass} w-full ${dialogSizeClass} flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -112,7 +128,9 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className={`min-h-0 flex-1 ${isWorkspace ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {children}
+        </div>
         {actions && <div className="mt-6 flex shrink-0 justify-end gap-3">{actions}</div>}
       </div>
     </div>

@@ -151,6 +151,7 @@ export function SaleList({
         onRequestClose={handleSaleRequestClose}
         title={t("createSale")}
         size="xl"
+        variant="workspace"
       >
         <SaleForm
           catalogItems={catalogItems}

@@ -411,10 +411,10 @@ export function SaleForm({
   }, [effectiveCatalogItems]);
 
   return (
-    // C12-3d: root fills the modal body on desktop (lg:h-full) so the internal
-    // grid can pin the footer and scroll only the table rows. On mobile the
-    // root has no height constraint — the modal body scrolls naturally.
-    <div className="flex flex-col lg:h-full">
+    // C12-3e: root fills the modal body completely (h-full). The modal body
+    // has overflow-hidden (workspace variant), so this root manages the
+    // 3-part flex layout: body (flex-1) + footer (shrink-0).
+    <div className="flex h-full flex-col">
       {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
           another <form>, and browsers would bind the inner controls to the outer
           form, so the create buttons would never submit (no-op). */}
@@ -426,7 +426,7 @@ export function SaleForm({
             return;
           }
         }}
-        className="flex flex-1 flex-col space-y-4 lg:h-full lg:space-y-0"
+        className="flex min-h-0 flex-1 flex-col"
       >
         <IdempotencyField />
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
@@ -436,22 +436,17 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        {/* C12-3 + C12-3b + C12-3c: responsive two-zone layout. Mobile keeps the
-            original single-column flow (articles → payment/client → summary). At
-            lg+ the form becomes a grid: LEFT = cart/line items, RIGHT = settings
-            (row 1) + sticky summary (row 2). DOM order matches mobile order;
-            desktop placement is via grid positioning. */}
-        {/* C12-3d: grid wrapper fills the remaining form space on desktop
-            (flex-1 min-h-0) and splits into two rows: row 1 = columns (cart +
-            settings), row 2 = footer. On mobile it's a natural flex column
-            with space-y-4; the modal body scrolls. */}
-        <div className="flex flex-1 flex-col space-y-4 lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[1fr_auto] lg:gap-6 lg:space-y-0">
+        {/* C12-3e: 2-column work area (body). Mobile: natural flow. Desktop:
+            grid with left column (articles) and right column (settings).
+            The body fills the remaining space (flex-1 min-h-0) and does NOT
+            scroll — internal scroll regions are isolated. */}
+        <div className="flex flex-1 flex-col space-y-4 lg:min-h-0 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:overflow-hidden lg:space-y-0">
           {/* Cart / line items.
-              Mobile: first section. Desktop: left column, row 1.
-              C12-3d: on desktop the left column is a flex column that fills
-              row 1 (min-h-0 so it can shrink below its content size). The
-              table rows container inside it is the ONLY scroll region. */}
-          <div className="flex flex-col lg:col-start-1 lg:row-start-1 lg:min-h-0">
+              Mobile: first section. Desktop: left column.
+              C12-3e: on desktop the left column is a flex column that fills
+              the available space (min-h-0 so it can shrink). The table rows
+              container inside it is the ONLY scroll region for the table. */}
+          <div className="flex flex-col lg:min-h-0 lg:overflow-hidden">
             <div className="mb-2 flex shrink-0 items-center justify-between">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 {t("lineItems")}
@@ -461,7 +456,7 @@ export function SaleForm({
             {/* C12-3c: single top search combobox. Replaces the per-row <Select>
                 dropdowns and the "Agregar artículo" button. Selecting an item
                 adds it to the cart (or increments qty if duplicate). */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <Input
                 ref={searchInputRef}
                 id="item-search"
@@ -528,7 +523,7 @@ export function SaleForm({
             </div>
 
             {/* C12-3c: discreet "+ Crear nuevo artículo" link near the searcher. */}
-            <div className="mt-2">
+            <div className="mt-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowItemForm(true)}
@@ -539,32 +534,36 @@ export function SaleForm({
               </button>
             </div>
 
-            {/* C12-3c: table of selected items. Semantic <table> with one global
-                header. Mobile: stacked card layout with aria-labels on inputs. */}
+            {/* C12-3c + C12-3e: table of selected items. Mobile: stacked card
+                layout with aria-labels on inputs. Desktop: grid-based table
+                with sticky header and scroll-isolated rows container. */}
             {lineItems.length > 0 && (
-              // C12-3d: scroll-isolated table container. On desktop it fills
-              // the remaining left-column space (flex-1 min-h-0) and scrolls
-              // internally (overflow-y-auto). The desktop header row is sticky
-              // at the top of this container. On mobile it flows naturally
-              // (no overflow constraint, no max-height).
+              // C12-3e: table wrapper fills the remaining left-column space
+              // (flex-1 min-h-0). On desktop it's a flex column with the
+              // header outside the scroll container and the rows container
+              // scrolling internally (overflow-y-auto overflow-x-hidden).
               <div
-                className="mt-4 flex flex-1 flex-col overflow-y-auto lg:min-h-0"
-                data-testid="table-rows-container"
+                className="mt-4 flex flex-1 flex-col lg:min-h-0 lg:overflow-hidden"
+                data-testid="table-wrapper"
               >
-                {/* Desktop table header — hidden on mobile, sticky on desktop */}
+                {/* Desktop table header — hidden on mobile, visible on desktop.
+                    Kept OUTSIDE the scroll container so it's always visible. */}
                 <div
-                  className="sticky top-0 z-10 hidden items-center gap-2 border-b border-surface-border bg-surface-card pb-2 text-xs font-medium text-zinc-600 lg:flex dark:bg-surface-card dark:text-zinc-400"
+                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_70px_100px_100px_40px] dark:text-zinc-400"
                   aria-hidden="true"
                 >
-                  <div className="min-w-0 flex-1">{t("item")}</div>
-                  <div className="w-16 text-right sm:w-20">{t("qty")}</div>
-                  <div className="w-24 text-right sm:w-28">{t("unitPrice")}</div>
-                  <div className="hidden w-24 text-right sm:block sm:w-28">{t("subtotal")}</div>
-                  <div className="w-10">{t("actions")}</div>
+                  <div className="min-w-0">{t("item")}</div>
+                  <div className="text-right">{t("qty")}</div>
+                  <div className="text-right">{t("unitPrice")}</div>
+                  <div className="text-right">{t("subtotal")}</div>
+                  <div>{t("actions")}</div>
                 </div>
 
-                {/* Table rows */}
-                <div className="space-y-3 lg:space-y-0">
+                {/* Table rows container — scroll-isolated on desktop */}
+                <div
+                  className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden lg:min-h-0 lg:space-y-0"
+                  data-testid="table-rows-container"
+                >
                   {lineItems.map((li, idx) => {
                     const item = catalogMap.get(li.itemId);
                     // C12-3d: defensive — a row without a resolved catalog item
@@ -582,10 +581,10 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:flex-nowrap lg:items-center lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
+                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_70px_100px_100px_40px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
                       >
                         {/* Item name — plain text (no dropdown) */}
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 lg:min-w-0">
                           {/* Mobile: show item name as title */}
                           <div className="text-sm font-medium text-zinc-900 lg:hidden dark:text-white">
                             {itemName}
@@ -602,7 +601,7 @@ export function SaleForm({
                         </div>
 
                         {/* Quantity */}
-                        <div className="w-16 sm:w-20">
+                        <div className="w-16 sm:w-20 lg:w-auto">
                           <label
                             htmlFor={`qty-${idx}`}
                             className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
@@ -624,7 +623,7 @@ export function SaleForm({
                         </div>
 
                         {/* Unit price — format on blur */}
-                        <div className="w-24 sm:w-28">
+                        <div className="w-24 sm:w-28 lg:w-auto">
                           <label
                             htmlFor={`price-${idx}`}
                             className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
@@ -646,7 +645,7 @@ export function SaleForm({
                         </div>
 
                         {/* Subtotal — formatted text, right-aligned */}
-                        <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 dark:text-zinc-300">
+                        <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 lg:w-auto lg:text-right dark:text-zinc-300">
                           {formatAmount(subtotal, currency, locale)}
                         </div>
                         {/* Mobile subtotal */}
@@ -675,15 +674,10 @@ export function SaleForm({
           </div>
 
           {/* Settings: payment, account, client, initial payment, date.
-              Mobile: second section. Desktop: right column, row 1.
-              C12-3d: min-height on desktop reserves space for the dynamic
-              credit fields (initial payment) so the column doesn't jump when
-              the user toggles payment mode. The column's height is independent
-              of the items list on the left. */}
-          <div
-            className="space-y-4 lg:col-start-2 lg:row-start-1 lg:min-h-[18rem]"
-            data-testid="right-column"
-          >
+              Mobile: second section. Desktop: right column.
+              C12-3e: on desktop the right column scrolls independently
+              (overflow-y-auto) for dynamic critical fields. */}
+          <div className="space-y-4 overflow-y-auto lg:pr-2" data-testid="right-column">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <Select
                 id="paymentMode"
@@ -728,10 +722,10 @@ export function SaleForm({
                 id="clientId"
                 label={t("client")}
                 hint={needsClient ? t("clientRequiredForCredit") : undefined}
-                // C12-3b: when credit mode and no client, the hint is a warning —
-                // raise legibility with amber tint.
+                // C12-3e: amber-500 (#F59E0B) for legibility over dark bg.
+                // Font size 0.825rem per spec, mt-1 (4px), display:block (default for <p>).
                 hintClassName={
-                  needsClient ? "text-amber-600 dark:text-amber-400 font-medium" : undefined
+                  needsClient ? "text-amber-500 text-[0.825rem] font-medium" : undefined
                 }
               >
                 <Select
@@ -785,40 +779,37 @@ export function SaleForm({
               max={toDateInputValue()}
             />
           </div>
+        </div>
 
-          {/* Summary + main actions.
-              Mobile: third section (after settings). Desktop: row 2 spanning
-              both columns, pinned at the bottom of the modal grid. Because the
-              grid row is `auto` and the grid itself is constrained by the
-              form's h-full, this footer is always visible without scrolling.
-              On mobile it flows naturally (no sticky — keeps touch UX usable).
-          */}
-          <div
-            className="shrink-0 border-t border-surface-border pt-4 lg:col-start-1 lg:col-span-2 lg:row-start-2 lg:border-t lg:bg-surface-card lg:pt-4 dark:border-zinc-700 dark:bg-surface-card"
-            data-testid="sale-footer"
-          >
-            {/* C12-3b: TOTAL in prominent position right before footer actions */}
-            <div className="mb-3 text-right text-lg font-semibold text-zinc-900 dark:text-white">
-              {t("total")} {formatAmount(total, currency, locale)}
-            </div>
+        {/* C12-3e: footer pinned at the bottom of the modal. Total right-aligned
+            + action buttons. Shrink-0 ensures it never scrolls away. Border-top
+            uses themed surface-border (not literal white/10) to match the
+            modal's dark/light token. Background matches modal (surface-card). */}
+        <div
+          className="shrink-0 border-t border-surface-border bg-surface-card p-4"
+          data-testid="sale-footer"
+        >
+          {/* C12-3b: TOTAL in prominent position right before footer actions */}
+          <div className="mb-3 text-right text-lg font-semibold text-zinc-900 dark:text-white">
+            {t("total")} {formatAmount(total, currency, locale)}
+          </div>
 
-            {/* C12-3b: footer action row — Cancelar secondary + Crear venta primary.
-                Both go through the same guarded path (C12-1). */}
-            <div className="flex items-center gap-3">
-              {(onDone || onCancel) && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={isPending}
-                  onClick={onCancel ?? onDone}
-                >
-                  {tCommon("cancel")}
-                </Button>
-              )}
-              <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
-                {isPending ? t("creating") : t("createSale")}
+          {/* C12-3b: footer action row — Cancelar secondary + Crear venta primary.
+              Both go through the same guarded path (C12-1). */}
+          <div className="flex items-center gap-3">
+            {(onDone || onCancel) && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isPending}
+                onClick={onCancel ?? onDone}
+              >
+                {tCommon("cancel")}
               </Button>
-            </div>
+            )}
+            <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
+              {isPending ? t("creating") : t("createSale")}
+            </Button>
           </div>
         </div>
       </form>
