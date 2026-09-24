@@ -33,7 +33,7 @@ import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Modal } from "../../../../components/ui/modal";
 import { Trash2 } from "lucide-react";
 import { useToast } from "../../../../lib/hooks/use-toast";
-import { formatAmount } from "../../../../lib/format";
+import { formatAmount, formatAmountParts } from "../../../../lib/format";
 import { toDateInputValue } from "../../../../lib/date";
 
 interface LineItem {
@@ -411,12 +411,14 @@ export function SaleForm({
   }, [effectiveCatalogItems]);
 
   return (
-    // C12-3f: root fills the modal body completely (h-full). The modal body
-    // has overflow-hidden (workspace variant), so this root manages the
-    // 3-part flex layout: body (flex-1) + footer (shrink-0).
+    // C12-3f: at desktop the root fills the modal body completely (lg:h-full)
+    // so the 3-part flex layout works (body flex-1 + footer shrink-0).
+    // C12-3i: below lg the root is auto-height — the modal body scrolls as
+    // ONE unit (natural mobile flow), so no section is ever clipped and the
+    // footer is reachable at the end of the content.
     // Every flex/grid descendant between dialog and rows-scroll container
-    // MUST carry min-h-0 to break the auto-min-height chain.
-    <div className="flex h-full flex-col">
+    // MUST carry min-h-0 to break the auto-min-height chain (desktop).
+    <div className="flex flex-col lg:h-full">
       {/* Nested modals MUST live outside the sale <form> — a <form> cannot contain
           another <form>, and browsers would bind the inner controls to the outer
           form, so the create buttons would never submit (no-op). */}
@@ -439,24 +441,29 @@ export function SaleForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="clientId" value={clientId} />
 
-        {/* C12-3f: 2-column work area (body). Mobile: natural flow. Desktop:
-            grid with left column (articles) and right column (settings).
+        {/* C12-3f: 2-column work area (body). Mobile: natural flow with the
+            payment block FIRST (C12-3i owner spec) — the cart section carries
+            the mobile section gap explicitly (max-lg:mt-4) because space-y on
+            the wrapper would put the margin on the DOM-2nd child (settings),
+            which renders FIRST on mobile. Desktop: grid with left column
+            (articles) and right column (settings); lg:gap-6 handles spacing.
             The body fills the remaining space (flex-1 min-h-0) and does NOT
             scroll — internal scroll regions are isolated.
             fixed-region: required min-h-0 chain */}
         <div
           /* fixed-region: required min-h-0 chain */
-          className="flex min-h-0 flex-1 flex-col space-y-4 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:overflow-hidden lg:space-y-0"
+          className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:overflow-hidden"
         >
           {/* Cart / line items.
-              Mobile: first section. Desktop: left column.
+              Mobile: SECOND section (after the payment block, C12-3i).
+              Desktop: left column.
               C12-3f: on desktop the left column is a flex column that fills
               the available space (min-h-0 so it can shrink). The table rows
               container inside it is the ONLY scroll region for the table.
               fixed-region: required min-h-0 chain */}
           <div
             /* fixed-region: required min-h-0 chain */
-            className="flex min-h-0 flex-col lg:overflow-hidden"
+            className="flex max-lg:mt-4 min-h-0 flex-col lg:overflow-hidden"
           >
             <div className="mb-2 flex shrink-0 items-center justify-between">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -546,48 +553,61 @@ export function SaleForm({
               </button>
             </div>
 
-            {/* C12-3c + C12-3e: table of selected items. Mobile: stacked card
-                layout with aria-labels on inputs. Desktop: grid-based table
-                with sticky header and scroll-isolated rows container. */}
+            {/* C12-3c + C12-3e + C12-3i: table of selected items. Mobile: compact
+                single-line grid rows (5 tracks, truncated name, no per-cell labels
+                — the header row carries the labels at every breakpoint; inputs
+                keep their aria-labels). Desktop: grid-based table with a sticky
+                header INSIDE the scroll-isolated rows container. */}
             {lineItems.length > 0 && (
               // C12-3f: table wrapper fills the remaining left-column space
-              // (flex-1 min-h-0). On desktop it's a flex column with the
-              // header outside the scroll container and the rows container
-              // scrolling internally (overflow-y-auto overflow-x-hidden).
+              // (flex-1 min-h-0). On desktop the rows container scrolls
+              // internally (overflow-y-auto overflow-x-hidden); the sticky
+              // header shares its content box so columns stay in lockstep.
               // fixed-region: required min-h-0 chain
               <div
                 /* fixed-region: required min-h-0 chain */
                 className="mt-4 flex min-h-0 flex-1 flex-col lg:overflow-hidden"
                 data-testid="table-wrapper"
               >
-                {/* C12-3f + C12-3g + C12-3h: Desktop table header — hidden on mobile, visible on desktop.
-                    Kept OUTSIDE the scroll container (sibling, not sticky) so it's
-                    always visible. Grid template matches rows exactly. C12-3g: widened
-                    last column (44px → 48px) to reserve room for the vertical scrollbar.
-                    C12-3h: column alignment matches content — Artículo left, Cant. centered
-                    (over centered input), Precio unitario/Subtotal right-aligned (over
-                    right-aligned monetary cells). "Acciones" header removed (empty 48px
-                    cell, column reserved for trash icon only). */}
-                <div
-                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] dark:text-zinc-400"
-                  aria-hidden="true"
-                >
-                  <div className="min-w-0">{t("item")}</div>
-                  <div className="text-center">{t("qty")}</div>
-                  <div className="text-right">{t("unitPrice")}</div>
-                  <div className="text-right">{t("subtotal")}</div>
-                  <div></div>
-                </div>
-
-                {/* C12-3f + C12-3g: Table rows container — scroll-isolated on desktop.
-                    fixed-region: required min-h-0 chain. C12-3g: pr-2 on the scroll
-                    container reserves room for the vertical scrollbar so the header
-                    and rows stay in lockstep (same grid template). */}
+                {/* C12-3f + C12-3i: Table rows container — the ONLY scroll region at
+                    desktop (overflow-y-auto), auto-height below lg so mobile flows
+                    naturally inside the scrolling modal body.
+                    C12-3i root-cause fix: the old `pr-2` scrollbar reserve made the
+                    rows grid ~18px narrower than the header grid (8px padding + 10px
+                    project scrollbar via ::-webkit-scrollbar), so every header column
+                    sat right of its row column. The header now lives INSIDE this
+                    scroll container (sticky at lg), so header and rows share the
+                    exact same content box and stay in lockstep on any platform;
+                    scrollbar-gutter:stable keeps the container's content width
+                    CONSTANT whether the scrollbar is visible or not.
+                    fixed-region: required min-h-0 chain */}
                 <div
                   /* fixed-region: required min-h-0 chain */
-                  className="flex-1 min-h-0 space-y-3 overflow-y-auto overflow-x-hidden pr-2 lg:space-y-0"
+                  className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden lg:[scrollbar-gutter:stable]"
                   data-testid="table-rows-container"
                 >
+                  {/* C12-3i: header row — visible at ALL breakpoints now (mobile rows
+                      are single-line grid rows, the header is their only label source),
+                      sticky top within the rows scroll container at lg so it never
+                      scrolls away while rows pass under it (opaque bg, border-b).
+                      Template + gaps are IDENTICAL to the row grid at both mobile and
+                      lg — alignment by construction. Column alignment matches content:
+                      Artículo left, Cant. centered (over centered input), Precio
+                      unitario/Subtotal right-aligned (over right-aligned monetary
+                      cells). "Acciones" header removed (empty track, reserved for the
+                      trash icon only). */}
+                  <div
+                    className="grid grid-cols-[minmax(0,1fr)_40px_64px_64px_40px] items-center gap-x-1.5 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:sticky lg:top-0 lg:z-10 lg:bg-surface-card lg:grid-cols-[2fr_60px_110px_110px_48px] lg:gap-2 dark:text-zinc-400"
+                    aria-hidden="true"
+                    data-testid="table-header"
+                  >
+                    <div className="min-w-0">{t("item")}</div>
+                    <div className="min-w-0 truncate text-center">{t("qty")}</div>
+                    <div className="min-w-0 truncate text-right">{t("unitPrice")}</div>
+                    <div className="min-w-0 truncate text-right">{t("subtotal")}</div>
+                    <div></div>
+                  </div>
+
                   {lineItems.map((li, idx) => {
                     const item = catalogMap.get(li.itemId);
                     // C12-3d: defensive — a row without a resolved catalog item
@@ -595,7 +615,6 @@ export function SaleForm({
                     // state should always include items added to the cart).
                     if (!item) return null;
                     const itemName = item.name;
-                    const itemType = item.type;
                     const subtotal = li.quantity * li.unitPrice;
                     const isPriceFocused = focusedPriceIdx === idx;
                     const priceDisplay = isPriceFocused
@@ -605,79 +624,70 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 border-b border-surface-border/50 py-1.5 last:border-b-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:gap-x-3 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:py-2 lg:last:border-b-0"
+                        className="grid grid-cols-[minmax(0,1fr)_40px_64px_64px_40px] items-center gap-x-1.5 border-b border-surface-border/50 py-1.5 last:border-b-0 lg:grid-cols-[2fr_60px_110px_110px_48px] lg:gap-2 lg:py-2"
                       >
-                        {/* Item name — plain text (no dropdown) */}
-                        <div className="min-w-0 flex-1 lg:min-w-0">
-                          {/* Mobile: show item name as title */}
-                          <div className="text-sm font-medium text-zinc-900 lg:hidden dark:text-white">
-                            {itemName}
-                            {itemType && (
-                              <span className="ml-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                ({tCatalog(`type_${itemType}`)})
-                              </span>
-                            )}
-                          </div>
-                          {/* Desktop: plain text in table cell */}
-                          <div className="hidden min-w-0 truncate text-sm text-zinc-700 lg:block dark:text-zinc-300">
-                            {itemName}
-                          </div>
+                        {/* Item name — single cell at all breakpoints (C12-3i):
+                            truncated with a title tooltip; the old mobile-only
+                            title block (with type suffix) was folded into this
+                            one cell to keep the mobile row a single line. */}
+                        <div
+                          data-testid="item-name-cell"
+                          className="min-w-0 truncate text-xs font-medium text-zinc-900 lg:text-sm lg:font-normal lg:text-zinc-700 dark:text-white lg:dark:text-zinc-300"
+                          title={itemName}
+                        >
+                          {itemName}
                         </div>
 
-                        {/* Quantity */}
-                        <div className="w-16 sm:w-20 lg:w-auto">
-                          <label
-                            htmlFor={`qty-${idx}`}
-                            className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
+                        {/* Quantity — centered at all breakpoints (matches the
+                            centered "Cant." header; the old sm:text-right broke
+                            header/content lockstep). Mobile: compact padding
+                            and text so the 40px track fits (px-1!/text-xs via
+                            max-lg — the ! suffix is required to beat the Input
+                            base px-3 in Tailwind v4's utility order). */}
+                        <Input
+                          id={`qty-${idx}`}
+                          type="number"
+                          min="1"
+                          value={li.quantity}
+                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
+                          disabled={isPending}
+                          className="max-lg:px-1! max-lg:text-xs text-center"
+                          aria-label={itemName ? `${t("qty")} ${itemName}` : t("qty")}
+                        />
+
+                        {/* Unit price — format on blur; right-aligned over the
+                            right-aligned header (mobile: compact padding/text). */}
+                        <Input
+                          id={`price-${idx}`}
+                          type="text"
+                          inputMode="decimal"
+                          value={priceDisplay}
+                          onChange={(e) => handlePriceChange(idx, e.target.value)}
+                          onFocus={() => setFocusedPriceIdx(idx)}
+                          onBlur={() => setFocusedPriceIdx(null)}
+                          disabled={isPending}
+                          className="max-lg:px-1! max-lg:text-xs text-right"
+                          aria-label={itemName ? `${t("unitPrice")} ${itemName}` : t("unitPrice")}
+                        />
+
+                        {/* Subtotal — right-aligned text. C12-3i: mobile renders
+                            a compact amount WITHOUT the currency code suffix
+                            (64px track); desktop keeps the full formatted
+                            amount. The cell keeps the row's numeric styling. */}
+                        <div
+                          data-testid="subtotal-cell"
+                          className="min-w-0 text-right text-xs text-zinc-700 lg:text-sm dark:text-zinc-300"
+                        >
+                          <span
+                            data-testid="subtotal-compact"
+                            className="block truncate lg:hidden"
+                            title={formatAmount(subtotal, currency, locale)}
                           >
-                            {t("qty")}
-                          </label>
-                          <Input
-                            id={`qty-${idx}`}
-                            type="number"
-                            min="1"
-                            value={li.quantity}
-                            onChange={(e) =>
-                              updateLineItem(idx, "quantity", Number(e.target.value))
-                            }
-                            disabled={isPending}
-                            className="text-center sm:text-right"
-                            aria-label={itemName ? `${t("qty")} ${itemName}` : t("qty")}
-                          />
-                        </div>
-
-                        {/* Unit price — format on blur */}
-                        <div className="w-24 sm:w-28 lg:w-auto">
-                          <label
-                            htmlFor={`price-${idx}`}
-                            className="mb-1 block text-xs text-zinc-500 lg:hidden dark:text-zinc-400"
-                          >
-                            {t("unitPrice")}
-                          </label>
-                          <Input
-                            id={`price-${idx}`}
-                            type="text"
-                            inputMode="decimal"
-                            value={priceDisplay}
-                            onChange={(e) => handlePriceChange(idx, e.target.value)}
-                            onFocus={() => setFocusedPriceIdx(idx)}
-                            onBlur={() => setFocusedPriceIdx(null)}
-                            disabled={isPending}
-                            className="text-right"
-                            aria-label={itemName ? `${t("unitPrice")} ${itemName}` : t("unitPrice")}
-                          />
-                        </div>
-
-                        {/* Subtotal — formatted text, right-aligned */}
-                        <div className="hidden w-24 text-right text-sm text-zinc-700 sm:block sm:w-28 lg:w-auto lg:text-right dark:text-zinc-300">
-                          {formatAmount(subtotal, currency, locale)}
-                        </div>
-                        {/* Mobile subtotal */}
-                        <div className="text-right text-sm font-medium text-zinc-700 lg:hidden dark:text-zinc-300">
-                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                            {t("subtotal")}:{" "}
+                            {formatAmountParts(subtotal, currency, locale).amount}
                           </span>
-                          {formatAmount(subtotal, currency, locale)}
+                          <span data-testid="subtotal-full" className="hidden lg:inline">
+                            {formatAmount(subtotal, currency, locale)}
+                          </span>
                         </div>
 
                         {/* Remove button */}
@@ -698,15 +708,20 @@ export function SaleForm({
           </div>
 
           {/* Settings: payment, account, client, initial payment, date.
-              Mobile: second section. Desktop: right column.
+              C12-3i (owner spec): on mobile this payment block renders FIRST
+              (modo de pago → cuenta → cliente → pago inicial → fecha) via
+              max-lg:order-first; the desktop grid placement is untouched
+              (right column, DOM order restored at lg+).
               C12-3f: on desktop the right column is FIXED (no scroll).
               C12-3g: compact vertical rhythm (text-xs labels, h-9 inputs,
               space-y-2) so all fields fit inside 90vh at 650px-tall laptop
-              viewports (1366×653). No scroll on this column.
+              viewports (1366×653). C12-3i: the old lg:pr-2 inset was removed
+              so the column is flush with the body edge like the footer's
+              right cell (consistent right-edge geometry).
               fixed-region: required min-h-0 chain */}
           <div
             /* fixed-region: required min-h-0 chain */
-            className="min-h-0 space-y-2 overflow-hidden lg:pr-2"
+            className="max-lg:order-first min-h-0 space-y-2 overflow-hidden"
             data-testid="right-column"
           >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 lg:gap-2">
@@ -824,39 +839,63 @@ export function SaleForm({
           </div>
         </div>
 
-        {/* C12-3f + C12-3g + C12-3h: footer pinned at the bottom of the modal. ONE single
-            row: Total (left of buttons) + Cancelar + Crear venta. Compact padding
-            (py-3 px-4) keeps height minimal (~52px). Shrink-0 + z-10 + bg match
-            the modal surface. Border-top uses themed surface-border.
-            C12-3h: Total right-aligned to sit above the subtotal column (pr compensation
-            for the actions column width + gap). */}
+        {/* C12-3f + C12-3g + C12-3i: footer pinned at the bottom of the modal at
+            desktop (shrink-0, z-10, bg matches the modal surface, themed border-t).
+            C12-3i root-cause fix: the old one-row `justify-end + px-4 + pr-[56px]`
+            anchored the Total to the BUTTONS' edge (button widths vary by locale)
+            inside a footer inset 16px from the body grid — the Total sat ~100px
+            right of the Subtotal column. The footer now MIRRORS the body grid at
+            lg (lg:grid-cols-[1fr_320px] lg:gap-6, no horizontal padding) so its
+            left cell has the exact width of the table's left column; inside it,
+            the SAME 5-track template places the Total in the Subtotal track
+            (lg:col-start-4, text-right), and scrollbar-gutter:stable (on an
+            overflow-hidden box, per MDN's alignment technique) reserves the
+            identical scrollbar gutter the rows container reserves — so the
+            Total's right edge lands EXACTLY on the rows' Subtotal right edge.
+            Mobile: single natural row (flex-wrap justify-end) that wraps if the
+            buttons don't fit at 375px — footer scrolls with the body content.
+            Both buttons go through the same guarded close path (C12-1). */}
         <div
-          className="relative z-10 flex shrink-0 items-center justify-end gap-3 border-t border-surface-border bg-surface-card px-4 py-3"
+          className="relative z-10 flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-surface-border bg-surface-card py-3 lg:grid lg:grid-cols-[1fr_320px] lg:items-center lg:gap-6"
           data-testid="sale-footer"
         >
-          {/* C12-3b + C12-3g + C12-3h: TOTAL inline with the action buttons (single visual
-              line). whitespace-nowrap prevents wrap at 1180px width. C12-3h: pr-[56px]
-              compensates for the actions column (48px) + gap (8px) so the Total right-aligns
-              with the subtotal column's right edge. */}
-          <div className="whitespace-nowrap pr-[56px] text-base font-semibold text-zinc-900 dark:text-white">
-            {t("total")} {formatAmount(total, currency, locale)}
+          {/* C12-3i: left region — mirrors the table grid (same tracks + gaps +
+              scrollbar gutter) so the Total right-aligns with the Subtotal
+              column. The nowrap Total overflowing its 110px track spills LEFT
+              over the empty qty/price tracks — harmless, keeps the anchor
+              exact. At mobile it is a plain wrapper around the Total text. */}
+          <div
+            className="min-w-0 lg:overflow-hidden lg:[scrollbar-gutter:stable] lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] lg:gap-2"
+            data-testid="footer-total-region"
+          >
+            {/* C12-3b + C12-3g: TOTAL prominent (text-base semibold),
+                whitespace-nowrap prevents wrap. */}
+            <div
+              className="whitespace-nowrap text-base font-semibold text-zinc-900 lg:col-start-4 lg:text-right dark:text-white"
+              data-testid="sale-total"
+            >
+              {t("total")} {formatAmount(total, currency, locale)}
+            </div>
           </div>
 
-          {/* C12-3b: footer action row — Cancelar secondary + Crear venta primary.
-              Both go through the same guarded path (C12-1). */}
-          {(onDone || onCancel) && (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isPending}
-              onClick={onCancel ?? onDone}
-            >
-              {tCommon("cancel")}
+          {/* C12-3b: footer action row — Cancelar secondary + Crear venta
+              primary. Right-aligned inside the 320px mirror cell (desktop) or
+              inline after the Total (mobile). */}
+          <div className="flex items-center gap-3">
+            {(onDone || onCancel) && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isPending}
+                onClick={onCancel ?? onDone}
+              >
+                {tCommon("cancel")}
+              </Button>
+            )}
+            <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
+              {isPending ? t("creating") : t("createSale")}
             </Button>
-          )}
-          <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
-            {isPending ? t("creating") : t("createSale")}
-          </Button>
+          </div>
         </div>
       </form>
 

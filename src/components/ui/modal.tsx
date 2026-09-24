@@ -92,9 +92,12 @@ export function Modal({
   // bounded end-to-end. C12-3g: bumped to 90vh / 94vw / 1180px for real-world
   // laptop viewports (1366×653) so the credit-mode right column fits without
   // clipping any field (Fecha visible below Pago inicial).
+  // C12-3i: mobile (<sm) tightens the dialog padding to p-4 so the 5-column
+  // POS items grid fits at 375px; sm+ keeps p-6 (desktop unchanged).
   const isWorkspace = variant === "workspace";
   const dialogSizeClass = isWorkspace ? "lg:w-[94vw] lg:max-w-[1180px]" : sizeClasses[size];
   const dialogHeightClass = isWorkspace ? "lg:h-[90vh] max-h-[90vh]" : "max-h-full";
+  const dialogPaddingClass = isWorkspace ? "p-4 sm:p-6" : "p-6";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -103,7 +106,7 @@ export function Modal({
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
         ref={dialogRef}
-        className={`relative flex ${dialogHeightClass} w-full ${dialogSizeClass} flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card p-6 shadow-xl dark:border-surface-border dark:bg-surface-card`}
+        className={`relative flex ${dialogHeightClass} w-full ${dialogSizeClass} flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card ${dialogPaddingClass} shadow-xl dark:border-surface-border dark:bg-surface-card`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -131,9 +134,14 @@ export function Modal({
             </svg>
           </button>
         </div>
-        {/* C12-3f: body fills remaining space with min-h-0 chain */}
+        {/* C12-3f: body fills remaining space with min-h-0 chain.
+            C12-3i: the workspace body scrolls naturally below lg (mobile
+            single-unit flow — nothing clipped) and is scroll-FROZEN at lg+
+            where the consumer (sale form) manages isolated scroll regions. */}
         <div
-          className={`min-h-0 flex-1 ${isWorkspace ? "overflow-hidden" : "overflow-y-auto"}`}
+          className={`min-h-0 flex-1 ${
+            isWorkspace ? "overflow-y-auto lg:overflow-hidden" : "overflow-y-auto"
+          }`}
           data-testid={isWorkspace ? "modal-body-workspace" : undefined}
         >
           {children}

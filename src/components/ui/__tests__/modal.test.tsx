@@ -310,3 +310,48 @@ describe("MoneyActionConfirmation focus reconciliation (R-4)", () => {
     expect(document.activeElement).toBe(first);
   });
 });
+
+// C12-3f + C12-3i: the workspace variant backs the POS sale modal. The dialog
+// tightens its padding below sm (p-4) so the compact items grid fits at 375px,
+// and the body scrolls as ONE unit below lg (mobile natural flow) while it is
+// scroll-frozen at lg+ where the sale form manages isolated scroll regions.
+describe("Modal workspace variant (C12-3f + C12-3i)", () => {
+  it("tightens dialog padding below sm (p-4 sm:p-6) for mobile grids", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Workspace" variant="workspace">
+        <p>content</p>
+      </Modal>,
+    );
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog).not.toBeNull();
+    // C12-3i: <sm keeps p-4 (375px fit); sm+ restores the standard p-6 so the
+    // desktop geometry is unchanged.
+    expect(dialog.className).toContain("p-4");
+    expect(dialog.className).toContain("sm:p-6");
+  });
+
+  it("body scrolls naturally below lg and is scroll-frozen at lg+ (workspace)", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Workspace" variant="workspace">
+        <p>content</p>
+      </Modal>,
+    );
+    const body = container.querySelector('[data-testid="modal-body-workspace"]');
+    expect(body).not.toBeNull();
+    expect(body!.className).toContain("overflow-y-auto");
+    expect(body!.className).toContain("lg:overflow-hidden");
+  });
+
+  it("default variant keeps the standard padding and unmarked body (backward-compatible)", () => {
+    const { container } = mount(
+      <Modal open={true} onClose={() => {}} title="Default">
+        <p>content</p>
+      </Modal>,
+    );
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog.className).toContain("p-6");
+    expect(dialog.className).not.toContain("p-4");
+    // No workspace body hooks on the default variant.
+    expect(dialog.querySelector('[data-testid="modal-body-workspace"]')).toBeNull();
+  });
+});

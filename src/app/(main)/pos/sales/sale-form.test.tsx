@@ -434,18 +434,26 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
     expect(footerSection!.textContent).toContain("1000");
   });
 
-  it("preserves mobile DOM order: cart → settings → footer", () => {
+  it("keeps DOM order stable and reorders visually on mobile: payment → cart → footer (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const form = container.querySelector("form");
-    // C12-3e: form contains grid wrapper + footer. Grid wrapper contains cart + settings.
+    // C12-3i: DOM order is unchanged (cart first, settings second) — the mobile
+    // reordering is purely visual via max-lg:order-first on the settings
+    // section, so the desktop grid placement is untouched.
     const gridWrapper = form!.querySelector(".lg\\:grid.lg\\:grid-cols-\\[1fr_320px\\]");
     expect(gridWrapper).not.toBeNull();
     const gridChildren = Array.from(gridWrapper!.children);
     expect(gridChildren.length).toBe(2);
-    // First child: cart (contains search combobox)
+    // First DOM child: cart (contains search combobox)
     expect(gridChildren[0].querySelector("#item-search")).not.toBeNull();
-    // Second child: settings (contains #paymentMode)
+    // Second DOM child: settings (contains #paymentMode) — visually FIRST on
+    // mobile (payment block before the searcher, owner spec C12-3i).
     expect(gridChildren[1].querySelector("#paymentMode")).not.toBeNull();
+    expect(gridChildren[1].className).toContain("max-lg:order-first");
+    // The cart section carries the mobile section gap explicitly (the wrapper
+    // space-y was removed: it would put the margin on the DOM-2nd child which
+    // renders first on mobile).
+    expect(gridChildren[0].className).toContain("max-lg:mt-4");
     // Footer is a sibling of the grid wrapper.
     const footer = form!.querySelector('[data-testid="sale-footer"]');
     expect(footer).not.toBeNull();
@@ -457,17 +465,16 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
 // C12-3b + C12-3c: visual hierarchy refinements — desktop table layout, action
 // hierarchy, numeric formatting, and styling improvements.
 describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
-  it("renders a desktop header row with column labels (hidden on mobile)", () => {
+  it("renders the header row with column labels at ALL breakpoints (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     // Add an item so the table renders.
     selectFromSearch(container, 0);
-    // C12-3e: the header row is hidden on mobile (hidden class) but present in DOM.
-    // It's outside the scroll container (not sticky) and uses grid layout.
-    // C12-3h: "Acciones" header removed (empty 48px cell, column reserved for trash icon).
-    const headerRow = container.querySelector(
-      ".hidden.shrink-0.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:grid",
-    );
+    // C12-3i: the header is visible on mobile too (the mobile rows are
+    // single-line grid rows; the header is their only label source). It is
+    // NOT hidden — no `hidden` class.
+    const headerRow = container.querySelector('[data-testid="table-header"]');
     expect(headerRow).not.toBeNull();
+    expect(headerRow!.className).not.toContain("hidden");
     expect(headerRow!.textContent).toContain("item");
     expect(headerRow!.textContent).toContain("qty");
     expect(headerRow!.textContent).toContain("unitPrice");
@@ -479,15 +486,25 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
   it("renders subtotal as formatted text (not an input) right-aligned", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    // Subtotal cells are hidden on mobile (hidden class) but present in DOM.
-    const subtotalCells = container.querySelectorAll(
-      ".hidden.w-24.text-right.text-sm.text-zinc-700.sm\\:block.sm\\:w-28",
-    );
+    // C12-3i: the subtotal is one grid cell (data-testid) holding a compact
+    // mobile span (no currency code) and the full desktop span.
+    const subtotalCells = container.querySelectorAll('[data-testid="subtotal-cell"]');
     expect(subtotalCells.length).toBe(1);
     // The subtotal is formatted text, not an input.
     expect(subtotalCells[0].querySelector("input")).toBeNull();
+    // Right-aligned numeric cell (header lockstep).
+    expect(subtotalCells[0].className).toContain("text-right");
     // Contains the formatted amount (1 × 1000 = 1000 COP).
     expect(subtotalCells[0].textContent).toContain("1000");
+    // Desktop span keeps the full format with the currency code.
+    const full = subtotalCells[0].querySelector('[data-testid="subtotal-full"]');
+    expect(full).not.toBeNull();
+    expect(full!.textContent).toContain("COP");
+    // Mobile span omits the currency code suffix (compact numerals).
+    const compact = subtotalCells[0].querySelector('[data-testid="subtotal-compact"]');
+    expect(compact).not.toBeNull();
+    expect(compact!.textContent).not.toContain("COP");
+    expect(compact!.textContent).toContain("1000");
   });
 
   it("renders delete button with neutral base styling (red on hover)", () => {
@@ -522,14 +539,19 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     expect(priceInput!.getAttribute("inputmode")).toBe("decimal");
   });
 
-  it("right-aligns numeric inputs (quantity, unit price) for fast scanning", () => {
+  it("aligns numeric inputs with their headers: qty centered, price right (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
     const qtyInput = container.querySelector<HTMLInputElement>('input[id^="qty-"]');
     const priceInput = container.querySelector<HTMLInputElement>('input[id^="price-"]');
     expect(qtyInput).not.toBeNull();
     expect(priceInput).not.toBeNull();
-    expect(qtyInput!.className).toContain("text-right");
+    // C12-3i: the qty input is CENTER-aligned at every breakpoint — one
+    // shared alignment with the centered "Cant." header (the old
+    // sm:text-right broke header/content lockstep). The price input keeps
+    // the right alignment under the right-aligned "unitPrice" header.
+    expect(qtyInput!.className).toContain("text-center");
+    expect(qtyInput!.className).not.toContain("text-right");
     expect(priceInput!.className).toContain("text-right");
   });
 
@@ -612,9 +634,7 @@ describe("SaleForm POS search-add pattern (C12-3c)", () => {
     });
 
     // Subtotal should be 3 × 1000 = 3000.
-    const subtotalCells = container.querySelectorAll(
-      ".hidden.w-24.text-right.text-sm.text-zinc-700.sm\\:block.sm\\:w-28",
-    );
+    const subtotalCells = container.querySelectorAll('[data-testid="subtotal-cell"]');
     expect(subtotalCells.length).toBe(1);
     expect(subtotalCells[0].textContent).toContain("3000");
   });
@@ -747,12 +767,15 @@ describe("SaleForm catalog propagation (C12-3d)", () => {
     expect(qtyInputs.length).toBe(1);
     expect(qtyInputs[0].value).toBe("1");
 
-    // The row must show the item name (not empty/undefined).
-    // Desktop: plain text in table cell. Mobile: title text.
-    const nameTexts = container.querySelectorAll(".min-w-0.truncate");
-    expect(nameTexts.length).toBe(1);
-    expect(nameTexts[0].textContent).toBe("New Item");
-    expect(nameTexts[0].textContent).not.toContain("undefined");
+    // The row must show the item name (not empty/undefined) in the single
+    // truncated name cell (C12-3i unified mobile/desktop cell).
+    const nameCell = container.querySelector('[data-testid="item-name-cell"]');
+    expect(nameCell).not.toBeNull();
+    expect(nameCell!.textContent).toBe("New Item");
+    expect(nameCell!.textContent).not.toContain("undefined");
+    // C12-3i: the name truncates and carries the full name as title tooltip.
+    expect(nameCell!.className).toContain("truncate");
+    expect(nameCell!.getAttribute("title")).toBe("New Item");
 
     // The price input must show the catalog price (5000), not 0 or NaN.
     const priceInput = container.querySelector<HTMLInputElement>('input[id^="price-"]');
@@ -777,12 +800,18 @@ describe("SaleForm catalog propagation (C12-3d)", () => {
     });
 
     // The subtotal cell should format in COP (the new item's currency).
-    const subtotalCells = container.querySelectorAll(
-      ".hidden.w-24.text-right.text-sm.text-zinc-700.sm\\:block.sm\\:w-28",
-    );
-    expect(subtotalCells.length).toBe(1);
-    expect(subtotalCells[0].textContent).toContain("5000");
-    expect(subtotalCells[0].textContent).toContain("COP");
+    const subtotalCell = container.querySelector('[data-testid="subtotal-cell"]');
+    expect(subtotalCell).not.toBeNull();
+    // Desktop span: full format with the currency code.
+    const full = subtotalCell!.querySelector('[data-testid="subtotal-full"]');
+    expect(full).not.toBeNull();
+    expect(full!.textContent).toContain("5000");
+    expect(full!.textContent).toContain("COP");
+    // Mobile span: compact value without the currency code (C12-3i).
+    const compact = subtotalCell!.querySelector('[data-testid="subtotal-compact"]');
+    expect(compact).not.toBeNull();
+    expect(compact!.textContent).toContain("5000");
+    expect(compact!.textContent).not.toContain("COP");
   });
 });
 
@@ -799,18 +828,22 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     expect(rowsContainer!.className).toContain("overflow-x-hidden");
   });
 
-  it("desktop table header is outside the scroll container (not sticky)", () => {
+  it("table header lives INSIDE the scroll container, sticky at lg (C12-3i lockstep)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    // C12-3e: the header is a sibling of the rows container, not inside it.
-    // It's hidden on mobile and uses grid layout on desktop.
+    // C12-3i root-cause fix: the header shares the rows container's exact
+    // content box (scrollbar included), so header and row columns stay in
+    // lockstep on every platform. It must not scroll away: sticky top with an
+    // opaque background at lg.
     const tableWrapper = container.querySelector('[data-testid="table-wrapper"]');
     expect(tableWrapper).not.toBeNull();
-    const headerRow = tableWrapper!.querySelector(".hidden.shrink-0.lg\\:grid");
-    expect(headerRow).not.toBeNull();
-    // The header is NOT inside the scroll container.
     const rowsContainer = tableWrapper!.querySelector('[data-testid="table-rows-container"]');
-    expect(rowsContainer!.contains(headerRow!)).toBe(false);
+    const headerRow = tableWrapper!.querySelector('[data-testid="table-header"]');
+    expect(headerRow).not.toBeNull();
+    expect(rowsContainer!.contains(headerRow!)).toBe(true);
+    expect(headerRow!.className).toContain("lg:sticky");
+    expect(headerRow!.className).toContain("lg:top-0");
+    expect(headerRow!.className).toContain("lg:bg-surface-card");
   });
 
   it("right column is fixed (no scroll) with min-h-0 chain on desktop", () => {
@@ -832,11 +865,11 @@ describe("SaleForm scroll isolation & fixed structure (C12-3d)", () => {
     expect(footer!.className).toContain("bg-surface-card");
   });
 
-  it("form root fills modal body on desktop (h-full)", () => {
+  it("form root fills modal body on desktop (lg:h-full), auto-height on mobile (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const root = container.querySelector("form")!.parentElement;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain("h-full");
+    expect(root!.className).toContain("lg:h-full");
     expect(root!.className).toContain("flex");
     expect(root!.className).toContain("flex-col");
   });
@@ -891,7 +924,11 @@ describe("SaleForm layout invariants (C12-3f)", () => {
     expect(bodyWrapper).not.toBeNull();
     expect(bodyWrapper!.className).toContain("min-h-0");
     expect(bodyWrapper!.className).toContain("flex-1");
-    expect(bodyWrapper!.className).toContain("overflow-hidden");
+    // C12-3i: the workspace body scrolls naturally below lg (mobile is one
+    // scroll unit — nothing clipped) and is scroll-frozen at lg+ where the
+    // sale form manages isolated internal scroll regions.
+    expect(bodyWrapper!.className).toContain("overflow-y-auto");
+    expect(bodyWrapper!.className).toContain("lg:overflow-hidden");
   });
 
   it("rows container has overflow-y-auto + min-h-0 for scroll isolation", () => {
@@ -954,11 +991,11 @@ describe("SaleForm layout invariants (C12-3f)", () => {
     const modalHeader = container.querySelector('[role="dialog"] > .relative.z-10');
     expect(modalHeader).not.toBeNull();
     expect(rowsContainer!.contains(modalHeader!)).toBe(false);
-    // The table header row must be a sibling of the rows container (not inside it).
-    const tableWrapper = container.querySelector('[data-testid="table-wrapper"]');
-    const tableHeader = tableWrapper!.querySelector(".hidden.shrink-0.lg\\:grid");
+    // The table header row lives INSIDE the rows container (C12-3i lockstep)
+    // and stays visible via sticky positioning while rows scroll under it.
+    const tableHeader = rowsContainer!.querySelector('[data-testid="table-header"]');
     expect(tableHeader).not.toBeNull();
-    expect(rowsContainer!.contains(tableHeader!)).toBe(false);
+    expect(tableHeader!.className).toContain("lg:sticky");
   });
 });
 
@@ -966,25 +1003,56 @@ describe("SaleForm layout invariants (C12-3f)", () => {
 // compact right column for credit-mode fit, and widened table columns to
 // reserve room for the vertical scrollbar.
 describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
-  it("footer is ONE single row: total + buttons inline (no separate total row)", () => {
+  it("footer stays one row on mobile and a 2-cell grid mirror at lg (C12-3g + C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const footer = container.querySelector('[data-testid="sale-footer"]');
     expect(footer).not.toBeNull();
-    // C12-3g: footer uses flex with items-center (one-line layout).
+    // Mobile: one flex row (wraps only if the buttons cannot fit at 375px).
     expect(footer!.className).toContain("flex");
+    expect(footer!.className).toContain("flex-wrap");
     expect(footer!.className).toContain("items-center");
-    // Total and buttons are siblings (not nested in separate rows).
-    // The footer should contain the total text and the buttons directly.
+    // Desktop: the footer MIRRORS the body grid (same 2-track template + gap)
+    // so its left cell has the exact width of the table's left column.
+    expect(footer!.className).toContain("lg:grid");
+    expect(footer!.className).toContain("lg:grid-cols-[1fr_320px]");
+    expect(footer!.className).toContain("lg:gap-6");
+    // Total and buttons are present; compact vertical padding kept.
     expect(footer!.textContent).toContain("total");
     const submitBtn = footer!.querySelector('button[type="submit"]');
     expect(submitBtn).not.toBeNull();
-    // Compact padding (py-3 px-4) instead of p-4.
     expect(footer!.className).toContain("py-3");
-    expect(footer!.className).toContain("px-4");
-    // C12-3h: Total has pr-[56px] to align with subtotal column (compensates for actions column).
-    const totalDiv = footer!.querySelector(".whitespace-nowrap");
-    expect(totalDiv).not.toBeNull();
-    expect(totalDiv!.className).toContain("pr-[56px]");
+    // C12-3i: the old horizontal px-4 inset is gone — the footer grid shares
+    // the body grid's edges (part of the real-alignment fix).
+    expect(footer!.className).not.toContain("px-4");
+  });
+
+  it("anchors the Total to the Subtotal column via the same grid template + scrollbar gutter (C12-3i)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const footer = container.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    // The left region reuses the table's exact 5-track template + gaps, and
+    // reserves the same scrollbar gutter the rows container reserves, so the
+    // Total's right edge lands exactly on the rows' Subtotal right edge.
+    const region = footer!.querySelector('[data-testid="footer-total-region"]');
+    expect(region).not.toBeNull();
+    expect(region!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+    expect(region!.className).toContain("lg:gap-2");
+    expect(region!.className).toContain("lg:overflow-hidden");
+    expect(region!.className).toContain("lg:[scrollbar-gutter:stable]");
+    // The Total sits in the Subtotal track (4th), right-aligned.
+    const total = footer!.querySelector('[data-testid="sale-total"]');
+    expect(total).not.toBeNull();
+    expect(total!.className).toContain("lg:col-start-4");
+    expect(total!.className).toContain("lg:text-right");
+    expect(total!.className).toContain("whitespace-nowrap");
+    // The old pixel-guess compensation is gone.
+    expect(total!.className).not.toContain("pr-[56px]");
+    // The rows container reserves the gutter too (constant content width
+    // whether the scrollbar is visible or not), and the old pr-2 hack is gone.
+    const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer!.className).toContain("lg:[scrollbar-gutter:stable]");
+    expect(rowsContainer!.className).not.toContain("pr-2");
   });
 
   it("right column has compact vertical rhythm (text-xs labels, h-9 inputs, space-y-2)", () => {
@@ -1008,30 +1076,42 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
     });
   });
 
-  it("table header and rows share the same grid template (2fr_60px_110px_110px_48px)", () => {
+  it("table header and rows share the SAME grid template at mobile and lg (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    // C12-3g: widened last column (44px → 48px) to reserve room for scrollbar.
-    const headerRow = container.querySelector(
-      ".hidden.shrink-0.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:grid",
-    );
+    const headerRow = container.querySelector('[data-testid="table-header"]');
     expect(headerRow).not.toBeNull();
+    // Mobile template: all 4 data columns + the reserved actions track.
+    expect(headerRow!.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
+    // Desktop template (unchanged since C12-3g).
     expect(headerRow!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
-    // Rows should use the same template.
-    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    // Rows use the exact same templates + gaps — lockstep by construction.
+    const rows = container.querySelectorAll(
+      '[data-testid="table-rows-container"] > div:not([data-testid="table-header"])',
+    );
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {
+      expect(row.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
       expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+      expect(row.className).toContain("gap-x-1.5");
+      expect(row.className).toContain("lg:gap-2");
     });
+    // The header carries the same gaps as the rows.
+    expect(headerRow!.className).toContain("gap-x-1.5");
+    expect(headerRow!.className).toContain("lg:gap-2");
   });
 
-  it("rows container has pr-2 to reserve room for the vertical scrollbar", () => {
+  it("reserves the scrollbar width deterministically instead of the old pr-2 (C12-3i)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
     const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
     expect(rowsContainer).not.toBeNull();
-    // C12-3g: pr-2 reserves room for the scrollbar so header and rows stay in lockstep.
-    expect(rowsContainer!.className).toContain("pr-2");
+    // scrollbar-gutter:stable keeps the content width CONSTANT whether the
+    // scrollbar is visible or not — no more header shifted by the scrollbar.
+    expect(rowsContainer!.className).toContain("lg:[scrollbar-gutter:stable]");
+    // The old pr-2 hack (8px) is gone: it never matched the real scrollbar
+    // width (10px project webkit scrollbar) and misaligned the header.
+    expect(rowsContainer!.className).not.toContain("pr-2");
   });
 
   it("credit hint uses amber-500 without gray override from base classes", () => {
@@ -1050,7 +1130,11 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
   it("rows have compact padding (py-1.5 mobile, lg:py-2 desktop) and horizontal-only borders", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    // C12-3i: the header row now lives INSIDE the rows container (lockstep
+    // fix) — exclude it from the data-row assertions.
+    const rows = container.querySelectorAll(
+      '[data-testid="table-rows-container"] > div:not([data-testid="table-header"])',
+    );
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {
       // C12-3h: compact row padding (py-1.5 mobile, lg:py-2 desktop).
@@ -1061,18 +1145,39 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
       expect(row.className).not.toMatch(/\bborder\s/);
       expect(row.className).not.toContain("border-x");
     });
+    // The header keeps its own separator (no row padding): pb-2 + border-b.
+    const header = container.querySelector('[data-testid="table-header"]')!;
+    expect(header).not.toBeNull();
+    expect(header.className).toContain("pb-2");
+    expect(header.className).toContain("border-b");
   });
 
-  it("rows use responsive grid classes for mobile single-column layout", () => {
+  it("mobile rows keep ALL 4 data columns + actions on one line (C12-3i redesign)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     selectFromSearch(container, 0);
-    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    const rows = container.querySelectorAll(
+      '[data-testid="table-rows-container"] > div:not([data-testid="table-header"])',
+    );
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {
-      // C12-3h: mobile grid template (grid-cols-[1fr_auto]) reflows to single column.
-      expect(row.className).toContain("grid-cols-[1fr_auto]");
-      // C12-3h: desktop grid template (lg:grid-cols-[2fr_60px_110px_110px_48px]).
+      // C12-3i: the owner-rejected C12-3h re-template (grid-cols-[1fr_auto]
+      // with per-cell labels and stacked subtotal) is replaced by a compact
+      // 5-track mobile grid: truncated name + qty + price + subtotal + trash,
+      // all on ONE line (no wrapping, no horizontal overflow at 375px).
+      expect(row.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
+      expect(row.className).not.toContain("grid-cols-[1fr_auto]");
+      // Desktop template unchanged.
       expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
     });
+    // The mobile rows carry no per-cell labels anymore — the header row is
+    // the single label source (visible at all breakpoints).
+    const mobileLabels = container.querySelectorAll("label[for^='qty-'], label[for^='price-']");
+    expect(mobileLabels.length).toBe(0);
+    // Inputs keep their accessible names.
+    const qtyInput = container.querySelector('input[id^="qty-"]');
+    expect(qtyInput!.getAttribute("aria-label")).toContain("qty");
+    // Compact numerals: the mobile inputs/text use text-xs below lg.
+    expect(qtyInput!.className).toContain("max-lg:text-xs");
+    expect(qtyInput!.className).toContain("max-lg:px-1!");
   });
 });
