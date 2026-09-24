@@ -210,6 +210,68 @@ describe("Modal", () => {
   });
 });
 
+// C12-1: onRequestClose intercepts ESC/X/backdrop so the consumer can gate
+// close attempts (e.g. dirty-check confirmation). When omitted, onClose fires
+// directly — backward-compatible.
+describe("Modal onRequestClose (C12-1)", () => {
+  function GuardedHarness({ initialOpen }: { initialOpen: boolean }) {
+    const [open, setOpen] = useState(initialOpen);
+    const [guarded, setGuarded] = useState(false);
+    return (
+      <div>
+        <button type="button" data-name="trigger" onClick={() => setOpen(true)}>
+          open
+        </button>
+        <span data-name="guarded">{guarded ? "yes" : "no"}</span>
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          onRequestClose={() => setGuarded(true)}
+          title="Guarded dialog"
+        >
+          <p>content</p>
+        </Modal>
+      </div>
+    );
+  }
+
+  it("routes ESC through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("no");
+    pressKey("Escape");
+    // onClose was NOT called (dialog still open), onRequestClose was called.
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("routes backdrop click through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    const backdrop = container.querySelector(".absolute.inset-0.bg-black\\/50")!;
+    act(() => {
+      backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("routes X button click through onRequestClose instead of onClose", () => {
+    const { container } = mount(<GuardedHarness initialOpen />);
+    const xButton = container.querySelector<HTMLButtonElement>('[aria-label="close"]')!;
+    act(() => {
+      xButton.click();
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.querySelector('[data-name="guarded"]')!.textContent).toBe("yes");
+  });
+
+  it("falls back to onClose when onRequestClose is not provided", () => {
+    const { container } = mount(<ModalHarness initialOpen />);
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    pressKey("Escape");
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+});
+
 describe("MoneyActionConfirmation focus reconciliation (R-4)", () => {
   it("keeps initial focus on the confirm button (S4.1)", () => {
     const { container } = mount(<MacHarness />);

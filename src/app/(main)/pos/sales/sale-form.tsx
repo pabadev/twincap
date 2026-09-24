@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../../i18n/client";
 import { useActionError } from "../../../../lib/use-action-error";
@@ -37,10 +37,31 @@ interface SaleFormProps {
   catalogItems: SerializedCatalogItem[];
   accounts: SerializedAccount[];
   clients: SerializedClient[];
+  /** Called after a successful create (sale persisted). Also used as the legacy close path. */
   onDone?: () => void;
+  /**
+   * Called when the user explicitly cancels (Cancel button). The parent wires
+   * this to the dirty-check close-guard so unsaved changes trigger a
+   * confirmation instead of silent discard. Falls back to `onDone` when omitted.
+   */
+  onCancel?: () => void;
+  /**
+   * Optional ref the form writes its current dirty flag to, synchronously after
+   * each state change. The parent reads it in the close-guard handler to decide
+   * whether to show a confirmation. Avoids a callback round-trip and stale
+   * closures in the parent's event handler.
+   */
+  dirtyRef?: MutableRefObject<boolean>;
 }
 
-export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormProps) {
+export function SaleForm({
+  catalogItems,
+  accounts,
+  clients,
+  onDone,
+  onCancel,
+  dirtyRef,
+}: SaleFormProps) {
   const [state, formAction, isPending] = useActionState(createSaleAction, null);
   const t = useT("Sales");
   const tCommon = useT("Common");
@@ -97,6 +118,42 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
       unitPrice: catalogItems[0]?.unitPrice.amount ?? 0,
     },
   ]);
+
+  // Dirty detection (C12-1): the form has unsaved changes when any field
+  // deviates from its initial value. The preselected first line item (from the
+  // catalog) does NOT count as dirty — it is the default, not a user edit.
+  // The parent reads `dirtyRef` synchronously in the close-guard handler.
+  const initialLineItems = useMemo<LineItem[]>(
+    () => [
+      {
+        itemId: catalogItems[0]?.id ?? "",
+        quantity: 1,
+        unitPrice: catalogItems[0]?.unitPrice.amount ?? 0,
+      },
+    ],
+    [catalogItems],
+  );
+
+  const isDirty = useMemo(() => {
+    if (clientId !== "") return true;
+    if (paymentMode !== "paid-in-full") return true;
+    if (currency !== DEFAULT_CURRENCY) return true;
+    if (initialPayment !== "0") return true;
+    if (localClients.length > 0) return true;
+    if (lineItems.length !== initialLineItems.length) return true;
+    return lineItems.some(
+      (li, i) =>
+        li.itemId !== initialLineItems[i]?.itemId ||
+        li.quantity !== initialLineItems[i]?.quantity ||
+        li.unitPrice !== initialLineItems[i]?.unitPrice,
+    );
+  }, [lineItems, initialLineItems, clientId, paymentMode, currency, initialPayment, localClients]);
+
+  // Sync dirty flag to the parent-owned ref so the close-guard handler can
+  // read it without stale-closure issues.
+  useEffect(() => {
+    if (dirtyRef) dirtyRef.current = isDirty;
+  }, [isDirty, dirtyRef]);
 
   // Quick-create from inside the sale form: auto-select the new entity so the
   // user can keep building the sale without leaving the form. A1 (F2+F3):
@@ -383,8 +440,13 @@ export function SaleForm({ catalogItems, accounts, clients, onDone }: SaleFormPr
           <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
             {isPending ? t("creating") : t("createSale")}
           </Button>
-          {onDone && (
-            <Button type="button" variant="secondary" disabled={isPending} onClick={onDone}>
+          {(onDone || onCancel) && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isPending}
+              onClick={onCancel ?? onDone}
+            >
               {tCommon("cancel")}
             </Button>
           )}

@@ -18,6 +18,13 @@ interface ModalProps {
   closeLabel?: string;
   /** Dialog max width: sm → max-w-sm, md → max-w-md (default), lg → max-w-2xl. */
   size?: ModalSize;
+  /**
+   * Optional close-guard: when provided, ESC / backdrop / X call this instead
+   * of `onClose`. The consumer decides whether to actually close (e.g. after a
+   * dirty-check confirmation). When omitted, behavior is unchanged — `onClose`
+   * fires directly on every close trigger.
+   */
+  onRequestClose?: () => void;
 }
 
 const sizeClasses: Record<ModalSize, string> = {
@@ -35,8 +42,15 @@ export function Modal({
   actions,
   closeLabel,
   size = "md",
+  onRequestClose,
 }: ModalProps) {
   const tCommon = useT("Common");
+
+  // Close trigger: when the consumer provides `onRequestClose`, all user-initiated
+  // close attempts (ESC, backdrop, X) are routed through it so the consumer can
+  // gate them (e.g. dirty-check confirmation). When omitted, `onClose` fires
+  // directly — backward-compatible with every existing consumer.
+  const handleClose = onRequestClose ?? onClose;
 
   // Focus trap (UX-9 R-2): while open, focus enters the dialog, Tab/Shift+Tab
   // stay inside it, and focus returns to the trigger on close.
@@ -45,9 +59,9 @@ export function Modal({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     },
-    [onClose],
+    [handleClose],
   );
 
   useEffect(() => {
@@ -66,7 +80,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
         ref={dialogRef}
@@ -82,7 +96,7 @@ export function Modal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="ml-auto cursor-pointer rounded-md p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
             aria-label={closeLabel || tCommon("close")}
           >

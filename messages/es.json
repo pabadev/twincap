@@ -562,7 +562,11 @@
     "newItem": "Nuevo artículo",
     "createClient": "Crear cliente",
     "createItem": "Crear artículo",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "closeSaleTitle": "¿Salir de la venta?",
+    "closeSaleDescription": "Tienes información sin guardar. Si sales ahora, perderás los datos ingresados.",
+    "continueEditing": "Continuar editando",
+    "leaveWithoutSaving": "Salir sin guardar"
   },
   "Export": {
     "button": "Exportar CSV",

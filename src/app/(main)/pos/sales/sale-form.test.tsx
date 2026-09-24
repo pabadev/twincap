@@ -251,3 +251,81 @@ describe("SaleForm line-item row overflow (A1 F3)", () => {
     expect(firstChild.className).toContain("min-w-0");
   });
 });
+
+// C12-1: close-guard — unsaved changes must trigger a confirmation before
+// discarding. The dirty flag is exposed via dirtyRef so the parent can read it
+// synchronously in the close handler (no stale closures).
+describe("SaleForm dirty tracking (C12-1)", () => {
+  it("starts clean: dirtyRef is false on mount with default values", () => {
+    const dirtyRef = { current: false };
+    mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    expect(dirtyRef.current).toBe(false);
+  });
+
+  it("becomes dirty when the user adds a line item", () => {
+    const dirtyRef = { current: false };
+    const { container } = mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    const addItem = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "addItem",
+    );
+    expect(addItem).toBeDefined();
+    act(() => {
+      addItem!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(dirtyRef.current).toBe(true);
+  });
+
+  it("becomes dirty when the user selects a client", () => {
+    const dirtyRef = { current: false };
+    const { container } = mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    const clientSelect = container.querySelector<HTMLSelectElement>("#clientId")!;
+    act(() => {
+      clientSelect.value = "cli-1";
+      clientSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(dirtyRef.current).toBe(true);
+  });
+
+  it("becomes dirty when the user changes payment mode", () => {
+    const dirtyRef = { current: false };
+    const { container } = mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    switchPaymentMode(container, "on-credit");
+    expect(dirtyRef.current).toBe(true);
+  });
+
+  it("stays clean when the preselected line item is untouched", () => {
+    const dirtyRef = { current: false };
+    mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    // The first line item is preselected from the catalog — not a user edit.
+    expect(dirtyRef.current).toBe(false);
+  });
+});
+
+// C12-1: the Cancel button must call onCancel (wired to the close-guard) when
+// provided, not onDone directly. This lets the parent show a confirmation.
+describe("SaleForm Cancel button (C12-1)", () => {
+  it("calls onCancel when provided", () => {
+    const onCancel = vi.fn();
+    const { container } = mount(<SaleForm {...baseProps} onCancel={onCancel} />);
+    const cancelBtn = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "cancel",
+    );
+    expect(cancelBtn).toBeDefined();
+    act(() => {
+      cancelBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to onDone when onCancel is not provided", () => {
+    const onDone = vi.fn();
+    const { container } = mount(<SaleForm {...baseProps} onDone={onDone} />);
+    const cancelBtn = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "cancel",
+    );
+    act(() => {
+      cancelBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+});

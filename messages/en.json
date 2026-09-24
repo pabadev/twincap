@@ -562,7 +562,11 @@
     "newItem": "New item",
     "createClient": "Create client",
     "createItem": "Create item",
-    "filters": "Filters"
+    "filters": "Filters",
+    "closeSaleTitle": "Leave sale?",
+    "closeSaleDescription": "You have unsaved changes. If you leave now, you will lose the entered data.",
+    "continueEditing": "Continue editing",
+    "leaveWithoutSaving": "Leave without saving"
   },
   "Export": {
     "button": "Export CSV",
