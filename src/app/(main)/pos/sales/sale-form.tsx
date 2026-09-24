@@ -31,7 +31,7 @@ import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Modal } from "../../../../components/ui/modal";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { formatAmount, formatAmountParts } from "../../../../lib/format";
 import { toDateInputValue } from "../../../../lib/date";
@@ -319,6 +319,15 @@ export function SaleForm({
     setTimeout(() => setIsComboOpen(false), 150);
   }
 
+  // Clear button: empties the search input, closes the dropdown and leaves the
+  // focus untouched (the input is NOT re-focused so the dropdown does not
+  // reopen through handleSearchFocus).
+  function clearSearchCombo() {
+    setSearchQuery("");
+    setIsComboOpen(false);
+    setComboActiveIdx(-1);
+  }
+
   function selectComboItem(item: SerializedCatalogItem) {
     addToCart(item);
     // Keep the dropdown open so the user can keep adding items (POS pattern).
@@ -494,7 +503,26 @@ export function SaleForm({
                 }
                 aria-autocomplete="list"
                 autoComplete="off"
+                className={searchQuery.length > 0 || isComboOpen ? "pr-9" : ""}
               />
+              {(searchQuery.length > 0 || isComboOpen) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // preventDefault on mousedown keeps focus on the input so
+                    // handleSearchBlur's delayed close does not race this click,
+                    // but the dropdown is closed explicitly here and the input
+                    // is NOT re-focused, so the dropdown never reopens.
+                    clearSearchCombo();
+                  }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  disabled={isPending}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                  aria-label={t("clearItemSearch")}
+                >
+                  <X size={14} strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              )}
               {isComboOpen && (
                 <ul
                   ref={comboListRef}

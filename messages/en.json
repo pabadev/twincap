@@ -529,6 +529,7 @@
     "qty": "Qty",
     "unitPrice": "Unit Price",
     "searchOrAddItem": "Search or add item...",
+    "clearItemSearch": "Clear search",
     "createNewItem": "+ Create new item",
     "actions": "Actions",
     "noItemsFound": "No items found",

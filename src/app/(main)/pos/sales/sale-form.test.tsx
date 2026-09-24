@@ -703,6 +703,55 @@ describe("SaleForm POS search-add pattern (C12-3c)", () => {
     expect(options.length).toBe(1);
     expect(options[0].textContent).toContain("Item B");
   });
+
+  // Clear button: hidden with an empty input + closed dropdown, visible with
+  // either text or an open dropdown, and clicking it clears the input, closes
+  // the dropdown and does not reopen it (focus left on the input, no reopen).
+  it("clear button appears with text or open dropdown and clears search", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const searchInput = container.querySelector<HTMLInputElement>("#item-search")!;
+
+    // Hidden when the input is empty and the dropdown is closed.
+    expect(container.querySelector('[aria-label="clearItemSearch"]')).toBeNull();
+
+    // Visible when the input is focused (dropdown open, empty text).
+    act(() => {
+      searchInput.focus();
+    });
+    const clearBtn = container.querySelector<HTMLButtonElement>('[aria-label="clearItemSearch"]')!;
+    expect(clearBtn).not.toBeNull();
+
+    // Close the dropdown (Escape) — the button stays visible because the input
+    // still holds text? No: input is empty, so after closing the dropdown the
+    // button disappears. First type text, close dropdown, then clear.
+    act(() => {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      nativeInputValueSetter.call(searchInput, "B");
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      searchInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    act(() => {
+      searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    // Dropdown closed, but the button remains visible because there is text.
+    expect(container.querySelector("#item-search-listbox")).toBeNull();
+    expect(
+      container.querySelector<HTMLButtonElement>('[aria-label="clearItemSearch"]'),
+    ).not.toBeNull();
+
+    // Click clears the input, hides the button, and the dropdown stays closed.
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="clearItemSearch"]')!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(searchInput.value).toBe("");
+    expect(container.querySelector('[aria-label="clearItemSearch"]')).toBeNull();
+    expect(container.querySelector("#item-search-listbox")).toBeNull();
+  });
 });
 
 // C12-3d: immediate propagation — a catalog item created from inside the form

@@ -529,6 +529,7 @@
     "qty": "Cant.",
     "unitPrice": "Precio unitario",
     "searchOrAddItem": "Buscar o agregar artículo...",
+    "clearItemSearch": "Limpiar búsqueda",
     "createNewItem": "+ Crear nuevo artículo",
     "actions": "Acciones",
     "noItemsFound": "No se encontraron artículos",
