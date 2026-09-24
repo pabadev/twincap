@@ -85,7 +85,11 @@ export function FormField({
       {hint && (
         <p
           id={`${id}-hint`}
-          className={`mt-1 text-xs text-zinc-500 dark:text-zinc-400${hintClassName ? ` ${hintClassName}` : ""}`}
+          className={
+            hintClassName
+              ? `mt-1 text-xs ${hintClassName}`
+              : "mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+          }
         >
           {hint}
         </p>

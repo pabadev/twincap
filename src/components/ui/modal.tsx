@@ -88,11 +88,13 @@ export function Modal({
   if (!open) return null;
 
   // C12-3f: workspace variant pins header/footer and isolates internal scroll
-  // regions. The dialog has a DEFINITE height at desktop (lg:h-[85vh]) so the
-  // flex chain is bounded end-to-end. Width is 92vw capped at 1080px.
+  // regions. The dialog has a DEFINITE height at desktop so the flex chain is
+  // bounded end-to-end. C12-3g: bumped to 90vh / 94vw / 1180px for real-world
+  // laptop viewports (1366×653) so the credit-mode right column fits without
+  // clipping any field (Fecha visible below Pago inicial).
   const isWorkspace = variant === "workspace";
-  const dialogSizeClass = isWorkspace ? "lg:w-[92vw] lg:max-w-[1080px]" : sizeClasses[size];
-  const dialogHeightClass = isWorkspace ? "lg:h-[85vh] max-h-[85vh]" : "max-h-full";
+  const dialogSizeClass = isWorkspace ? "lg:w-[94vw] lg:max-w-[1180px]" : sizeClasses[size];
+  const dialogHeightClass = isWorkspace ? "lg:h-[90vh] max-h-[90vh]" : "max-h-full";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

@@ -873,10 +873,11 @@ describe("SaleForm layout invariants (C12-3f)", () => {
     // The dialog is the [role="dialog"] element rendered by Modal.
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
-    // C12-3f: workspace variant sets lg:h-[85vh] and lg:w-[92vw] lg:max-w-[1080px].
-    expect(dialog!.className).toContain("lg:h-[85vh]");
-    expect(dialog!.className).toContain("lg:w-[92vw]");
-    expect(dialog!.className).toContain("lg:max-w-[1080px]");
+    // C12-3g: workspace variant sets lg:h-[90vh] and lg:w-[94vw] lg:max-w-[1180px]
+    // (bumped from 85vh/92vw/1080px for real-world laptop viewports 1366×653).
+    expect(dialog!.className).toContain("lg:h-[90vh]");
+    expect(dialog!.className).toContain("lg:w-[94vw]");
+    expect(dialog!.className).toContain("lg:max-w-[1180px]");
   });
 
   it("body wrapper has min-h-0 chain for flex/grid sizing", () => {
@@ -954,5 +955,87 @@ describe("SaleForm layout invariants (C12-3f)", () => {
     const tableHeader = tableWrapper!.querySelector(".hidden.shrink-0.lg\\:grid");
     expect(tableHeader).not.toBeNull();
     expect(rowsContainer!.contains(tableHeader!)).toBe(false);
+  });
+});
+
+// C12-3g: real-browser fine-tuning — wider/taller modal, one-line footer,
+// compact right column for credit-mode fit, and widened table columns to
+// reserve room for the vertical scrollbar.
+describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
+  it("footer is ONE single row: total + buttons inline (no separate total row)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const footer = container.querySelector('[data-testid="sale-footer"]');
+    expect(footer).not.toBeNull();
+    // C12-3g: footer uses flex with items-center (one-line layout).
+    expect(footer!.className).toContain("flex");
+    expect(footer!.className).toContain("items-center");
+    // Total and buttons are siblings (not nested in separate rows).
+    // The footer should contain the total text and the buttons directly.
+    expect(footer!.textContent).toContain("total");
+    const submitBtn = footer!.querySelector('button[type="submit"]');
+    expect(submitBtn).not.toBeNull();
+    // Compact padding (py-3 px-4) instead of p-4.
+    expect(footer!.className).toContain("py-3");
+    expect(footer!.className).toContain("px-4");
+  });
+
+  it("right column has compact vertical rhythm (text-xs labels, h-9 inputs, space-y-2)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    const rightColumn = container.querySelector('[data-testid="right-column"]');
+    expect(rightColumn).not.toBeNull();
+    // C12-3g: space-y-2 for compact spacing.
+    expect(rightColumn!.className).toContain("space-y-2");
+    // Labels should have text-xs class (compact).
+    const labels = rightColumn!.querySelectorAll("label");
+    expect(labels.length).toBeGreaterThan(0);
+    labels.forEach((label) => {
+      expect(label.className).toContain("text-xs");
+    });
+    // Inputs/Selects should have h-9 class (compact height).
+    const inputs = rightColumn!.querySelectorAll("input, select");
+    expect(inputs.length).toBeGreaterThan(0);
+    inputs.forEach((input) => {
+      // The className is on the input/select element itself.
+      expect(input.className).toContain("h-9");
+    });
+  });
+
+  it("table header and rows share the same grid template (2fr_60px_110px_110px_48px)", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    // C12-3g: widened last column (44px → 48px) to reserve room for scrollbar.
+    const headerRow = container.querySelector(
+      ".hidden.shrink-0.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:grid",
+    );
+    expect(headerRow).not.toBeNull();
+    expect(headerRow!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+    // Rows should use the same template.
+    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+    });
+  });
+
+  it("rows container has pr-2 to reserve room for the vertical scrollbar", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const rowsContainer = container.querySelector('[data-testid="table-rows-container"]');
+    expect(rowsContainer).not.toBeNull();
+    // C12-3g: pr-2 reserves room for the scrollbar so header and rows stay in lockstep.
+    expect(rowsContainer!.className).toContain("pr-2");
+  });
+
+  it("credit hint uses amber-500 without gray override from base classes", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    switchPaymentMode(container, "on-credit");
+    const hint = container.querySelector<HTMLElement>("#clientId-hint");
+    expect(hint).not.toBeNull();
+    // C12-3g: FormField now skips default text-zinc-500 when hintClassName is
+    // provided, so amber-500 wins (no gray override from base classes).
+    expect(hint!.className).toContain("text-amber-500");
+    expect(hint!.className).not.toContain("text-zinc-500");
+    expect(hint!.className).toContain("text-[0.825rem]");
+    expect(hint!.className).toContain("font-medium");
   });
 });

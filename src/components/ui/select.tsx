@@ -11,6 +11,8 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[];
   placeholder?: string;
   error?: string;
+  /** Extra classes for the label element (e.g. text-xs for compact layouts). */
+  labelClassName?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
@@ -22,6 +24,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     required,
     className = "",
     id,
+    labelClassName,
     "aria-invalid": ariaInvalid,
     "aria-describedby": ariaDescribedBy,
     ...props
@@ -29,13 +32,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   ref,
 ) {
   const selectId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+  const labelClasses = labelClassName
+    ? `mb-1 block font-medium text-zinc-700 dark:text-zinc-300 ${labelClassName}`
+    : "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300";
   return (
     <div>
       {label && (
-        <label
-          htmlFor={selectId}
-          className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-        >
+        <label htmlFor={selectId} className={labelClasses}>
           {label}
         </label>
       )}

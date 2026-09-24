@@ -559,11 +559,13 @@ export function SaleForm({
                 className="mt-4 flex min-h-0 flex-1 flex-col lg:overflow-hidden"
                 data-testid="table-wrapper"
               >
-                {/* C12-3f: Desktop table header — hidden on mobile, visible on desktop.
+                {/* C12-3f + C12-3g: Desktop table header — hidden on mobile, visible on desktop.
                     Kept OUTSIDE the scroll container (sibling, not sticky) so it's
-                    always visible. Grid template matches rows exactly. */}
+                    always visible. Grid template matches rows exactly. C12-3g: widened
+                    last column (44px → 48px) to reserve room for the vertical scrollbar
+                    so "Acciones" is never truncated at 1180px width. */}
                 <div
-                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_64px_110px_110px_44px] dark:text-zinc-400"
+                  className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] dark:text-zinc-400"
                   aria-hidden="true"
                 >
                   <div className="min-w-0">{t("item")}</div>
@@ -573,11 +575,13 @@ export function SaleForm({
                   <div>{t("actions")}</div>
                 </div>
 
-                {/* C12-3f: Table rows container — scroll-isolated on desktop.
-                    fixed-region: required min-h-0 chain */}
+                {/* C12-3f + C12-3g: Table rows container — scroll-isolated on desktop.
+                    fixed-region: required min-h-0 chain. C12-3g: pr-2 on the scroll
+                    container reserves room for the vertical scrollbar so the header
+                    and rows stay in lockstep (same grid template). */}
                 <div
                   /* fixed-region: required min-h-0 chain */
-                  className="flex-1 min-h-0 space-y-3 overflow-y-auto overflow-x-hidden lg:space-y-0"
+                  className="flex-1 min-h-0 space-y-3 overflow-y-auto overflow-x-hidden pr-2 lg:space-y-0"
                   data-testid="table-rows-container"
                 >
                   {lineItems.map((li, idx) => {
@@ -597,7 +601,7 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_64px_110px_110px_44px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
+                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
                       >
                         {/* Item name — plain text (no dropdown) */}
                         <div className="min-w-0 flex-1 lg:min-w-0">
@@ -692,18 +696,22 @@ export function SaleForm({
           {/* Settings: payment, account, client, initial payment, date.
               Mobile: second section. Desktop: right column.
               C12-3f: on desktop the right column is FIXED (no scroll).
-              Compact vertical rhythm so all fields fit inside 85vh.
+              C12-3g: compact vertical rhythm (text-xs labels, h-9 inputs,
+              space-y-2) so all fields fit inside 90vh at 650px-tall laptop
+              viewports (1366×653). No scroll on this column.
               fixed-region: required min-h-0 chain */}
           <div
             /* fixed-region: required min-h-0 chain */
-            className="min-h-0 space-y-3 overflow-hidden lg:pr-2"
+            className="min-h-0 space-y-2 overflow-hidden lg:pr-2"
             data-testid="right-column"
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 lg:gap-2">
               <Select
                 id="paymentMode"
                 name="paymentMode"
                 label={t("paymentMode")}
+                labelClassName="text-xs"
+                className="h-9"
                 required
                 disabled={isPending}
                 value={paymentMode}
@@ -718,6 +726,8 @@ export function SaleForm({
                 id="accountId"
                 name="accountId"
                 label={t("account")}
+                labelClassName="text-xs"
+                className="h-9"
                 required
                 disabled={isPending}
                 placeholder={tCommon("select")}
@@ -729,7 +739,7 @@ export function SaleForm({
             </div>
 
             <div>
-              <div className="mb-0.5 flex items-center justify-end">
+              <div className="mb-0 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setShowClientForm(true)}
@@ -742,14 +752,18 @@ export function SaleForm({
               <FormField
                 id="clientId"
                 label={t("client")}
+                labelClassName="text-xs"
                 hint={needsClient ? t("clientRequiredForCredit") : undefined}
-                // C12-3e: amber-500 (#F59E0B) for legibility over dark bg.
+                // C12-3e + C12-3g: amber-500 (#F59E0B) for legibility over dark bg.
                 // Font size 0.825rem per spec, mt-1 (4px), display:block (default for <p>).
+                // C12-3g: FormField now skips default text-zinc-500 when hintClassName
+                // is provided, so amber-500 wins (no gray override from base classes).
                 hintClassName={
                   needsClient ? "text-amber-500 text-[0.825rem] font-medium" : undefined
                 }
               >
                 <Select
+                  className="h-9"
                   required={isOnCredit}
                   disabled={isPending}
                   value={clientId}
@@ -769,6 +783,7 @@ export function SaleForm({
               <FormField
                 id="initialPayment"
                 label={`${t("initialPayment")} (${currency})`}
+                labelClassName="text-xs"
                 error={
                   initialPaymentInvalid
                     ? parsedInitialPayment > total
@@ -778,6 +793,7 @@ export function SaleForm({
                 }
               >
                 <Input
+                  className="h-9"
                   name="initialPayment"
                   type="number"
                   min="0"
@@ -794,6 +810,8 @@ export function SaleForm({
               name="date"
               type="date"
               label={t("date")}
+              labelClassName="text-xs"
+              className="h-9"
               required
               disabled={isPending}
               defaultValue={toDateInputValue()}
@@ -802,36 +820,35 @@ export function SaleForm({
           </div>
         </div>
 
-        {/* C12-3f: footer pinned at the bottom of the modal. Total right-aligned
-            + action buttons. Shrink-0 ensures it never scrolls away. Relative z-10
-            keeps it above content. Border-top uses themed surface-border.
-            Background matches modal (surface-card). */}
+        {/* C12-3f + C12-3g: footer pinned at the bottom of the modal. ONE single
+            row: Total (left of buttons) + Cancelar + Crear venta. Compact padding
+            (py-3 px-4) keeps height minimal (~52px). Shrink-0 + z-10 + bg match
+            the modal surface. Border-top uses themed surface-border. */}
         <div
-          className="relative z-10 shrink-0 border-t border-surface-border bg-surface-card p-4"
+          className="relative z-10 flex shrink-0 items-center justify-end gap-3 border-t border-surface-border bg-surface-card px-4 py-3"
           data-testid="sale-footer"
         >
-          {/* C12-3b: TOTAL in prominent position right before footer actions */}
-          <div className="mb-3 text-right text-lg font-semibold text-zinc-900 dark:text-white">
+          {/* C12-3b + C12-3g: TOTAL inline with the action buttons (single visual
+              line). whitespace-nowrap prevents wrap at 1180px width. */}
+          <div className="whitespace-nowrap text-base font-semibold text-zinc-900 dark:text-white">
             {t("total")} {formatAmount(total, currency, locale)}
           </div>
 
           {/* C12-3b: footer action row — Cancelar secondary + Crear venta primary.
               Both go through the same guarded path (C12-1). */}
-          <div className="flex items-center gap-3">
-            {(onDone || onCancel) && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isPending}
-                onClick={onCancel ?? onDone}
-              >
-                {tCommon("cancel")}
-              </Button>
-            )}
-            <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
-              {isPending ? t("creating") : t("createSale")}
+          {(onDone || onCancel) && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isPending}
+              onClick={onCancel ?? onDone}
+            >
+              {tCommon("cancel")}
             </Button>
-          </div>
+          )}
+          <Button type="submit" variant="primary" disabled={submitBlocked} loading={isPending}>
+            {isPending ? t("creating") : t("createSale")}
+          </Button>
         </div>
       </form>
 
