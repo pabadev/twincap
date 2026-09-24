@@ -533,13 +533,14 @@ export function SaleForm({
               )}
             </div>
 
-            {/* C12-3c: discreet "+ Crear nuevo artículo" link near the searcher. */}
+            {/* C12-3c + C12-3h: discreet "+ Crear nuevo artículo" link near the searcher.
+                C12-3h: blue (text-primary) to match "Crear cliente" link style. */}
             <div className="mt-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowItemForm(true)}
                 disabled={isPending}
-                className="text-xs text-zinc-500 hover:text-primary hover:underline dark:text-zinc-400 dark:hover:text-primary"
+                className="text-xs font-medium text-primary hover:text-primary-hover hover:underline dark:text-primary dark:hover:text-primary-hover"
               >
                 {t("createNewItem")}
               </button>
@@ -559,20 +560,23 @@ export function SaleForm({
                 className="mt-4 flex min-h-0 flex-1 flex-col lg:overflow-hidden"
                 data-testid="table-wrapper"
               >
-                {/* C12-3f + C12-3g: Desktop table header — hidden on mobile, visible on desktop.
+                {/* C12-3f + C12-3g + C12-3h: Desktop table header — hidden on mobile, visible on desktop.
                     Kept OUTSIDE the scroll container (sibling, not sticky) so it's
                     always visible. Grid template matches rows exactly. C12-3g: widened
-                    last column (44px → 48px) to reserve room for the vertical scrollbar
-                    so "Acciones" is never truncated at 1180px width. */}
+                    last column (44px → 48px) to reserve room for the vertical scrollbar.
+                    C12-3h: column alignment matches content — Artículo left, Cant. centered
+                    (over centered input), Precio unitario/Subtotal right-aligned (over
+                    right-aligned monetary cells). "Acciones" header removed (empty 48px
+                    cell, column reserved for trash icon only). */}
                 <div
                   className="hidden shrink-0 items-center gap-2 border-b border-surface-border pb-2 text-xs font-medium text-zinc-600 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] dark:text-zinc-400"
                   aria-hidden="true"
                 >
                   <div className="min-w-0">{t("item")}</div>
-                  <div className="text-right">{t("qty")}</div>
+                  <div className="text-center">{t("qty")}</div>
                   <div className="text-right">{t("unitPrice")}</div>
                   <div className="text-right">{t("subtotal")}</div>
-                  <div>{t("actions")}</div>
+                  <div></div>
                 </div>
 
                 {/* C12-3f + C12-3g: Table rows container — scroll-isolated on desktop.
@@ -601,7 +605,7 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="flex flex-wrap items-end gap-2 rounded-md border border-surface-border p-3 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:rounded-none lg:p-0 lg:py-2 lg:last:border-b-0"
+                        className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 border-b border-surface-border/50 py-1.5 last:border-b-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:gap-x-3 lg:grid lg:grid-cols-[2fr_60px_110px_110px_48px] lg:items-center lg:gap-2 lg:border-b lg:border-surface-border/50 lg:py-2 lg:last:border-b-0"
                       >
                         {/* Item name — plain text (no dropdown) */}
                         <div className="min-w-0 flex-1 lg:min-w-0">
@@ -637,7 +641,7 @@ export function SaleForm({
                               updateLineItem(idx, "quantity", Number(e.target.value))
                             }
                             disabled={isPending}
-                            className="text-right"
+                            className="text-center sm:text-right"
                             aria-label={itemName ? `${t("qty")} ${itemName}` : t("qty")}
                           />
                         </div>
@@ -683,7 +687,7 @@ export function SaleForm({
                           tone="neutral"
                           onClick={() => removeLineItem(idx)}
                           disabled={isPending}
-                          className="mb-0.5 text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
+                          className="text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
                         />
                       </div>
                     );
@@ -744,7 +748,7 @@ export function SaleForm({
                   type="button"
                   onClick={() => setShowClientForm(true)}
                   disabled={isPending}
-                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover"
                 >
                   {t("createClient")}
                 </button>
@@ -820,17 +824,21 @@ export function SaleForm({
           </div>
         </div>
 
-        {/* C12-3f + C12-3g: footer pinned at the bottom of the modal. ONE single
+        {/* C12-3f + C12-3g + C12-3h: footer pinned at the bottom of the modal. ONE single
             row: Total (left of buttons) + Cancelar + Crear venta. Compact padding
             (py-3 px-4) keeps height minimal (~52px). Shrink-0 + z-10 + bg match
-            the modal surface. Border-top uses themed surface-border. */}
+            the modal surface. Border-top uses themed surface-border.
+            C12-3h: Total right-aligned to sit above the subtotal column (pr compensation
+            for the actions column width + gap). */}
         <div
           className="relative z-10 flex shrink-0 items-center justify-end gap-3 border-t border-surface-border bg-surface-card px-4 py-3"
           data-testid="sale-footer"
         >
-          {/* C12-3b + C12-3g: TOTAL inline with the action buttons (single visual
-              line). whitespace-nowrap prevents wrap at 1180px width. */}
-          <div className="whitespace-nowrap text-base font-semibold text-zinc-900 dark:text-white">
+          {/* C12-3b + C12-3g + C12-3h: TOTAL inline with the action buttons (single visual
+              line). whitespace-nowrap prevents wrap at 1180px width. C12-3h: pr-[56px]
+              compensates for the actions column (48px) + gap (8px) so the Total right-aligns
+              with the subtotal column's right edge. */}
+          <div className="whitespace-nowrap pr-[56px] text-base font-semibold text-zinc-900 dark:text-white">
             {t("total")} {formatAmount(total, currency, locale)}
           </div>
 

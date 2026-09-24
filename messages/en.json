@@ -569,7 +569,7 @@
     "noResults": "No sales found with these filters",
     "newClient": "New client",
     "newItem": "New item",
-    "createClient": "Create client",
+    "createClient": "+ Create client",
     "createItem": "Create item",
     "filters": "Filters",
     "closeSaleTitle": "Leave sale?",

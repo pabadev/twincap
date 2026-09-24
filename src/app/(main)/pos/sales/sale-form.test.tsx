@@ -463,6 +463,7 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     selectFromSearch(container, 0);
     // C12-3e: the header row is hidden on mobile (hidden class) but present in DOM.
     // It's outside the scroll container (not sticky) and uses grid layout.
+    // C12-3h: "Acciones" header removed (empty 48px cell, column reserved for trash icon).
     const headerRow = container.querySelector(
       ".hidden.shrink-0.border-b.border-surface-border.pb-2.text-xs.font-medium.text-zinc-600.lg\\:grid",
     );
@@ -471,7 +472,8 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     expect(headerRow!.textContent).toContain("qty");
     expect(headerRow!.textContent).toContain("unitPrice");
     expect(headerRow!.textContent).toContain("subtotal");
-    expect(headerRow!.textContent).toContain("actions");
+    // C12-3h: "actions" header text removed (empty cell).
+    expect(headerRow!.textContent).not.toContain("actions");
   });
 
   it("renders subtotal as formatted text (not an input) right-aligned", () => {
@@ -497,14 +499,16 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     expect(removeBtn!.className).toContain("hover:text-danger");
   });
 
-  it("renders 'createNewItem' as a discreet text link (not a filled button)", () => {
+  it("renders 'createNewItem' as a blue text link (not a filled button)", () => {
     const { container } = mount(<SaleForm {...baseProps} />);
     const createItemBtn = [...container.querySelectorAll("button")].find(
       (b) => b.textContent === "createNewItem",
     );
     expect(createItemBtn).toBeDefined();
     expect(createItemBtn!.className).toContain("text-xs");
-    expect(createItemBtn!.className).toMatch(/text-zinc-(400|500)/);
+    // C12-3h: blue (text-primary) to match "Crear cliente" link style.
+    expect(createItemBtn!.className).toContain("text-primary");
+    expect(createItemBtn!.className).toContain("font-medium");
     expect(createItemBtn!.className).not.toContain("bg-primary");
     expect(createItemBtn!.className).not.toContain("bg-zinc-100");
   });
@@ -977,6 +981,10 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
     // Compact padding (py-3 px-4) instead of p-4.
     expect(footer!.className).toContain("py-3");
     expect(footer!.className).toContain("px-4");
+    // C12-3h: Total has pr-[56px] to align with subtotal column (compensates for actions column).
+    const totalDiv = footer!.querySelector(".whitespace-nowrap");
+    expect(totalDiv).not.toBeNull();
+    expect(totalDiv!.className).toContain("pr-[56px]");
   });
 
   it("right column has compact vertical rhythm (text-xs labels, h-9 inputs, space-y-2)", () => {
@@ -1037,5 +1045,34 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
     expect(hint!.className).not.toContain("text-zinc-500");
     expect(hint!.className).toContain("text-[0.825rem]");
     expect(hint!.className).toContain("font-medium");
+  });
+
+  it("rows have compact padding (py-1.5 mobile, lg:py-2 desktop) and horizontal-only borders", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      // C12-3h: compact row padding (py-1.5 mobile, lg:py-2 desktop).
+      expect(row.className).toContain("py-1.5");
+      expect(row.className).toContain("lg:py-2");
+      // C12-3h: horizontal-only borders (border-b, no border-x or full border).
+      expect(row.className).toContain("border-b");
+      expect(row.className).not.toMatch(/\bborder\s/);
+      expect(row.className).not.toContain("border-x");
+    });
+  });
+
+  it("rows use responsive grid classes for mobile single-column layout", () => {
+    const { container } = mount(<SaleForm {...baseProps} />);
+    selectFromSearch(container, 0);
+    const rows = container.querySelectorAll('[data-testid="table-rows-container"] > div');
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      // C12-3h: mobile grid template (grid-cols-[1fr_auto]) reflows to single column.
+      expect(row.className).toContain("grid-cols-[1fr_auto]");
+      // C12-3h: desktop grid template (lg:grid-cols-[2fr_60px_110px_110px_48px]).
+      expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+    });
   });
 });

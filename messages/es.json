@@ -569,7 +569,7 @@
     "noResults": "No se encontraron ventas con estos filtros",
     "newClient": "Nuevo cliente",
     "newItem": "Nuevo artículo",
-    "createClient": "Crear cliente",
+    "createClient": "+ Crear cliente",
     "createItem": "Crear artículo",
     "filters": "Filtros",
     "closeSaleTitle": "¿Salir de la venta?",
