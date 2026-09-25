@@ -347,7 +347,7 @@ export function PayablesList({
                     </dl>
                   </div>
 
-                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
+                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-1 dark:border-zinc-800">
                     <span className="text-xs text-zinc-400">
                       {payable.abonos?.length}{" "}
                       {payable.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}

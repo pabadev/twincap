@@ -40,8 +40,8 @@ describe("MovementCard", () => {
     // primary fields: text-sm font-medium + color class from the field
     expect(html).toContain("text-sm font-medium");
     expect(html).toContain("text-income");
-    // secondary fields: text-xs + zinc color (UX-12 CC-1: zinc-600 meets AA on card)
-    expect(html).toContain("text-xs text-zinc-600 dark:text-zinc-400");
+    // Plain secondary values use a slightly larger 13px size and zinc color.
+    expect(html).toContain("text-[13px] text-zinc-600 dark:text-zinc-400");
     // custom className (badge) is preserved
     expect(html).toContain("bg-income/10");
     expect(html).toContain("rounded-full");
@@ -75,6 +75,19 @@ describe("MovementCard", () => {
 
     const withoutActions = renderToStaticMarkup(createElement(MovementCard, { id: "m1", fields }));
     expect(withoutActions).not.toContain("Editar");
+  });
+
+  it("stretches to its grid row and anchors a consistent action footer", () => {
+    const html = renderToStaticMarkup(
+      createElement(MovementCard, {
+        id: "m1",
+        fields,
+        actions: createElement("button", { type: "button" }, "Editar"),
+      }),
+    );
+    expect(html).toContain("flex h-full flex-col");
+    expect(html).toContain("mt-auto flex items-center gap-1 border-t");
+    expect(html).toContain("pt-1 dark:border-zinc-800");
   });
 
   it("uses the card surface classes from the credits-received card pattern", () => {

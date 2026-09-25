@@ -411,6 +411,7 @@ export function MovementsList({
                           categoryMap.get(movement.categoryId) ??
                           syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
                           "—",
+                        className: "font-medium text-zinc-800 dark:text-zinc-200",
                       },
                       {
                         key: "note",

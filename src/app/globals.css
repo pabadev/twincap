@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Keep 44px sidebar targets whenever touch is available; use 40px on
+   mouse/trackpad-only devices to shorten the desktop navigation. */
+@media (pointer: fine) and (hover: hover) {
+  .sidebar-nav-touch-target {
+    min-height: 2.5rem;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .sidebar-nav-touch-target {
+    min-height: 2.75rem;
+  }
+}
+
 :root {
   /* Native scrollbars follow the app theme (N4): thumb = border, track = card.
      color-scheme is fixed per theme so form controls and scrollbars no longer

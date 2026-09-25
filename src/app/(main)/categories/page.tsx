@@ -9,7 +9,6 @@ import { DeleteCategoryButton } from "./delete-category-button";
 import { RenameCategoryButton } from "./rename-category-button";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Icon } from "../../../components/ui/icon";
-import { MovementCard } from "../../../components/ui/movement-card";
 import { Tags } from "lucide-react";
 
 export default async function CategoriesPage() {
@@ -17,8 +16,6 @@ export default async function CategoriesPage() {
   if (!user) redirect("/login");
 
   const t = await getT("Categories");
-  const tCommon = await getT("Common");
-
   await connectDb();
   const categoryRepo = new MongoCategoryRepository();
 
@@ -48,13 +45,11 @@ export default async function CategoriesPage() {
             title={t("income")}
             categories={incomeCategories}
             emptyMessage={t("noIncome")}
-            nameLabel={tCommon("name")}
           />
           <CategorySection
             title={t("expense")}
             categories={expenseCategories}
             emptyMessage={t("noExpense")}
-            nameLabel={tCommon("name")}
           />
         </div>
       )}
@@ -66,12 +61,10 @@ function CategorySection({
   title,
   categories,
   emptyMessage,
-  nameLabel,
 }: {
   title: string;
   categories: { id: string; name: string }[];
   emptyMessage: string;
-  nameLabel: string;
 }) {
   if (categories.length === 0) {
     return (
@@ -85,29 +78,29 @@ function CategorySection({
   return (
     <div>
       <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
-      {/* Cards are the only representation (product decision 2026-09-21). */}
-      <div className="space-y-3">
-        {categories.map((category) => (
-          <MovementCard
-            key={category.id}
-            id={category.id}
-            fields={[
-              {
-                key: "name",
-                label: nameLabel,
-                value: category.name,
-                primary: true,
-              },
-            ]}
-            actions={
-              <div className="flex items-center gap-1">
-                <RenameCategoryButton categoryId={category.id} categoryName={category.name} />
-                <DeleteCategoryButton categoryId={category.id} />
-              </div>
-            }
-          />
-        ))}
-      </div>
+      <table aria-label={title} className="w-full border-collapse text-sm">
+        <tbody>
+          {categories.map((category) => (
+            <tr
+              key={category.id}
+              className="border-b border-surface-border last:border-b-0 dark:border-zinc-700"
+            >
+              <th
+                scope="row"
+                className="py-1.5 text-left font-medium text-zinc-800 dark:text-zinc-100"
+              >
+                {category.name}
+              </th>
+              <td className="py-1 pl-2">
+                <div className="flex items-center justify-end gap-1">
+                  <RenameCategoryButton categoryId={category.id} categoryName={category.name} />
+                  <DeleteCategoryButton categoryId={category.id} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

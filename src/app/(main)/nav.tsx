@@ -236,7 +236,7 @@ export function MainNav({
             <>
               {/* Nav links — authenticated */}
               <nav className="flex-1 overflow-y-auto px-2 py-3 lg:px-2 lg:py-2">
-                <ul className="space-y-0.5 lg:space-y-0">
+                <ul className="space-y-0">
                   {(() => {
                     const groups: { headerKey: string | null; items: NavItem[] }[] = NAV_GROUPS.map(
                       (g) => ({ ...g, items: [...g.items] }),
@@ -275,8 +275,8 @@ export function MainNav({
                                     : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                                 }`}
                               >
-                                {/* TouchTarget expands the ~30px nav link hit area to >=44px (RTT-1). */}
-                                <TouchTarget as="span" className="gap-2.5">
+                                {/* Adaptive nav target: 44px when touch is available, 40px for fine-pointer-only devices. */}
+                                <TouchTarget as="span" className="gap-2.5 sidebar-nav-touch-target">
                                   <Icon
                                     icon={item.icon}
                                     size="sm"
@@ -299,8 +299,8 @@ export function MainNav({
                               className="flex w-full items-center gap-2.5 rounded-md px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                               aria-label={t("feedback")}
                             >
-                              {/* TouchTarget expands the ~30px hit area to >=44px (RTT-1). */}
-                              <TouchTarget as="span" className="gap-2.5">
+                              {/* Adaptive nav target matches the link targets above. */}
+                              <TouchTarget as="span" className="gap-2.5 sidebar-nav-touch-target">
                                 <Icon
                                   icon={MessageSquare}
                                   size="sm"

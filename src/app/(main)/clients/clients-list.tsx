@@ -90,7 +90,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
       {/* Cards are the only representation (product decision 2026-09-21).
           Beta round 3: non-chronological card sets arrange in two columns on
           PC/laptop. */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredClients.map((client) => (
           <MovementCard
             key={client.id}
@@ -102,9 +102,9 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                 value: client.name,
                 primary: true,
               },
-              ...(client.phone ? [{ key: "phone", label: t("phone"), value: client.phone }] : []),
-              ...(client.email ? [{ key: "email", label: t("email"), value: client.email }] : []),
-              ...(client.note ? [{ key: "note", label: t("note"), value: client.note }] : []),
+              { key: "phone", label: t("phone"), value: client.phone || "—" },
+              { key: "email", label: t("email"), value: client.email || "—" },
+              { key: "note", label: t("note"), value: client.note || "—" },
             ]}
             actions={
               <div className="flex items-center gap-1">

@@ -1,6 +1,8 @@
-export { createCategory } from './create-category';
-export type { CreateCategoryInput } from './create-category';
-export { updateCategory } from './update-category';
-export type { UpdateCategoryInput } from './update-category';
-export { deleteCategory } from './delete-category';
-export { listCategories } from './list-categories';
+export { createCategory } from "./create-category";
+export type { CreateCategoryInput } from "./create-category";
+export { updateCategory } from "./update-category";
+export type { UpdateCategoryInput } from "./update-category";
+export { deleteCategory } from "./delete-category";
+export { listCategories } from "./list-categories";
+export { createSuggestedCategories } from "./suggested-categories";
+export type { CategorySuggestion } from "./suggested-categories";

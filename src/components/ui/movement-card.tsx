@@ -33,7 +33,7 @@ export function MovementCard({ id, fields, actions, className = "" }: MovementCa
   return (
     <div
       data-id={id}
-      className={`rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 ${className}`}
+      className={`flex h-full flex-col rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 ${className}`}
     >
       <dl className="space-y-2">
         {fields.map((field) => {
@@ -41,7 +41,7 @@ export function MovementCard({ id, fields, actions, className = "" }: MovementCa
             ? `${field.primary ? "text-sm font-medium" : "text-xs"} ${field.className}`.trim()
             : field.primary
               ? "text-sm font-medium text-zinc-900 dark:text-white"
-              : "text-xs text-zinc-600 dark:text-zinc-400";
+              : "text-[13px] text-zinc-600 dark:text-zinc-400";
           return (
             <div key={field.key} className="flex items-start justify-between gap-3">
               <dt className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -53,7 +53,7 @@ export function MovementCard({ id, fields, actions, className = "" }: MovementCa
         })}
       </dl>
       {actions && (
-        <div className="mt-3 flex items-center gap-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <div className="mt-auto flex items-center gap-1 border-t border-zinc-100 pt-1 dark:border-zinc-800">
           {actions}
         </div>
       )}

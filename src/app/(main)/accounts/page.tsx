@@ -69,7 +69,7 @@ export default async function AccountsPage() {
           dinero?" account cards (Card + currency caps + large balance +
           fixed badge), keeping the rename/initial-balance/delete actions as
           a footer row. */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {accounts.map((account) => {
           const balance = balances.get(account.id) ?? 0;
           const parts = formatAmountParts(balance, account.currency, locale);
@@ -83,7 +83,7 @@ export default async function AccountsPage() {
                   {t("fixed")}
                 </span>
               )}
-              <Card title={account.name}>
+              <Card title={account.name} headerClassName="!px-3 !py-2" contentClassName="p-3">
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {account.currency}
@@ -103,7 +103,7 @@ export default async function AccountsPage() {
                     )}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                <div className="mt-2 flex items-center gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
                   <RenameAccountButton accountId={account.id} accountName={account.name} />
                   {!balances.has(account.id) && (
                     <InitialBalanceButton accountId={account.id} currency={account.currency} />

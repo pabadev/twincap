@@ -79,6 +79,7 @@ export function CatalogForm({ item, onDone, defaultCurrency }: CatalogFormProps)
         name="name"
         type="text"
         label={t("name")}
+        placeholder={t("namePlaceholder")}
         required
         defaultValue={item?.name}
         disabled={isPending}

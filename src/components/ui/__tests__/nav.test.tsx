@@ -213,6 +213,17 @@ describe("MainNav four-tier structure (UX-10)", () => {
     const setIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupSettings");
     expect(seq[setIndex + 1]).toEqual({ kind: "link", value: "/pos/catalog" });
 
+    const navList = container.querySelector("#mobile-nav nav ul")!;
+    expect(navList.classList.contains("space-y-0")).toBe(true);
+    expect(
+      container.querySelectorAll("#mobile-nav nav .sidebar-nav-touch-target").length,
+    ).toBeGreaterThan(0);
+    expect(
+      Array.from(container.querySelectorAll("#mobile-nav nav a[href='/pos/catalog']")).some(
+        (link) => link.textContent?.includes("posCatalog"),
+      ),
+    ).toBe(true);
+
     // (f) Analytics ABSENT when canViewAnalytics=false.
     expect(seq.some((e) => e.kind === "link" && e.value === "/analytics")).toBe(false);
   });

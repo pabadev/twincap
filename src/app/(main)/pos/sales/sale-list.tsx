@@ -399,7 +399,7 @@ export function SaleList({
                   key={sale.id}
                   className="rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
                 >
-                  <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-zinc-900 dark:text-white">
                         {formatDate(sale.date, locale)} —{" "}

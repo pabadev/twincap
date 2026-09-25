@@ -109,7 +109,7 @@ export function CatalogList({
             return (
               <div
                 key={item.id}
-                className="flex flex-col gap-2 rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-lg border border-surface-border bg-surface-card px-4 py-2 dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-zinc-900 dark:text-white">{item.name}</div>

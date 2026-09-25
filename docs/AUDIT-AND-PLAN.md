@@ -6,7 +6,9 @@
 >
 > **Después de una compactación o en una nueva sesión, lo PRIMERO es leer este archivo.**
 >
-> Lineamientos de la ronda actual: sección `RONDA 14` de este archivo (plan vigente).
+> **Continuidad vigente (2026-09-24):** Ronda Post-UX/UI, Cluster 12. El tracker operativo es
+> `docs/odd/tasks/post-ux-round.md`; el contrato es `docs/Cierre_UX-UI.md`. Los apartados
+> históricos de Ronda 14/15 conservan sus resultados y no representan la ronda activa.
 
 ---
 
@@ -16,10 +18,21 @@
 
 ---
 
-## ESTADO ACTUAL (última actualización: 2026-09-16)
+## ESTADO ACTUAL (última actualización: 2026-09-24)
+
+### Estado verificado del checkout actual
+
+- Base auditada: rama `master`, `HEAD 7afd966` (`feat(pos): clear button on create-sale item searcher`). Al iniciar esta sincronización había dos documentos no versionados (`docs/Cierre_UX-UI.md`, `docs/form_ventas.md`), preservados como material de trabajo; esta actualización modifica los documentos de estado y el test Toast.
+- La Ronda Post-UX/UI **sigue abierta**. El formulario POS desktop/móvil, la confirmación de cierre, la corrección transaccional del saldo inicial y la limpieza del buscador están implementados. La decisión de mantener Clients/Catalog solo-búsqueda está tomada.
+- Pendientes funcionales/documentales registrados: completar el orden visual de movimientos con `createdAt`/desempate; arquitectura e indicador offline; preparación PT-BR; diseño de costos y analítica; auditoría transversal y evidencias de accesibilidad, responsive y E2E; informe/checklist final. C12-4 categorías LATAM implementado tras aprobación explícita (catálogo opt-in, selección múltiple, creación idempotente por workspace). Las extensiones aprobadas el 2026-09-24 abarcan terminología productos/servicios POS y densidad de tarjetas en Cuentas, Clientes y listas; ver tracker `docs/odd/tasks/post-ux-round.md`.
+- Verificación local 2026-09-24: TypeScript EXIT 0; ESLint EXIT 0; build EXIT 0 (15 páginas estáticas). La suite inicialmente dio **1681 passed / 1 failed / 1682 total** por el baseline de Toast que omitía `initialBalanceCorrected`; tras alinear el baseline, la suite integral del trabajo C12-4 + refinamientos aprobados finalizó en **1690/1690, 1356.37 s**. Pruebas focalizadas de categorías 19/19; i18n parity/usage 4/4; Prettier check limpio. E2E permanece pendiente como parte de C12-10.
+- La auditoría no declara cerrada la ronda ni altera el freeze financiero, salvo la corrección inicial de saldo ya aprobada e implementada como C12-2.
+
+El historial de rondas que sigue se conserva como registro histórico; el estado Post-UX/UI anterior ya no es la fuente vigente.
 
 | Ronda | Estado |
 |-------|--------|
+| **Ronda Post-UX/UI — Cluster 12 (vigente)** | 🟡 **EN CURSO (auditoría 2026-09-24, base `master` / `7afd966`).** POS desktop/móvil, confirmación de cierre, corrección inicial C12-2 y categorías sugeridas C12-4 implementados; decisión Clients/Catalog registrada. Pendientes: criterio de orden de movimientos en cliente, offline, PT-BR, diseños de costos/analítica, auditoría transversal y pruebas finales. Suite completa posterior a las extensiones C12-4: **1690/1690 (1356.37 s)**; pruebas focalizadas 19/19 + i18n 4/4, tsc/lint/Prettier EXIT 0; E2E/build final y auditoría integral siguen pendientes en C12-10. Tracker: `docs/odd/tasks/post-ux-round.md`. **No declarar cierre.** |
 | Ronda 1 — fases 0–22 | ✅ Completa |
 | Ronda 2 — Auditoría y mejoras | ✅ Completa (Fases 0–10 + post-ronda branding; detalle en git history del doc y `Ronda 2.md`) |
 | Ronda 3 — Auditoría integral, corrección financiera, dashboard, evolución funcional | ✅ **COMPLETADA (2026-08-25).** 12 fases ejecutadas y verificadas. Auditoría final: 0 CRITICAL, 7 MINOR (no bloqueantes). Suite 412/412 tests en 42 archivos, tsc limpio. Fixes de usuario incluidos: sort por fecha, logout confirmation, placeholders "Seleccionar", transición theme suave, badge "Pagado" en créditos. |

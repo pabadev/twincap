@@ -15,6 +15,12 @@ import { connectDb } from "../../../infrastructure/db/connection";
 import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
 import { revalidatePath } from "next/cache";
 import { handleActionError } from "../../../lib/handle-action-error";
+import {
+  CATEGORY_SUGGESTIONS,
+  getCategorySuggestion,
+} from "../../../core/application/categories/category-suggestions";
+import { createSuggestedCategories } from "../../../core/application/categories/suggested-categories";
+import { getT } from "../../../i18n/server";
 
 const ids = objectIdGenerator;
 
@@ -24,6 +30,57 @@ export type CategoryActionResult = {
   /** Snapshot of the created category — lets flows like the movement form auto-select it. */
   category?: SerializedCategory;
 };
+
+export type SuggestedCategoriesActionResult = {
+  error?: string;
+  success?: string;
+  created?: number;
+  skipped?: number;
+};
+
+export async function createSuggestedCategoriesAction(
+  _prev: SuggestedCategoriesActionResult | null,
+  formData: FormData,
+): Promise<SuggestedCategoriesActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "error.unauthorized" };
+
+  const selectedIds = formData.getAll("suggestionId");
+  if (selectedIds.some((value) => typeof value !== "string" || !getCategorySuggestion(value))) {
+    return { error: "error.invalidInput" };
+  }
+
+  const uniqueIds = [...new Set(selectedIds as string[])];
+  if (uniqueIds.length === 0 || uniqueIds.length > CATEGORY_SUGGESTIONS.length) {
+    return { error: "error.invalidInput" };
+  }
+
+  try {
+    await connectDb();
+    const categoryRepo = new MongoCategoryRepository();
+    const t = await getT("Categories");
+    const suggestions = uniqueIds.map((id) => {
+      const definition = getCategorySuggestion(id)!;
+      return {
+        type: definition.type,
+        name: t(definition.labelKey),
+      };
+    });
+    const result = await createSuggestedCategories(
+      user.workspaceId!,
+      suggestions,
+      categoryRepo,
+      ids,
+    );
+    if (result.created > 0) {
+      revalidatePath("/categories");
+      revalidatePath("/movements");
+    }
+    return { success: "suggestionsAdded", ...result };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
 
 export async function createCategoryAction(
   _prev: CategoryActionResult | null,

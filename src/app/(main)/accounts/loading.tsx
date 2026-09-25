@@ -8,7 +8,7 @@ export default function AccountsLoading() {
         <Skeleton className="h-10 w-32" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -19,7 +19,7 @@ export default function AccountsLoading() {
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-6 w-32" />
             </div>
-            <div className="mt-3 flex items-center gap-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+            <div className="mt-2 flex items-center gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />

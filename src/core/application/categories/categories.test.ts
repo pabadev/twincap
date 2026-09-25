@@ -3,6 +3,7 @@ import { createCategory } from "./create-category";
 import { updateCategory } from "./update-category";
 import { deleteCategory } from "./delete-category";
 import { listCategories } from "./list-categories";
+import { createSuggestedCategories } from "./suggested-categories";
 import { Category } from "../../domain/category";
 import { NotFoundError, ConflictError } from "../../domain/errors";
 import type { CategoryRepository, MovementRepository } from "../../domain/repositories";
@@ -88,6 +89,68 @@ function makeCategory(
 
 beforeEach(() => {
   idCounter = 0;
+});
+
+describe("createSuggestedCategories", () => {
+  const suggestions = [
+    { name: "Salario", type: "income" as const },
+    { name: "Mercado y víveres", type: "expense" as const },
+  ];
+
+  it("creates selected categories scoped to the workspace and skips existing names", async () => {
+    const existing = makeCategory({ name: "Salario" });
+    const categoryRepo = fakeCategoryRepo({
+      findByNameAndType: vi
+        .fn()
+        .mockImplementation(async (_workspaceId, name) => (name === "Salario" ? existing : null)),
+    });
+
+    const result = await createSuggestedCategories(
+      "workspace-1",
+      suggestions,
+      categoryRepo,
+      fakeIdGen(),
+    );
+
+    expect(result).toEqual({ created: 1, skipped: 1 });
+    expect(categoryRepo.findByNameAndType).toHaveBeenNthCalledWith(
+      1,
+      "workspace-1",
+      "Salario",
+      "income",
+    );
+    expect(categoryRepo.created).toHaveLength(1);
+    expect(categoryRepo.created[0]).toMatchObject({
+      workspaceId: "workspace-1",
+      name: "Mercado y víveres",
+      type: "expense",
+    });
+  });
+
+  it("treats a concurrent unique-name conflict as an idempotent skip", async () => {
+    const categoryRepo = fakeCategoryRepo({
+      create: vi.fn().mockRejectedValue(new ConflictError("duplicate")),
+    });
+
+    const result = await createSuggestedCategories(
+      "workspace-1",
+      [suggestions[0]],
+      categoryRepo,
+      fakeIdGen(),
+    );
+
+    expect(result).toEqual({ created: 0, skipped: 1 });
+  });
+
+  it("propagates unexpected repository failures", async () => {
+    const categoryRepo = fakeCategoryRepo({
+      create: vi.fn().mockRejectedValue(new Error("database unavailable")),
+    });
+
+    await expect(
+      createSuggestedCategories("workspace-1", [suggestions[0]], categoryRepo, fakeIdGen()),
+    ).rejects.toThrow("database unavailable");
+  });
 });
 
 // ─── Create ────────────────────────────────────────────────────────

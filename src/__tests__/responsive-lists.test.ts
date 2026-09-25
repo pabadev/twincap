@@ -2,17 +2,18 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Product decision 2026-09-21 (docs/Ronda POST-UX.md §19/§20): table views are
-// retired on every breakpoint — lists render MovementCard-style cards only,
-// and credits/payables cards may arrange in a 2-column grid on PC.
+// Product decision 2026-09-21 (docs/Ronda POST-UX.md §19/§20): most lists use
+// cards on every breakpoint. Categories use compact rows per the owner decision
+// on 2026-09-24: bottom border per row, with actions aligned to the right.
 
 const CARD_LIST_FILES = [
   "src/app/(main)/movements/movements-list.tsx",
   "src/app/(main)/transfers/transfers-list.tsx",
   "src/app/(main)/clients/clients-list.tsx",
   "src/app/(main)/accounts/page.tsx",
-  "src/app/(main)/categories/page.tsx",
 ];
+
+const CATEGORY_LIST_FILE = "src/app/(main)/categories/page.tsx";
 
 // Beta round 4 (owner decision 2026-09-23 merged in 03e716d context): the
 // accounts module adopted the dashboard account-card format (ui Card with
@@ -65,3 +66,40 @@ for (const file of GRID_LIST_FILES) {
     });
   });
 }
+
+describe(`compact category rows in ${CATEGORY_LIST_FILE}`, () => {
+  const src = source(CATEGORY_LIST_FILE);
+
+  it("renders semantic tables with a bottom border per row", () => {
+    expect(src).toContain("<table aria-label={title}");
+    expect(src).toContain("border-b border-surface-border");
+    expect(src).not.toContain("<Card");
+  });
+
+  it("places row actions at the right", () => {
+    expect(src).toContain("items-center justify-end gap-1");
+    expect(src).toContain("RenameCategoryButton");
+    expect(src).toContain("DeleteCategoryButton");
+  });
+});
+
+describe("account and client card density", () => {
+  const accounts = source("src/app/(main)/accounts/page.tsx");
+  const clients = source("src/app/(main)/clients/clients-list.tsx");
+
+  it("shows two account columns on mobile and four on desktop with compact card padding", () => {
+    expect(accounts).toContain("grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4");
+    expect(accounts).toContain('headerClassName="!px-3 !py-2"');
+    expect(accounts).toContain('contentClassName="p-3"');
+  });
+
+  it("keeps every client field row visible, including empty values", () => {
+    expect(clients).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
+    expect(clients).toContain('value: client.phone || "—"');
+    expect(clients).toContain('value: client.email || "—"');
+    expect(clients).toContain('value: client.note || "—"');
+    expect(clients).not.toContain("...(client.phone ?");
+    expect(clients).not.toContain("...(client.email ?");
+    expect(clients).not.toContain("...(client.note ?");
+  });
+});

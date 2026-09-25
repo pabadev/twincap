@@ -373,7 +373,7 @@ export function CreditsGrantedList({
                     </dl>
                   </div>
 
-                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-2 dark:border-zinc-800">
+                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-1 dark:border-zinc-800">
                     <span className="text-xs text-zinc-600 dark:text-zinc-400">
                       {credit.abonos?.length}{" "}
                       {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}

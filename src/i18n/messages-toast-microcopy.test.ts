@@ -1,14 +1,16 @@
 /**
  * H-08 toast success microcopy guard (R-3).
  *
- * The 30 Toast values in messages/es.json + en.json MUST follow the
+ * The 35 Toast values in messages/es.json + en.json MUST follow the
  * verb+object microcopy pattern of the design system ("Movimiento guardado",
  * "Cuenta eliminada", "Venta registrada") — never the robotic
  * "...exitosamente" / "...successfully" pattern.
  *
  * Toast keys stay FROZEN: they double as analytics event codes
  * (core/application/ports.ts:228+), so only values may change and the
- * es/en keysets must remain byte-identical to the frozen 34-key list.
+ * es/en keysets must remain byte-identical to the frozen 35-key list.
+ * `initialBalanceCorrected` was added with the approved opening-balance
+ * correction flow (C12-2) and is part of this baseline.
  * The 4 non-matching keys (creditMarkedAsPaid, creditWrittenOff,
  * operationFailed, unexpectedError) are deliberately covered by the key
  * list: the first two already are verb+object, the last two are error
@@ -34,6 +36,7 @@ const FROZEN_TOAST_KEYS: string[] = [
   "accountUpdated",
   "accountDeleted",
   "initialBalanceSet",
+  "initialBalanceCorrected",
   "categoryCreated",
   "categoryUpdated",
   "categoryDeleted",
@@ -69,7 +72,7 @@ describe("H-08 toast success microcopy guard", () => {
   const esToast = es.Toast as Record<string, string>;
   const enToast = en.Toast as Record<string, string>;
 
-  it("es/en Toast keysets both equal the frozen 34-key list (byte-identical)", () => {
+  it("es/en Toast keysets both equal the frozen 35-key list (byte-identical)", () => {
     expect(Object.keys(esToast)).toEqual(FROZEN_TOAST_KEYS);
     expect(Object.keys(enToast)).toEqual(FROZEN_TOAST_KEYS);
   });
