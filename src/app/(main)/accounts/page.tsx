@@ -88,7 +88,7 @@ export default async function AccountsPage() {
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {account.currency}
                   </span>
-                  <span className="min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl">
+                  <span className="min-w-0 min-h-[3.5rem] break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl">
                     {parts.sign}
                     {parts.suffixFirst ? (
                       <>
