@@ -171,6 +171,36 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     expect(nextCursor).toBeDefined();
   });
 
+  it("uses the complete sort tuple in its cursor when timestamps tie", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const date = new Date("2026-08-29T00:00:00.000Z");
+    const createdAt = new Date("2026-08-29T10:00:00.000Z");
+    const last = fakeMovementDoc({
+      accountId: account._id,
+      categoryId: category._id,
+      date,
+      createdAt,
+    });
+    const extra = fakeMovementDoc({
+      accountId: account._id,
+      categoryId: category._id,
+      date,
+      createdAt,
+    });
+    movementFind.mockImplementation(() => pagedExecResult([last, extra], 1));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const cursor = { date, createdAt, id: new Types.ObjectId().toString() };
+    const result = await repo.findPaged(UID, 1, cursor);
+    const query = movementFind.mock.calls[0][0] as { $or: Array<Record<string, unknown>> };
+
+    expect(query.$or).toHaveLength(3);
+    expect(query.$or[2]).toEqual({ date, createdAt, _id: { $lt: new Types.ObjectId(cursor.id) } });
+    expect(result.nextCursor?.id).toBe(last._id.toString());
+  });
+
   it("findByAccountId skips orphan movements", async () => {
     const account = fakeAccountDoc({ _id: new Types.ObjectId(ACCOUNT_ID) });
     const category = fakeCategoryDoc();

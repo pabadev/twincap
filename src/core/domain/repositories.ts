@@ -167,14 +167,14 @@ export interface MovementRepository {
   ): Promise<BalanceMovement[]>;
   /**
    * Cursor-based paginated query across all workspace movements.
-   * @param cursor Optional `{ date, createdAt }` of the last item from the previous page.
+   * @param cursor Optional `{ date, createdAt, id }` of the last item from the previous page.
    * @returns `{ items, nextCursor }` — `nextCursor` is `null` when no more pages.
    */
   findPaged(
     workspaceId: string,
     limit: number,
-    cursor?: { date: Date; createdAt: Date },
-  ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }>;
+    cursor?: { date: Date; createdAt: Date; id: string },
+  ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date; id: string } | null }>;
   /**
    * Persist a new movement.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.

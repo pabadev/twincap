@@ -156,14 +156,9 @@ export function MovementsList({
     return allMovements.filter((m) => m.type === selectedType);
   }, [allMovements, selectedType]);
 
-  // Product decision 2026-09-21: the sortable table (and its header sort UI)
-  // was retired — cards render on every breakpoint and the list keeps the
-  // fixed default order (newest first).
-  const sortedMovements = useMemo(() => {
-    const arr = [...filteredMovements];
-    arr.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return arr;
-  }, [filteredMovements]);
+  // Preserve the server's complete deterministic order (date, createdAt, _id)
+  // through filters and appended pages. Re-sorting by date here breaks ties.
+  const orderedMovements = filteredMovements;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -366,7 +361,7 @@ export function MovementsList({
         />
       ) : (
         <>
-          {sortedMovements.length === 0 ? (
+          {orderedMovements.length === 0 ? (
             <EmptyState
               icon={<Icon icon={ArrowLeftRight} size="xl" />}
               title={t("emptyTitle")}
@@ -383,7 +378,7 @@ export function MovementsList({
               {/* Cards are the only representation (product decision
                   2026-09-21: tables retired on every breakpoint). */}
               <div className="space-y-3">
-                {sortedMovements.map((movement) => (
+                {orderedMovements.map((movement) => (
                   <MovementCard
                     key={movement.id}
                     id={movement.id}

@@ -57,8 +57,11 @@ export class MongoMovementRepository implements MovementRepository {
   async findPaged(
     workspaceId: string,
     limit: number,
-    cursor?: { date: Date; createdAt: Date },
-  ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date } | null }> {
+    cursor?: { date: Date; createdAt: Date; id: string },
+  ): Promise<{
+    items: Movement[];
+    nextCursor: { date: Date; createdAt: Date; id: string } | null;
+  }> {
     const query: Record<string, unknown> = {
       workspaceId: new Types.ObjectId(workspaceId),
     };
@@ -69,6 +72,11 @@ export class MongoMovementRepository implements MovementRepository {
       query.$or = [
         { date: { $lt: cursor.date } },
         { date: cursor.date, createdAt: { $lt: cursor.createdAt } },
+        {
+          date: cursor.date,
+          createdAt: cursor.createdAt,
+          _id: { $lt: new Types.ObjectId(cursor.id) },
+        },
       ];
     }
 
@@ -98,7 +106,9 @@ export class MongoMovementRepository implements MovementRepository {
     });
 
     const lastDoc = pageDocs[pageDocs.length - 1] as MovementDocument;
-    const nextCursor = hasMore ? { date: lastDoc.date, createdAt: lastDoc.createdAt } : null;
+    const nextCursor = hasMore
+      ? { date: lastDoc.date, createdAt: lastDoc.createdAt, id: lastDoc._id.toString() }
+      : null;
 
     return { items, nextCursor };
   }

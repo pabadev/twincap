@@ -1,18 +1,21 @@
-import { redirect } from 'next/navigation';
-import { listAccounts } from '../../../core/application/accounts';
-import { listMovementsPaged, filterMovementsWithLiveParents } from '../../../core/application/movements';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
-import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
-import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
-import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
-import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
-import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { MovementsList } from './movements-list';
-import { serializeEntities } from '@/lib/serialize';
+import { redirect } from "next/navigation";
+import { listAccounts } from "../../../core/application/accounts";
+import {
+  listMovementsPaged,
+  filterMovementsWithLiveParents,
+} from "../../../core/application/movements";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { MongoCreditReceivedRepository } from "../../../infrastructure/repositories/credit-received-repository";
+import { MongoCreditGrantedRepository } from "../../../infrastructure/repositories/credit-granted-repository";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoClientRepository } from "../../../infrastructure/repositories/client-repository";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { MovementsList } from "./movements-list";
+import { serializeEntities } from "@/lib/serialize";
 
 const PAGE_SIZE = 50;
 
@@ -41,7 +44,7 @@ function buildRefLabels(
 
 export default async function MovementsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
   await connectDb();
   const movementRepo = new MongoMovementRepository();
@@ -54,17 +57,25 @@ export default async function MovementsPage() {
   const accountRepo = new MongoAccountRepository();
 
   // Fetch parent operations for note derivation (needed for refLabels)
-  const [creditsReceived, creditsGranted, payables, sales, clients, firstPage, transfers, accounts] =
-    await Promise.all([
-      creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
-      creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
-      payableRepo.findByWorkspaceId(user.workspaceId!),
-      saleRepo.findByWorkspaceId(user.workspaceId!),
-      clientRepo.findByWorkspaceId(user.workspaceId!),
-      listMovementsPaged(user.workspaceId!, PAGE_SIZE, movementRepo),
-      transferRepo.findByWorkspaceId(user.workspaceId!),
-      listAccounts(user.workspaceId!, accountRepo),
-    ]);
+  const [
+    creditsReceived,
+    creditsGranted,
+    payables,
+    sales,
+    clients,
+    firstPage,
+    transfers,
+    accounts,
+  ] = await Promise.all([
+    creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
+    creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
+    payableRepo.findByWorkspaceId(user.workspaceId!),
+    saleRepo.findByWorkspaceId(user.workspaceId!),
+    clientRepo.findByWorkspaceId(user.workspaceId!),
+    listMovementsPaged(user.workspaceId!, PAGE_SIZE, movementRepo),
+    transferRepo.findByWorkspaceId(user.workspaceId!),
+    listAccounts(user.workspaceId!, accountRepo),
+  ]);
 
   // R6-P1: defensive filter — drop movements whose linked parent is gone.
   // Cursor pagination is not recomputed after filtering (orphans are
@@ -106,7 +117,11 @@ export default async function MovementsPage() {
 
   const serializedMovements = serializeEntities(firstPage.items);
   const nextCursor = firstPage.nextCursor
-    ? { date: firstPage.nextCursor.date.toISOString(), createdAt: firstPage.nextCursor.createdAt.toISOString() }
+    ? {
+        date: firstPage.nextCursor.date.toISOString(),
+        createdAt: firstPage.nextCursor.createdAt.toISOString(),
+        id: firstPage.nextCursor.id,
+      }
     : null;
 
   return (

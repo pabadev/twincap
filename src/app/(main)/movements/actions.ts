@@ -307,6 +307,7 @@ export async function updateMovementAction(
 export interface SerializedCursor {
   date: string;
   createdAt: string;
+  id: string;
 }
 
 export interface PagedMovementsResult {
@@ -327,7 +328,9 @@ export async function listMovementsPagedAction(
     user.workspaceId!,
     limit,
     movementRepo,
-    cursor ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt) } : undefined,
+    cursor
+      ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt), id: cursor.id }
+      : undefined,
   );
 
   return {
@@ -336,6 +339,7 @@ export async function listMovementsPagedAction(
       ? {
           date: result.nextCursor.date.toISOString(),
           createdAt: result.nextCursor.createdAt.toISOString(),
+          id: result.nextCursor.id,
         }
       : null,
   };

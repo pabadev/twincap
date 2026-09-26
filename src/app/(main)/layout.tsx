@@ -6,6 +6,7 @@ import { ToastProvider } from "../../components/ui/toast-provider";
 import { GlobalMovementProvider } from "./global-movement-provider";
 import { connectDb } from "../../infrastructure/db/connection";
 import { MongoUserRepository } from "../../infrastructure/repositories/user-repository";
+import { ConnectivityNotice } from "../../components/connectivity-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         <GlobalMovementProvider defaultCurrency={user.defaultCurrency}>
           {/* The main fills the full space next to the sidebar; page-level
               ContentContainer(s) cap and center the visual content. */}
-          <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">{children}</main>
+          <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">
+            <ConnectivityNotice />
+            {children}
+          </main>
         </GlobalMovementProvider>
       </ToastProvider>
     </div>

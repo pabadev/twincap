@@ -34,7 +34,9 @@ vi.mock("./actions", () => ({
 // semantics; stubbed so the render stays light and focused on the trigger.
 vi.mock("./delete-movement-button", () => ({ DeleteMovementButton: () => null }));
 vi.mock("./edit-movement-modal", () => ({ EditMovementModal: () => null }));
-vi.mock("../../../components/ui/movement-card", () => ({ MovementCard: () => null }));
+vi.mock("../../../components/ui/movement-card", () => ({
+  MovementCard: ({ id }: { id: string }) => <div data-movement-id={id} />,
+}));
 
 function movement(overrides: Partial<SerializedMovement> = {}): SerializedMovement {
   return {
@@ -96,11 +98,32 @@ afterEach(() => {
 });
 
 describe("MovementsList load more (T5 regression)", () => {
+  it("preserves the server order when movements share the same business date", () => {
+    const { container } = mount(
+      <MovementsList
+        initialMovements={[
+          movement({ id: "newer", createdAt: new Date("2026-09-01T12:00:00.000Z") }),
+          movement({ id: "older", createdAt: new Date("2026-09-01T08:00:00.000Z") }),
+        ]}
+        nextCursor={null}
+      />,
+    );
+    expect(
+      Array.from(container.querySelectorAll("[data-movement-id]"), (node) =>
+        node.getAttribute("data-movement-id"),
+      ),
+    ).toEqual(["newer", "older"]);
+  });
+
   it("renders the load more button when nextCursor is set", () => {
     const { container } = mount(
       <MovementsList
         initialMovements={[movement()]}
-        nextCursor={{ date: "2026-09-01T00:00:00.000Z", createdAt: "2026-09-01T00:00:00.000Z" }}
+        nextCursor={{
+          date: "2026-09-01T00:00:00.000Z",
+          createdAt: "2026-09-01T00:00:00.000Z",
+          id: "m-1",
+        }}
       />,
     );
     const button = Array.from(container.querySelectorAll("button")).find((b) =>
@@ -126,7 +149,11 @@ describe("MovementsList load more (T5 regression)", () => {
     const { container } = mount(
       <MovementsList
         initialMovements={[movement()]}
-        nextCursor={{ date: "2026-09-01T00:00:00.000Z", createdAt: "2026-09-01T00:00:00.000Z" }}
+        nextCursor={{
+          date: "2026-09-01T00:00:00.000Z",
+          createdAt: "2026-09-01T00:00:00.000Z",
+          id: "m-1",
+        }}
       />,
     );
     const button = Array.from(container.querySelectorAll("button")).find((b) =>

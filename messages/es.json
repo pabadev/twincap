@@ -23,7 +23,9 @@
     "noResults": "No se encontraron resultados con estos filtros",
     "select": "Seleccionar",
     "paid": "Pagado",
-    "back": "Atrás"
+    "back": "Atrás",
+    "offline": "Sin conexión a internet. Para registrar operaciones financieras necesitas conexión.",
+    "connectionRestored": "Conexión restablecida. Puedes continuar."
   },
   "Nav": {
     "dashboard": "Resumen",

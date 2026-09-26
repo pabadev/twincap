@@ -23,7 +23,9 @@
     "noResults": "No results found with these filters",
     "select": "Select",
     "paid": "Paid",
-    "back": "Back"
+    "back": "Back",
+    "offline": "You are offline. A connection is required to record financial operations.",
+    "connectionRestored": "Connection restored. You can continue."
   },
   "Nav": {
     "dashboard": "Summary",
