@@ -1,6 +1,6 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 /**
  * Static security headers applied to every response.
@@ -12,15 +12,15 @@ const isProduction = process.env.NODE_ENV === 'production';
  * omitted to avoid a duplicated/conflicting clickjacking control.
  */
 const securityHeaders: { key: string; value: string }[] = [
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
-    key: 'Permissions-Policy',
+    key: "Permissions-Policy",
     // Deny-by-default for capabilities the app never uses. clipboard,
     // fullscreen and web-share are intentionally unlisted (allowed) so
     // existing copy and PWA behaviors keep working.
     value:
-      'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=(), serial=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), xr-spatial-tracking=()',
+      "camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=(), serial=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), xr-spatial-tracking=()",
   },
   // HTTPS-only. Matches the NODE_ENV production convention used across the
   // repo (e.g. the locale cookie `secure` flag in src/proxy.ts). `preload` is
@@ -28,18 +28,22 @@ const securityHeaders: { key: string; value: string }[] = [
   ...(isProduction
     ? [
         {
-          key: 'Strict-Transport-Security',
-          value: 'max-age=63072000; includeSubDomains',
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains",
         },
       ]
     : []),
 ];
 
 const nextConfig: NextConfig = {
+  // Externalize mongoose: keeps the ORM out of the server bundle (documented
+  // mongoose + Next.js pattern; avoids a double-bundled copy under the server
+  // build). No measurable perf effect observed; recorded for hygiene.
+  serverExternalPackages: ["mongoose"],
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: securityHeaders,
       },
     ];

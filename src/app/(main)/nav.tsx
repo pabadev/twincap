@@ -269,6 +269,13 @@ export function MainNav({
                                 ref={isFirst ? firstLinkRef : undefined}
                                 onClick={() => setOpen(false)}
                                 aria-current={isActive ? "page" : undefined}
+                                // No prefetch: every (main) route is force-dynamic,
+                                // so prefetched shells die on the next server-action
+                                // revalidatePath anyway — the router would re-fetch
+                                // ALL sidebar routes after every mutation (a 20+
+                                // request storm per write). Click-time fetch is
+                                // acceptable; the route's loading.tsx covers it.
+                                prefetch={false}
                                 className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
                                   isActive
                                     ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-foreground"
