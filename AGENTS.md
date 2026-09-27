@@ -183,7 +183,7 @@ Cada server action o route handler DEBE:
 - Commits convencionales: `feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`.
 - Un commit por unidad de trabajo lógica.
 - No commitear secrets o datos sensibles.
-- El hook de pre-commit GGA (`gga run`) está **DESHABILITADO** permanentemente (guardado como `.git/hooks/pre-commit.disabled.gga`): su sesión de revisión hace staging masivo de archivos no solicitados y al morir por timeout del proveedor deja el índice corrupto (`invalid object ... Error building trees`). NO volver a habilitarlo sin corregir primero esos defectos. Los agentes NO deben confiar en él ni reintentar commits a través del hook; la verificación de calidad se hace con `pnpm test` + `tsc --noEmit`.
+- La verificación de calidad pre-commit se hace con `pnpm test` + `tsc --noEmit`. No usar hooks de pre-commit basados en IA (el hook GGA fue desinstalado el 2026-09-26 por defectos de staging masivo e índice corrupto).
 
 ### Rama y despliegue (REGLAS PERMANENTES — fundador, 2026-09-16)
 
