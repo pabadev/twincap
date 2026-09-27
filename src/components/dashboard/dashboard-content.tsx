@@ -272,7 +272,7 @@ export function DashboardContent({
       </div>
       {activeFilterCount > 0 && (
         <div className="-mt-4">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("filtersActive")}</span>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filtersActive")}</span>
         </div>
       )}
 
@@ -346,7 +346,7 @@ export function DashboardContent({
                 inline Card text is the approved pattern; a full EmptyState
                 would fight the dashboard's grid language. See
                 openspec/changes/ux-10-implementation/design.md (H-10 Exclusion Register). */}
-            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
               {noAccountsMessage}
             </p>
           </Card>
@@ -479,7 +479,7 @@ export function DashboardContent({
           </button>
           {snapshot.chartCurrencies && (
             <label className="ml-auto flex items-center gap-2">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 {t("chartCurrency")}
               </span>
               <select

@@ -63,7 +63,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
   return (
     <Modal open={!!saleId} onClose={handleClose} title={t("saleDetail")} size="lg">
       {loading && (
-        <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="py-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
           {tCommon("loading")}
         </p>
       )}
@@ -183,7 +183,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
 
           <dl className="space-y-1 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-700">
             <div className="flex justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t("total")}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("total")}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
                 {formatAmount(snapshot.total, snapshot.currency, locale)}
               </dd>
@@ -191,13 +191,13 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             {snapshot.paymentMode === "on-credit" && (
               <>
                 <div className="flex justify-between">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{t("initialPayment")}</dt>
+                  <dt className="text-zinc-600 dark:text-zinc-400">{t("initialPayment")}</dt>
                   <dd className="text-zinc-900 dark:text-white">
                     {formatAmount(snapshot.initialPayment, snapshot.currency, locale)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{t("pending")}</dt>
+                  <dt className="text-zinc-600 dark:text-zinc-400">{t("pending")}</dt>
                   <dd
                     className={`font-medium ${snapshot.pending > 0 ? "text-debt" : "text-success"}`}
                   >
@@ -255,7 +255,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                   </Table>
                 </div>
               ) : (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("noAbonos")}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("noAbonos")}</p>
               )}
             </div>
           )}

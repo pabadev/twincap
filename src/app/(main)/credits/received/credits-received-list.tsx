@@ -121,7 +121,7 @@ export function CreditsReceivedList({
                 <div>
                   <label
                     htmlFor="credits-received-filter-date-from-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDateFrom")}
                   </label>
@@ -136,7 +136,7 @@ export function CreditsReceivedList({
                 <div>
                   <label
                     htmlFor="credits-received-filter-date-to-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDateTo")}
                   </label>
@@ -151,7 +151,7 @@ export function CreditsReceivedList({
                 <div>
                   <label
                     htmlFor="credits-received-filter-status-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterStatus")}
                   </label>
@@ -170,7 +170,7 @@ export function CreditsReceivedList({
                 <div>
                   <label
                     htmlFor="credits-received-filter-search-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterSearch")}
                   </label>
@@ -192,7 +192,7 @@ export function CreditsReceivedList({
             <div>
               <label
                 htmlFor="credits-received-filter-date-from"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateFrom")}
               </label>
@@ -207,7 +207,7 @@ export function CreditsReceivedList({
             <div>
               <label
                 htmlFor="credits-received-filter-date-to"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateTo")}
               </label>
@@ -222,7 +222,7 @@ export function CreditsReceivedList({
             <div>
               <label
                 htmlFor="credits-received-filter-status"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterStatus")}
               </label>
@@ -241,7 +241,7 @@ export function CreditsReceivedList({
             <div>
               <label
                 htmlFor="credits-received-filter-search"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterSearch")}
               </label>
@@ -358,7 +358,7 @@ export function CreditsReceivedList({
                   </div>
 
                   <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-1 dark:border-zinc-800">
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
                       {credit.abonos?.length}{" "}
                       {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
                     </span>
@@ -374,7 +374,7 @@ export function CreditsReceivedList({
                     <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
                       {credit.abonos?.length > 0 && (
                         <div className="mb-3">
-                          <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          <h4 className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                             {t("abonos")}
                           </h4>
                           {/* Compact expandable table: keeps its bespoke cells

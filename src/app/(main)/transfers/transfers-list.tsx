@@ -125,7 +125,7 @@ export function TransfersList({
                 <div>
                   <label
                     htmlFor="transfers-filter-date-from-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDateFrom")}
                   </label>
@@ -140,7 +140,7 @@ export function TransfersList({
                 <div>
                   <label
                     htmlFor="transfers-filter-date-to-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDateTo")}
                   </label>
@@ -161,7 +161,7 @@ export function TransfersList({
             <div>
               <label
                 htmlFor="transfers-filter-date-from"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateFrom")}
               </label>
@@ -176,7 +176,7 @@ export function TransfersList({
             <div>
               <label
                 htmlFor="transfers-filter-date-to"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDateTo")}
               </label>

@@ -1,4 +1,4 @@
-import type { LegalDocument } from '@/content/legal/types';
+import type { LegalDocument } from "@/content/legal/types";
 
 /**
  * Server component que renderiza un documento legal (Política de Privacidad,
@@ -13,9 +13,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-white">
           {document.title}
         </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          {document.updatedAt}
-        </p>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{document.updatedAt}</p>
         {document.intro && (
           <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
             {document.intro}
@@ -30,29 +28,28 @@ export function LegalPage({ document }: { document: LegalDocument }) {
               {section.heading}
             </h2>
             {section.paragraphs?.map((paragraph, i) => (
-              <p
-                key={i}
-                className="mb-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300"
-              >
+              <p key={i} className="mb-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                 {paragraph}
               </p>
             ))}
             {section.list && (
               <ul className="ml-4 list-disc space-y-2">
                 {section.list.map((item, i) => (
-                  <li
-                    key={i}
-                    className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300"
-                  >
+                  <li key={i} className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                     {item}
                   </li>
                 ))}
               </ul>
             )}
             {section.table && (
-              <div className="mt-4 overflow-x-auto">
+              <div
+                // axe scrollable-region-focusable: keyboard users must be able
+                // to reach/scroll the horizontally scrollable table wrapper.
+                tabIndex={0}
+                className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-primary"
+              >
                 {section.table.caption && (
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                     {section.table.caption}
                   </p>
                 )}
@@ -81,10 +78,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
                         className="border-b border-surface-border align-top dark:border-zinc-700"
                       >
                         {row.map((cell, c) => (
-                          <td
-                            key={c}
-                            className="px-3 py-2 text-zinc-700 dark:text-zinc-300"
-                          >
+                          <td key={c} className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
                             {cell}
                           </td>
                         ))}

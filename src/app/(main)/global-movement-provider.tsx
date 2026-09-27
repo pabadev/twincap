@@ -270,7 +270,7 @@ export function GlobalMovementProvider({
       <Modal open={modalOpen} onClose={closeModal} title={tMovements("newMovement")} size="lg">
         {loadState === "error" ? (
           <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{tToast("operationFailed")}</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{tToast("operationFailed")}</p>
             <button
               type="button"
               onClick={() => setLoadState("idle")}
@@ -280,7 +280,7 @@ export function GlobalMovementProvider({
             </button>
           </div>
         ) : data === null ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
             {tCommon("loading")}
           </p>
         ) : data.accounts.length === 0 ? (
@@ -288,7 +288,7 @@ export function GlobalMovementProvider({
           // modal, not a list-surface empty state — the centered EmptyState
           // iconography would misrepresent the "account needed first"
           // guidance. See openspec/changes/ux-10-implementation/design.md.
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{tMovements("noAccounts")}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{tMovements("noAccounts")}</p>
         ) : (
           <MovementForm
             accounts={data.accounts}
@@ -315,7 +315,7 @@ export function GlobalMovementProvider({
       >
         {posLoadState === "error" ? (
           <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{tToast("operationFailed")}</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{tToast("operationFailed")}</p>
             <button
               type="button"
               onClick={() => setPosLoadState("idle")}
@@ -325,12 +325,12 @@ export function GlobalMovementProvider({
             </button>
           </div>
         ) : posData === null ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
             {tCommon("loading")}
           </p>
         ) : posData.accounts.length === 0 ? (
           // Same account-needed guidance as the movement modal (H-10 style).
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{tMovements("noAccounts")}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{tMovements("noAccounts")}</p>
         ) : (
           <SaleForm
             catalogItems={posData.catalogItems}

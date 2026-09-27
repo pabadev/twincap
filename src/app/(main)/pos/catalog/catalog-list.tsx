@@ -80,7 +80,7 @@ export function CatalogList({
               exclusively by the EmptyState below — the counter renders only
               for non-empty results. */}
           {!(debouncedQuery.trim() && filteredItems.length === 0) && (
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               {debouncedQuery.trim()
                 ? t("results", { count: String(filteredItems.length), total: String(items.length) })
                 : t("results", { count: String(items.length), total: String(items.length) })}
@@ -113,7 +113,7 @@ export function CatalogList({
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-zinc-900 dark:text-white">{item.name}</div>
-                  <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                       {t(`type_${item.type}`)}
                     </span>

@@ -531,7 +531,7 @@ export function SaleForm({
                   className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-surface-border bg-surface-card py-1 shadow-lg"
                 >
                   {filteredItems.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    <li className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">
                       {t("noItemsFound")}
                     </li>
                   ) : (
@@ -556,7 +556,7 @@ export function SaleForm({
                           } ${inCart ? "italic" : ""}`}
                         >
                           <span>{item.name}</span>
-                          <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                          <span className="ml-2 text-xs text-zinc-600 dark:text-zinc-400">
                             ({tCatalog(`type_${item.type}`)})
                           </span>
                           {inCart && <span className="ml-2 text-xs text-primary">✓</span>}
@@ -575,7 +575,7 @@ export function SaleForm({
                 type="button"
                 onClick={() => setShowItemForm(true)}
                 disabled={isPending}
-                className="text-xs font-medium text-primary hover:text-primary-hover hover:underline dark:text-primary dark:hover:text-primary-hover"
+                className="text-xs font-medium text-primary hover:text-primary-hover hover:underline dark:text-primary-soft dark:hover:text-primary-soft-hover"
               >
                 {t("createNewItem")}
               </button>
@@ -725,7 +725,7 @@ export function SaleForm({
                           tone="neutral"
                           onClick={() => removeLineItem(idx)}
                           disabled={isPending}
-                          className="text-zinc-400 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
+                          className="text-zinc-500 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
                         />
                       </div>
                     );
@@ -791,7 +791,7 @@ export function SaleForm({
                   type="button"
                   onClick={() => setShowClientForm(true)}
                   disabled={isPending}
-                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover"
+                  className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary-soft dark:hover:text-primary-soft-hover"
                 >
                   {t("createClient")}
                 </button>

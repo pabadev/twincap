@@ -285,7 +285,7 @@ export function TransferForm({
       {/* R15.1 Fase 4 — TwinCap derives the exchange rate from both real
           amounts; the user never enters one. Read-only, live-recalculated. */}
       {derivedRateDisplay !== null && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
           {t("effectiveRate")}:{" "}
           {t("effectiveRateDescription", {
             destCurrency,
@@ -382,13 +382,13 @@ export function TransferForm({
           </p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningCurrentBalance")}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("warningCurrentBalance")}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
                 {formatAmount(warning.currentBalance, warning.currency, locale)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningOperation")}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("warningOperation")}</dt>
               <dd className="font-medium text-zinc-900 dark:text-white">
                 −
                 {formatAmount(
@@ -399,7 +399,7 @@ export function TransferForm({
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-zinc-500 dark:text-zinc-400">{t("warningProjectedBalance")}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("warningProjectedBalance")}</dt>
               <dd className="font-medium text-danger">
                 {formatAmount(warning.projectedBalance, warning.currency, locale)}
               </dd>

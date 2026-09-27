@@ -147,7 +147,7 @@ export function ProfileForm({
             value={profileDraft.defaultCurrency}
             onChange={(e) => setProfileDraft((d) => ({ ...d, defaultCurrency: e.target.value }))}
           />
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.defaultCurrencyHint}</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">{t.defaultCurrencyHint}</p>
           <div className="flex justify-end">
             <Button type="submit" variant="primary" loading={profilePending}>
               {t.saveProfile}

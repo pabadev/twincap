@@ -98,7 +98,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                   <Icon icon={icon} size="md" />
                   <div>
                     <div className="font-medium">{t(labelKey)}</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">{t(descKey)}</div>
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">{t(descKey)}</div>
                   </div>
                 </button>
               ))}

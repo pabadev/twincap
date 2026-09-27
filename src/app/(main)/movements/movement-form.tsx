@@ -223,7 +223,7 @@ export function MovementForm({
                 type="button"
                 onClick={() => setShowCategoryForm(true)}
                 disabled={isPending}
-                className="inline-flex min-h-[32px] cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary"
+                className="inline-flex min-h-[32px] cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-soft"
                 aria-label={t("addCategoryInline")}
               >
                 <Plus size={12} aria-hidden="true" />

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useT } from '@/i18n/client';
-import { Logo } from '@/components/ui/logo';
+import Link from "next/link";
+import { useT } from "@/i18n/client";
+import { Logo } from "@/components/ui/logo";
 
 export function Footer() {
-  const t = useT('Landing');
+  const t = useT("Landing");
   const year = new Date().getFullYear();
 
   return (
@@ -16,49 +16,49 @@ export function Footer() {
           <nav className="flex gap-6">
             <Link
               href="/login"
-              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
             >
-              {t('login')}
+              {t("login")}
             </Link>
             <Link
               href="/register"
-              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+              className="text-sm font-medium text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
             >
-              {t('register')}
+              {t("register")}
             </Link>
           </nav>
         </div>
         <nav
-          aria-label={t('legalNavAriaLabel')}
+          aria-label={t("legalNavAriaLabel")}
           className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-surface-border pt-6 dark:border-zinc-800"
         >
           <Link
             href="/privacy"
-            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+            className="text-xs text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
           >
-            {t('privacy')}
+            {t("privacy")}
           </Link>
           <Link
             href="/terms"
-            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+            className="text-xs text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
           >
-            {t('terms')}
+            {t("terms")}
           </Link>
           <Link
             href="/cookies"
-            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+            className="text-xs text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
           >
-            {t('cookies')}
+            {t("cookies")}
           </Link>
           <Link
             href="/data-policy"
-            className="text-xs text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary"
+            className="text-xs text-zinc-600 hover:text-primary dark:text-zinc-400 dark:hover:text-primary-soft"
           >
-            {t('dataPolicy')}
+            {t("dataPolicy")}
           </Link>
         </nav>
-        <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
-          {t('footerCopyright', { year: String(year) })}
+        <div className="mt-6 text-center text-xs text-zinc-600 dark:text-zinc-400">
+          {t("footerCopyright", { year: String(year) })}
         </div>
       </div>
     </footer>

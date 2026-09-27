@@ -168,7 +168,7 @@ function ContextCurrencyRows({
           <span className="font-semibold">
             +{formatAmount(it.monthlyIncome, it.currency, locale)}
           </span>{" "}
-          <span className="text-zinc-400">{it.currency}</span>
+          <span className="text-zinc-600">{it.currency}</span>
         </p>
       ))}
       <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">{expensesLabel}:</p>
@@ -177,7 +177,7 @@ function ContextCurrencyRows({
           <span className="font-semibold">
             −{formatAmount(it.monthlyExpenses, it.currency, locale)}
           </span>{" "}
-          <span className="text-zinc-400">{it.currency}</span>
+          <span className="text-zinc-600">{it.currency}</span>
         </p>
       ))}
     </>
@@ -216,7 +216,7 @@ function FinancingCurrencyRows({
               className="text-[11px] sm:text-xs leading-tight text-income"
             >
               <span className="font-semibold">+{formatAmount(it.inflow, it.currency, locale)}</span>{" "}
-              <span className="text-zinc-400">{it.currency}</span>
+              <span className="text-zinc-600">{it.currency}</span>
             </p>
           ))}
         </>
@@ -232,13 +232,13 @@ function FinancingCurrencyRows({
               <span className="font-semibold">
                 −{formatAmount(it.outflow, it.currency, locale)}
               </span>{" "}
-              <span className="text-zinc-400">{it.currency}</span>
+              <span className="text-zinc-600">{it.currency}</span>
             </p>
           ))}
         </>
       )}
       {inflowItems.length === 0 && outflowItems.length === 0 && (
-        <p className="text-[11px] sm:text-xs leading-tight text-zinc-400">—</p>
+        <p className="text-[11px] sm:text-xs leading-tight text-zinc-600">—</p>
       )}
     </>
   );

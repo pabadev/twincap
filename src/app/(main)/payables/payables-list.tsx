@@ -129,7 +129,7 @@ export function PayablesList({
                 <div>
                   <label
                     htmlFor="payables-filter-due-date-from-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDueDateFrom")}
                   </label>
@@ -144,7 +144,7 @@ export function PayablesList({
                 <div>
                   <label
                     htmlFor="payables-filter-due-date-to-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterDueDateTo")}
                   </label>
@@ -159,7 +159,7 @@ export function PayablesList({
                 <div>
                   <label
                     htmlFor="payables-filter-status-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterStatus")}
                   </label>
@@ -178,7 +178,7 @@ export function PayablesList({
                 <div>
                   <label
                     htmlFor="payables-filter-search-mobile"
-                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
                   >
                     {t("filterSearch")}
                   </label>
@@ -200,7 +200,7 @@ export function PayablesList({
             <div>
               <label
                 htmlFor="payables-filter-due-date-from"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDueDateFrom")}
               </label>
@@ -215,7 +215,7 @@ export function PayablesList({
             <div>
               <label
                 htmlFor="payables-filter-due-date-to"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterDueDateTo")}
               </label>
@@ -230,7 +230,7 @@ export function PayablesList({
             <div>
               <label
                 htmlFor="payables-filter-status"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterStatus")}
               </label>
@@ -249,7 +249,7 @@ export function PayablesList({
             <div>
               <label
                 htmlFor="payables-filter-search"
-                className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {t("filterSearch")}
               </label>
@@ -348,7 +348,7 @@ export function PayablesList({
                   </div>
 
                   <div className="mt-auto flex items-center justify-between border-t border-zinc-100 px-4 py-1 dark:border-zinc-800">
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
                       {payable.abonos?.length}{" "}
                       {payable.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
                     </span>
@@ -363,7 +363,7 @@ export function PayablesList({
                   {isExpanded && (
                     <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
                       {payable.initialPayment > 0 && (
-                        <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        <p className="mb-2 text-xs text-zinc-600 dark:text-zinc-400">
                           {t("initialPaymentPaid")}:{" "}
                           {formatAmount(payable.initialPayment, currency, locale)}
                         </p>
@@ -371,7 +371,7 @@ export function PayablesList({
 
                       {payable.abonos?.length > 0 && (
                         <div className="mb-3">
-                          <h4 className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          <h4 className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                             {t("abonos")}
                           </h4>
                           {/* Compact expandable table: keeps its bespoke cells

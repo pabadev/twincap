@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT } from '../../../../i18n/client';
-import { editAbonoAction } from './actions';
-import { Input } from '../../../../components/ui/input';
-import { Button } from '../../../../components/ui/button';
-import { useToast } from '../../../../lib/hooks/use-toast';
-import { useActionError } from '../../../../lib/use-action-error';
-import { toDateInputValue } from '../../../../lib/date';
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useT } from "../../../../i18n/client";
+import { editAbonoAction } from "./actions";
+import { Input } from "../../../../components/ui/input";
+import { Button } from "../../../../components/ui/button";
+import { useToast } from "../../../../lib/hooks/use-toast";
+import { useActionError } from "../../../../lib/use-action-error";
+import { toDateInputValue } from "../../../../lib/date";
 
 export function EditAbonoForm({
   creditId,
@@ -23,14 +23,11 @@ export function EditAbonoForm({
   date: string;
   onCancel: () => void;
 }) {
-  const [state, formAction, isPending] = useActionState(
-    editAbonoAction,
-    null,
-  );
-  const t = useT('CreditsGranted');
-  const tToast = useT('Toast');
+  const [state, formAction, isPending] = useActionState(editAbonoAction, null);
+  const t = useT("CreditsGranted");
+  const tToast = useT("Toast");
   const translateError = useActionError();
-  const tCommon = useT('Common');
+  const tCommon = useT("Common");
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
@@ -38,7 +35,7 @@ export function EditAbonoForm({
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       onCancel();
       router.refresh();
     }
@@ -46,18 +43,21 @@ export function EditAbonoForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(translateError(state.error), 'error');
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10">
+    <form
+      action={formAction}
+      className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10"
+    >
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
       <input type="hidden" name="creditId" value={creditId} />
       <input type="hidden" name="abonoId" value={abonoId} />
 
-      <p className="text-sm font-medium text-primary dark:text-primary">
-        {t('editAbonoTitle')}
+      <p className="text-sm font-medium text-primary dark:text-primary-soft">
+        {t("editAbonoTitle")}
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -65,7 +65,7 @@ export function EditAbonoForm({
           id={`edit-amount-${abonoId}`}
           name="amount"
           type="number"
-          label={t('amount')}
+          label={t("amount")}
           min="1"
           required
           defaultValue={amount}
@@ -76,7 +76,7 @@ export function EditAbonoForm({
           id={`edit-date-${abonoId}`}
           name="date"
           type="date"
-          label={t('date')}
+          label={t("date")}
           required
           defaultValue={date}
           max={toDateInputValue()}
@@ -85,14 +85,8 @@ export function EditAbonoForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          type="submit"
-          variant="primary"
-          size="sm"
-          disabled={isPending}
-          loading={isPending}
-        >
-          {isPending ? t('updating') : tCommon('save')}
+        <Button type="submit" variant="primary" size="sm" disabled={isPending} loading={isPending}>
+          {isPending ? t("updating") : tCommon("save")}
         </Button>
         <button
           type="button"
@@ -100,7 +94,7 @@ export function EditAbonoForm({
           className="rounded-md px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
           disabled={isPending}
         >
-          {tCommon('cancel')}
+          {tCommon("cancel")}
         </button>
       </div>
     </form>

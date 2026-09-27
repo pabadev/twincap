@@ -99,7 +99,7 @@ export function AbonoForm({
       <input type="hidden" name="creditId" value={creditId} />
       <input type="hidden" name="currency" value={currency} />
 
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {t("pending")} {formatAmount(pending, currency, locale)}
       </p>
 

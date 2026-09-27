@@ -68,7 +68,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
             />
           </div>
           {(!debouncedQuery.trim() || filteredClients.length > 0) && (
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               {debouncedQuery.trim()
                 ? t("showingResults", {
                     filtered: String(filteredClients.length),

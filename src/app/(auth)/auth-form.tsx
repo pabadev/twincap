@@ -70,7 +70,7 @@ export function AuthForm({
           <div className="-mt-2 text-right">
             <a
               href={forgotHref}
-              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary"
+              className="text-xs font-medium text-primary hover:text-primary-hover dark:text-primary-soft"
             >
               {forgotLabel}
             </a>
@@ -100,7 +100,7 @@ export function AuthForm({
           {alternateText}{" "}
           <a
             href={alternateHref}
-            className="font-medium text-primary hover:text-primary-hover dark:text-primary"
+            className="font-medium text-primary hover:text-primary-hover dark:text-primary-soft"
           >
             {alternateLabel}
           </a>

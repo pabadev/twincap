@@ -29,7 +29,7 @@ export default async function NotFoundPage() {
           <Link
             href="/"
             aria-label={t("home")}
-            className="inline-flex items-center text-zinc-600 hover:text-primary dark:text-zinc-300 dark:hover:text-primary"
+            className="inline-flex items-center text-zinc-600 hover:text-primary dark:text-zinc-300 dark:hover:text-primary-soft"
           >
             <Logo variant="logotipo" size="sm" />
           </Link>
@@ -47,7 +47,7 @@ export default async function NotFoundPage() {
           <h1 className="mt-4 text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-white">
             {t("title")}
           </h1>
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
             {t("description")}
           </p>
           <Link

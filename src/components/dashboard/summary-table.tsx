@@ -36,7 +36,7 @@ export function SummaryTable({ title, rows, totals, locale, emptyMessage }: Summ
           // H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the summary block
           // lives inside a bordered table shell; a centered EmptyState would
           // misalign the panel rhythm. See openspec/changes/ux-10-implementation/design.md.
-          <p className="py-4 text-sm text-zinc-500 dark:text-zinc-400">{emptyMessage}</p>
+          <p className="py-4 text-sm text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
         ) : (
           rows.map((row, i) => (
             <div
@@ -60,7 +60,7 @@ export function SummaryTable({ title, rows, totals, locale, emptyMessage }: Summ
       <div className="grid grid-cols-[1fr_auto] border-t border-surface-border bg-surface-header dark:bg-zinc-800 px-6 py-3 font-semibold">
         <span className="text-sm text-zinc-800 dark:text-white">{t("total")}</span>
         {totals.length === 0 ? (
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">—</span>
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">—</span>
         ) : totals.length === 1 ? (
           <span className="text-sm text-zinc-900 dark:text-white whitespace-nowrap">
             {formatAmount(totals[0].value, totals[0].currency, locale)}

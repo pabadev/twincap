@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useT } from '../../../i18n/client';
-import { useActionError } from '../../../lib/use-action-error';
-import { verifyEmailAction } from '../actions';
+import { useEffect, useState } from "react";
+import { useT } from "../../../i18n/client";
+import { useActionError } from "../../../lib/use-action-error";
+import { verifyEmailAction } from "../actions";
 
 /**
  * Public email verification page (R13-B2). Reads `token` and `email` from the
@@ -11,9 +11,9 @@ import { verifyEmailAction } from '../actions';
  * so the page intentionally does not re-fire on re-render.
  */
 export function VerifyEmailForm({ email, token }: { email: string; token: string }) {
-  const t = useT('Auth');
+  const t = useT("Auth");
   const translateError = useActionError();
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   // I8: capture the action's error i18n key (error.invalidToken | error.operationFailed)
   // and resolve it at render so the failure reason is shown, not a generic message.
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -23,17 +23,17 @@ export function VerifyEmailForm({ email, token }: { email: string; token: string
     (async () => {
       if (!token || !email) {
         if (!cancelled) {
-          setStatus('error');
+          setStatus("error");
           setErrorKey(null);
         }
         return;
       }
       const fd = new FormData();
-      fd.set('email', email);
-      fd.set('token', token);
+      fd.set("email", email);
+      fd.set("token", token);
       const result = await verifyEmailAction(null, fd);
       if (!cancelled) {
-        setStatus(result?.success ? 'success' : 'error');
+        setStatus(result?.success ? "success" : "error");
         setErrorKey(result?.error ?? null);
       }
     })();
@@ -45,28 +45,32 @@ export function VerifyEmailForm({ email, token }: { email: string; token: string
 
   return (
     <div className="text-center">
-      {status === 'idle' && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{t('verifying')}</p>
+      {status === "idle" && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("verifying")}</p>
       )}
-      {status === 'success' && (
-        <p className="text-sm text-success">{t('emailVerifiedSuccess')}</p>
-      )}
-      {status === 'error' && (
+      {status === "success" && <p className="text-sm text-success">{t("emailVerifiedSuccess")}</p>}
+      {status === "error" && (
         <p className="text-sm text-danger">
-          {errorKey ? translateError(errorKey, t('invalidResetToken')) : t('invalidResetToken')}
+          {errorKey ? translateError(errorKey, t("invalidResetToken")) : t("invalidResetToken")}
         </p>
       )}
       <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-        {t('hasAccount')}{' '}
-        <a href="/login" className="font-medium text-primary hover:text-primary-hover dark:text-primary">
-          {t('signInLabel')}
+        {t("hasAccount")}{" "}
+        <a
+          href="/login"
+          className="font-medium text-primary hover:text-primary-hover dark:text-primary-soft"
+        >
+          {t("signInLabel")}
         </a>
       </p>
-      {status === 'success' && (
+      {status === "success" && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {t('goToDashboard')}{' '}
-          <a href="/dashboard" className="font-medium text-primary hover:text-primary-hover dark:text-primary">
-            {t('dashboard')}
+          {t("goToDashboard")}{" "}
+          <a
+            href="/dashboard"
+            className="font-medium text-primary hover:text-primary-hover dark:text-primary-soft"
+          >
+            {t("dashboard")}
           </a>
         </p>
       )}

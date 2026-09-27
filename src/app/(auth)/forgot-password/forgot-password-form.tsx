@@ -46,7 +46,7 @@ export function ForgotPasswordForm() {
           {t("hasAccount")}{" "}
           <a
             href="/login"
-            className="font-medium text-primary hover:text-primary-hover dark:text-primary"
+            className="font-medium text-primary hover:text-primary-hover dark:text-primary-soft"
           >
             {t("signInLabel")}
           </a>

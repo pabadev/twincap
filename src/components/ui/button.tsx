@@ -20,7 +20,10 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost:
     "bg-transparent text-zinc-700 hover:bg-zinc-100 focus-visible:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-zinc-800",
   inverse:
-    "bg-white text-primary hover:bg-primary/10 focus-visible:ring-primary dark:bg-white dark:text-primary",
+    // Intentionally NO dark: text flip — the button keeps its white background
+    // in dark mode (it sits on the brand gradient), and the default --tc-primary
+    // holds >= 4.5:1 on white in BOTH themes (#60a5fa primary-soft would fail).
+    "bg-white text-primary hover:bg-primary/10 focus-visible:ring-primary dark:bg-white",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
