@@ -12,6 +12,11 @@ const PORT = Number(process.env.E2E_PORT ?? 3000);
  */
 export default defineConfig({
   testDir: "./e2e",
+  // C12-9/C12-10: the axe + responsive audit sweep is a STANDALONE audit tool
+  // (~18 min, 120 screenshots, light + dark). Run it explicitly:
+  //   AUDIT_INCLUDE_SWEEP=1 pnpm test:e2e -g "audit sweep" --retries=0
+  // It is excluded from the standing suite to keep the regular gate fast.
+  testIgnore: process.env.AUDIT_INCLUDE_SWEEP ? [] : [/audit-sweep\.spec\.ts/],
   // Serial execution: many specs register users against the shared
   // register:unknown rate-limit counter and share the test DB state.
   fullyParallel: false,
