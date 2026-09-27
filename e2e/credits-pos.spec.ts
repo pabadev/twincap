@@ -169,7 +169,7 @@ async function submitAbonoInUI(
   creditCard: ReturnType<Page["locator"]>,
   amount: string,
 ): Promise<void> {
-  const amountInput = creditCard.getByLabel(/^Amount/);
+  let amountInput = creditCard.getByLabel(/^Amount/);
   if ((await amountInput.count()) === 0) {
     await creditCard.getByRole("button", { name: /^Add Abono$/ }).click();
     await expect(amountInput).toBeVisible();
@@ -182,6 +182,10 @@ async function submitAbonoInUI(
   // button collides with the header toggle ("Cancel") for strict-mode
   // locators, so it MUST be confirmed BEFORE the toggle-count logic below.
   await confirmMoneyAction(page);
+  // router.refresh() after the abono re-renders the list — with sidebar
+  // prefetch disabled the (main) tree remounts, so stale locators must be
+  // re-resolved against the fresh DOM before further interaction.
+  amountInput = creditCard.getByLabel(/^Amount/);
   // The toggle label is "Cancel" while the form is open (auto-waits if it is
   // disabled during the in-flight submission). After the LAST abono the row
   // unmounts entirely (pending <= 0), so the click is conditional; closing
