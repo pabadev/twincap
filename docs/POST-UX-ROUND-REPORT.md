@@ -122,3 +122,5 @@ Se confirman explícitamente **INTACTOS**:
 **Criterio de éxito §29**: todos los pendientes del contrato resueltos ✅ · decisión registrada ✅ · arquitectura offline documentada ✅ · fase segura offline ✅ · PT-BR preparado ✅ · costos diseñados ✅ · analítica documentada ✅ · auditoría global completa ✅ · pruebas completas ejecutadas ✅ · regresiones cubiertas ✅ · documentación actualizada ✅ · informe final generado (este documento) ✅ · 22 criterios comprobados ✅ · **sin regresión financiera ✅ (§G)**.
 
 > **Declaración**: con la evidencia anterior, la Ronda Post-UX/UI queda lista para el cierre formal. La declaración definitiva se emite con el commit/push de la unidad de trabajo (aviso del fundador), conforme al protocolo R3.13.
+
+> **CIERRE FORMAL EMITIDO (2026-09-27)**: la unidad de trabajo fue commiteada y pusheada (`a6a7c65..489c561`, 9 commits convencionales) y el CI de master quedó **completo en VERDE** (run 36333861852: Quality ✓ + E2E ✓ 34/34 en 7m35s, tras el fix de re-resolución de locators `submitAbonoInUI` para el remount por prefetch deshabilitado). **La Ronda Post-UX/UI queda CERRADA** conforme al §29/§30 del contrato.
