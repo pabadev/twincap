@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import {
   registerUser,
   confirmDialog,
@@ -194,7 +194,9 @@ async function submitAbonoInUI(
 }
 
 /**
- * Create a catalog item via /pos/catalog → "New Catalog Item".
+ * Create a catalog item via /pos/catalog → "Add product or service" (C12-4
+ * renamed the catalog UI from "Add Item" to the explicit products & services
+ * terminology; the dialog submit button is "Add to catalog").
  * `type` defaults to 'product' (stock required); 'service' has no stock field.
  */
 async function createCatalogItemInUI(
@@ -212,11 +214,11 @@ async function createCatalogItemInUI(
   },
 ): Promise<void> {
   await page.goto("/pos/catalog");
-  await page.getByRole("button", { name: "Add Item" }).click();
-  const dialog = page.getByRole("dialog", { name: /New Catalog Item/i });
+  await page.getByRole("button", { name: "Add product or service" }).click();
+  const dialog = page.getByRole("dialog", { name: /New product or service/i });
   await expect(dialog).toBeVisible();
 
-  await dialog.getByLabel(/^Name/).fill(name);
+  await dialog.getByLabel(/product or service name/i).fill(name);
   await dialog.getByLabel(/^Unit Price/).fill(unitPrice);
   // Currency defaults to COP; type drives whether stock renders.
   if (type === "service") {
@@ -224,9 +226,19 @@ async function createCatalogItemInUI(
   } else {
     await dialog.getByLabel(/^Stock/).fill(stock ?? "0");
   }
-  await dialog.getByRole("button", { name: /^Add Item$/ }).click();
+  await dialog.getByRole("button", { name: /^Add to catalog$/ }).click();
 
   await expect(dialog).toBeHidden();
+}
+
+/**
+ * C12-3c: add a catalog item to the sale cart via the single search combobox
+ * (the per-row `#item-0` <Select> of the pre-C12-3 form no longer exists).
+ * Selecting an option adds the item at qty 1 with its unit price prefilled.
+ */
+async function addSaleItemViaSearch(page: Page, dialog: Locator, itemName: string): Promise<void> {
+  await dialog.locator("#item-search").fill(itemName);
+  await dialog.getByRole("option", { name: new RegExp(itemName) }).click();
 }
 
 /** Dashboard value <p> following the given summary label <p>. */
@@ -405,9 +417,10 @@ test.describe("Slice 3 — Credits + POS", () => {
     await dialog.getByLabel(/^Account/).selectOption({ label: "Efectivo" });
     await dialog.getByLabel(/^Client/).selectOption({ label: "General Client" });
     await dialog.getByLabel(/^Date/).fill(todayInputValue());
-    // Line items have no accessible label (raw <label> without htmlFor) — ids.
-    await dialog.locator("#item-0").selectOption({ label: "Widget Test (Product)" });
-    await expect(dialog.locator("#price-0")).toHaveValue("10000");
+    // C12-3c: items are added via the search combobox; qty/price ids remain.
+    await addSaleItemViaSearch(page, dialog, "Widget Test");
+    // The price input renders formatted (thousands separator) when unfocused.
+    await expect(dialog.locator("#price-0")).toHaveValue(/^10,000$/);
     await dialog.locator("#qty-0").fill("2");
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+20,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
@@ -462,7 +475,7 @@ test.describe("Slice 3 — Credits + POS", () => {
     // Total 10,000, initial payment 4,000 → pending 6,000.
     await dialog.getByLabel(/^Initial payment/).fill("4000");
     await dialog.getByLabel(/^Date/).fill(todayInputValue());
-    await dialog.locator("#item-0").selectOption({ label: "Servicio Test (Service)" });
+    await addSaleItemViaSearch(page, dialog, "Servicio Test");
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+10,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     await expect(dialog).toBeHidden();

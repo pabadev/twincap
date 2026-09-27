@@ -156,13 +156,14 @@ async function createCatalogItemInUI(
   { name, unitPrice, stock }: { name: string; unitPrice: string; stock: string },
 ): Promise<void> {
   await page.goto("/pos/catalog");
-  await page.getByRole("button", { name: "Add Item" }).click();
-  const dialog = page.getByRole("dialog", { name: /New Catalog Item/i });
+  // C12-4 renamed the catalog UI to products & services terminology.
+  await page.getByRole("button", { name: "Add product or service" }).click();
+  const dialog = page.getByRole("dialog", { name: /New product or service/i });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel(/^Name/).fill(name);
+  await dialog.getByLabel(/product or service name/i).fill(name);
   await dialog.getByLabel(/^Unit Price/).fill(unitPrice);
   await dialog.getByLabel(/^Stock/).fill(stock);
-  await dialog.getByRole("button", { name: /^Add Item$/ }).click();
+  await dialog.getByRole("button", { name: /^Add to catalog$/ }).click();
   await expect(dialog).toBeHidden();
 }
 
@@ -178,7 +179,11 @@ async function createPosSaleInUI(
   await dialog.getByLabel(/^Account/).selectOption({ label: "Efectivo" });
   await dialog.getByLabel(/^Client/).selectOption({ label: "General Client" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
-  await dialog.locator("#item-0").selectOption({ label: itemLabel });
+  // C12-3c: the per-row `#item-0` <Select> became a search combobox; the
+  // option label carries the type suffix, e.g. "Widget Test (Product)".
+  const itemName = itemLabel.replace(/\s*\((Product|Service)\)$/, "");
+  await dialog.locator("#item-search").fill(itemName);
+  await dialog.getByRole("option", { name: new RegExp(itemName) }).click();
   await dialog.locator("#qty-0").fill(qty);
   await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
   await expect(dialog).toBeHidden();
