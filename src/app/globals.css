@@ -29,13 +29,21 @@
      with Tailwind's generated --color-* theme namespace) */
   --tc-primary: oklch(0.488 0.243 264.376);
   --tc-primary-hover: oklch(0.432 0.232 264.376);
-  --tc-success: oklch(0.596 0.145 163.225);
+  /* AA light-theme text tokens: each must hold >= 4.5:1 against the pastel
+     surfaces (#f0f3f5 bg / #e8ecf0 card). Values verified with axe-core
+     (C12-9/C12-10 audit sweep); the dark-theme block keeps its brighter set. */
+  --tc-success: #047857;
   --tc-danger: oklch(0.577 0.245 27.325);
   --tc-warning: oklch(0.769 0.188 70.08);
-  --tc-info: oklch(0.646 0.222 244.38);
-  --tc-debt: oklch(0.705 0.213 47.604);
+  --tc-info: #1d4ed8;
+  --tc-debt: #9a3412;
   --tc-income: #05523b;
   --tc-expense: #b91c1c;
+  /* Text-only primary for dark mode: the same --tc-primary cannot serve both
+     as a button BACKGROUND (needs to be dark enough for white text) and as
+     LINK text on a dark surface (needs to be light enough for 4.5:1). Light
+     aliases primary; dark brightens to #60a5fa (7.2:1 on #18181b). */
+  --tc-primary-soft: oklch(0.488 0.243 264.376);
 
   /* Brand wordmark colors (sampled from isotipo_twincap_ok.png) */
   --tc-brand-teal: #028a95;
@@ -59,6 +67,7 @@
      (bg-success, text-danger, border-info, ring-primary, bg-danger/10…) */
   --color-primary: var(--tc-primary);
   --color-primary-hover: var(--tc-primary-hover);
+  --color-primary-soft: var(--tc-primary-soft);
   --color-success: var(--tc-success);
   --color-danger: var(--tc-danger);
   --color-warning: var(--tc-warning);
@@ -90,6 +99,7 @@
 
   --tc-primary: oklch(0.55 0.235 254.624);
   --tc-primary-hover: #0055d1;
+  --tc-primary-soft: #60a5fa;
   --tc-success: oklch(0.696 0.17 162.48);
   --tc-danger: oklch(0.677 0.245 27.325);
   --tc-warning: oklch(0.829 0.188 70.08);
