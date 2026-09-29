@@ -148,7 +148,7 @@ function makeClient(
     id: CLI_A,
     workspaceId: WORKSPACE_A,
     name: "Client A",
-    phone: "",
+    phone: "+573001234567",
     email: "",
     note: "",
     createdAt: new Date(),
@@ -234,6 +234,8 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findExistingIds: vi.fn().mockResolvedValue([]),
+    hasInventoryReceiptReference: vi.fn().mockResolvedValue(false),
     create: vi.fn().mockImplementation(async (a: unknown) => a),
     update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -282,6 +284,7 @@ function fakeCreditGrantedRepo(
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -327,6 +330,7 @@ function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findByClientIdPage: vi.fn().mockResolvedValue({ sales: [], total: 0 }),
     create: vi.fn().mockImplementation(async (s: unknown) => s),
     update: vi.fn().mockImplementation(async (s: unknown) => s),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -342,6 +346,7 @@ function fakeClientRepo(overrides: Partial<ClientRepository> = {}): ClientReposi
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByName: vi.fn().mockResolvedValue(null),
+    findByPhone: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: unknown) => c),
     update: vi.fn().mockImplementation(async (c: unknown) => c),
     delete: vi.fn().mockResolvedValue(undefined),

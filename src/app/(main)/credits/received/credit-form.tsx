@@ -6,7 +6,7 @@ import { useT, useLocale } from "../../../../i18n/client";
 import { createCreditReceivedAction } from "./actions";
 import { IdempotencyField } from "../../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../../core/domain/account";
-import { CURRENCIES, DEFAULT_CURRENCY } from "../../../../core/domain/currency";
+import { CURRENCIES } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
 import { Select } from "../../../../components/ui/select";
@@ -18,12 +18,9 @@ import { formatAmount } from "../../../../lib/format";
 
 export function CreditForm({
   accounts,
-  defaultCurrency,
   onSuccess,
 }: {
   accounts: SerializedAccount[];
-  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
-  defaultCurrency?: string;
   onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(createCreditReceivedAction, null);
@@ -36,9 +33,7 @@ export function CreditForm({
   const router = useRouter();
   const successShownRef = useRef(false);
 
-  const [currency, setCurrency] = useState<Currency>(
-    accounts[0]?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY,
-  );
+  const [currency, setCurrency] = useState<Currency | "">("");
   const [installments, setInstallments] = useState<number>(0);
   const [installmentValue, setInstallmentValue] = useState<number>(0);
 
@@ -91,6 +86,7 @@ export function CreditForm({
           required
           disabled={isPending}
           value={currency}
+          placeholder={tCommon("select")}
           onChange={(e) => setCurrency(e.target.value as typeof currency)}
           options={CURRENCIES.map((c) => ({ value: c, label: c }))}
         />

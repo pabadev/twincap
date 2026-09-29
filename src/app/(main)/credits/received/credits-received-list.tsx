@@ -26,12 +26,9 @@ import { ChevronDown, CreditCard, Pencil, SlidersHorizontal } from "lucide-react
 export function CreditsReceivedList({
   accounts,
   credits,
-  defaultCurrency,
 }: {
   accounts: SerializedAccount[];
   credits: SerializedCreditReceived[];
-  /** User's preferred currency for new operations. */
-  defaultCurrency?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -69,11 +66,7 @@ export function CreditsReceivedList({
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newCredit")}>
-        <CreditForm
-          accounts={accounts}
-          defaultCurrency={defaultCurrency}
-          onSuccess={() => setShowForm(false)}
-        />
+        <CreditForm accounts={accounts} onSuccess={() => setShowForm(false)} />
       </Modal>
 
       <Modal open={!!editingCredit} onClose={() => setEditingCredit(null)} title={t("editCredit")}>

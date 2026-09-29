@@ -28,7 +28,6 @@ export default async function CreditsReceivedPage() {
     <CreditsReceivedList
       accounts={serializeEntities(accounts)}
       credits={serializeEntities(credits)}
-      defaultCurrency={user.defaultCurrency}
     />
   );
 }

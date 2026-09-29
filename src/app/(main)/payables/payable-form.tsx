@@ -6,7 +6,7 @@ import { useT } from "../../../i18n/client";
 import { createPayableAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../core/domain/account";
-import { CURRENCIES, DEFAULT_CURRENCY } from "../../../core/domain/currency";
+import { CURRENCIES } from "../../../core/domain/currency";
 import type { Currency } from "../../../core/domain/currency";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
@@ -17,12 +17,9 @@ import { toDateInputValue } from "../../../lib/date";
 
 export function PayableForm({
   accounts,
-  defaultCurrency,
   onSuccess,
 }: {
   accounts: SerializedAccount[];
-  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
-  defaultCurrency?: string;
   onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(createPayableAction, null);
@@ -34,9 +31,7 @@ export function PayableForm({
   const router = useRouter();
   const successShownRef = useRef(false);
 
-  const [currency, setCurrency] = useState<Currency>(
-    accounts[0]?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY,
-  );
+  const [currency, setCurrency] = useState<Currency | "">("");
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -84,6 +79,7 @@ export function PayableForm({
           required
           disabled={isPending}
           value={currency}
+          placeholder={tCommon("select")}
           onChange={(e) => setCurrency(e.target.value as typeof currency)}
           options={CURRENCIES.map((c) => ({ value: c, label: c }))}
         />

@@ -20,6 +20,7 @@ export function CategoryForm({
 }) {
   const [state, formAction, isPending] = useActionState(createCategoryAction, null);
   const t = useT("Categories");
+  const tCommon = useT("Common");
   const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
@@ -58,6 +59,7 @@ export function CategoryForm({
         label={t("type")}
         required
         disabled={isPending}
+        placeholder={tCommon("select")}
         options={CATEGORY_TYPES.map((ct) => ({
           value: ct,
           label: ct === "income" ? t("income") : t("expense"),

@@ -4,13 +4,11 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { MovementForm } from "./movement-form";
-import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import type { SerializedAccount } from "../../../core/domain/account";
 import type { SerializedCategory } from "../../../core/domain/category";
 
-// Ronda POST-UX §14/§42: the user's defaultCurrency must open the new-movement
-// form with the right currency preselected. USD and BRL are both supported
-// (BRL for PT-BR readiness); an absent preference falls back to DEFAULT_CURRENCY.
+// Movement currency is determined by the selected account, never selected
+// independently by the user.
 
 vi.mock("../../../i18n/client", () => ({
   useT: () => (key: string) => key,
@@ -76,42 +74,55 @@ const categories: SerializedCategory[] = [
   } as unknown as SerializedCategory,
 ];
 
-function mountedForm(defaultCurrency?: string) {
+function mountedForm(defaultAccountId?: string) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   act(() => {
     root.render(
       <MovementForm
-        accounts={[account()]}
+        accounts={[account(), account({ id: "acc-2", name: "Dólares", currency: "USD" })]}
         categories={categories}
-        defaultCurrency={defaultCurrency}
+        defaultAccountId={defaultAccountId}
       />,
     );
   });
   return { container, unmount: () => root.unmount() };
 }
 
-function currencySelect(container: HTMLElement): HTMLSelectElement | null {
-  return container.querySelector('select[name="currency"]');
+function currencyInput(container: HTMLElement): HTMLInputElement | null {
+  return container.querySelector('input[name="currency"]');
 }
 
-describe("MovementForm §14 defaultCurrency", () => {
-  it("opens with USD when the user default is USD", () => {
-    const { container } = mountedForm("USD");
-    expect(currencySelect(container)?.value).toBe("USD");
-    container.remove();
+describe("MovementForm account currency", () => {
+  it("derives currency from the selected account and has no currency selector", () => {
+    const { container, unmount } = mountedForm();
+    expect(container.querySelector('select[name="currency"]')).toBeNull();
+    // Neutral account select (founder rule): the hidden currency starts empty
+    // until the user picks an account.
+    expect(currencyInput(container)?.value).toBe("");
+    const accountSelect = container.querySelector<HTMLSelectElement>('select[name="accountId"]');
+    expect(accountSelect).not.toBeNull();
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+      setter.call(accountSelect!, "acc-1");
+      accountSelect!.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(currencyInput(container)?.value).toBe("COP");
+    expect(container.textContent).toContain("amount (COP)");
+    unmount();
   });
 
-  it("opens with BRL when the user default is BRL", () => {
-    const { container } = mountedForm("BRL");
-    expect(currencySelect(container)?.value).toBe("BRL");
-    container.remove();
-  });
-
-  it("falls back to DEFAULT_CURRENCY (COP) when no preference exists", () => {
-    const { container } = mountedForm(undefined);
-    expect(currencySelect(container)?.value).toBe(DEFAULT_CURRENCY);
-    container.remove();
+  it("updates the currency when the account changes", () => {
+    const { container, unmount } = mountedForm();
+    const accountSelect = container.querySelector<HTMLSelectElement>('select[name="accountId"]');
+    expect(accountSelect).not.toBeNull();
+    act(() => {
+      accountSelect!.value = "acc-2";
+      accountSelect!.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(currencyInput(container)?.value).toBe("USD");
+    expect(container.textContent).toContain("amount (USD)");
+    unmount();
   });
 });

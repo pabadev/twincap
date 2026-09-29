@@ -193,4 +193,38 @@ describe("DashboardContent account balance overflow (§21)", () => {
     expect(suffixSpan).not.toBeNull();
     expect(suffixSpan!.textContent).toBe("COP");
   });
+
+  it("overlays the fixed badge in the account card header without adding an action row", async () => {
+    const fixedAccountSnapshot = {
+      ...mockSnapshot,
+      accountBalances: [
+        {
+          id: "fixed-1",
+          name: "Caja",
+          currency: "COP",
+          isFixed: true,
+          balance: 100000,
+        },
+      ],
+    };
+    const { getDashboardSnapshotAction } = await import("../../app/(main)/dashboard/actions");
+    vi.mocked(getDashboardSnapshotAction).mockResolvedValue(fixedAccountSnapshot);
+
+    const { container } = mount(
+      <DashboardContent {...baseProps} initialSnapshot={fixedAccountSnapshot} />,
+    );
+    const title = Array.from(container.querySelectorAll("h3")).find((node) =>
+      node.textContent?.includes("Caja"),
+    );
+    const card = title?.closest(".rounded-lg");
+    const fixedBadge = Array.from(card?.querySelectorAll("span") ?? []).find((node) =>
+      node.textContent?.includes("fixed"),
+    );
+
+    expect(fixedBadge?.className).toContain("absolute");
+    expect(fixedBadge?.className).toContain("right-3");
+    expect(fixedBadge?.className).toContain("top-3");
+    expect(card?.querySelector("button")).toBeNull();
+    expect(card?.textContent).toContain("COP");
+  });
 });

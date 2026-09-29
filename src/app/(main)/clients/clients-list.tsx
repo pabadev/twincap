@@ -7,9 +7,12 @@ import { ClientForm } from "./client-form";
 import { Icon } from "../../../components/ui/icon";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Modal } from "../../../components/ui/modal";
+import { Button } from "../../../components/ui/button";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
 import { MovementCard } from "../../../components/ui/movement-card";
-import { Search, Pencil } from "lucide-react";
+import { Search, Pencil, ExternalLink } from "lucide-react";
+import { isCanonicalPhoneE164 } from "../../../core/domain/client-phone";
+import Link from "next/link";
 
 export interface SerializedClient {
   id: string;
@@ -43,6 +46,7 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         client.phone?.toLowerCase().includes(query),
     );
   }, [clients, debouncedQuery]);
+  const clientsNeedingPhoneUpdate = clients.filter((client) => !isCanonicalPhoneE164(client.phone));
 
   return (
     <>
@@ -87,6 +91,22 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
         <EmptyState icon={<Icon icon={Search} size="xl" />} title={t("noResults")} />
       )}
 
+      {clientsNeedingPhoneUpdate.length > 0 && (
+        <div
+          role="status"
+          className="mb-4 flex flex-col gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p>{t("legacyPhoneWarning", { count: String(clientsNeedingPhoneUpdate.length) })}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setEditingClient(clientsNeedingPhoneUpdate[0])}
+          >
+            {t("completePhone")}
+          </Button>
+        </div>
+      )}
+
       {/* Cards are the only representation (product decision 2026-09-21).
           Beta round 3: non-chronological card sets arrange in two columns on
           PC/laptop. */}
@@ -102,12 +122,27 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
                 value: client.name,
                 primary: true,
               },
-              { key: "phone", label: t("phone"), value: client.phone || "—" },
+              {
+                key: "phone",
+                label: t("phone"),
+                value: isCanonicalPhoneE164(client.phone) ? client.phone : t("phoneMissing"),
+                className: isCanonicalPhoneE164(client.phone)
+                  ? undefined
+                  : "text-amber-700 dark:text-amber-300",
+              },
               { key: "email", label: t("email"), value: client.email || "—" },
               { key: "note", label: t("note"), value: client.note || "—" },
             ]}
             actions={
               <div className="flex items-center gap-1">
+                <Link
+                  href={`/clients/${encodeURIComponent(client.id)}`}
+                  aria-label={t("viewClientActivity")}
+                  title={t("viewClientActivity")}
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Icon icon={ExternalLink} size="sm" />
+                </Link>
                 <ActionIconButton
                   icon={Pencil}
                   label={tCommon("edit")}

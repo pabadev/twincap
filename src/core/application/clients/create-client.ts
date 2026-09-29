@@ -2,6 +2,7 @@ import { Client } from "../../domain/client";
 import type { ClientRepository } from "../../domain/repositories";
 import type { IdGenerator } from "../ports";
 import { ConflictError } from "../../domain/errors";
+import { normalizePhoneE164 } from "../../domain/client-phone";
 
 export interface CreateClientInput {
   name: string;
@@ -16,16 +17,17 @@ export async function createClient(
   clientRepo: ClientRepository,
   ids: IdGenerator,
 ): Promise<Client> {
-  const existing = await clientRepo.findByName(workspaceId, input.name);
+  const phone = normalizePhoneE164(input.phone ?? "");
+  const existing = await clientRepo.findByPhone(workspaceId, phone);
   if (existing) {
-    throw new ConflictError("A client with this name already exists");
+    throw new ConflictError("Client phone already registered in workspace");
   }
 
   const client = new Client({
     id: ids.generate(),
     workspaceId,
     name: input.name.trim(),
-    phone: input.phone?.trim() ?? "",
+    phone,
     email: input.email?.trim() ?? "",
     note: input.note?.trim() ?? "",
     createdAt: new Date(),

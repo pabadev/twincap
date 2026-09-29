@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { createClientAction, updateClientAction } from './actions';
-import type { SerializedClient } from '../../../core/domain/client';
-import { Input } from '../../../components/ui/input';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { useActionError } from '../../../lib/use-action-error';
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useT } from "../../../i18n/client";
+import { createClientAction, updateClientAction } from "./actions";
+import type { SerializedClient } from "../../../core/domain/client";
+import { Input } from "../../../components/ui/input";
+import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { useActionError } from "../../../lib/use-action-error";
 
 /** Editable subset of a client — enough to prefill and submit the edit form. */
 export interface ClientFormData {
@@ -33,9 +33,9 @@ export function ClientForm({
     isEdit ? updateClientAction : createClientAction,
     null,
   );
-  const t = useT('Clients');
-  const tCommon = useT('Common');
-  const tToast = useT('Toast');
+  const t = useT("Clients");
+  const tCommon = useT("Common");
+  const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
@@ -44,7 +44,7 @@ export function ClientForm({
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       router.refresh();
       onSuccess?.(state.client);
     }
@@ -52,7 +52,7 @@ export function ClientForm({
 
   useEffect(() => {
     if (state?.error) {
-      addToast(translateError(state.error), 'error');
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
@@ -64,7 +64,7 @@ export function ClientForm({
         id="name"
         name="name"
         type="text"
-        label={t('name')}
+        label={t("name")}
         required
         defaultValue={client?.name}
         disabled={isPending}
@@ -74,16 +74,20 @@ export function ClientForm({
         id="phone"
         name="phone"
         type="tel"
-        label={t('phone')}
+        label={t("phone")}
+        required
+        placeholder={t("phonePlaceholder")}
+        autoComplete="tel"
         defaultValue={client?.phone}
         disabled={isPending}
       />
+      <p className="-mt-3 text-xs text-zinc-600 dark:text-zinc-400">{t("phoneFormatHint")}</p>
 
       <Input
         id="email"
         name="email"
         type="email"
-        label={t('email')}
+        label={t("email")}
         defaultValue={client?.email}
         disabled={isPending}
       />
@@ -92,7 +96,7 @@ export function ClientForm({
         id="note"
         name="note"
         type="text"
-        label={t('note')}
+        label={t("note")}
         defaultValue={client?.note}
         disabled={isPending}
       />
@@ -107,11 +111,11 @@ export function ClientForm({
         >
           {isPending
             ? isEdit
-              ? t('updating')
-              : t('adding')
+              ? t("updating")
+              : t("adding")
             : isEdit
-              ? t('updateClient')
-              : t('newClient')}
+              ? t("updateClient")
+              : t("newClient")}
         </Button>
         {isEdit && (
           <Button
@@ -120,7 +124,7 @@ export function ClientForm({
             disabled={isPending}
             onClick={() => onSuccess?.()}
           >
-            {tCommon('cancel')}
+            {tCommon("cancel")}
           </Button>
         )}
       </div>

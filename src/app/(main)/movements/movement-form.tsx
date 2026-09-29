@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../i18n/client";
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from "../../../core/domain/movement";
 import type { MovementType } from "../../../core/domain/movement";
-import { CURRENCIES } from "../../../core/domain/currency";
 import { createMovementAction, listAccountBalancesAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import type { SerializedCategory } from "../../../core/domain/category";
@@ -45,7 +44,6 @@ export function MovementForm({
   categories,
   defaultAccountId,
   defaultType,
-  defaultCurrency,
   onSuccess,
 }: {
   accounts: SerializedAccount[];
@@ -54,12 +52,18 @@ export function MovementForm({
   defaultAccountId?: string;
   /** Preset movement type (income | expense), e.g. from the quick-action FAB. */
   defaultType?: MovementType;
-  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
+  /** @deprecated Currency now always comes from the selected account. */
   defaultCurrency?: string;
   onSuccess?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(createMovementAction, null);
-  const [selectedType, setSelectedType] = useState<MovementType>(defaultType ?? "income");
+  // Neutral default (founder rule): forms open with "Seleccionar" unless a
+  // real context preset exists (FAB opened from a filtered table/dashboard).
+  const [selectedType, setSelectedType] = useState<MovementType | "">(defaultType ?? "");
+  const [selectedAccountId, setSelectedAccountId] = useState(() =>
+    resolveDefaultAccountId(defaultAccountId, accounts),
+  );
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId);
   // §15: inline category creation — local additions merge with the prop list so
   // the new category is immediately available in the select without a refresh.
   const [extraCategories, setExtraCategories] = useState<SerializedCategory[]>([]);
@@ -119,7 +123,9 @@ export function MovementForm({
   /** Detail rows rendered by the F5 dialog, computed at submit time. */
   const [confirmRows, setConfirmRows] = useState<ConfirmationDetailRow[]>([]);
 
-  const filteredCategories = filterCategoriesByType(allCategories, selectedType);
+  const filteredCategories = selectedType
+    ? filterCategoriesByType(allCategories, selectedType)
+    : allCategories;
 
   // F5 (UX-6 G2): conditional informed confirmation. The gate is computed NOW
   // from the current DOM values; `shouldShowF5` returns true ONLY for an
@@ -175,6 +181,9 @@ export function MovementForm({
       <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-5">
         <IdempotencyField />
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
+        {/* Currency is determined by the selected account. The application
+            use case still verifies this value against the persisted account. */}
+        <input type="hidden" name="currency" value={selectedAccount?.currency ?? ""} />
         <FieldGroup title={t("groupSelection")}>
           <Select
             id="account"
@@ -182,7 +191,8 @@ export function MovementForm({
             label={t("account")}
             required
             disabled={isPending}
-            defaultValue={resolveDefaultAccountId(defaultAccountId, accounts)}
+            value={selectedAccountId}
+            onChange={(event) => setSelectedAccountId(event.target.value)}
             placeholder={t("selectAccount")}
             options={accounts.map((a) => ({
               value: a.id,
@@ -197,6 +207,7 @@ export function MovementForm({
             required
             disabled={isPending}
             value={selectedType}
+            placeholder={tCommon("select")}
             onChange={(e) => {
               const newType = e.target.value as MovementType;
               setSelectedType(newType);
@@ -262,20 +273,10 @@ export function MovementForm({
             id="amount"
             name="amount"
             type="number"
-            label={t("amount")}
+            label={selectedAccount ? `${t("amount")} (${selectedAccount.currency})` : t("amount")}
             min="1"
             required
             disabled={isPending}
-          />
-
-          <Select
-            id="currency"
-            name="currency"
-            label={t("currency")}
-            required
-            disabled={isPending}
-            defaultValue={defaultCurrency}
-            options={CURRENCIES.map((c) => ({ value: c, label: c }))}
           />
 
           <Select
@@ -283,7 +284,7 @@ export function MovementForm({
             name="context"
             label={t("context")}
             disabled={isPending}
-            defaultValue="Personal"
+            placeholder={tCommon("select")}
             options={MOVEMENT_CONTEXTS.map((c) => ({
               value: c,
               label: c === "Personal" ? t("personal") : t("business"),

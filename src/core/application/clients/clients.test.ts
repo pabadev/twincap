@@ -14,12 +14,13 @@ const DATE = new Date("2026-01-01T00:00:00Z");
 /** R14-B: transparent unit of work that just runs the callback (no real tx). */
 function fakeUow(): UnitOfWork {
   return {
-    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) =>
-      fn({} as TransactionHandle),
+    withTransaction: <T>(fn: (tx: TransactionHandle) => Promise<T>) => fn({} as TransactionHandle),
   };
 }
 
-function makeClient(overrides: Partial<{ id: string; name: string; phone: string; email: string; note: string }> = {}): Client {
+function makeClient(
+  overrides: Partial<{ id: string; name: string; phone: string; email: string; note: string }> = {},
+): Client {
   return new Client({
     id: overrides.id ?? "c1",
     workspaceId: "u1",
@@ -36,6 +37,7 @@ function makeRepo(overrides: Partial<ClientRepository> = {}): ClientRepository {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findByName: vi.fn().mockResolvedValue(null),
+    findByPhone: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
     update: vi.fn().mockImplementation((c: Client) => Promise.resolve(c)),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -52,32 +54,35 @@ describe("createClient", () => {
   it("creates a client with valid input", async () => {
     const repo = makeRepo();
     const ids = makeIdGen();
-    const client = await createClient("u1", { name: "Juan" }, repo, ids);
+    const client = await createClient("u1", { name: "Juan", phone: "+57 300 123 4567" }, repo, ids);
 
     expect(client.name).toBe("Juan");
     expect(client.workspaceId).toBe("u1");
-    expect(repo.findByName).toHaveBeenCalledWith("u1", "Juan");
+    expect(repo.findByPhone).toHaveBeenCalledWith("u1", "+573001234567");
     expect(repo.create).toHaveBeenCalledWith(client);
   });
 
-  it("trims name after uniqueness check (trim happens in constructor)", async () => {
+  it("normalizes the phone and trims the name before persistence", async () => {
     const repo = makeRepo();
     const ids = makeIdGen();
-    const client = await createClient("u1", { name: "  Juan  " }, repo, ids);
+    const client = await createClient(
+      "u1",
+      { name: "  Juan  ", phone: "+57 300 123 4567" },
+      repo,
+      ids,
+    );
 
-    // findByName receives the raw input name
-    expect(repo.findByName).toHaveBeenCalledWith("u1", "  Juan  ");
-    // Client constructor trims it
+    expect(repo.findByPhone).toHaveBeenCalledWith("u1", "+573001234567");
     expect(client.name).toBe("Juan");
   });
 
-  it("throws ConflictError if name already exists", async () => {
+  it("throws ConflictError if phone already exists in the workspace", async () => {
     const existing = makeClient({ name: "Juan" });
-    const repo = makeRepo({ findByName: vi.fn().mockResolvedValue(existing) });
+    const repo = makeRepo({ findByPhone: vi.fn().mockResolvedValue(existing) });
     const ids = makeIdGen();
 
     await expect(
-      createClient("u1", { name: "Juan" }, repo, ids),
+      createClient("u1", { name: "Juan", phone: "+57 300 123 4567" }, repo, ids),
     ).rejects.toThrow(ConflictError);
   });
 
@@ -86,14 +91,22 @@ describe("createClient", () => {
     const ids = makeIdGen();
     const client = await createClient(
       "u1",
-      { name: "María", phone: "123", email: "m@x.com", note: "VIP" },
+      { name: "María", phone: "+57 300 123 4567", email: "m@x.com", note: "VIP" },
       repo,
       ids,
     );
 
-    expect(client.phone).toBe("123");
+    expect(client.phone).toBe("+573001234567");
     expect(client.email).toBe("m@x.com");
     expect(client.note).toBe("VIP");
+  });
+
+  it("requires a valid international phone number", async () => {
+    const repo = makeRepo();
+    await expect(createClient("u1", { name: "María" }, repo, makeIdGen())).rejects.toThrow(
+      "Client phone must use international E.164 format",
+    );
+    expect(repo.create).not.toHaveBeenCalled();
   });
 });
 
@@ -126,11 +139,19 @@ describe("updateClient", () => {
     expect(repo.update).toHaveBeenCalled();
   });
 
+  it("normalizes and checks phone uniqueness in the workspace on update", async () => {
+    const client = makeClient();
+    const repo = makeRepo({ findById: vi.fn().mockResolvedValue(client) });
+    const updated = await updateClient("u1", "c1", { phone: "+57 (300) 123-4567" }, repo);
+    expect(updated.phone).toBe("+573001234567");
+    expect(repo.findByPhone).toHaveBeenCalledWith("u1", "+573001234567", "c1");
+  });
+
   it("throws if client not found", async () => {
     const repo = makeRepo();
-    await expect(
-      updateClient("u1", "c1", { name: "X" }, repo),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(updateClient("u1", "c1", { name: "X" }, repo)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it("trims updated fields", async () => {
@@ -144,17 +165,20 @@ describe("updateClient", () => {
 
 describe("deleteClient", () => {
   /** SaleRepository fake stubbed to the workspace sales list (R15.2 D2). */
-  function makeSaleRepo(sales: Array<{ clientId?: string; deletedAt?: Date }> = []): SaleRepository {
-    return { findByWorkspaceId: vi.fn().mockResolvedValue(sales) } as unknown as SaleRepository;
+  function makeSaleRepo(
+    sales: Array<{ clientId?: string; deletedAt?: Date }> = [],
+  ): SaleRepository {
+    return {
+      findByWorkspaceId: vi.fn().mockResolvedValue(sales),
+      findByClientIdPage: vi.fn().mockResolvedValue({ sales: [], total: 0 }),
+    } as unknown as SaleRepository;
   }
 
   it("deletes existing client with no active sales", async () => {
     const client = makeClient();
     const repo = makeRepo({ findById: vi.fn().mockResolvedValue(client) });
     // A soft-deleted sale for this client does NOT block deletion (D2).
-    const saleRepo = makeSaleRepo([
-      { clientId: "c1", deletedAt: new Date("2026-02-01") },
-    ]);
+    const saleRepo = makeSaleRepo([{ clientId: "c1", deletedAt: new Date("2026-02-01") }]);
 
     await deleteClient("u1", "c1", repo, saleRepo, fakeUow());
 

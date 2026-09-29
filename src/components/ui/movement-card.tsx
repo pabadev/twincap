@@ -13,6 +13,7 @@ export interface CardField {
 interface MovementCardProps {
   id: string;
   fields: CardField[];
+  children?: ReactNode;
   /** Row actions (edit/delete buttons) rendered in the card footer. */
   actions?: ReactNode;
   /** Additional wrapper classes (e.g. "sm:hidden" for the mobile variant). */
@@ -29,7 +30,7 @@ interface MovementCardProps {
  * expense color. The surface follows the credits-received-list card pattern
  * (rounded-lg border border-surface-border bg-surface-card px-4 py-3).
  */
-export function MovementCard({ id, fields, actions, className = "" }: MovementCardProps) {
+export function MovementCard({ id, fields, children, actions, className = "" }: MovementCardProps) {
   return (
     <div
       data-id={id}
@@ -52,6 +53,7 @@ export function MovementCard({ id, fields, actions, className = "" }: MovementCa
           );
         })}
       </dl>
+      {children}
       {actions && (
         <div className="mt-auto flex items-center gap-1 border-t border-zinc-100 pt-1 dark:border-zinc-800">
           {actions}

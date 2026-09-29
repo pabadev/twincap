@@ -156,6 +156,7 @@ function fakeCreditGrantedRepo(
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -171,6 +172,7 @@ function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository {
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findByClientIdPage: vi.fn().mockResolvedValue({ sales: [], total: 0 }),
     create: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),

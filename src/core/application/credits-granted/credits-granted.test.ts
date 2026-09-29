@@ -129,6 +129,7 @@ function fakeCreditRepo(
     writtenOff,
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
       created.push(credit);
       return credit;

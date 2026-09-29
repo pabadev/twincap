@@ -9,6 +9,7 @@ import { formatAmount, formatDate } from "../../../../lib/format";
 import { Modal } from "../../../../components/ui/modal";
 import { Alert } from "../../../../components/ui/alert";
 import { Table } from "../../../../components/ui/table";
+import { quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
 
 interface SaleDetailModalProps {
   saleId: string | null;
@@ -23,6 +24,7 @@ interface DetailState {
 
 export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
   const t = useT("Sales");
+  const tCatalog = useT("Catalog");
   const tCommon = useT("Common");
   const tError = useT("error");
   const locale = useLocale();
@@ -143,8 +145,37 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
                   {snapshot.items.map((item, idx) => (
                     <tr key={idx} className="text-zinc-600 dark:text-zinc-400">
-                      <td className="py-1.5">{item.itemName ?? t("itemDeleted")}</td>
-                      <td className="py-1.5 text-right">{item.quantity}</td>
+                      <td className="py-1.5">
+                        {item.itemName ?? t("itemDeleted")}
+                        {item.formulaSnapshot && (
+                          <div className="mt-1 text-xs text-zinc-500">
+                            {t("formulaUsed", { version: String(item.formulaSnapshot.version) })}:{" "}
+                            {item.formulaSnapshot.components
+                              .map(
+                                (component) =>
+                                  `${component.name} ${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(quantityFromBaseUnits(component.stockQuantity, component.unit))} ${tCatalog(`unit_${component.unit}`)}`,
+                              )
+                              .join(", ")}
+                          </div>
+                        )}
+                        {item.comboSnapshot && (
+                          <div className="mt-1 text-xs text-zinc-500">
+                            {t("comboUsed", { version: String(item.comboSnapshot.version) })}:{" "}
+                            {item.comboSnapshot.components
+                              .map(
+                                (component) =>
+                                  `${component.name} ${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(quantityFromBaseUnits(component.stockQuantity, component.unit))} ${tCatalog(`unit_${component.unit}`)}`,
+                              )
+                              .join(", ")}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        {new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
+                          item.quantity,
+                        )}{" "}
+                        {tCatalog(`unit_${item.unit}`)}
+                      </td>
                       <td className="py-1.5 text-right">
                         {formatAmount(item.unitPrice.amount, item.unitPrice.currency, locale)}
                       </td>
@@ -169,8 +200,34 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                   <div className="font-medium text-zinc-900 dark:text-white">
                     {item.itemName ?? t("itemDeleted")}
                   </div>
+                  {item.formulaSnapshot && (
+                    <div className="mt-1 text-xs text-zinc-500">
+                      {t("formulaUsed", { version: String(item.formulaSnapshot.version) })}:{" "}
+                      {item.formulaSnapshot.components
+                        .map(
+                          (component) =>
+                            `${component.name} ${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(quantityFromBaseUnits(component.stockQuantity, component.unit))} ${tCatalog(`unit_${component.unit}`)}`,
+                        )
+                        .join(", ")}
+                    </div>
+                  )}
+                  {item.comboSnapshot && (
+                    <div className="mt-1 text-xs text-zinc-500">
+                      {t("comboUsed", { version: String(item.comboSnapshot.version) })}:{" "}
+                      {item.comboSnapshot.components
+                        .map(
+                          (component) =>
+                            `${component.name} ${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(quantityFromBaseUnits(component.stockQuantity, component.unit))} ${tCatalog(`unit_${component.unit}`)}`,
+                        )
+                        .join(", ")}
+                    </div>
+                  )}
                   <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                    {t("qty")}: {item.quantity} ×{" "}
+                    {t("qty")}:{" "}
+                    {new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
+                      item.quantity,
+                    )}{" "}
+                    {tCatalog(`unit_${item.unit}`)} ×{" "}
                     {formatAmount(item.unitPrice.amount, item.unitPrice.currency, locale)}
                   </div>
                   <div className="mt-1 text-right font-medium tabular-nums text-zinc-900 dark:text-white">

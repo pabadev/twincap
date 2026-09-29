@@ -10,6 +10,7 @@ import { RenameCategoryButton } from "./rename-category-button";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Icon } from "../../../components/ui/icon";
 import { Tags } from "lucide-react";
+import { categorySectionSurface } from "./category-section-style";
 
 export default async function CategoriesPage() {
   const user = await getCurrentUser();
@@ -42,11 +43,13 @@ export default async function CategoriesPage() {
           {/* §22: Ingresos/Gastos side by side on large screens, stacked on
               mobile (real responsive layout, not just scaled-down type). */}
           <CategorySection
+            type="income"
             title={t("income")}
             categories={incomeCategories}
             emptyMessage={t("noIncome")}
           />
           <CategorySection
+            type="expense"
             title={t("expense")}
             categories={expenseCategories}
             emptyMessage={t("noExpense")}
@@ -58,10 +61,12 @@ export default async function CategoriesPage() {
 }
 
 function CategorySection({
+  type,
   title,
   categories,
   emptyMessage,
 }: {
+  type: "income" | "expense";
   title: string;
   categories: { id: string; name: string }[];
   emptyMessage: string;
@@ -78,29 +83,31 @@ function CategorySection({
   return (
     <div>
       <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
-      <table aria-label={title} className="w-full border-collapse text-sm">
-        <tbody>
-          {categories.map((category) => (
-            <tr
-              key={category.id}
-              className="border-b border-surface-border last:border-b-0 dark:border-zinc-700"
-            >
-              <th
-                scope="row"
-                className="py-1.5 text-left font-medium text-zinc-800 dark:text-zinc-100"
+      <div className={`rounded-lg px-3 ${categorySectionSurface(type)}`}>
+        <table aria-label={title} className="w-full border-collapse text-sm">
+          <tbody>
+            {categories.map((category) => (
+              <tr
+                key={category.id}
+                className="border-b border-surface-border last:border-b-0 dark:border-zinc-700"
               >
-                {category.name}
-              </th>
-              <td className="py-1 pl-2">
-                <div className="flex items-center justify-end gap-1">
-                  <RenameCategoryButton categoryId={category.id} categoryName={category.name} />
-                  <DeleteCategoryButton categoryId={category.id} />
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <th
+                  scope="row"
+                  className="py-1.5 text-left font-medium text-zinc-800 dark:text-zinc-100"
+                >
+                  {category.name}
+                </th>
+                <td className="py-1 pl-2">
+                  <div className="flex items-center justify-end gap-1">
+                    <RenameCategoryButton categoryId={category.id} categoryName={category.name} />
+                    <DeleteCategoryButton categoryId={category.id} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

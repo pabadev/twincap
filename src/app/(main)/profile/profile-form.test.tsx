@@ -128,4 +128,14 @@ describe("ProfileForm defaultCurrency persistence (B1)", () => {
     // Server state re-synced so the rest of the app sees the saved currency.
     expect(refresh).toHaveBeenCalledTimes(1);
   });
+
+  it("reserves bottom space so the floating action does not cover the password button", () => {
+    const { container } = mount(
+      <ProfileForm name="Name" email="e@x.com" locale="es" translations={translations} />,
+    );
+    const passwordButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("changePassword"),
+    );
+    expect(passwordButton?.closest(".pb-24")).not.toBeNull();
+  });
 });

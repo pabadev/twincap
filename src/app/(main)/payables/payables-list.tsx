@@ -19,20 +19,20 @@ import { ActionIconButton } from "../../../components/ui/action-icon-button";
 import { Button } from "../../../components/ui/button";
 import { Select } from "../../../components/ui/select";
 import { Table } from "../../../components/ui/table";
+import Link from "next/link";
 import { ChevronDown, ReceiptText, Pencil, SlidersHorizontal } from "lucide-react";
 
 export function PayablesList({
   accounts,
   payables,
-  defaultCurrency,
+  highlightPayableId,
 }: {
   accounts: SerializedAccount[];
   payables: SerializedPayable[];
-  /** User's preferred currency for new operations. */
-  defaultCurrency?: string;
+  highlightPayableId?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(highlightPayableId ?? null);
   const [showAbonoFormId, setShowAbonoFormId] = useState<string | null>(null);
   const [editingAbonoId, setEditingAbonoId] = useState<string | null>(null);
   const [editingPayable, setEditingPayable] = useState<SerializedPayable | null>(null);
@@ -42,6 +42,7 @@ export function PayablesList({
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Payables");
+  const tCatalog = useT("Catalog");
   const tCommon = useT("Common");
   const locale = useLocale();
 
@@ -71,13 +72,17 @@ export function PayablesList({
           {t("addPayable")}
         </Button>
       </div>
+      {highlightPayableId && payables.some((payable) => payable.id === highlightPayableId) && (
+        <Link
+          href="/pos/catalog/receipts"
+          className="-mt-3 mb-5 inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline"
+        >
+          {tCatalog("receiptBackToHistory")}
+        </Link>
+      )}
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newPayable")}>
-        <PayableForm
-          accounts={accounts}
-          defaultCurrency={defaultCurrency}
-          onSuccess={() => setShowForm(false)}
-        />
+        <PayableForm accounts={accounts} onSuccess={() => setShowForm(false)} />
       </Modal>
 
       <Modal
@@ -275,7 +280,8 @@ export function PayablesList({
               return (
                 <div
                   key={payable.id}
-                  className="flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
+                  id={`payable-${payable.id}`}
+                  className={`flex h-full flex-col overflow-hidden rounded-lg border bg-surface-card dark:bg-zinc-900 ${highlightPayableId === payable.id ? "border-primary ring-2 ring-primary/30" : "border-surface-border dark:border-zinc-700"}`}
                 >
                   {/* Product decision 2026-09-21: cards everywhere — the
                       collapsed card follows the Movements card format

@@ -61,5 +61,6 @@ describe("economic-result contract (R9/D9.2)", () => {
     expect(countsTowardEconomicResult(mv("creditReceivedAbono"))).toBe(true);
     expect(countsTowardEconomicResult(mv("payableInitialPayment"))).toBe(true);
     expect(countsTowardEconomicResult(mv("payableAbono"))).toBe(true);
+    expect(countsTowardEconomicResult(mv("inventoryReceiptPayment", "Business"))).toBe(true);
   });
 });

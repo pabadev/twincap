@@ -8,11 +8,7 @@ import { sessionOf } from "../transactions/mongo-unit-of-work";
 import type { TransactionHandle } from "../../core/domain/transaction";
 
 export class MongoClientRepository implements ClientRepository {
-  async findById(
-    workspaceId: string,
-    id: string,
-    tx?: TransactionHandle,
-  ): Promise<Client | null> {
+  async findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Client | null> {
     const doc = await ClientModel.findOne(
       {
         _id: id,
@@ -28,14 +24,29 @@ export class MongoClientRepository implements ClientRepository {
   async findByWorkspaceId(workspaceId: string): Promise<Client[]> {
     const docs = await ClientModel.find({
       workspaceId: new Types.ObjectId(workspaceId),
-    }).sort({ name: 1 }).exec();
+    })
+      .sort({ name: 1 })
+      .exec();
     return docs.map((doc) => toClientEntity(doc as ClientDocument));
   }
 
   async findByName(workspaceId: string, name: string): Promise<Client | null> {
     const doc = await ClientModel.findOne({
       workspaceId: new Types.ObjectId(workspaceId),
-      name: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i"),
+      name: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+    }).exec();
+    return doc ? toClientEntity(doc as ClientDocument) : null;
+  }
+
+  async findByPhone(
+    workspaceId: string,
+    phone: string,
+    excludingId?: string,
+  ): Promise<Client | null> {
+    const doc = await ClientModel.findOne({
+      workspaceId: new Types.ObjectId(workspaceId),
+      phone,
+      ...(excludingId ? { _id: { $ne: excludingId } } : {}),
     }).exec();
     return doc ? toClientEntity(doc as ClientDocument) : null;
   }
@@ -47,9 +58,7 @@ export class MongoClientRepository implements ClientRepository {
       return toClientEntity(created as ClientDocument);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
-        throw new ConflictError(
-          `Client "${client.name}" already exists for user ${client.workspaceId}`,
-        );
+        throw new ConflictError("Client phone already registered in workspace");
       }
       throw err;
     }
@@ -57,27 +66,28 @@ export class MongoClientRepository implements ClientRepository {
 
   async update(client: Client): Promise<Client> {
     const docData = toClientDocData(client);
-    const result = await ClientModel.findOneAndUpdate(
-      {
-        _id: client.id,
-        workspaceId: new Types.ObjectId(client.workspaceId),
-      },
-      { $set: docData },
-      { new: true },
-    ).exec();
-    if (!result) {
-      throw new NotFoundError(
-        `Client ${client.id} not found for user ${client.workspaceId}`,
-      );
+    try {
+      const result = await ClientModel.findOneAndUpdate(
+        {
+          _id: client.id,
+          workspaceId: new Types.ObjectId(client.workspaceId),
+        },
+        { $set: docData },
+        { new: true },
+      ).exec();
+      if (!result) {
+        throw new NotFoundError(`Client ${client.id} not found for user ${client.workspaceId}`);
+      }
+      return toClientEntity(result as ClientDocument);
+    } catch (err: unknown) {
+      if (isMongoDuplicateKey(err)) {
+        throw new ConflictError("Client phone already registered in workspace");
+      }
+      throw err;
     }
-    return toClientEntity(result as ClientDocument);
   }
 
-  async delete(
-    workspaceId: string,
-    id: string,
-    tx?: TransactionHandle,
-  ): Promise<void> {
+  async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
     const result = await ClientModel.findOneAndDelete(
       {
         _id: id,
@@ -109,11 +119,7 @@ export class MongoClientRepository implements ClientRepository {
    * @returns true when the client exists (matchedCount 1); false when it is
    *   already gone — the caller maps that to NotFoundError.
    */
-  async touch(
-    workspaceId: string,
-    clientId: string,
-    tx?: TransactionHandle,
-  ): Promise<boolean> {
+  async touch(workspaceId: string, clientId: string, tx?: TransactionHandle): Promise<boolean> {
     const result = await ClientModel.updateOne(
       {
         _id: clientId,

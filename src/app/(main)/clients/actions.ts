@@ -1,27 +1,23 @@
-'use server';
+"use server";
 
-import { z } from 'zod';
-import {
-  createClient,
-  updateClient,
-  deleteClient,
-} from '../../../core/application/clients';
-import type { SerializedClient } from '../../../core/domain/client';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoClientRepository } from '../../../infrastructure/repositories/client-repository';
-import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { revalidatePath } from 'next/cache';
-import { handleActionError } from '../../../lib/handle-action-error';
+import { z } from "zod";
+import { createClient, updateClient, deleteClient } from "../../../core/application/clients";
+import type { SerializedClient } from "../../../core/domain/client";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoClientRepository } from "../../../infrastructure/repositories/client-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { revalidatePath } from "next/cache";
+import { handleActionError } from "../../../lib/handle-action-error";
 
 const ids = objectIdGenerator;
 
 const clientSchema = z.object({
   name: z.string().min(1),
   phone: z.string().optional(),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
   note: z.string().optional(),
 });
 
@@ -37,13 +33,13 @@ export async function createClientAction(
   formData: FormData,
 ): Promise<ClientActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
   const parsed = clientSchema.safeParse({
-    name: formData.get('name'),
-    phone: formData.get('phone'),
-    email: formData.get('email'),
-    note: formData.get('note'),
+    name: formData.get("name"),
+    phone: formData.get("phone") ?? "",
+    email: formData.get("email"),
+    note: formData.get("note"),
   });
 
   if (!parsed.success) {
@@ -54,9 +50,9 @@ export async function createClientAction(
     await connectDb();
     const clientRepo = new MongoClientRepository();
     const client = await createClient(user.workspaceId!, parsed.data, clientRepo, ids);
-    revalidatePath('/clients');
-    revalidatePath('/pos/sales');
-    return { success: 'clientCreated', client: client.toJSON() };
+    revalidatePath("/clients");
+    revalidatePath("/pos/sales");
+    return { success: "clientCreated", client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
@@ -67,16 +63,16 @@ export async function updateClientAction(
   formData: FormData,
 ): Promise<ClientActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const clientId = formData.get('clientId') as string;
-  if (!clientId) return { error: 'Client ID is required' };
+  const clientId = formData.get("clientId") as string;
+  if (!clientId) return { error: "Client ID is required" };
 
   const parsed = clientSchema.safeParse({
-    name: formData.get('name'),
-    phone: formData.get('phone'),
-    email: formData.get('email'),
-    note: formData.get('note'),
+    name: formData.get("name"),
+    phone: formData.get("phone") ?? "",
+    email: formData.get("email"),
+    note: formData.get("note"),
   });
 
   if (!parsed.success) {
@@ -87,9 +83,9 @@ export async function updateClientAction(
     await connectDb();
     const clientRepo = new MongoClientRepository();
     const client = await updateClient(user.workspaceId!, clientId, parsed.data, clientRepo);
-    revalidatePath('/clients');
-    revalidatePath('/pos/sales');
-    return { success: 'clientUpdated', client: client.toJSON() };
+    revalidatePath("/clients");
+    revalidatePath("/pos/sales");
+    return { success: "clientUpdated", client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
   }
@@ -100,9 +96,9 @@ export async function deleteClientAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const clientId = formData.get('clientId') as string;
+  const clientId = formData.get("clientId") as string;
 
   try {
     await connectDb();
@@ -116,11 +112,11 @@ export async function deleteClientAction(
       new MongoSaleRepository(),
       new MongoUnitOfWork(),
     );
-    revalidatePath('/clients');
-    revalidatePath('/pos/sales');
+    revalidatePath("/clients");
+    revalidatePath("/pos/sales");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'clientDeleted' };
+  return { success: "clientDeleted" };
 }

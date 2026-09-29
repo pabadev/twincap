@@ -12,16 +12,10 @@ import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 
-export function AccountForm({
-  defaultCurrency,
-  onSuccess,
-}: {
-  /** User's preferred currency for new operations (falls back to DEFAULT_CURRENCY). */
-  defaultCurrency?: string;
-  onSuccess?: () => void;
-}) {
+export function AccountForm({ onDone }: { onDone?: () => void }) {
   const [state, formAction, isPending] = useActionState(createAccountAction, null);
   const t = useT("Accounts");
+  const tCommon = useT("Common");
   const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
@@ -32,10 +26,12 @@ export function AccountForm({
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
       addToast(tToast(state.success), "success");
+      // Consumer first, refresh last: a refresh may suspend + remount the tree
+      // (loading.tsx) and destroy queued client state changes.
+      onDone?.();
       router.refresh();
-      onSuccess?.();
     }
-  }, [state?.success, addToast, tToast, router, onSuccess]);
+  }, [state?.success, addToast, tToast, router, onDone]);
 
   useEffect(() => {
     if (state?.error) {
@@ -61,7 +57,7 @@ export function AccountForm({
         label={t("currency")}
         required
         disabled={isPending}
-        defaultValue={defaultCurrency}
+        placeholder={tCommon("select")}
         options={CURRENCIES.map((c) => ({ value: c, label: c }))}
       />
 

@@ -70,7 +70,6 @@ vi.mock("./payables/actions", () => ({
 vi.mock("./transfers/transfer-form", () => ({ TransferForm: () => null }));
 vi.mock("./transfers/delete-transfer-button", () => ({ DeleteTransferButton: () => null }));
 
-
 interface ControlLike {
   tag: string;
   id: string | null;
@@ -211,7 +210,16 @@ const saleBase = {
   total: { amount: 12000, currency: "COP" },
   paymentMode: "paid-in-full",
   pending: 0,
-  items: [{ itemId: "item-1", unitPrice: { amount: 12000, currency: "COP" }, quantity: 1, subtotal: { amount: 12000, currency: "COP" }, name: "SKU", createdAt: "2026-09-01T00:00:00.000Z" }],
+  items: [
+    {
+      itemId: "item-1",
+      unitPrice: { amount: 12000, currency: "COP" },
+      quantity: 1,
+      subtotal: { amount: 12000, currency: "COP" },
+      name: "SKU",
+      createdAt: "2026-09-01T00:00:00.000Z",
+    },
+  ],
   createdAt: "2026-09-01T00:00:00.000Z",
   version: 0,
 } as unknown as SerializedSale;
@@ -242,12 +250,37 @@ describe("Filter-bar label/control association (UX-12, measured inventory)", () 
     expect(extractLabels(html).length).toBeGreaterThanOrEqual(4);
   });
 
+  it("SaleList launches the exact linked credit and omits the action without a link", () => {
+    const html = renderToStaticMarkup(
+      createElement(SaleList, {
+        sales: [saleBase],
+        catalogItems: [],
+        accounts: [accountBase],
+        clients: [],
+        creditIdBySaleId: { "sale-1": "credit-exact" },
+      }),
+    );
+    expect(html).toContain("/credits/granted?highlight=credit-exact");
+    expect(html).toContain('aria-label="launchCredit"');
+
+    const standaloneHtml = renderToStaticMarkup(
+      createElement(SaleList, {
+        sales: [saleBase],
+        catalogItems: [],
+        accounts: [accountBase],
+        clients: [],
+      }),
+    );
+    expect(standaloneHtml).not.toContain("launchCredit");
+  });
+
   it("CreditsGrantedList: 4 associated labels + named status select", () => {
     const html = renderToStaticMarkup(
       createElement(CreditsGrantedList, { accounts: [accountBase], credits: [grantedCredit] }),
     );
     assertAssociations("credits-granted-list", html);
     expect(extractLabels(html).length).toBeGreaterThanOrEqual(4);
+    expect(html).toContain('id="credit-cg-1"');
   });
 
   it("CreditsReceivedList: 4 associated labels + named status select", () => {
@@ -259,13 +292,17 @@ describe("Filter-bar label/control association (UX-12, measured inventory)", () 
   });
 
   it("PayablesList: 4 associated labels + named status select", () => {
-    const html = renderToStaticMarkup(createElement(PayablesList, { accounts: [accountBase], payables: [payableBase] }));
+    const html = renderToStaticMarkup(
+      createElement(PayablesList, { accounts: [accountBase], payables: [payableBase] }),
+    );
     assertAssociations("payables-list", html);
     expect(extractLabels(html).length).toBeGreaterThanOrEqual(4);
   });
 
   it("TransfersList: associated date labels", () => {
-    const html = renderToStaticMarkup(createElement(TransfersList, { accounts: [accountBase], transfers: [transferBase] }));
+    const html = renderToStaticMarkup(
+      createElement(TransfersList, { accounts: [accountBase], transfers: [transferBase] }),
+    );
     assertAssociations("transfers-list", html);
     expect(extractLabels(html).length).toBeGreaterThanOrEqual(2);
   });

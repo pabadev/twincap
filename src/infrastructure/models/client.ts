@@ -27,7 +27,7 @@ const ClientSchema = new Schema<ClientDoc>(
     },
     phone: {
       type: String,
-      default: "",
+      required: true,
       trim: true,
     },
     email: {
@@ -47,5 +47,4 @@ const ClientSchema = new Schema<ClientDoc>(
 ClientSchema.index({ workspaceId: 1, name: 1 });
 
 export const ClientModel =
-  mongoose.models["Client"] ||
-  mongoose.model<ClientDoc>("Client", ClientSchema);
+  mongoose.models["Client"] || mongoose.model<ClientDoc>("Client", ClientSchema);

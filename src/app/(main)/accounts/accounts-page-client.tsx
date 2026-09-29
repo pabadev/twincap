@@ -6,7 +6,7 @@ import { AccountForm } from "./account-form";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 
-export function AccountsPageClient({ defaultCurrency }: { defaultCurrency?: string }) {
+export function AccountsPageClient() {
   const [showForm, setShowForm] = useState(false);
   const t = useT("Accounts");
 
@@ -17,7 +17,7 @@ export function AccountsPageClient({ defaultCurrency }: { defaultCurrency?: stri
       </Button>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("addAccount")}>
-        <AccountForm defaultCurrency={defaultCurrency} onSuccess={() => setShowForm(false)} />
+        <AccountForm onDone={() => setShowForm(false)} />
       </Modal>
     </>
   );

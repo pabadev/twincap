@@ -355,7 +355,18 @@ export function DashboardContent({
             {accountBalances.map((account) => {
               const parts = formatAmountParts(account.balance, account.currency, locale);
               return (
-                <Card key={account.id} title={account.name}>
+                <Card
+                  key={account.id}
+                  title={account.name}
+                  className="relative"
+                  headerClassName="!px-3 !py-2"
+                  contentClassName="p-3"
+                >
+                  {account.isFixed && (
+                    <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                      {t("fixed")}
+                    </span>
+                  )}
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                       {account.currency}
@@ -366,7 +377,7 @@ export function DashboardContent({
                         is in its own whitespace-nowrap span so it never wraps
                         alone. Mobile steps the size down. */}
                     <span
-                      className={`min-w-0 break-words text-lg font-semibold tabular-nums sm:text-xl ${
+                      className={`min-h-[3.5rem] min-w-0 break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl ${
                         account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
                       }`}
                     >
@@ -383,11 +394,6 @@ export function DashboardContent({
                         </>
                       )}
                     </span>
-                    {account.isFixed && (
-                      <span className="mt-1 inline-block w-fit rounded-full bg-surface-border px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {t("fixed")}
-                      </span>
-                    )}
                   </div>
                 </Card>
               );

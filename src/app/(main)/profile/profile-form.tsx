@@ -122,7 +122,7 @@ export function ProfileForm({
   );
 
   return (
-    <>
+    <div className="space-y-8 pb-24 lg:pb-12">
       <Card title={t.name}>
         <form key={profileTick} action={profileAction} className="space-y-4">
           <Input
@@ -183,6 +183,6 @@ export function ProfileForm({
           </div>
         </form>
       </Card>
-    </>
+    </div>
   );
 }

@@ -8,7 +8,11 @@ import { connectDb } from "../../../infrastructure/db/connection";
 import { serializeEntities } from "@/lib/serialize";
 import { PayablesList } from "./payables-list";
 
-export default async function PayablesPage() {
+export default async function PayablesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const authUser = await getCurrentUser();
   if (!authUser) redirect("/login");
 
@@ -18,6 +22,8 @@ export default async function PayablesPage() {
   const userRepo = new MongoUserRepository();
   const user = await userRepo.findById(authUser.userId);
   if (!user) redirect("/login");
+  const query = await searchParams;
+  const highlightPayableId = typeof query.highlight === "string" ? query.highlight : undefined;
 
   const [accounts, payables] = await Promise.all([
     listAccounts(authUser.workspaceId!, accountRepo),
@@ -28,7 +34,7 @@ export default async function PayablesPage() {
     <PayablesList
       accounts={serializeEntities(accounts)}
       payables={serializeEntities(payables)}
-      defaultCurrency={user.defaultCurrency}
+      highlightPayableId={highlightPayableId}
     />
   );
 }
