@@ -407,11 +407,20 @@ export function SaleList({
                   fields={[
                     { key: "date", label: t("date"), value: formatDate(sale.date, locale) },
                     {
-                      key: "client",
-                      label: t("client"),
-                      value: sale.clientId
-                        ? (clientMap.get(sale.clientId) ?? t("generalClient"))
-                        : t("generalClient"),
+                      key: "items",
+                      label: t("lineItems"),
+                      value:
+                        sale.items.length > 0
+                          ? (catalogMap.get(sale.items[0].itemId) ?? t("itemCount")) +
+                            (sale.items.length > 1
+                              ? " +" +
+                                (sale.items.length - 1) +
+                                " " +
+                                (sale.items.length - 1 !== 1
+                                  ? t("itemCount_plural")
+                                  : t("itemCount"))
+                              : "")
+                          : t("itemCount"),
                       primary: true,
                     },
                     {
@@ -419,6 +428,13 @@ export function SaleList({
                       label: t("total"),
                       value: formatAmount(sale.total, currency, locale),
                       primary: true,
+                    },
+                    {
+                      key: "client",
+                      label: t("client"),
+                      value: sale.clientId
+                        ? (clientMap.get(sale.clientId) ?? t("generalClient"))
+                        : t("generalClient"),
                     },
                     {
                       key: "status",
@@ -443,22 +459,6 @@ export function SaleList({
                           },
                         ]
                       : []),
-                    {
-                      key: "items",
-                      label: t("lineItems"),
-                      value:
-                        sale.items.length > 0
-                          ? (catalogMap.get(sale.items[0].itemId) ?? t("itemCount")) +
-                            (sale.items.length > 1
-                              ? " +" +
-                                (sale.items.length - 1) +
-                                " " +
-                                (sale.items.length - 1 !== 1
-                                  ? t("itemCount_plural")
-                                  : t("itemCount"))
-                              : "")
-                          : t("itemCount"),
-                    },
                   ]}
                   actions={
                     <>
