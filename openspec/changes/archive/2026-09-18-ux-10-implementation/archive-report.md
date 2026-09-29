@@ -105,4 +105,4 @@ Main specs did not exist for any of the six domains; each delta spec is a full s
 
 ## 10. Artifact Store Resolution
 
-This archive executed in **openspec** mode (filesystem sync + folder move). The Engram MCP write tools were not exposed to this archive agent context, so no Engram observation was persisted; this report file is the terminal record.
+This archive executed in **openspec** mode (filesystem sync + folder move). No se guardó una observación externa; este reporte y los documentos de continuidad del proyecto son el registro persistente.

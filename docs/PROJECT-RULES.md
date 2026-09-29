@@ -93,6 +93,7 @@ src/
 - Límites seguros y overflow: usar `assertSafeMinorUnits` cuando corresponda.
 - Regla de truthiness en dinero: cuando `0` es un valor válido, NUNCA usar `input.amount ? ...` — usar `input.amount !== undefined` (o equivalente). Patrón prohibido: `input.amount ? new Money(...) : existing.amount` (con amount=0 desincroniza abono↔movement).
 - Invariante: está prohibido asumir una moneda silenciosamente (`?? 'COP'`, `|| 'COP'`, fallback de moneda) cuando la moneda real no puede determinarse. La UI debe resolver la moneda real o mostrar estado inconsistente/error — nunca inventar una moneda. En particular, si una cuenta no resuelve moneda (cadena sale items → accounts) se debe `throw` — jamás `?? 'COP'` (R15.3.2 F5: `sale-list.tsx` / `export-csv.ts`).
+- En operaciones de una sola cuenta, la moneda vigente la determina la moneda persistida de esa cuenta. Los formularios solo pueden mostrarla como dato ilustrativo; no deben permitir elegir una moneda independiente. El servidor resuelve la cuenta por `workspaceId` y deriva de ella la moneda que interpreta y persiste; no confía en un campo `currency` enviado por el cliente. Las transferencias son la excepción: origen y destino mantienen monedas propias e independientes.
 
 ## 5. Saldos
 
@@ -126,6 +127,7 @@ src/
 - Los **11 use cases que mueven dinero** tocan la cuenta de pago como **ÚLTIMA escritura** dentro de la transacción, vía el helper `touchAccounts` (dedupe por Set de cuentas + ejecución secuencial — `touch-accounts.ts:33-38`). El touch es un shared-document write (`$set {updatedAt}`, SIN CAS): su valor es de conflicto, no de datos (R15.3.2 F4).
 - Mecanismo de serialización separado: `bumpVersion` + CAS (ver §9).
 - Atributos exigidos operación por operación (matriz): atomicidad + serialización + CAS cuando corresponda + idempotencia cuando corresponda + tenant isolation + integridad referencial + seguridad monetaria.
+- Una entrada de inventario y su cuenta por pagar, pago inicial, movimientos, stock y recibo forman una única unidad transaccional. La cuenta por pagar vinculada no se puede eliminar ni cambiar de total de forma independiente; los abonos sí pueden gestionarse como pagos posteriores. El `touch()` de la cuenta debe ser la última escritura de la transacción.
 
 ### 8.1. Matriz de cuentas afectadas (mínimo obligatorio)
 
@@ -169,7 +171,7 @@ src/
 
 ## 10. Idempotencia
 
-- Operaciones idempotentes: todas las creaciones financieras con `idempotencyKey` OBLIGATORIA: createMovement, createTransfer, createSale, createCreditReceived, createCreditGranted, createPayable, setInitialBalance (y las definidas como idempotentes en actions).
+- Operaciones idempotentes: todas las creaciones financieras con `idempotencyKey` OBLIGATORIA: createMovement, createTransfer, createSale, createCreditReceived, createCreditGranted, createPayable, createInventoryReceipt, setInitialBalance (y las definidas como idempotentes en actions).
 - La key se reclama ANTES de ejecutar (claim atómico con índice unique `(userId, action, key)` + TTL 24h deterministas; E11000 → `duplicateRequest`).
 - Se considera `committed` cuando la transacción principal hizo commit.
 - **PROHIBIDO liberar una idempotency key después de un commit exitoso simplemente porque falló una operación post-commit** (gate `committed`: la key jamás se libera post-commit; revalidatePath es best-effort).
@@ -189,6 +191,8 @@ src/
 - Reconciliación: `findOrphanMovements` + `runReconcileDiagnosis` (honesto: nunca finge reparar; clasifica manual/unknown-kind/reconciled/orphan/ambiguous). Unknown y ambiguous se EXCLUYEN del saldo.
 - Comportamiento conservador ante datos legacy: `isModernRecord` (cutoff 2026-09-09) — agregados modernos sin movement obligatorio → `ConflictError`; legacy → warn+continue con reconciliación.
 - Invariante permanente: `saldo = suma de movimientos válidos`. Ninguna operación nueva puede crear caminos que rompan esta propiedad.
+- Una `InventoryReceipt` y su `Payable`/movimientos de pago/stock son una misma unidad transaccional de alta. Una cuenta por pagar referenciada por un recibo no se puede borrar de forma independiente: la operación debe abortar antes de eliminar sus movimientos. Cualquier anulación futura debe revertir stock, ledger, payable y movimientos de forma atómica y conservar el recibo como historial.
+- El `touch()` de la cuenta afectada por una recepción debe ser la última escritura de la transacción, después del payable, movimiento de pago, stock y recibo.
 
 ## 13. Seguridad
 
@@ -206,9 +210,12 @@ src/
 
 ## 14. Testing
 
-- Ejecutar con `pnpm test` (Vitest). **NUNCA npm/npx/yarn.**
+- Gestor: `pnpm test` (Vitest). **NUNCA npm/npx/yarn.**
+- Cada fase funcional DEBE diseñar o actualizar sus pruebas junto con la implementación.
+- **Política vigente de ejecución diferida (decisión del fundador, 2026-09-27):** no ejecutar la suite automáticamente al final de cada fase de una ronda. Acumular los cambios y, en el cierre de la ronda, ejecutar primero las suites enfocadas de los cambios y luego una única suite Vitest completa. Un pedido explícito del fundador de ejecutar antes prevalece y su resultado se documenta.
+- La ejecución diferida no equivale a PASS: hasta correrlas, reportar las pruebas como **diseñadas, no ejecutadas**. No suprimir fallos ni afirmar verificación no realizada.
 - Typecheck: `pnpm exec tsc --noEmit`. Lint: `pnpm lint`. Build: `pnpm build`. E2E: `pnpm test:e2e` (Playwright).
-- **Timeout de la suite completa (REGLAMENTARIO)**: la suite Vitest mide **~21 min** (2026-09-14, 131 archivos / 1439 tests, serial por replset `fileParallelism: false`). El timeout por defecto del runner de comandos (120s) NO alcanza y cualquier corrida completa sin timeout explícito muere a los 2 minutos. REGLA: toda corrida completa de `pnpm test` debe ejecutarse con **timeout ≥ 45 min (2_700_000 ms)** en el runner; el job CI `quality` corre con `timeout-minutes: 60` (cubre install + typegen + tsc + lint + tests + build, cf. `.github/workflows/ci.yml`). Reintentos: NUNCA reintentar con el default de 2 min — un reintento legítimo usa el timeout correcto y registra el error real antes. Per-test ya configurado (60s en `vitest.config.ts`); el wall-clock total no se gobierna en vitest.
+- **Timeout de la suite completa (REGLAMENTARIO al cierre)**: la suite Vitest mide **~21 min** (2026-09-14, 131 archivos / 1439 tests, serial por replset `fileParallelism: false`). El timeout por defecto del runner (120s) NO alcanza. Cuando corresponda la única corrida completa de cierre, usar **timeout ≥45 min (2_700_000 ms)**; el job CI `quality` usa 60 min. Nunca reintentar con el default de 2 min; registrar el error real antes de un reintento con timeout correcto. Per-test: 60s (`vitest.config.ts`).
 - **Timeout de E2E completo (REGLAMENTARIO)**: `pnpm test:e2e` corre Playwright en **un worker** contra Mongo local. En 2026-09-26, la suite completa duró **55.1 min** (35 casos; 6 pasaron, 8 fallaron, 3 quedaron flaky y 18 no se ejecutaron), excediendo el margen operativo anterior. Toda corrida completa debe usar **timeout wall-clock ≥ 90 min (5_400_000 ms)** para incluir inicio del servidor, pruebas seriales, un retry y el cierre de Mongo/reporte. Mantener `retries: 1` como máximo; no relanzar una suite completa automáticamente tras fallos: revisar resumen y traces primero. El límite wall-clock del proceso no sustituye ni aumenta el timeout individual de Playwright (actualmente 90 s): los fallos de esta corrida incluyen formularios atascados en `Creating...`, por lo que ampliar el timeout por caso ocultaría el bloqueo y alargaría el diagnóstico. Aislar y corregir la causa antes de cambiar límites individuales. Registrar duración, passed/failed/flaky/skipped y timeout individual al actualizar la auditoría. Un fallo de descarga de fuentes de Next debe registrarse por separado como problema de red/build, no como timeout E2E.
 - Todo test de concurrencia/transacción real DEBE usar MongoDB real — `MongoMemoryReplSet` (pin 7.0.41, `launchTimeout: 45_000`, `vi.clearAllMocks()` primero en beforeEach, guarded `if (mongod) await mongod.stop()`).
 - Los tests deben demostrar INVARIANTES (saldo final = suma de movimientos válidos, sin movimientos parcialmente aplicados), no solo "normalmente funciona".
@@ -230,6 +237,7 @@ src/
 - No cambiar la semántica de Activos/Pasivos — independientes de filtros de actividad.
 - No inventar columnas en tablas de resumen: 4 columnas máximo, justificadas por utilidad.
 - No mostrar todos los reportes simultáneamente — menú de acceso.
+- **Identidad del cliente (decisión de producto, 2026-09-27):** el teléfono internacional es obligatorio y es el identificador principal único por workspace; almacenarlo normalizado en E.164 (`+573001234567`). Exigir prefijo de país explícito; email y otros medios de contacto son opcionales, no únicos y no sustituyen al teléfono. La unicidad no cruza workspaces.
 
 ## 16. Principios financieros (inquebrantables)
 

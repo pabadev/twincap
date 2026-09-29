@@ -79,7 +79,7 @@ TwinCap es un **SaaS de finanzas personales y pequeños negocios** en etapa de p
 | Testing       | Vitest — ejecutar con `pnpm test`                                                          |
 | Estado        | Sin librería global — React state + Server Actions                                         |
 | Iconos        | Lucide React (`lucide-react`) — wrapper en `src/components/ui/icon.tsx`                    |
-| Memoria       | Engram MCP                                                                                 |
+| Continuidad   | `docs/AUDIT-AND-PLAN.md` y el tracker activo de la ronda                                   |
 
 ## Arquitectura Hexagonal (inquebrantable)
 
@@ -158,6 +158,7 @@ Cada server action o route handler DEBE:
 5. Las métricas del dashboard deben derivar del `kind`/naturaleza de cada movimiento — jamás sumar ciegamente por `type`.
 6. **Fechas financieras = fechas civiles**: distinguir instante temporal de fecha de negocio; PROHIBIDO compensar con offsets ±1 día sin entender la causa raíz; toda conversión/formateo debe ser explícito respecto de timezone.
 7. **Crédito otorgado: el abono amortiza primero el capital, solo el interés es ingreso**: en créditos otorgados standalone (Personal), cada abono recupera primero el capital prestado (`creditGrantedAbono`, NO económico); SOLO el excedente sobre el principal (`creditGrantedAbonoInterest`) es ingreso. La baja por incobrable (`creditGrantedWriteOff`) registra GASTO por el capital no recuperado (principal − Σ capital recuperado; el interés no realizado NO es pérdida) y excluye el crédito del activo en Posición Financiera. El pago inicial de una venta POS a crédito es un caso aparte: reusa el kind `creditGrantedAbono` con context Business y SÍ es ingreso (`salePayment`-equivalente), por lo que `countsTowardEconomicResult` es context-aware.
+8. **La cuenta es la fuente de verdad de la moneda**: en formularios financieros que registran un importe desde una sola cuenta (Movimientos, entradas de inventario, pagos/abonos), la moneda se deriva de la cuenta seleccionada. La UI puede mostrarla como dato informativo, pero no ofrecer un selector de moneda independiente. El backend debe resolver la cuenta dentro del workspace y usar su moneda persistida; nunca confiar en una moneda enviada por el cliente. Transferencias entre cuentas conservan moneda independiente de origen y destino.
 
 ### Componentes UI
 
@@ -167,8 +168,9 @@ Cada server action o route handler DEBE:
 
 ### Testing
 
-- Cada fase que agregue funcionalidad DEBE incluir tests.
-- Ejecutar `pnpm test` después de cada fase.
+- Cada fase que agregue funcionalidad DEBE diseñar/actualizar los tests pertinentes junto con el cambio.
+- **Ejecución diferida aprobada por el fundador (2026-09-27):** durante una ronda activa, NO ejecutar tests automáticamente al cerrar cada fase. Acumular la implementación y ejecutar en la fase final de verificación: primero las suites enfocadas de los cambios y después una sola suite completa `pnpm test`. Si el usuario solicita expresamente correr pruebas antes, cumplir la solicitud y registrar el resultado.
+- La política de ejecución diferida reduce iteraciones costosas; no autoriza declarar PASS por inspección. Reportar como “diseñado, no ejecutado” hasta que la verificación final realmente corra.
 - No suppressar tests que fallen.
 - **Timeout de la suite completa (REGLAMENTARIO)**: la suite Vitest tardó **~21 min** medida (2026-09-14; 131 archivos / 1439 tests, serial por replset). El timeout por defecto del runner de comandos (120s) NO alcanza: toda corrida completa DEBE especificar **timeout ≥ 45 min (2_700_000 ms)** de forma explícita. Nunca reintentar por vencimiento de timeout usando el default de 2 min — el reintento legítimo es con el timeout correcto y tras registrar el error real. Per-test ya configurado (60s en `vitest.config.ts`). Ver `docs/PROJECT-RULES.md` §14.
 
