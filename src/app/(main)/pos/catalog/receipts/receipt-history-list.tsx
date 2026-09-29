@@ -11,6 +11,7 @@ import { EmptyState } from "../../../../../components/ui/empty-state";
 import { Icon } from "../../../../../components/ui/icon";
 import { Modal } from "../../../../../components/ui/modal";
 import { Button } from "../../../../../components/ui/button";
+import { MovementCard } from "../../../../../components/ui/movement-card";
 import { CalendarDays, Package } from "lucide-react";
 import { InventoryReceiptForm } from "../inventory-receipt-form";
 import { CatalogSectionNav } from "../catalog-section-nav";
@@ -168,73 +169,104 @@ export function ReceiptHistoryList({
           </p>
           <div className="space-y-3">
             {receipts.map((receipt) => (
-              <article
+              <MovementCard
                 key={receipt.id}
-                className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+                id={receipt.id}
+                fields={[
+                  {
+                    key: "supplier",
+                    label: t("receiptSupplierLabel"),
+                    value: receipt.supplierName || t("receiptSupplierUnknown"),
+                    primary: true,
+                  },
+                  {
+                    key: "date",
+                    label: t("receiptFromDate"),
+                    value: `${new Intl.DateTimeFormat(locale, {
+                      dateStyle: "medium",
+                      timeZone: "UTC",
+                    }).format(new Date(receipt.date))}${
+                      receipt.reference ? ` · ${receipt.reference}` : ""
+                    }`,
+                  },
+                  {
+                    key: "total",
+                    label: t("receiptTotal"),
+                    value: formatAmount(receipt.total.amount, receipt.total.currency, locale),
+                    primary: true,
+                  },
+                  {
+                    key: "payment",
+                    label: t("receiptPaymentStateLabel"),
+                    value: !receipt.payableId
+                      ? t("receiptPaidInFullShort")
+                      : payableIds.includes(receipt.payableId)
+                        ? t("receiptOutstanding")
+                        : t("receiptPayableMissing"),
+                    className:
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                      (!receipt.payableId
+                        ? "bg-success/10 text-success"
+                        : payableIds.includes(receipt.payableId)
+                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "bg-expense/10 text-expense"),
+                  },
+                ]}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-zinc-900 dark:text-white">
-                      {receipt.supplierName || t("receiptSupplierUnknown")}
-                    </p>
-                    <p className="text-sm text-zinc-500">
-                      {new Intl.DateTimeFormat(locale, {
-                        dateStyle: "medium",
-                        timeZone: "UTC",
-                      }).format(new Date(receipt.date))}
-                      {receipt.reference ? ` · ${receipt.reference}` : ""}
-                    </p>
-                  </div>
-                  <strong className="whitespace-nowrap text-sm text-zinc-900 dark:text-white">
-                    {formatAmount(receipt.total.amount, receipt.total.currency, locale)}
-                  </strong>
-                </div>
-                <ul className="mt-3 divide-y divide-surface-border rounded-lg border border-surface-border">
+                {/* Line detail:zx the receipt's item breakdown mirrors the
+                    sale-detail list — flat rows, name link left, amount right,
+                    no nested bordered box (it read as a foreign widget). */}
+                <ul className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800">
                   {receipt.lines.map((line, index) => {
                     const item = items.find((entry) => entry.id === line.catalogItemId);
                     const itemHref = item
                       ? `/pos/catalog?highlight=${encodeURIComponent(item.id)}#catalog-item-${encodeURIComponent(item.id)}`
                       : undefined;
-                    const lineLabel = `${item?.name ?? t("receiptUnknownItem")} · ${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(line.quantity)} ${t(`unit_${line.unit}`)}`;
+                    const quantityLabel = `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(line.quantity)} ${t(`unit_${line.unit}`)}`;
+                    const lineLabel = item?.name ?? t("receiptUnknownItem");
                     return (
                       <li
                         key={`${line.catalogItemId}-${index}`}
-                        className="flex flex-wrap justify-between gap-2 p-3 text-sm"
+                        className="flex flex-wrap justify-between gap-2 py-2 text-sm"
                       >
                         {itemHref ? (
                           <Link
                             href={itemHref}
-                            className="font-medium text-primary hover:underline"
+                            className="min-w-0 font-medium text-primary hover:underline"
                           >
-                            {lineLabel}
+                            <span className="truncate">
+                              {lineLabel}
+                              <span className="text-zinc-500">
+                                {" · "}
+                                {quantityLabel}
+                              </span>
+                            </span>
                           </Link>
                         ) : (
-                          <span className="text-zinc-600 dark:text-zinc-300">{lineLabel}</span>
+                          <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                            {lineLabel}
+                            <span className="text-zinc-500">
+                              {" · "}
+                              {quantityLabel}
+                            </span>
+                          </span>
                         )}
-                        <span className="text-zinc-600 dark:text-zinc-300">
+                        <span className="whitespace-nowrap text-zinc-600 dark:text-zinc-300">
                           {formatAmount(line.lineAmount, receipt.total.currency, locale)}
                         </span>
                       </li>
                     );
                   })}
                 </ul>
-                {receipt.payableId && payableIds.includes(receipt.payableId) ? (
+                {receipt.payableId && payableIds.includes(receipt.payableId) && (
                   <Link
-                    className="mt-3 inline-block min-h-11 py-3 text-sm font-medium text-primary hover:underline"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                     href={`/payables?highlight=${encodeURIComponent(receipt.payableId)}#payable-${encodeURIComponent(receipt.payableId)}`}
                   >
                     {t("receiptViewPayable")}
                   </Link>
-                ) : receipt.payableId ? (
-                  <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-                    {t("receiptPayableMissing")}
-                  </p>
-                ) : (
-                  <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                    {t("receiptPaidInFull")}
-                  </p>
                 )}
-              </article>
+              </MovementCard>
             ))}
           </div>
           {totalPages > 1 && (
