@@ -17,6 +17,7 @@ import { getAvailableComboCount } from "../../../../core/domain/product-combo";
 import { StockControls } from "./stock-controls";
 import { CatalogItemCard } from "./catalog-item-card";
 import { CATALOG_GRID_CLASSES } from "./catalog-grid-layout";
+import { groupCatalogItems, type CatalogDisplayGroup } from "./catalog-groups";
 import { ProductFormulaForm } from "./product-formula-form";
 import { ProductComboForm } from "./product-combo-form";
 import { CatalogSectionNav } from "./catalog-section-nav";
@@ -54,6 +55,143 @@ export function CatalogList({
     const query = debouncedQuery.toLowerCase();
     return items.filter((item) => item.name.toLowerCase().includes(query));
   }, [items, debouncedQuery]);
+
+  const grouped = useMemo(() => groupCatalogItems(filteredItems), [filteredItems]);
+
+  function renderCard(item: SerializedCatalogItem) {
+    const currency = item.unitPrice.currency;
+    return (
+      <CatalogItemCard
+        key={item.id}
+        id={item.id}
+        highlighted={highlightItemId === item.id}
+        name={item.name}
+        type={item.type}
+        typeLabel={
+          item.type === "product"
+            ? item.comboVersions.length > 0
+              ? t("comboProduct")
+              : item.formulaVersions.length > 0
+                ? t("preparedProduct")
+                : t(`productRole_${item.productRole}`)
+            : t(`type_${item.type}`)
+        }
+        priceLabel={t("unitPriceLabel")}
+        price={
+          item.productRole === "supply"
+            ? t("notForSale")
+            : formatAmount(item.unitPrice.amount, currency, locale)
+        }
+        priceUnit={
+          item.productRole === "supply"
+            ? t("supplyPriceHint")
+            : item.comboVersions.length > 0
+              ? t("perCombo")
+              : t("perUnit", { unit: t(`unit_${item.saleUnit}`) })
+        }
+        stockLabel={item.comboVersions.length > 0 ? t("comboAvailability") : t("stock")}
+        stock={
+          item.type !== "product" || item.stock === undefined
+            ? null
+            : item.comboVersions.length > 0
+              ? new Intl.NumberFormat(locale).format(
+                  getAvailableComboCount(item.comboVersions.at(-1)!, stockByItemId),
+                )
+              : new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
+                  quantityFromBaseUnits(item.stock, item.saleUnit),
+                )
+        }
+        stockUnit={item.comboVersions.length > 0 ? t("comboUnit") : t(`unit_${item.saleUnit}`)}
+        notApplicable={t("notApplicableStock")}
+        actions={
+          <>
+            {item.type === "product" && item.comboVersions.length === 0 ? (
+              <StockControls item={item} icon={ArrowDownUp} />
+            ) : (
+              <span data-card-action-placeholder aria-hidden="true" />
+            )}
+            {item.type === "product" &&
+            item.productRole !== "supply" &&
+            item.comboVersions.length === 0 ? (
+              <ActionIconButton
+                icon={ChefHat}
+                label={t("formulaTitle")}
+                tone="neutral"
+                onClick={() => setFormulaItem(item)}
+              />
+            ) : (
+              <span data-card-action-placeholder aria-hidden="true" />
+            )}
+            {item.type === "product" &&
+            item.productRole !== "supply" &&
+            item.formulaVersions.length === 0 &&
+            (item.comboVersions.length > 0 || (item.stock === 0 && item.saleUnit === "unit")) ? (
+              <ActionIconButton
+                icon={PackagePlus}
+                label={t("comboTitle")}
+                tone="neutral"
+                onClick={() => setComboItem(item)}
+              />
+            ) : (
+              <span data-card-action-placeholder aria-hidden="true" />
+            )}
+            <ActionIconButton
+              icon={Pencil}
+              label={t("edit")}
+              tone="primary"
+              onClick={() => setEditingItem(item)}
+            />
+            <DeleteCatalogItemButton itemId={item.id} />
+          </>
+        }
+      />
+    );
+  }
+
+  function renderGroup(group: CatalogDisplayGroup, groupItems: SerializedCatalogItem[]) {
+    if (groupItems.length === 0) return null;
+    const title =
+      group === "sellable"
+        ? t("groupSellable")
+        : group === "service"
+          ? t("groupService")
+          : t("groupSupply");
+    // Supplies are de-emphasized: cost rows nobody needs on the first
+    // screen. Collapsed by default (owner decision 2026-09-29) with a
+    // count; auto-OPEN when the highlight target lives in this group.
+    const autoOpen =
+      group === "supply" &&
+      highlightItemId !== undefined &&
+      groupItems.some((item) => item.id === highlightItemId);
+    const body = (
+      <div className={CATALOG_GRID_CLASSES}>{groupItems.map((item) => renderCard(item))}</div>
+    );
+    if (group !== "supply") {
+      return (
+        <section key={group} aria-label={title}>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+            {title}
+          </h2>
+          {body}
+        </section>
+      );
+    }
+    return (
+      <details
+        key={group}
+        open={autoOpen || undefined}
+        className="rounded-lg border border-surface-border dark:border-zinc-700"
+      >
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800/50">
+          {title}
+          <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            {groupItems.length}
+          </span>
+        </summary>
+        <div className="px-4 pb-4">{body}</div>
+      </details>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -153,100 +291,10 @@ export function CatalogList({
           description={t("search")}
         />
       ) : (
-        <div className={CATALOG_GRID_CLASSES}>
-          {filteredItems.map((item) => {
-            const currency = item.unitPrice.currency;
-
-            return (
-              <CatalogItemCard
-                key={item.id}
-                id={item.id}
-                highlighted={highlightItemId === item.id}
-                name={item.name}
-                type={item.type}
-                typeLabel={
-                  item.type === "product"
-                    ? item.comboVersions.length > 0
-                      ? t("comboProduct")
-                      : item.formulaVersions.length > 0
-                        ? t("preparedProduct")
-                        : t(`productRole_${item.productRole}`)
-                    : t(`type_${item.type}`)
-                }
-                priceLabel={t("unitPriceLabel")}
-                price={
-                  item.productRole === "supply"
-                    ? t("notForSale")
-                    : formatAmount(item.unitPrice.amount, currency, locale)
-                }
-                priceUnit={
-                  item.productRole === "supply"
-                    ? t("supplyPriceHint")
-                    : item.comboVersions.length > 0
-                      ? t("perCombo")
-                      : t("perUnit", { unit: t(`unit_${item.saleUnit}`) })
-                }
-                stockLabel={item.comboVersions.length > 0 ? t("comboAvailability") : t("stock")}
-                stock={
-                  item.type !== "product" || item.stock === undefined
-                    ? null
-                    : item.comboVersions.length > 0
-                      ? new Intl.NumberFormat(locale).format(
-                          getAvailableComboCount(item.comboVersions.at(-1)!, stockByItemId),
-                        )
-                      : new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
-                          quantityFromBaseUnits(item.stock, item.saleUnit),
-                        )
-                }
-                stockUnit={
-                  item.comboVersions.length > 0 ? t("comboUnit") : t(`unit_${item.saleUnit}`)
-                }
-                notApplicable={t("notApplicableStock")}
-                actions={
-                  <>
-                    {item.type === "product" && item.comboVersions.length === 0 ? (
-                      <StockControls item={item} icon={ArrowDownUp} />
-                    ) : (
-                      <span data-card-action-placeholder aria-hidden="true" />
-                    )}
-                    {item.type === "product" &&
-                    item.productRole !== "supply" &&
-                    item.comboVersions.length === 0 ? (
-                      <ActionIconButton
-                        icon={ChefHat}
-                        label={t("formulaTitle")}
-                        tone="neutral"
-                        onClick={() => setFormulaItem(item)}
-                      />
-                    ) : (
-                      <span data-card-action-placeholder aria-hidden="true" />
-                    )}
-                    {item.type === "product" &&
-                    item.productRole !== "supply" &&
-                    item.formulaVersions.length === 0 &&
-                    (item.comboVersions.length > 0 ||
-                      (item.stock === 0 && item.saleUnit === "unit")) ? (
-                      <ActionIconButton
-                        icon={PackagePlus}
-                        label={t("comboTitle")}
-                        tone="neutral"
-                        onClick={() => setComboItem(item)}
-                      />
-                    ) : (
-                      <span data-card-action-placeholder aria-hidden="true" />
-                    )}
-                    <ActionIconButton
-                      icon={Pencil}
-                      label={t("edit")}
-                      tone="primary"
-                      onClick={() => setEditingItem(item)}
-                    />
-                    <DeleteCatalogItemButton itemId={item.id} />
-                  </>
-                }
-              />
-            );
-          })}
+        <div className="space-y-8">
+          {(["sellable", "service", "supply"] as const).map((group) =>
+            renderGroup(group, grouped[group]),
+          )}
         </div>
       )}
     </div>
