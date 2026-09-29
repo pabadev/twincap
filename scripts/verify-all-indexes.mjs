@@ -8,6 +8,7 @@
  *   - movement   (verify-movement-indexes.mjs,   R15.2 C1 / R15.3 §4)
  *   - idempotency(verify-idempotency-indexes.mjs,R15.2 C1)
  *   - auth-token (verify-auth-token-indexes.mjs, R15.3.2 P2-3)
+ *   - inventory receipt history pagination
  *
  * READ-ONLY: each verifier is spawned as its OWN process via
  * `spawnSync(process.execPath, ...)` with the same env, so every contract
@@ -39,6 +40,7 @@ const VERIFIERS = [
   "scripts/verify-movement-indexes.mjs",
   "scripts/verify-idempotency-indexes.mjs",
   "scripts/verify-auth-token-indexes.mjs",
+  "scripts/verify-inventory-receipt-indexes.mjs",
 ];
 
 let failed = 0;
@@ -55,9 +57,7 @@ for (const script of VERIFIERS) {
   } else if (res.status === 0) {
     console.log(`[PASS] ${script}`);
   } else {
-    console.error(
-      `[FAIL] ${script} — exit code ${res.status ?? "unknown"} (see output above).`,
-    );
+    console.error(`[FAIL] ${script} — exit code ${res.status ?? "unknown"} (see output above).`);
     failed += 1;
   }
 }
