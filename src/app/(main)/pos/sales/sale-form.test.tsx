@@ -55,6 +55,10 @@ const newCatalogItem: SerializedCatalogItem = {
   name: "New Item",
   unitPrice: { amount: 5000, currency: "COP" },
   type: "product",
+  productRole: "sellable",
+  saleUnit: "unit",
+  formulaVersions: [],
+  comboVersions: [],
   stock: 5,
   createdAt: new Date(0),
 };
@@ -90,6 +94,10 @@ const catalogItems: SerializedCatalogItem[] = [
     name: "Item A",
     unitPrice: { amount: 1000, currency: "COP" },
     type: "service",
+    productRole: "sellable",
+    saleUnit: "unit",
+    formulaVersions: [],
+    comboVersions: [],
     stock: 0,
     createdAt: new Date(0),
   },
@@ -99,6 +107,10 @@ const catalogItems: SerializedCatalogItem[] = [
     name: "Item B",
     unitPrice: { amount: 2500, currency: "COP" },
     type: "product",
+    productRole: "sellable",
+    saleUnit: "unit",
+    formulaVersions: [],
+    comboVersions: [],
     stock: 10,
     createdAt: new Date(0),
   },
@@ -817,10 +829,11 @@ describe("SaleForm catalog propagation (C12-3d)", () => {
     expect(qtyInputs[0].value).toBe("1");
 
     // The row must show the item name (not empty/undefined) in the single
-    // truncated name cell (C12-3i unified mobile/desktop cell).
+    // truncated name cell (C12-3i unified mobile/desktop cell). The cell
+    // carries the name plus the sale unit in parentheses.
     const nameCell = container.querySelector('[data-testid="item-name-cell"]');
     expect(nameCell).not.toBeNull();
-    expect(nameCell!.textContent).toBe("New Item");
+    expect(nameCell!.textContent).toContain("New Item");
     expect(nameCell!.textContent).not.toContain("undefined");
     // C12-3i: the name truncates and carries the full name as title tooltip.
     expect(nameCell!.className).toContain("truncate");
@@ -1020,6 +1033,10 @@ describe("SaleForm layout invariants (C12-3f)", () => {
       name: `Item ${i}`,
       unitPrice: { amount: 1000 + i, currency: "COP" },
       type: "product",
+      productRole: "sellable",
+      saleUnit: "unit",
+      formulaVersions: [],
+      comboVersions: [],
       stock: 10,
       createdAt: new Date(0),
     }));
@@ -1135,15 +1152,18 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
     // Desktop template (unchanged since C12-3g).
     expect(headerRow!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
     // Rows use the exact same templates + gaps — lockstep by construction.
+    // The row is an outer border-b wrapper; the grid lives on its inner div.
     const rows = container.querySelectorAll(
       '[data-testid="table-rows-container"] > div:not([data-testid="table-header"])',
     );
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {
-      expect(row.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
-      expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
-      expect(row.className).toContain("gap-x-1.5");
-      expect(row.className).toContain("lg:gap-2");
+      const grid = row.querySelector("div.grid");
+      expect(grid).not.toBeNull();
+      expect(grid!.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
+      expect(grid!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+      expect(grid!.className).toContain("gap-x-1.5");
+      expect(grid!.className).toContain("lg:gap-2");
     });
     // The header carries the same gaps as the rows.
     expect(headerRow!.className).toContain("gap-x-1.5");
@@ -1213,10 +1233,13 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
       // with per-cell labels and stacked subtotal) is replaced by a compact
       // 5-track mobile grid: truncated name + qty + price + subtotal + trash,
       // all on ONE line (no wrapping, no horizontal overflow at 375px).
-      expect(row.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
-      expect(row.className).not.toContain("grid-cols-[1fr_auto]");
+      // The row is an outer border-b wrapper; the grid lives on its inner div.
+      const grid = row.querySelector("div.grid");
+      expect(grid).not.toBeNull();
+      expect(grid!.className).toContain("grid-cols-[minmax(0,1fr)_40px_64px_64px_40px]");
+      expect(grid!.className).not.toContain("grid-cols-[1fr_auto]");
       // Desktop template unchanged.
-      expect(row.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
+      expect(grid!.className).toContain("lg:grid-cols-[2fr_60px_110px_110px_48px]");
     });
     // The mobile rows carry no per-cell labels anymore — the header row is
     // the single label source (visible at all breakpoints).

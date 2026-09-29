@@ -1,11 +1,11 @@
-import type { SerializedSale } from '../../../../core/domain/sale';
-import { businessDateToInputValue } from '../../../../lib/date';
-import { buildCsv, minorUnitsToDecimal } from '../../../../lib/csv';
+import type { SerializedSale } from "../../../../core/domain/sale";
+import { businessDateToInputValue } from "../../../../lib/date";
+import { buildCsv, minorUnitsToDecimal } from "../../../../lib/csv";
 
 export interface SaleCsvFilters {
   dateFrom?: string; // 'YYYY-MM-DD' inclusive
   dateTo?: string; // 'YYYY-MM-DD' inclusive
-  status?: 'all' | 'paid' | 'credit';
+  status?: "all" | "paid" | "credit";
   search?: string; // client name substring (case-insensitive)
 }
 
@@ -25,10 +25,10 @@ export function filterSalesForCsv(
     const businessDate = businessDateToInputValue(s.date);
     if (filters.dateFrom && businessDate < filters.dateFrom) return false;
     if (filters.dateTo && businessDate > filters.dateTo) return false;
-    if (filters.status === 'paid' && s.pending !== 0) return false;
-    if (filters.status === 'credit' && s.pending <= 0) return false;
+    if (filters.status === "paid" && s.pending !== 0) return false;
+    if (filters.status === "credit" && s.pending <= 0) return false;
     if (filters.search) {
-      const clientName = s.clientId ? (clientNames[s.clientId] ?? '') : '';
+      const clientName = s.clientId ? (clientNames[s.clientId] ?? "") : "";
       if (!clientName.toLowerCase().includes(filters.search.toLowerCase())) {
         return false;
       }
@@ -78,12 +78,14 @@ export function buildSalesCsv(
   const rows = sales.map((s) => {
     // R15.3.2 P2-2: never a silent COP default — a sale always has >= 1 line
     // item, so a missing currency is a corrupt record and must fail loudly.
-    const currency = s.items[0]?.unitPrice.currency ?? (() => {
-      throw new Error(`Sale ${s.id} has no line items — cannot resolve currency for CSV export`);
-    })();
+    const currency =
+      s.items[0]?.unitPrice.currency ??
+      (() => {
+        throw new Error(`Sale ${s.id} has no line items — cannot resolve currency for CSV export`);
+      })();
     const itemsSummary = s.items
-      .map((li) => `${li.quantity}× ${refs.itemNames[li.itemId] ?? li.itemId}`)
-      .join(', ');
+      .map((li) => `${li.quantity} ${li.unit} × ${refs.itemNames[li.itemId] ?? li.itemId}`)
+      .join(", ");
     return [
       businessDateToInputValue(s.date),
       s.clientId ? (refs.clientNames[s.clientId] ?? labels.noClient) : labels.noClient,
@@ -92,7 +94,7 @@ export function buildSalesCsv(
       minorUnitsToDecimal(s.total - s.pending, currency),
       minorUnitsToDecimal(s.pending, currency),
       currency,
-      s.paymentMode === 'paid-in-full' ? labels.paidInFull : labels.onCredit,
+      s.paymentMode === "paid-in-full" ? labels.paidInFull : labels.onCredit,
     ];
   });
   return buildCsv(headers, rows);

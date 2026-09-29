@@ -16,6 +16,7 @@ import type { SerializedClient } from "../../../../core/domain/client";
 import type { SerializedAccount } from "../../../../core/domain/account";
 import type { Currency } from "../../../../core/domain/currency";
 import type { PaymentMode } from "../../../../core/domain/sale";
+import { isInventoryUnit } from "../../../../core/domain/inventory-units";
 import { getCurrentUser } from "../../../../infrastructure/auth/getCurrentUser";
 import { MongoCatalogItemRepository } from "../../../../infrastructure/repositories/catalog-repository";
 import { MongoSaleRepository } from "../../../../infrastructure/repositories/sale-repository";
@@ -88,23 +89,73 @@ export async function createSaleAction(
     return { error: "error.idempotencyKeyRequired" };
   }
 
-  let items: { itemId: string; quantity: number; unitPrice: number }[];
+  let items: {
+    itemId: string;
+    quantity: number;
+    unitPrice: number;
+    formula?: {
+      version: number;
+      components: Array<{
+        itemId: string;
+        quantity: number;
+        unit: import("../../../../core/domain/inventory-units").InventoryUnit;
+      }>;
+    };
+    comboVersion?: number;
+  }[];
   try {
-    items = JSON.parse(lineItemsJson);
+    const parsed = JSON.parse(lineItemsJson) as unknown;
+    if (!Array.isArray(parsed)) return { error: "error.validation" };
+    for (const row of parsed) {
+      if (
+        typeof row !== "object" ||
+        row === null ||
+        typeof row.itemId !== "string" ||
+        !Number.isFinite(row.quantity) ||
+        !Number.isFinite(row.unitPrice)
+      ) {
+        return { error: "error.validation" };
+      }
+      if (row.formula !== undefined) {
+        if (
+          typeof row.formula !== "object" ||
+          row.formula === null ||
+          !Number.isSafeInteger(row.formula.version) ||
+          !Array.isArray(row.formula.components)
+        ) {
+          return { error: "error.validation" };
+        }
+        for (const component of row.formula.components) {
+          if (
+            typeof component !== "object" ||
+            component === null ||
+            typeof component.itemId !== "string" ||
+            !Number.isFinite(component.quantity) ||
+            typeof component.unit !== "string" ||
+            !isInventoryUnit(component.unit)
+          ) {
+            return { error: "error.validation" };
+          }
+        }
+      }
+      if (row.comboVersion !== undefined && !Number.isSafeInteger(row.comboVersion)) {
+        return { error: "error.validation" };
+      }
+    }
+    items = parsed as typeof items;
   } catch {
     return { error: "Invalid line items data" };
   }
 
-  if (!items || items.length === 0) {
+  if (!Array.isArray(items) || items.length === 0) {
     return { error: "Sale must have at least one line item" };
   }
 
-  // R15.3.1 P3: line item quantities are discrete counts — reject
-  // non-positive/fractional values HERE (client-shape guard) with a specific
-  // i18n key; the Sale aggregate re-enforces the same rule server-side.
+  // Reject malformed quantity values at the action boundary. The use case
+  // validates precision and unit compatibility against the server catalog.
   for (const item of items) {
-    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-      return { error: "error.quantityInteger" };
+    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+      return { error: "error.quantityPositive" };
     }
   }
 
@@ -153,7 +204,16 @@ export async function createSaleAction(
         const accountRepo = new MongoAccountRepository();
         return createSale(
           user.workspaceId!,
-          { items, accountId, clientId, date, paymentMode, currency, initialPayment },
+          {
+            items,
+            accountId,
+            clientId,
+            date,
+            paymentMode,
+            currency,
+            initialPayment,
+            actorUserId: user.userId,
+          },
           saleRepo,
           catalogRepo,
           movementRepo,
@@ -344,6 +404,7 @@ export async function deleteSaleAction(
           creditRepo,
           accountRepo,
           new MongoUnitOfWork(),
+          user.userId,
         );
       },
     );

@@ -24,6 +24,8 @@ import type { PaymentMode } from "../../../../core/domain/sale";
 import { PAYMENT_MODES } from "../../../../core/domain/sale";
 import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
+import type { InventoryUnit } from "../../../../core/domain/inventory-units";
+import { getAvailableComboCount } from "../../../../core/domain/product-combo";
 import { Input } from "../../../../components/ui/input";
 import { FormField } from "../../../../components/ui/form-field";
 import { Alert } from "../../../../components/ui/alert";
@@ -35,11 +37,22 @@ import { Trash2, X } from "lucide-react";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { formatAmount, formatAmountParts } from "../../../../lib/format";
 import { toDateInputValue } from "../../../../lib/date";
+import {
+  calculateQuantitySubtotal,
+  getUnitFactorToBase,
+  quantityToBaseUnits,
+  quantityFromBaseUnits,
+} from "../../../../core/domain/inventory-units";
 
 interface LineItem {
   itemId: string;
   quantity: number;
   unitPrice: number;
+  comboVersion?: number;
+  formula?: {
+    version: number;
+    components: Array<{ itemId: string; quantity: number; unit: InventoryUnit }>;
+  };
 }
 
 interface SaleFormProps {
@@ -164,8 +177,10 @@ export function SaleForm({
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
       addToast(tToast(state.success), "success");
-      router.refresh();
+      // Consumer first, refresh last: a refresh may suspend + remount the tree
+      // (loading.tsx), so any consumer state change must already be queued.
       onDone?.();
+      router.refresh();
     }
   }, [state?.success, addToast, tToast, router, onDone]);
 
@@ -176,7 +191,7 @@ export function SaleForm({
   }, [state?.error, addToast, translateError]);
 
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("paid-in-full");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | "">("");
   const [clientId, setClientId] = useState<string>(""); // empty = general client
   const [initialPayment, setInitialPayment] = useState<string>("0");
   const [showClientForm, setShowClientForm] = useState(false);
@@ -187,6 +202,23 @@ export function SaleForm({
   // C12-3b: track which unit price input is focused (for format-on-blur).
   // When focused, show raw value; when blurred, show formatted value.
   const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
+
+  // Formula/combo detail panels are collapsed by default (owner request: they
+  // eat too much vertical space); per-line toggle key, open maps stay small.
+  const [openFormulaPanels, setOpenFormulaPanels] = useState<Set<string>>(new Set());
+  const [openComboPanels, setOpenComboPanels] = useState<Set<string>>(new Set());
+
+  function toggleDetailPanel(
+    setOpen: (update: (prev: Set<string>) => Set<string>) => void,
+    key: string,
+  ) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   // C12-3c: combobox state for the top item searcher.
   const [searchQuery, setSearchQuery] = useState("");
@@ -203,17 +235,18 @@ export function SaleForm({
   // So we show ALL catalog items in the dropdown, but mark which are in-cart.
   const filteredItems = useMemo(() => {
     const q = normalizeForSearch(searchQuery);
-    if (!q) return effectiveCatalogItems;
-    return effectiveCatalogItems.filter((item) => normalizeForSearch(item.name).includes(q));
+    const sellableItems = effectiveCatalogItems.filter((item) => item.productRole !== "supply");
+    if (!q) return sellableItems;
+    return sellableItems.filter((item) => normalizeForSearch(item.name).includes(q));
   }, [effectiveCatalogItems, searchQuery]);
 
   // C12-3c: dirty detection — the form has unsaved changes when any field
-  // deviates from its initial value. Initial state is an empty cart, default
-  // payment mode, no client, default currency, zero initial payment.
+  // deviates from its initial value. Initial state is an empty cart, neutral
+  // ("select") payment mode, no client, default currency, zero initial payment.
   const isDirty = useMemo(() => {
     if (lineItems.length > 0) return true;
     if (clientId !== "") return true;
-    if (paymentMode !== "paid-in-full") return true;
+    if (paymentMode !== "") return true;
     if (currency !== DEFAULT_CURRENCY) return true;
     if (initialPayment !== "0") return true;
     if (localClients.length > 0) return true;
@@ -296,7 +329,15 @@ export function SaleForm({
           idx === existing ? { ...li, quantity: li.quantity + 1 } : li,
         );
       }
-      return [...prev, { itemId: item.id, quantity: 1, unitPrice: item.unitPrice.amount }];
+      return [
+        ...prev,
+        {
+          itemId: item.id,
+          quantity: 1,
+          unitPrice: item.unitPrice.amount,
+          comboVersion: item.comboVersions.at(-1)?.version,
+        },
+      ];
     });
     setCurrency(item.unitPrice.currency);
   }
@@ -329,6 +370,23 @@ export function SaleForm({
   }
 
   function selectComboItem(item: SerializedCatalogItem) {
+    if (item.comboVersions.length > 0) {
+      const currentLine = lineItems.find((line) => line.itemId === item.id);
+      const version = item.comboVersions.find(
+        (candidate) =>
+          candidate.version === (currentLine?.comboVersion ?? item.comboVersions.at(-1)?.version),
+      );
+      if (!version) {
+        addToast(t("comboNoAvailability"), "error");
+        return;
+      }
+      const available = getAvailableComboCount(version, stockByItemId);
+      const selectedQuantity = currentLine?.quantity ?? 0;
+      if (selectedQuantity >= available) {
+        addToast(t("comboNoAvailability"), "error");
+        return;
+      }
+    }
     addToCart(item);
     // Keep the dropdown open so the user can keep adding items (POS pattern).
     // Clear the search so the full catalog is shown for the next selection.
@@ -398,7 +456,32 @@ export function SaleForm({
     [updateLineItem],
   );
 
-  const total = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+  const catalogMap = useMemo(() => {
+    const map = new Map<string, SerializedCatalogItem>();
+    for (const item of effectiveCatalogItems) map.set(item.id, item);
+    return map;
+  }, [effectiveCatalogItems]);
+  const stockByItemId = useMemo(
+    () => new Map(effectiveCatalogItems.map((item) => [item.id, item.stock ?? 0])),
+    [effectiveCatalogItems],
+  );
+
+  const lineSubtotal = (line: LineItem): number => {
+    const item = catalogMap.get(line.itemId);
+    if (!item || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.unitPrice <= 0)
+      return 0;
+    try {
+      return calculateQuantitySubtotal(
+        quantityToBaseUnits(line.quantity, item.type === "product" ? item.saleUnit : "unit"),
+        item.type === "product" ? item.saleUnit : "unit",
+        line.unitPrice,
+      );
+    } catch {
+      return 0;
+    }
+  };
+
+  const total = lineItems.reduce((sum, line) => sum + lineSubtotal(line), 0);
 
   // H14: on-credit sales require a real client and a valid upfront payment.
   const isOnCredit = paymentMode === "on-credit";
@@ -410,14 +493,6 @@ export function SaleForm({
       parsedInitialPayment < 0 ||
       parsedInitialPayment > total);
   const submitBlocked = isPending || needsClient || initialPaymentInvalid;
-
-  // Helper: look up catalog item by id (for displaying name in the table).
-  // Uses the effective (merged) catalog so locally created items resolve too.
-  const catalogMap = useMemo(() => {
-    const map = new Map<string, SerializedCatalogItem>();
-    for (const item of effectiveCatalogItems) map.set(item.id, item);
-    return map;
-  }, [effectiveCatalogItems]);
 
   return (
     // C12-3f: at desktop the root fills the modal body completely (lg:h-full)
@@ -536,7 +611,18 @@ export function SaleForm({
                     </li>
                   ) : (
                     filteredItems.map((item, idx) => {
-                      const inCart = lineItems.some((li) => li.itemId === item.id);
+                      const cartLine = lineItems.find((li) => li.itemId === item.id);
+                      const inCart = Boolean(cartLine);
+                      const comboVersion = item.comboVersions.find(
+                        (version) =>
+                          version.version ===
+                          (cartLine?.comboVersion ?? item.comboVersions.at(-1)?.version),
+                      );
+                      const comboAvailable =
+                        item.comboVersions.length === 0 ||
+                        (comboVersion !== undefined &&
+                          (cartLine?.quantity ?? 0) <
+                            getAvailableComboCount(comboVersion, stockByItemId));
                       const isActive = idx === comboActiveIdx;
                       return (
                         <li
@@ -544,12 +630,13 @@ export function SaleForm({
                           id={`item-search-option-${idx}`}
                           role="option"
                           aria-selected={isActive}
+                          aria-disabled={!comboAvailable}
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            selectComboItem(item);
+                            if (comboAvailable) selectComboItem(item);
                           }}
                           onMouseEnter={() => setComboActiveIdx(idx)}
-                          className={`cursor-pointer px-3 py-2 text-sm ${
+                          className={`px-3 py-2 text-sm ${comboAvailable ? "cursor-pointer" : "cursor-not-allowed opacity-50"} ${
                             isActive
                               ? "bg-primary/10 text-primary"
                               : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -557,8 +644,23 @@ export function SaleForm({
                         >
                           <span>{item.name}</span>
                           <span className="ml-2 text-xs text-zinc-600 dark:text-zinc-400">
-                            ({tCatalog(`type_${item.type}`)})
+                            (
+                            {item.comboVersions.length > 0
+                              ? tCatalog("comboProduct")
+                              : tCatalog(`type_${item.type}`)}
+                            )
                           </span>
+                          {item.comboVersions.length > 0 && (
+                            <span className="ml-2 text-xs text-zinc-500">
+                              {t("comboAvailableInPos", {
+                                count: new Intl.NumberFormat(locale).format(
+                                  comboVersion
+                                    ? getAvailableComboCount(comboVersion, stockByItemId)
+                                    : 0,
+                                ),
+                              })}
+                            </span>
+                          )}
                           {inCart && <span className="ml-2 text-xs text-primary">✓</span>}
                         </li>
                       );
@@ -642,8 +744,19 @@ export function SaleForm({
                     // would render empty name/price. Skip it (the local catalog
                     // state should always include items added to the cart).
                     if (!item) return null;
+                    const selectedFormulaVersion = item.formulaVersions.find(
+                      (version) => version.version === li.formula?.version,
+                    );
                     const itemName = item.name;
-                    const subtotal = li.quantity * li.unitPrice;
+                    const subtotal = lineSubtotal(li);
+                    const saleUnit = item.type === "product" ? item.saleUnit : "unit";
+                    const selectedComboVersion = item.comboVersions.find(
+                      (version) => version.version === li.comboVersion,
+                    );
+                    const quantityStep =
+                      saleUnit === "unit" || getUnitFactorToBase(saleUnit) < 1_000
+                        ? String(1 / getUnitFactorToBase(saleUnit))
+                        : "0.001";
                     const isPriceFocused = focusedPriceIdx === idx;
                     const priceDisplay = isPriceFocused
                       ? li.unitPrice.toString()
@@ -652,81 +765,286 @@ export function SaleForm({
                     return (
                       <div
                         key={li.itemId}
-                        className="grid grid-cols-[minmax(0,1fr)_40px_64px_64px_40px] items-center gap-x-1.5 border-b border-surface-border/50 py-1.5 last:border-b-0 lg:grid-cols-[2fr_60px_110px_110px_48px] lg:gap-2 lg:py-2"
+                        className="border-b border-surface-border/50 py-1.5 last:border-b-0 lg:py-2"
                       >
-                        {/* Item name — single cell at all breakpoints (C12-3i):
+                        <div className="grid grid-cols-[minmax(0,1fr)_40px_64px_64px_40px] items-center gap-x-1.5 lg:grid-cols-[2fr_60px_110px_110px_48px] lg:gap-2">
+                          {/* Item name — single cell at all breakpoints (C12-3i):
                             truncated with a title tooltip; the old mobile-only
                             title block (with type suffix) was folded into this
                             one cell to keep the mobile row a single line. */}
-                        <div
-                          data-testid="item-name-cell"
-                          className="min-w-0 truncate text-xs font-medium text-zinc-900 lg:text-sm lg:font-normal lg:text-zinc-700 dark:text-white lg:dark:text-zinc-300"
-                          title={itemName}
-                        >
-                          {itemName}
-                        </div>
+                          <div
+                            data-testid="item-name-cell"
+                            className="min-w-0 truncate text-xs font-medium text-zinc-900 lg:text-sm lg:font-normal lg:text-zinc-700 dark:text-white lg:dark:text-zinc-300"
+                            title={itemName}
+                          >
+                            {itemName}
+                            <span className="ml-1 text-[10px] text-zinc-500 lg:text-xs">
+                              ({tCatalog(`unit_${saleUnit}`)})
+                            </span>
+                          </div>
 
-                        {/* Quantity — centered at all breakpoints (matches the
+                          {/* Quantity — centered at all breakpoints (matches the
                             centered "Cant." header; the old sm:text-right broke
                             header/content lockstep). Mobile: compact padding
                             and text so the 40px track fits (px-1!/text-xs via
                             max-lg — the ! suffix is required to beat the Input
                             base px-3 in Tailwind v4's utility order). */}
-                        <Input
-                          id={`qty-${idx}`}
-                          type="number"
-                          min="1"
-                          value={li.quantity}
-                          onChange={(e) => updateLineItem(idx, "quantity", Number(e.target.value))}
-                          disabled={isPending}
-                          className="max-lg:px-1! max-lg:text-xs text-center"
-                          aria-label={itemName ? `${t("qty")} ${itemName}` : t("qty")}
-                        />
+                          <Input
+                            id={`qty-${idx}`}
+                            type="number"
+                            min={quantityStep}
+                            max={
+                              selectedComboVersion
+                                ? getAvailableComboCount(selectedComboVersion, stockByItemId)
+                                : undefined
+                            }
+                            step={quantityStep}
+                            value={li.quantity}
+                            onChange={(e) =>
+                              updateLineItem(idx, "quantity", Number(e.target.value))
+                            }
+                            disabled={isPending}
+                            className="max-lg:px-1! max-lg:text-xs text-center"
+                            aria-label={
+                              itemName
+                                ? `${t("qty")} ${itemName} (${tCatalog(`unit_${saleUnit}`)})`
+                                : t("qty")
+                            }
+                          />
 
-                        {/* Unit price — format on blur; right-aligned over the
+                          {/* Unit price — format on blur; right-aligned over the
                             right-aligned header (mobile: compact padding/text). */}
-                        <Input
-                          id={`price-${idx}`}
-                          type="text"
-                          inputMode="decimal"
-                          value={priceDisplay}
-                          onChange={(e) => handlePriceChange(idx, e.target.value)}
-                          onFocus={() => setFocusedPriceIdx(idx)}
-                          onBlur={() => setFocusedPriceIdx(null)}
-                          disabled={isPending}
-                          className="max-lg:px-1! max-lg:text-xs text-right"
-                          aria-label={itemName ? `${t("unitPrice")} ${itemName}` : t("unitPrice")}
-                        />
+                          <Input
+                            id={`price-${idx}`}
+                            type="text"
+                            inputMode="decimal"
+                            value={priceDisplay}
+                            onChange={(e) => handlePriceChange(idx, e.target.value)}
+                            onFocus={() => setFocusedPriceIdx(idx)}
+                            onBlur={() => setFocusedPriceIdx(null)}
+                            disabled={isPending}
+                            className="max-lg:px-1! max-lg:text-xs text-right"
+                            aria-label={
+                              itemName
+                                ? `${t("unitPrice")} ${itemName} (${tCatalog(`unit_${saleUnit}`)})`
+                                : t("unitPrice")
+                            }
+                          />
 
-                        {/* Subtotal — right-aligned text. C12-3i: mobile renders
+                          {/* Subtotal — right-aligned text. C12-3i: mobile renders
                             a compact amount WITHOUT the currency code suffix
                             (64px track); desktop keeps the full formatted
                             amount. The cell keeps the row's numeric styling. */}
-                        <div
-                          data-testid="subtotal-cell"
-                          className="min-w-0 text-right text-xs text-zinc-700 lg:text-sm dark:text-zinc-300"
-                        >
-                          <span
-                            data-testid="subtotal-compact"
-                            className="block truncate lg:hidden"
-                            title={formatAmount(subtotal, currency, locale)}
+                          <div
+                            data-testid="subtotal-cell"
+                            className="min-w-0 text-right text-xs text-zinc-700 lg:text-sm dark:text-zinc-300"
                           >
-                            {formatAmountParts(subtotal, currency, locale).amount}
-                          </span>
-                          <span data-testid="subtotal-full" className="hidden lg:inline">
-                            {formatAmount(subtotal, currency, locale)}
-                          </span>
-                        </div>
+                            <span
+                              data-testid="subtotal-compact"
+                              className="block truncate lg:hidden"
+                              title={formatAmount(subtotal, currency, locale)}
+                            >
+                              {formatAmountParts(subtotal, currency, locale).amount}
+                            </span>
+                            <span data-testid="subtotal-full" className="hidden lg:inline">
+                              {formatAmount(subtotal, currency, locale)}
+                            </span>
+                          </div>
 
-                        {/* Remove button */}
-                        <ActionIconButton
-                          icon={Trash2}
-                          label={t("remove")}
-                          tone="neutral"
-                          onClick={() => removeLineItem(idx)}
-                          disabled={isPending}
-                          className="text-zinc-500 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
-                        />
+                          {/* Remove button */}
+                          <ActionIconButton
+                            icon={Trash2}
+                            label={t("remove")}
+                            tone="neutral"
+                            onClick={() => removeLineItem(idx)}
+                            disabled={isPending}
+                            className="text-zinc-500 hover:text-danger hover:bg-danger/10 dark:text-zinc-500 dark:hover:text-danger dark:hover:bg-danger/20"
+                          />
+                        </div>
+                        {item.formulaVersions.length > 0 && (
+                          <div className="mt-2 space-y-2 rounded-md bg-zinc-100 p-2 dark:bg-zinc-800">
+                            <div>
+                              <Select
+                                id={`formula-version-${idx}`}
+                                label={t("preparedFormula")}
+                                labelClassName="text-xs"
+                                className="mt-1 h-9"
+                                options={[
+                                  { value: "stock", label: t("preparedStock") },
+                                  ...item.formulaVersions.map((version) => ({
+                                    value: String(version.version),
+                                    label: t("formulaVersion", {
+                                      version: String(version.version),
+                                    }),
+                                  })),
+                                ]}
+                                value={li.formula ? String(li.formula.version) : "stock"}
+                                disabled={isPending}
+                                onChange={(event) => {
+                                  if (event.target.value === "stock") {
+                                    setLineItems((current) =>
+                                      current.map((entry, row) =>
+                                        row === idx ? { ...entry, formula: undefined } : entry,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  const version = item.formulaVersions.find(
+                                    (entry) => entry.version === Number(event.target.value),
+                                  );
+                                  if (!version) return;
+                                  setLineItems((current) =>
+                                    current.map((entry, row) =>
+                                      row === idx
+                                        ? {
+                                            ...entry,
+                                            formula: {
+                                              version: version.version,
+                                              components: version.components.map((component) => ({
+                                                itemId: component.itemId,
+                                                quantity: component.quantity,
+                                                unit: component.unit,
+                                              })),
+                                            },
+                                          }
+                                        : entry,
+                                    ),
+                                  );
+                                }}
+                              />
+                            </div>
+                            {li.formula && (
+                              <p className="text-xs text-zinc-500">
+                                {selectedFormulaVersion
+                                  ? tCatalog("formulaSaleHint", {
+                                      yield: new Intl.NumberFormat(locale, {
+                                        maximumFractionDigits: 3,
+                                      }).format(selectedFormulaVersion.yieldQuantity),
+                                      unit: tCatalog(`unit_${selectedFormulaVersion.yieldUnit}`),
+                                    })
+                                  : tCatalog("formulaScaleHint")}
+                              </p>
+                            )}
+                            {li.formula && (
+                              <button
+                                type="button"
+                                aria-expanded={openFormulaPanels.has(`${li.itemId}:${idx}`)}
+                                onClick={() =>
+                                  toggleDetailPanel(setOpenFormulaPanels, `${li.itemId}:${idx}`)
+                                }
+                                className="text-xs font-medium text-primary hover:underline dark:text-primary-soft"
+                              >
+                                {openFormulaPanels.has(`${li.itemId}:${idx}`)
+                                  ? t("hideComponents")
+                                  : t("showComponents")}
+                              </button>
+                            )}
+                            {li.formula && openFormulaPanels.has(`${li.itemId}:${idx}`) && (
+                              <div className="space-y-2">
+                                {li.formula.components.map((component, componentIndex) => {
+                                  const supply = catalogMap.get(component.itemId);
+                                  const factor = getUnitFactorToBase(component.unit);
+                                  const componentStep =
+                                    factor >= 1000 ? "0.001" : factor === 10 ? "0.1" : "1";
+                                  return (
+                                    <label
+                                      key={component.itemId}
+                                      className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-2 text-xs"
+                                    >
+                                      <span>
+                                        {supply?.name ?? component.itemId} (
+                                        {tCatalog(`unit_${component.unit}`)})
+                                      </span>
+                                      <Input
+                                        type="number"
+                                        min={componentStep}
+                                        step={componentStep}
+                                        value={component.quantity}
+                                        disabled={isPending}
+                                        aria-label={`${t("formulaComponent")} ${supply?.name ?? component.itemId}`}
+                                        onChange={(event) =>
+                                          setLineItems((current) =>
+                                            current.map((entry, row) =>
+                                              row === idx && entry.formula
+                                                ? {
+                                                    ...entry,
+                                                    formula: {
+                                                      ...entry.formula,
+                                                      components: entry.formula.components.map(
+                                                        (value, col) =>
+                                                          col === componentIndex
+                                                            ? {
+                                                                ...value,
+                                                                quantity: Number(
+                                                                  event.target.value,
+                                                                ),
+                                                              }
+                                                            : value,
+                                                      ),
+                                                    },
+                                                  }
+                                                : entry,
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {selectedComboVersion && (
+                          <div className="mt-2 rounded-md bg-zinc-100 p-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-medium">
+                                {t("comboUsed", {
+                                  version: String(selectedComboVersion.version),
+                                })}
+                                {" · "}
+                                {t("comboAvailableInPos", {
+                                  count: new Intl.NumberFormat(locale).format(
+                                    getAvailableComboCount(selectedComboVersion, stockByItemId),
+                                  ),
+                                })}
+                              </p>
+                              <button
+                                type="button"
+                                aria-expanded={openComboPanels.has(`${li.itemId}:${idx}`)}
+                                onClick={() =>
+                                  toggleDetailPanel(setOpenComboPanels, `${li.itemId}:${idx}`)
+                                }
+                                className="shrink-0 text-xs font-medium text-primary hover:underline dark:text-primary-soft"
+                              >
+                                {openComboPanels.has(`${li.itemId}:${idx}`)
+                                  ? t("hideDetails")
+                                  : t("showDetails")}
+                              </button>
+                            </div>
+                            {openComboPanels.has(`${li.itemId}:${idx}`) && (
+                              <>
+                                <p className="mb-1">{t("comboSaleHint")}</p>
+                                <ul className="list-inside list-disc">
+                                  {selectedComboVersion.components.map((component) => (
+                                    <li key={component.itemId}>
+                                      {component.name} ·{" "}
+                                      {new Intl.NumberFormat(locale, {
+                                        maximumFractionDigits: 3,
+                                      }).format(
+                                        quantityFromBaseUnits(
+                                          component.stockQuantity,
+                                          component.unit,
+                                        ),
+                                      )}{" "}
+                                      {tCatalog(`unit_${component.unit}`)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -762,6 +1080,7 @@ export function SaleForm({
                 required
                 disabled={isPending}
                 value={paymentMode}
+                placeholder={tCommon("select")}
                 onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
                 options={PAYMENT_MODES.map((m) => ({
                   value: m,

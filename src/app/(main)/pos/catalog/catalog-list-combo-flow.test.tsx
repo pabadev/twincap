@@ -1,0 +1,128 @@
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CatalogList } from "./catalog-list";
+import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
+
+// Reproduction: guided combo creation must close the create modal AND open
+// the composition modal with the freshly created item.
+
+const formOnDone = vi.hoisted(() => ({
+  current: undefined as ((...args: unknown[]) => void) | undefined | null,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {} }),
+}));
+
+vi.mock("../../../../i18n/client", () => ({
+  useT: () => (key: string) => key,
+  useLocale: () => "es",
+}));
+
+const createdCombo: SerializedCatalogItem = {
+  id: "combo-new",
+  workspaceId: "ws-1",
+  name: "Combo creado",
+  unitPrice: { amount: 45000, currency: "COP" },
+  type: "product",
+  productRole: "sellable",
+  saleUnit: "unit",
+  formulaVersions: [],
+  comboVersions: [],
+  stock: 0,
+  createdAt: new Date(0),
+};
+
+vi.mock("./catalog-form", () => ({
+  CatalogForm: ({
+    onDone,
+  }: {
+    onDone?: (...args: unknown[]) => void;
+  }) => {
+    formOnDone.current = onDone ?? undefined;
+    return (
+      <button type="button" onClick={() => onDone?.(createdCombo, { openCombo: true })}>
+        simulate-success
+      </button>
+    );
+  },
+}));
+
+vi.mock("./actions", () => ({
+  createCatalogItemAction: () => null,
+  updateCatalogItemAction: () => null,
+  deleteCatalogItemAction: () => null,
+  adjustCatalogStockAction: () => null,
+  getCatalogStockHistoryAction: () => ({ history: [] }),
+}));
+
+vi.mock("./delete-catalog-item-button", () => ({
+  DeleteCatalogItemButton: () => <button type="button" />,
+}));
+
+vi.mock("./stock-controls", () => ({
+  StockControls: () => <button type="button" />,
+}));
+
+vi.mock("./product-formula-form", () => ({ ProductFormulaForm: () => null }));
+vi.mock("./product-combo-form", () => ({
+  ProductComboForm: ({ item }: { item: SerializedCatalogItem }) => (
+    <div data-testid="combo-form">COMBO_FORM_OPEN:{item.id}</div>
+  ),
+}));
+
+afterEach(() => {
+  formOnDone.current = null;
+  document.body.innerHTML = "";
+});
+
+describe("CatalogList guided combo flow", () => {
+  let root: Root | undefined;
+  let container: HTMLDivElement | undefined;
+
+  function mount(ui: React.ReactElement) {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => root!.render(ui));
+  }
+
+  it("opens the composition modal after creating a combo", () => {
+    mount(
+      <CatalogList
+        items={[
+          {
+            id: "p1",
+            workspaceId: "ws-1",
+            name: "Frasco",
+            unitPrice: { amount: 1000, currency: "COP" },
+            type: "product",
+            productRole: "sellable",
+            saleUnit: "unit",
+            formulaVersions: [],
+            comboVersions: [],
+            stock: 10,
+            createdAt: new Date(0),
+          },
+        ]}
+      />,
+    );
+
+    // Open the create modal first (the real user flow): the mock's onDone is
+    // only captured while the modal content is mounted.
+    const addButton = [...container!.querySelectorAll("button")].find(
+      (button) => button.textContent === "addItem",
+    );
+    expect(addButton).toBeDefined();
+    act(() => addButton!.click());
+
+    expect(formOnDone.current).not.toBeNull();
+    act(() => formOnDone.current?.(createdCombo, { openCombo: true }));
+
+    expect(container!.querySelector('[data-testid="combo-form"]')).not.toBeNull();
+    expect(container!.textContent).toContain("COMBO_FORM_OPEN:combo-new");
+  });
+});

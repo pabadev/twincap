@@ -22,6 +22,10 @@ import { Eye, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-
 import { downloadCsv } from "../../../../lib/download-csv";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { exportSalesCsvAction } from "./actions";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { MovementCard } from "../../../../components/ui/movement-card";
+import { creditLaunchHref } from "./sale-credit-links";
 
 interface SaleListProps {
   sales: SerializedSale[];
@@ -32,6 +36,7 @@ interface SaleListProps {
   creditPendingBySaleId?: Record<string, number>;
   /** R5-D0b: initial payment per sale = the linked credit's first abono. */
   creditInitialPaymentBySaleId?: Record<string, number>;
+  creditIdBySaleId?: Record<string, string>;
 }
 
 export function SaleList({
@@ -41,6 +46,7 @@ export function SaleList({
   clients,
   creditPendingBySaleId,
   creditInitialPaymentBySaleId,
+  creditIdBySaleId,
 }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
   // C12-1: close-guard for the sale form modal — unsaved changes trigger a
@@ -395,53 +401,77 @@ export function SaleList({
                 : 0;
 
               return (
-                <div
+                <MovementCard
                   key={sale.id}
-                  className="rounded-lg border border-surface-border bg-surface-card dark:border-zinc-700 dark:bg-zinc-900"
-                >
-                  <div className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm text-zinc-900 dark:text-white">
-                        {formatDate(sale.date, locale)} —{" "}
-                        {formatAmount(sale.total, currency, locale)}
-                      </div>
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          {sale.paymentMode === "paid-in-full" ? t("paidInFull") : t("onCredit")}
-                        </span>
-                        {sale.clientId && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                            {clientMap.get(sale.clientId) ?? t("generalClient")}
-                          </span>
-                        )}
-                        {sale.paymentMode === "on-credit" && initialPayment > 0 && (
-                          <span className="ml-2">
-                            {t("initialPaymentLabel")}{" "}
-                            {formatAmount(initialPayment, currency, locale)}
-                          </span>
-                        )}
-                        {sale.paymentMode === "on-credit" && (
-                          <span className="ml-2">
-                            {t("pending")} {formatAmount(effectivePending, currency, locale)}
-                          </span>
-                        )}
-                        {sale.items.length > 0 && (
-                          <span className="ml-2">
-                            {catalogMap.get(sale.items[0].itemId) ?? t("itemCount")}
-                            {sale.items.length > 1 && (
-                              <span className="text-zinc-400">
-                                {" "}
-                                +{sale.items.length - 1}{" "}
-                                {sale.items.length - 1 !== 1
+                  id={sale.id}
+                  fields={[
+                    { key: "date", label: t("date"), value: formatDate(sale.date, locale) },
+                    {
+                      key: "client",
+                      label: t("client"),
+                      value: sale.clientId
+                        ? (clientMap.get(sale.clientId) ?? t("generalClient"))
+                        : t("generalClient"),
+                      primary: true,
+                    },
+                    {
+                      key: "total",
+                      label: t("total"),
+                      value: formatAmount(sale.total, currency, locale),
+                      primary: true,
+                    },
+                    {
+                      key: "status",
+                      label: t("status"),
+                      value: sale.paymentMode === "paid-in-full" ? t("paidInFull") : t("onCredit"),
+                    },
+                    ...(sale.paymentMode === "on-credit" && initialPayment > 0
+                      ? [
+                          {
+                            key: "initial",
+                            label: t("initialPaymentLabel"),
+                            value: formatAmount(initialPayment, currency, locale),
+                          },
+                        ]
+                      : []),
+                    ...(sale.paymentMode === "on-credit"
+                      ? [
+                          {
+                            key: "pending",
+                            label: t("pending"),
+                            value: formatAmount(effectivePending, currency, locale),
+                          },
+                        ]
+                      : []),
+                    {
+                      key: "items",
+                      label: t("lineItems"),
+                      value:
+                        sale.items.length > 0
+                          ? (catalogMap.get(sale.items[0].itemId) ?? t("itemCount")) +
+                            (sale.items.length > 1
+                              ? " +" +
+                                (sale.items.length - 1) +
+                                " " +
+                                (sale.items.length - 1 !== 1
                                   ? t("itemCount_plural")
-                                  : t("itemCount")}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 sm:justify-end">
+                                  : t("itemCount"))
+                              : "")
+                          : t("itemCount"),
+                    },
+                  ]}
+                  actions={
+                    <>
+                      {creditIdBySaleId?.[sale.id] && (
+                        <Link
+                          href={creditLaunchHref(creditIdBySaleId[sale.id])}
+                          aria-label={t("launchCredit")}
+                          title={t("launchCredit")}
+                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <Icon icon={ExternalLink} size="sm" />
+                        </Link>
+                      )}
                       <ActionIconButton
                         icon={Eye}
                         label={t("details")}
@@ -461,17 +491,15 @@ export function SaleList({
                           </Button>
                         )}
                       <DeleteSaleButton saleId={sale.id} />
-                    </div>
-                  </div>
-
+                    </>
+                  }
+                >
                   {hasLinkedCredit && sale.paymentMode === "on-credit" && effectivePending > 0 && (
-                    <div className="border-t border-zinc-200 px-4 py-2 dark:border-zinc-700">
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        {t("managedInCredits")}
-                      </p>
-                    </div>
+                    <p className="mt-2 border-t border-zinc-200 pt-2 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                      {t("managedInCredits")}
+                    </p>
                   )}
-                </div>
+                </MovementCard>
               );
             })}
           </div>

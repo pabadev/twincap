@@ -7,7 +7,11 @@ import { connectDb } from "../../../../infrastructure/db/connection";
 import { serializeEntities } from "@/lib/serialize";
 import { CatalogList } from "./catalog-list";
 
-export default async function CatalogPage() {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const authUser = await getCurrentUser();
   if (!authUser) redirect("/login");
 
@@ -16,8 +20,15 @@ export default async function CatalogPage() {
   const userRepo = new MongoUserRepository();
   const user = await userRepo.findById(authUser.userId);
   if (!user) redirect("/login");
-
   const items = await listCatalogItems(authUser.workspaceId!, catalogRepo);
+  const params = await searchParams;
+  const highlightItemId = typeof params.highlight === "string" ? params.highlight : undefined;
 
-  return <CatalogList items={serializeEntities(items)} defaultCurrency={user.defaultCurrency} />;
+  return (
+    <CatalogList
+      items={serializeEntities(items)}
+      highlightItemId={highlightItemId}
+      defaultCurrency={user.defaultCurrency}
+    />
+  );
 }

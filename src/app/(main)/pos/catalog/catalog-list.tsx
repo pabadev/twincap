@@ -11,22 +11,34 @@ import { Icon } from "../../../../components/ui/icon";
 import { Modal } from "../../../../components/ui/modal";
 import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
-import { Package, Pencil, Search } from "lucide-react";
+import { ArrowDownUp, ChefHat, Package, PackagePlus, Pencil, Search } from "lucide-react";
+import { quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
+import { getAvailableComboCount } from "../../../../core/domain/product-combo";
+import { StockControls } from "./stock-controls";
+import { CatalogItemCard } from "./catalog-item-card";
+import { CATALOG_GRID_CLASSES } from "./catalog-grid-layout";
+import { ProductFormulaForm } from "./product-formula-form";
+import { ProductComboForm } from "./product-combo-form";
+import { CatalogSectionNav } from "./catalog-section-nav";
 
 export function CatalogList({
   items,
+  highlightItemId,
   defaultCurrency,
 }: {
   items: SerializedCatalogItem[];
-  /** User's preferred currency for new operations. */
+  highlightItemId?: string;
   defaultCurrency?: string;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<SerializedCatalogItem | null>(null);
+  const [formulaItem, setFormulaItem] = useState<SerializedCatalogItem | null>(null);
+  const [comboItem, setComboItem] = useState<SerializedCatalogItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const t = useT("Catalog");
   const locale = useLocale();
+  const stockByItemId = new Map(items.map((item) => [item.id, item.stock ?? 0]));
 
   // Debounce search query (300ms)
   useEffect(() => {
@@ -45,19 +57,52 @@ export function CatalogList({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
-        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
-          {t("addItem")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+            {t("addItem")}
+          </Button>
+        </div>
       </div>
+      <CatalogSectionNav active="catalog" />
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("newItem")}>
-        <CatalogForm defaultCurrency={defaultCurrency} onDone={() => setShowForm(false)} />
+        <CatalogForm
+          onDone={(created, options) => {
+            setShowForm(false);
+            // Guided combo creation: jump straight into composition instead of
+            // leaving the user to find the card button. No nested modals (the
+            // form modal closes first).
+            if (created && options?.openCombo) setComboItem(created);
+          }}
+        />
       </Modal>
 
       <Modal open={!!editingItem} onClose={() => setEditingItem(null)} title={t("editItem")}>
         {editingItem && <CatalogForm item={editingItem} onDone={() => setEditingItem(null)} />}
+      </Modal>
+
+      <Modal open={!!formulaItem} onClose={() => setFormulaItem(null)} title={t("formulaTitle")}>
+        {formulaItem && (
+          <ProductFormulaForm
+            key={`${formulaItem.id}:${formulaItem.formulaVersions.at(-1)?.version ?? 0}`}
+            item={formulaItem}
+            catalogItems={items}
+            onDone={() => setFormulaItem(null)}
+          />
+        )}
+      </Modal>
+
+      <Modal open={!!comboItem} onClose={() => setComboItem(null)} title={t("comboTitle")}>
+        {comboItem && (
+          <ProductComboForm
+            key={`${comboItem.id}:${comboItem.comboVersions.at(-1)?.version ?? 0}`}
+            item={comboItem}
+            catalogItems={items}
+            onDone={() => setComboItem(null)}
+          />
+        )}
       </Modal>
 
       {/* Search input */}
@@ -102,35 +147,88 @@ export function CatalogList({
           description={t("search")}
         />
       ) : (
-        <div className="space-y-3">
+        <div className={CATALOG_GRID_CLASSES}>
           {filteredItems.map((item) => {
             const currency = item.unitPrice.currency;
 
             return (
-              <div
+              <CatalogItemCard
                 key={item.id}
-                className="flex flex-col gap-2 rounded-lg border border-surface-border bg-surface-card px-4 py-2 dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-zinc-900 dark:text-white">{item.name}</div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {t(`type_${item.type}`)}
-                    </span>
-                    {item.type === "product" && item.stock !== undefined && (
-                      <span className="ml-2">
-                        {t("stock")}: {item.stock}
-                      </span>
+                id={item.id}
+                highlighted={highlightItemId === item.id}
+                name={item.name}
+                type={item.type}
+                typeLabel={
+                  item.type === "product"
+                    ? item.comboVersions.length > 0
+                      ? t("comboProduct")
+                      : item.formulaVersions.length > 0
+                        ? t("preparedProduct")
+                        : t(`productRole_${item.productRole}`)
+                    : t(`type_${item.type}`)
+                }
+                priceLabel={t("unitPriceLabel")}
+                price={
+                  item.productRole === "supply"
+                    ? t("notForSale")
+                    : formatAmount(item.unitPrice.amount, currency, locale)
+                }
+                priceUnit={
+                  item.productRole === "supply"
+                    ? t("supplyPriceHint")
+                    : item.comboVersions.length > 0
+                      ? t("perCombo")
+                      : t("perUnit", { unit: t(`unit_${item.saleUnit}`) })
+                }
+                stockLabel={item.comboVersions.length > 0 ? t("comboAvailability") : t("stock")}
+                stock={
+                  item.type !== "product" || item.stock === undefined
+                    ? null
+                    : item.comboVersions.length > 0
+                      ? new Intl.NumberFormat(locale).format(
+                          getAvailableComboCount(item.comboVersions.at(-1)!, stockByItemId),
+                        )
+                      : new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
+                          quantityFromBaseUnits(item.stock, item.saleUnit),
+                        )
+                }
+                stockUnit={
+                  item.comboVersions.length > 0 ? t("comboUnit") : t(`unit_${item.saleUnit}`)
+                }
+                notApplicable={t("notApplicableStock")}
+                actions={
+                  <>
+                    {item.type === "product" && item.comboVersions.length === 0 ? (
+                      <StockControls item={item} icon={ArrowDownUp} />
+                    ) : (
+                      <span data-card-action-placeholder aria-hidden="true" />
                     )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatAmount(item.unitPrice.amount, currency, locale)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+                    {item.type === "product" &&
+                    item.productRole !== "supply" &&
+                    item.comboVersions.length === 0 ? (
+                      <ActionIconButton
+                        icon={ChefHat}
+                        label={t("formulaTitle")}
+                        tone="neutral"
+                        onClick={() => setFormulaItem(item)}
+                      />
+                    ) : (
+                      <span data-card-action-placeholder aria-hidden="true" />
+                    )}
+                    {item.type === "product" &&
+                    item.productRole !== "supply" &&
+                    item.formulaVersions.length === 0 &&
+                    (item.comboVersions.length > 0 ||
+                      (item.stock === 0 && item.saleUnit === "unit")) ? (
+                      <ActionIconButton
+                        icon={PackagePlus}
+                        label={t("comboTitle")}
+                        tone="neutral"
+                        onClick={() => setComboItem(item)}
+                      />
+                    ) : (
+                      <span data-card-action-placeholder aria-hidden="true" />
+                    )}
                     <ActionIconButton
                       icon={Pencil}
                       label={t("edit")}
@@ -138,9 +236,9 @@ export function CatalogList({
                       onClick={() => setEditingItem(item)}
                     />
                     <DeleteCatalogItemButton itemId={item.id} />
-                  </div>
-                </div>
-              </div>
+                  </>
+                }
+              />
             );
           })}
         </div>
