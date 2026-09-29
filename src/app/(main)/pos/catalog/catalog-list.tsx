@@ -84,7 +84,12 @@ export function CatalogList({
         {editingItem && <CatalogForm item={editingItem} onDone={() => setEditingItem(null)} />}
       </Modal>
 
-      <Modal open={!!formulaItem} onClose={() => setFormulaItem(null)} title={t("formulaTitle")}>
+      <Modal
+        open={!!formulaItem}
+        onClose={() => setFormulaItem(null)}
+        title={t("formulaTitle")}
+        size="lg"
+      >
         {formulaItem && (
           <ProductFormulaForm
             key={`${formulaItem.id}:${formulaItem.formulaVersions.at(-1)?.version ?? 0}`}

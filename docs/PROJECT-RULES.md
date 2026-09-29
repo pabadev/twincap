@@ -238,6 +238,8 @@ src/
 - No inventar columnas en tablas de resumen: 4 columnas máximo, justificadas por utilidad.
 - No mostrar todos los reportes simultáneamente — menú de acceso.
 - **Identidad del cliente (decisión de producto, 2026-09-27):** el teléfono internacional es obligatorio y es el identificador principal único por workspace; almacenarlo normalizado en E.164 (`+573001234567`). Exigir prefijo de país explícito; email y otros medios de contacto son opcionales, no únicos y no sustituyen al teléfono. La unicidad no cruza workspaces.
+- **Acciones de fila/linea icon-first (regla del fundador, 2026-09-29):** las acciones de quitar/eliminar dentro de filas de formularios (líneas de receta/combo/recepción, filas de venta, etc.) usan `ActionIconButton` icon-only con aria-label+tooltip, NUNCA bots de texto etiquetados que ensanchan la fila innecesariamente. Tono `danger` para destructivas.
+- **Selects de alta con valor neutro (regla del fundador, 2026-09-29):** todo `Select` de un formulario de ALTA abre con placeholder neutro ("Seleccionar"), nunca precargando un valor de la lista. En EDICIÓN el valor persistido es la verdad y se precarga. Presets guiados (Combo/Receta) fijan la forma del dominio vía inputs ocultos y solo neutralizan la elección visible.
 
 ## 16. Principios financieros (inquebrantables)
 

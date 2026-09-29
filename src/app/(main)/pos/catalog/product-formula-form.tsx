@@ -9,6 +9,8 @@ import { Alert } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Select } from "../../../../components/ui/select";
+import { ActionIconButton } from "../../../../components/ui/action-icon-button";
+import { Trash2 } from "lucide-react";
 import { configureProductFormulaAction } from "./actions";
 
 type FormulaLine = { itemId: string; quantity: string };
@@ -129,15 +131,15 @@ export function ProductFormulaForm({
                 }
               />
             </label>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
+            {/* Icon-only remove action (owner rule: TwinCap action rows are
+                icon-first, like sales/movements/receipts). */}
+            <ActionIconButton
+              icon={Trash2}
+              label={t("receiptRemoveLine")}
+              tone="danger"
               disabled={lines.length < 2 || pending}
               onClick={() => setLines((current) => current.filter((_, row) => row !== index))}
-            >
-              {t("receiptRemoveLine")}
-            </Button>
+            />
           </div>
         ))}
         <Button
