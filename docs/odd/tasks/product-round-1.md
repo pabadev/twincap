@@ -271,6 +271,22 @@ Orden recomendado al retomar:
 - **Tests**: nuevo `catalog-form-combo.test.tsx` (4 tests, patrón createRoot sin testing-library) — opciones del select, hint por tipo, forma oculta del preset, restauro al volver a Producto, edición limitada a producto/servicio. Reparado `actions.test.ts` (mock de MongoUnitOfWork que faltaba tras el wrapper transaccional de la ronda — fallo preexistente de la ejecución diferida). Suites enfocadas: sale-form 57/57, catalog actions 2/2, catalog-form-combo 4/4.
 - `tsc --noEmit` mantiene 38 errores PREEXISTENTES de la deuda de Fase 9 (testing-library ausente, fixtures export-csv, fakes); cero errores en archivos tocados hoy.
 
+### Cuarta iteración del fundador (2026-09-29, receta guiada + jerarquía del catálogo)
+
+- **Opción "Receta" en el alta guiada** (espeja la de Combo): fija type=product/sellable/stock=0 y mantiene el select de unidad visible porque ES el rendimiento de la fórmula (relabeled "Unidad de venta (rinde la receta)"). Bug que el test atrapó: `resolvedType` no mapeaba `recipe` → el hidden input habría enviado `type=recipe` inválido al server action; corregido. Al guardar se abre el modal de receta (mismo patrón anti-remount del refresh).
+- **Modal de receta ampliado a `lg`** y "Quitar línea" como `ActionIconButton` icon-only (también en combo form). **Reglas del fundador registradas en PROJECT-RULES §15**: acciones de fila icon-first y selects de alta neutros.
+- **Preparado en POS: default = fórmula más reciente** (modo existencias queda seleccionable pero ya no es default).
+- **Catálogo agrupado por prioridad de venta**: "A la venta" (incluye Productos e insumo) → "Servicios" → "Insumos" colapsados con badge; auto-abre si el highlight del historial de entradas apunta ahí; búsqueda filtra las 3 secciones. Agrupación solo-de-presentación (`catalog-groups.ts`, test pinnea el orden).
+- **Cards de Entradas re-diseñadas** sobre el MovementCard compartido (proveedor primario, badge de pago verde/ámbar/rojo-huérfano conservando el caso del payable borrado, breakdown plano de líneas). i18n es/en 994/994.
+- **Skeletons sincronizados**: catalog reescrito al layout agrupado; receipts loading.tsx NUEVO (la ruta heredaba el de catalog y saltaba de max-w-6xl a max-w-3xl).
+- **Lint del highlight de créditos**: `react-hooks/set-state-in-effect` — highlight derivado del URL con timer de expiración local (estado `highlightExpired`); tests 3/3.
+
+## Estado de commit (2026-09-29)
+
+- **12 commits locales sin pushear** sobre `1a1beac`: `07314a0` feat(product) fases 1-3 · `4048c1a` feat(inventory) fases 4-8 · `75318ea` feat(pos) UI · `0dcb494` chore(inventory) scripts índices+reconciliación · `7f5ae4f` docs · `2012d19` fix(save-card emphasis) · `adae6e5` feat(receta guiada) · `85cd81c` fix(receta modal+reglas) · `a1ed77f` feat(default receta) · `3bb07b6` feat(catalog groups) · `ba2ed1f` fix(cards entradas) · `4c04597` fix(skeletons). Commit pendiente: fix lint highlight + esta documentación.
+- **Verificación PRE-PUSH (Fase 9)** documentada con checklist en `docs/AUDIT-AND-PLAN.md`: suites enfocadas de not-redesigned suites, única suite completa ≥45min, `tsc` en 0 (4 BigInt + 26 errores de tests a resolver o documentar decisión de `@testing-library/react`), lint 0 (logrado), build, y auditoría del diff de 12 commits.
+- **Índices**: Entradas `[PASS]×2`; teléfono sigue FAIL pendiente de ventana Atlas (scripts listos, operación autorizada pendiente).
+
 ### Segunda iteración del fundador (2026-09-29, post-alta guiada)
 
 - **Error 1 — modal de composición no se abía tras crear el combo (RESUELTO, causa raíz confirmada):** `router.refresh()` corría ANTES de `onDone` en el efecto de éxito de `catalog-form`. La página es async con `loading.tsx`: el refresh suspende el árbol, el boundary de loading REEMPLAZA la página y **destruye el estado de cliente** (`comboItem` recién seteado). Evidencia en Atlas: "Combo 3" (05:01 UTC) creado con la forma correcta pero sin composición; "Combo 1/2" creados por vía del botón de card sí tienen composición. Fix: `onDone` primero, `refresh` después (mismo orden aplicado a sale-form por consistencia). Test de flujo `catalog-list-combo-flow.test.tsx` (mock fiel del modal con children montados) reproduce la cadena completa: 1/1.

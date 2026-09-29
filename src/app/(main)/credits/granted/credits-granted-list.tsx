@@ -48,7 +48,17 @@ export function CreditsGrantedList({
   );
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [highlightedCreditId, setHighlightedCreditId] = useState<string | null>(null);
+  const [highlightExpired, setHighlightExpired] = useState(false);
+  // Derived highlight (react-hooks/set-state-in-effect): the highlighted id
+  // comes straight from the URL (a READ of an external system); the effect
+  // below only schedules the side effects (scroll + local expiry timer).
+  const highlightTarget = resolveCreditHighlightTarget(
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("highlight"),
+    credits.map((credit) => credit.id),
+  );
+  const highlightActive = highlightTarget && !highlightExpired ? highlightTarget : null;
   const t = useT("CreditsGranted");
   const tCommon = useT("Common");
   const locale = useLocale();
@@ -59,7 +69,7 @@ export function CreditsGrantedList({
       credits.map((credit) => credit.id),
     );
     if (!targetId) return;
-    setHighlightedCreditId(targetId);
+    setHighlightExpired(false);
     const frameId = window.requestAnimationFrame(() => {
       document.getElementById(`credit-${targetId}`)?.scrollIntoView({
         behavior: creditHighlightScrollBehavior(
@@ -69,14 +79,14 @@ export function CreditsGrantedList({
       });
     });
     const timeoutId = window.setTimeout(
-      () => setHighlightedCreditId(null),
+      () => setHighlightExpired(true),
       CREDIT_HIGHLIGHT_DURATION_MS,
     );
     return () => {
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(timeoutId);
     };
-  }, [credits]);
+  }, [credits, highlightTarget]);
 
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (search ? 1 : 0);
 
@@ -321,7 +331,7 @@ export function CreditsGrantedList({
                   key={credit.id}
                   id={`credit-${credit.id}`}
                   data-credit-id={credit.id}
-                  className={`flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card transition-colors dark:border-zinc-700 dark:bg-zinc-900 ${isDimmed ? "opacity-60" : ""} ${highlightedCreditId === credit.id ? "animate-pulse bg-amber-100 ring-2 ring-amber-400 motion-reduce:animate-none dark:bg-amber-950" : ""}`}
+                  className={`flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card transition-colors dark:border-zinc-700 dark:bg-zinc-900 ${isDimmed ? "opacity-60" : ""} ${highlightActive === credit.id ? "animate-pulse bg-amber-100 ring-2 ring-amber-400 motion-reduce:animate-none dark:bg-amber-950" : ""}`}
                 >
                   {/* Beta feedback: the collapsed card follows the Movements
                       card format — row 1 identity + chevron, then label/value
