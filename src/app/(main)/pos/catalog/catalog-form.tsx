@@ -21,17 +21,24 @@ import { useActionError } from "../../../../lib/use-action-error";
 interface CatalogFormProps {
   item?: SerializedCatalogItem;
   /** Called after a successful save; a create passes the created item snapshot (when available). */
-  onDone?: (item?: SerializedCatalogItem, options?: { openCombo?: boolean }) => void;
+  onDone?: (
+    item?: SerializedCatalogItem,
+    options?: { openCombo?: boolean; openRecipe?: boolean },
+  ) => void;
 }
 
 /**
  * Form-only "kind" selector: regular products and services map 1:1 to the
- * domain types; "combo" is a guided preset that fixes type=product,
- * productRole=sellable, saleUnit=unit, stock=0 — exactly the shape
- * configureProductCombo requires — so a new user never has to know those
- * rules. The domain stays untouched.
+ * domain types; "combo" and "recipe" are guided presets that fix the exact
+ * shape their configure* use cases require — so a new user never has to know
+ * those rules. The domain stays untouched.
+ *
+ * combo  → type=product, productRole=sellable, saleUnit=unit, stock=0.
+ * recipe → type=product, productRole=sellable (not supply), stock=0: a
+ *          prepared product sold under its formula (produced on demand),
+ *          with the sale unit acting as the formula yield unit.
  */
-type CatalogKind = CatalogItemType | "combo";
+type CatalogKind = CatalogItemType | "combo" | "recipe";
 
 export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const isEdit = !!item;
@@ -57,7 +64,8 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const [saleUnit, setSaleUnit] = useState<InventoryUnit | "">(item?.saleUnit ?? "");
   const [productRole, setProductRole] = useState<ProductRole | "">(item?.productRole ?? "");
   const [currency, setCurrency] = useState<Currency | "">(item?.unitPrice.currency ?? "");
-  const resolvedType: CatalogItemType = kind === "combo" || kind === "" ? "product" : kind;
+  const resolvedType: CatalogItemType =
+    kind === "product" ? "product" : kind === "service" ? "service" : "product";
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -67,7 +75,10 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
       // page and loading.tsx remounts the tree, destroying this form's and the
       // consumer's client state. Firing onDone first lets the consumer open a
       // follow-up modal (guided combo) in the same commit.
-      onDone?.(state.item, { openCombo: !isEdit && kind === "combo" });
+      onDone?.(state.item, {
+        openCombo: !isEdit && kind === "combo",
+        openRecipe: !isEdit && kind === "recipe",
+      });
       router.refresh();
     }
   }, [state?.success, state?.item, addToast, tToast, router, onDone, isEdit, kind]);
@@ -139,8 +150,9 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* UI-only kind selector (no name): the server contract still receives
-            type=product|service via the hidden input below. "Combo" presets
-            the exact shape configureProductCombo requires. */}
+            type=product|service via the hidden input below. "Combo" and
+            "Recipe" preset the exact shapes their configure* use cases
+            require. */}
         <div>
           <Select
             id="type"
@@ -161,6 +173,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
                       value: ct,
                       label: t(`type_${ct}`),
                     })),
+                    { value: "recipe", label: t("type_recipe") },
                     { value: "combo", label: t("type_combo") },
                   ]
             }
@@ -179,11 +192,18 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
           </>
         )}
 
-        {kind === "product" && (
+        {kind === "recipe" && (
+          <>
+            <input type="hidden" name="productRole" value="sellable" />
+            {!isEdit && <input type="hidden" name="stock" value="0" />}
+          </>
+        )}
+
+        {(kind === "product" || kind === "recipe") && (
           <Select
             id="saleUnit"
             name="saleUnit"
-            label={t("saleUnit")}
+            label={kind === "recipe" ? t("saleUnitAsYield") : t("saleUnit")}
             required
             disabled={isPending || isEdit}
             value={saleUnit}
@@ -247,6 +267,12 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
               })}
             </>
           )}
+        </p>
+      )}
+
+      {kind === "recipe" && saleUnit && (
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          {t("recipeUnitHint", { unit: t(`unit_${saleUnit}`) })}
         </p>
       )}
 

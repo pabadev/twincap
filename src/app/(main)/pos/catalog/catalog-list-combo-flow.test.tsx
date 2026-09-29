@@ -37,11 +37,7 @@ const createdCombo: SerializedCatalogItem = {
 };
 
 vi.mock("./catalog-form", () => ({
-  CatalogForm: ({
-    onDone,
-  }: {
-    onDone?: (...args: unknown[]) => void;
-  }) => {
+  CatalogForm: ({ onDone }: { onDone?: (...args: unknown[]) => void }) => {
     formOnDone.current = onDone ?? undefined;
     return (
       <button type="button" onClick={() => onDone?.(createdCombo, { openCombo: true })}>
@@ -67,10 +63,15 @@ vi.mock("./stock-controls", () => ({
   StockControls: () => <button type="button" />,
 }));
 
-vi.mock("./product-formula-form", () => ({ ProductFormulaForm: () => null }));
 vi.mock("./product-combo-form", () => ({
   ProductComboForm: ({ item }: { item: SerializedCatalogItem }) => (
     <div data-testid="combo-form">COMBO_FORM_OPEN:{item.id}</div>
+  ),
+}));
+
+vi.mock("./product-formula-form", () => ({
+  ProductFormulaForm: ({ item }: { item: SerializedCatalogItem }) => (
+    <div data-testid="formula-form">FORMULA_FORM_OPEN:{item.id}</div>
   ),
 }));
 
@@ -124,5 +125,51 @@ describe("CatalogList guided combo flow", () => {
 
     expect(container!.querySelector('[data-testid="combo-form"]')).not.toBeNull();
     expect(container!.textContent).toContain("COMBO_FORM_OPEN:combo-new");
+  });
+
+  it("opens the recipe modal after creating a recipe", () => {
+    const createdRecipe: SerializedCatalogItem = {
+      id: "recipe-new",
+      workspaceId: "ws-1",
+      name: "Limonada preparada",
+      unitPrice: { amount: 8000, currency: "COP" },
+      type: "product",
+      productRole: "sellable",
+      saleUnit: "unit",
+      formulaVersions: [],
+      comboVersions: [],
+      stock: 0,
+      createdAt: new Date(0),
+    };
+    mount(
+      <CatalogList
+        items={[
+          {
+            id: "p1",
+            workspaceId: "ws-1",
+            name: "Frasco",
+            unitPrice: { amount: 1000, currency: "COP" },
+            type: "product",
+            productRole: "sellable",
+            saleUnit: "unit",
+            formulaVersions: [],
+            comboVersions: [],
+            stock: 10,
+            createdAt: new Date(0),
+          },
+        ]}
+      />,
+    );
+
+    const addButton = [...container!.querySelectorAll("button")].find(
+      (button) => button.textContent === "addItem",
+    );
+    expect(addButton).toBeDefined();
+    act(() => addButton!.click());
+
+    act(() => formOnDone.current?.(createdRecipe, { openRecipe: true }));
+
+    expect(container!.querySelector('[data-testid="formula-form"]')).not.toBeNull();
+    expect(container!.textContent).toContain("FORMULA_FORM_OPEN:recipe-new");
   });
 });

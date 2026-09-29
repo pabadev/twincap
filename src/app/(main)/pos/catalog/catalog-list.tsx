@@ -71,10 +71,11 @@ export function CatalogList({
         <CatalogForm
           onDone={(created, options) => {
             setShowForm(false);
-            // Guided combo creation: jump straight into composition instead of
-            // leaving the user to find the card button. No nested modals (the
-            // form modal closes first).
+            // Guided combo/recipe creation: jump straight into composition /
+            // formula instead of leaving the user to find the card button.
+            // No nested modals (the form modal closes first).
             if (created && options?.openCombo) setComboItem(created);
+            if (created && options?.openRecipe) setFormulaItem(created);
           }}
         />
       </Modal>

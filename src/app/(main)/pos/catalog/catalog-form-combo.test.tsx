@@ -28,8 +28,8 @@ vi.mock("../../../../lib/hooks/use-toast", () => ({
   useToast: () => ({ addToast: () => {} }),
 }));
 
-/** The guided combo preset must fix the exact shape configureProductCombo requires. */
-describe("CatalogForm guided combo kind", () => {
+/** Guided presets must fix the exact shape each configure* use case requires. */
+describe("CatalogForm guided combo and recipe kinds", () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
 
@@ -70,7 +70,7 @@ describe("CatalogForm guided combo kind", () => {
     );
   }
 
-  it("opens on a neutral selection and offers Combo only on create", () => {
+  it("opens on a neutral selection and offers Recipe/Combo only on create", () => {
     mount(<CatalogForm onDone={() => {}} />);
 
     const kind = getSelect("type");
@@ -78,13 +78,15 @@ describe("CatalogForm guided combo kind", () => {
     // placeholder instead of pre-picking product.
     expect(kind.value).toBe("");
     const values = [...kind.options].map((option) => option.value);
-    expect(values).toEqual(["", "product", "service", "combo"]);
+    expect(values).toEqual(["", "product", "service", "recipe", "combo"]);
 
     expect(container!.textContent).toContain("typeHint_none");
     change(kind, "product");
     expect(container!.textContent).toContain("typeHint_product");
     change(kind, "service");
     expect(container!.textContent).toContain("typeHint_service");
+    change(kind, "recipe");
+    expect(container!.textContent).toContain("typeHint_recipe");
     change(kind, "combo");
     expect(container!.textContent).toContain("typeHint_combo");
   });
@@ -106,10 +108,29 @@ describe("CatalogForm guided combo kind", () => {
     expect(hidden.stock).toBe("0");
   });
 
-  it("restores the regular product fields when switching back from Combo", () => {
+  it("hides role/stock when Recipe is selected but keeps the sale unit choice", () => {
+    mount(<CatalogForm onDone={() => {}} />);
+    change(getSelect("type"), "recipe");
+
+    // The recipe's sale unit IS the formula yield unit — the user must pick it.
+    expect(document.getElementById("saleUnit")).not.toBeNull();
+    expect(document.getElementById("productRole")).toBeNull();
+    expect(document.getElementById("stock")).toBeNull();
+    // Price stays editable (a prepared product has its own sale price).
+    expect(document.getElementById("unitPrice")).not.toBeNull();
+
+    const hidden = hiddenFields();
+    expect(hidden.type).toBe("product");
+    expect(hidden.productRole).toBe("sellable");
+    // No saleUnit hidden input: the visible select carries the choice.
+    expect("saleUnit" in hidden).toBe(false);
+    expect(hidden.stock).toBe("0");
+  });
+
+  it("restores the regular product fields when switching back from a preset", () => {
     mount(<CatalogForm onDone={() => {}} />);
     const kind = getSelect("type");
-    change(kind, "combo");
+    change(kind, "recipe");
     change(kind, "product");
 
     expect(document.getElementById("saleUnit")).not.toBeNull();
@@ -135,7 +156,7 @@ describe("CatalogForm guided combo kind", () => {
     mount(<CatalogForm item={item} onDone={() => {}} />);
 
     const kind = getSelect("type");
-    // Editing: no placeholder row and no combo option; the persisted type is
+    // Editing: no placeholder row and no preset options; the persisted type is
     // preloaded (the truth, not a neutral choice).
     expect([...kind.options].map((option) => option.value)).toEqual(["product", "service"]);
     expect(kind.value).toBe("product");
