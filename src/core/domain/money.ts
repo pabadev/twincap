@@ -67,7 +67,7 @@ export class Money {
     return money;
   }
 
-plus(other: Money): Money {
+  plus(other: Money): Money {
     assertSameCurrency(this, other);
     const result = this.amount + other.amount;
     assertArithmeticResult("plus", result);
@@ -100,9 +100,7 @@ plus(other: Money): Money {
  */
 function assertArithmeticResult(op: string, result: number): void {
   if (!Number.isSafeInteger(result)) {
-    throw new MoneyError(
-      `Amount must be an integer in minor units after ${op}, got ${result}`,
-    );
+    throw new MoneyError(`Amount must be an integer in minor units after ${op}, got ${result}`);
   }
   if (result <= 0) {
     throw new MoneyError(`Amount must be positive after ${op}, got ${result}`);
@@ -125,10 +123,35 @@ function assertArithmeticResult(op: string, result: number): void {
  */
 export function assertSafeMinorUnits(value: number, context: string): void {
   if (!Number.isSafeInteger(value)) {
-    throw new MoneyError(
-      `\`${context}\` produced an unsafe minor-units value: ${value}`,
-    );
+    throw new MoneyError(`\`${context}\` produced an unsafe minor-units value: ${value}`);
   }
+}
+
+/** Parse a user-entered major-unit decimal into exact integer minor units. */
+export function decimalAmountToMinorUnits(
+  raw: string,
+  currency: Currency,
+  allowZero = false,
+): number {
+  const value = raw.trim();
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) {
+    throw new ValidationError("Amount must be a non-negative decimal number");
+  }
+  const [wholePart = "0", fractionPart = ""] = value.startsWith(".")
+    ? ["0", value.slice(1)]
+    : value.split(".");
+  const exponent = exponentOf(currency);
+  const significantExcess = fractionPart.slice(exponent);
+  if (/[1-9]/.test(significantExcess)) {
+    throw new ValidationError("Amount has more decimal places than the currency supports");
+  }
+  const fraction = fractionPart.slice(0, exponent).padEnd(exponent, "0");
+  const digits = `${wholePart}${fraction}`.replace(/^0+(?=\d)/, "");
+  const amount = Number(digits);
+  if (!Number.isSafeInteger(amount) || amount < 0 || (!allowZero && amount === 0)) {
+    throw new ValidationError("Amount is outside the supported range");
+  }
+  return amount;
 }
 
 /**
@@ -151,10 +174,7 @@ export function assertSafeMinorUnits(value: number, context: string): void {
  *         integer — the failure surfaces as a clear error (never a silent
  *         wrap); server actions map MoneyError to `error.invalidAmount`.
  */
-export function sumSafeMinorUnits(
-  values: readonly number[],
-  context: string,
-): number {
+export function sumSafeMinorUnits(values: readonly number[], context: string): number {
   let sum = 0;
   for (const value of values) {
     sum += value;
@@ -192,9 +212,7 @@ export function deriveExchangeRate(source: Money, destination: Money): number {
     throw new ValidationError("Source amount cannot be zero");
   }
   if (destination.amount === 0) {
-    throw new ValidationError(
-      "Destination amount cannot be zero for cross-currency transfer",
-    );
+    throw new ValidationError("Destination amount cannot be zero for cross-currency transfer");
   }
   if (source.currency === destination.currency) {
     return 1; // Same currency: rate is always 1

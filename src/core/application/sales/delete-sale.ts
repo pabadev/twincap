@@ -1,13 +1,14 @@
-import { NotFoundError } from '../../domain/errors';
+import { NotFoundError } from "../../domain/errors";
 import type {
   SaleRepository,
   CatalogItemRepository,
   MovementRepository,
   CreditGrantedRepository,
   AccountRepository,
-} from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccounts } from '../financial/touch-accounts';
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccounts } from "../financial/touch-accounts";
+import { getBaseUnit } from "../../domain/inventory-units";
 
 /**
  * Delete a sale and cascade (POS-8, R5-D0c).
@@ -58,23 +59,56 @@ export async function deleteSale(
   creditRepo: CreditGrantedRepository,
   accountRepo: AccountRepository,
   uow: UnitOfWork,
+  actorUserId?: string,
 ): Promise<void> {
   return uow.withTransaction(async (tx) => {
     const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) throw new NotFoundError('Sale not found');
+    const sale = sales.find((s) => s.id === saleId);
+    if (!sale) throw new NotFoundError("Sale not found");
 
-    // POS-8: restore stock for physical items (read the item INSIDE the tx so
-    // the restore is snapshot-consistent with the sale snapshot).
+    // POS-8: restore either the sold item's stock or the actual formula component
+    // snapshots. Formula reversals never depend on today's formula version.
+    const formulaRestores = new Map<
+      string,
+      { quantity: number; unit: ReturnType<typeof getBaseUnit>; name: string }
+    >();
     for (const item of sale.items) {
-      const catalogItem = await catalogRepo.findById(workspaceId, item.itemId, tx);
-      if (catalogItem && catalogItem.type === 'product') {
-        await catalogRepo.incrementStock(workspaceId, item.itemId, item.quantity, tx);
+      if (item.formulaSnapshot || item.comboSnapshot) {
+        const components = item.formulaSnapshot?.components ?? item.comboSnapshot?.components ?? [];
+        for (const component of components) {
+          const prior = formulaRestores.get(component.itemId);
+          const quantity = (prior?.quantity ?? 0) + component.stockQuantity;
+          if (!Number.isSafeInteger(quantity))
+            throw new Error("Formula reversal quantity exceeds supported range");
+          formulaRestores.set(component.itemId, {
+            quantity,
+            unit: getBaseUnit(component.unit),
+            name: component.name,
+          });
+        }
+        continue;
       }
+      const catalogItem = await catalogRepo.findById(workspaceId, item.itemId, tx);
+      if (catalogItem && catalogItem.type === "product") {
+        await catalogRepo.incrementStock(workspaceId, item.itemId, item.stockQuantity, tx, {
+          saleId,
+          actorUserId,
+          date: new Date(),
+          unit: getBaseUnit(catalogItem.saleUnit),
+        });
+      }
+    }
+    for (const [componentId, restore] of formulaRestores) {
+      await catalogRepo.incrementStock(workspaceId, componentId, restore.quantity, tx, {
+        saleId,
+        actorUserId,
+        date: new Date(),
+        unit: restore.unit,
+      });
     }
 
     const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
-    const linkedCredit = credits.find(c => c.saleId === saleId);
+    const linkedCredit = credits.find((c) => c.saleId === saleId);
 
     // Robust format-agnostic cascade: delete every movement that references the
     // sale (legacy salePayment — ObjectId or UUID) and, if a linked credit
@@ -98,9 +132,9 @@ export async function deleteSale(
     // transaction — sale account + sale abono accounts, plus the linked
     // credit's account + its abono accounts when a credit exists. The helper
     // dedupes overlapping ids and runs sequentially.
-    const accountIds = [sale.accountId, ...sale.abonos.map(a => a.accountId)];
+    const accountIds = [sale.accountId, ...sale.abonos.map((a) => a.accountId)];
     if (linkedCredit) {
-      accountIds.push(linkedCredit.accountId, ...linkedCredit.abonos.map(a => a.accountId));
+      accountIds.push(linkedCredit.accountId, ...linkedCredit.abonos.map((a) => a.accountId));
     }
     await touchAccounts(accountRepo, workspaceId, accountIds, tx);
   });

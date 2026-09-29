@@ -1,4 +1,5 @@
-import type { Currency } from '../../../domain/currency';
+import type { Currency } from "../../../domain/currency";
+import type { MovementContext } from "../../../domain/movement";
 
 export interface CreatePayableInput {
   counterparty: string;
@@ -8,6 +9,7 @@ export interface CreatePayableInput {
   /** Paid at acquisition time; >= 0 and <= total. Defaults to 0. */
   initialPayment?: number;
   accountId: string;
+  context?: MovementContext;
   date: Date;
   dueDate?: Date;
   note?: string;

@@ -1,4 +1,4 @@
-import type { MovementLinkKind } from '../core/domain/movement';
+import type { MovementLinkKind } from "../core/domain/movement";
 
 /**
  * Presentation-layer derivation of system movement notes.
@@ -12,7 +12,7 @@ import type { MovementLinkKind } from '../core/domain/movement';
  */
 export type TranslateFn = (key: string, params?: Record<string, string>) => string;
 
-export const SYSTEM_NOTES_NAMESPACE = 'SystemNotes';
+export const SYSTEM_NOTES_NAMESPACE = "SystemNotes";
 
 /** Minimal structural shape needed to derive a display note. */
 export interface SystemNoteSource {
@@ -27,18 +27,18 @@ export interface SystemNoteSource {
  * from the SALES map (link.saleId), not from the credit map (link.refId).
  */
 const COUNTERPARTY_KINDS = new Set<string>([
-  'creditReceivedPrincipal',
-  'creditReceivedAbono',
-  'creditGrantedPrincipal',
-  'creditGrantedAbono',
-  'creditGrantedAbonoSale',
-  'salePayment',
-  'payableInitialPayment',
-  'payableAbono',
+  "creditReceivedPrincipal",
+  "creditReceivedAbono",
+  "creditGrantedPrincipal",
+  "creditGrantedAbono",
+  "creditGrantedAbonoSale",
+  "salePayment",
+  "payableInitialPayment",
+  "payableAbono",
 ]);
 
 /** Kinds with a fixed template that never takes a name parameter. */
-const PLAIN_KINDS = new Set<MovementLinkKind>(['opening', 'transfer']);
+const PLAIN_KINDS = new Set<MovementLinkKind>(["opening", "transfer", "inventoryReceiptPayment"]);
 
 /**
  * i18n template key for a link kind; null when the kind is unknown
@@ -48,8 +48,8 @@ const PLAIN_KINDS = new Set<MovementLinkKind>(['opening', 'transfer']);
  * when the link carries saleId — that abono originated in an on-credit sale.
  */
 export function systemNoteTemplateKey(kind: string, saleId?: string): string | null {
-  if (kind === 'creditGrantedAbono' && saleId !== undefined) {
-    return 'creditGrantedAbonoSale';
+  if (kind === "creditGrantedAbono" && saleId !== undefined) {
+    return "creditGrantedAbonoSale";
   }
   if (PLAIN_KINDS.has(kind as MovementLinkKind)) return kind;
   if (COUNTERPARTY_KINDS.has(kind)) return kind;
@@ -58,7 +58,7 @@ export function systemNoteTemplateKey(kind: string, saleId?: string): string | n
 
 /** Legacy default persisted by old transfer flows ("Transfer"). */
 function isLegacyAutoTransferNote(note: string | undefined): boolean {
-  return note !== undefined && note.trim().toLowerCase() === 'transfer';
+  return note !== undefined && note.trim().toLowerCase() === "transfer";
 }
 
 /**
@@ -71,7 +71,7 @@ function persistedNoteIsUserAuthored(source: SystemNoteSource): boolean {
   if (!source.link || !source.note || source.note.trim().length === 0) {
     return false;
   }
-  if (source.link.kind === 'transfer') {
+  if (source.link.kind === "transfer") {
     // Old generators defaulted to the literal "Transfer" — treat as auto.
     return !isLegacyAutoTransferNote(source.note);
   }
@@ -103,9 +103,10 @@ export function deriveSystemNote(
   if (COUNTERPARTY_KINDS.has(templateKey)) {
     // Sale-born abonos label from the sales map via link.saleId; all other
     // counterparty kinds label from the parent operation via link.refId.
-    const labelRefId = templateKey === 'creditGrantedAbonoSale'
-      ? (source.link.saleId ?? source.link.refId)
-      : source.link.refId;
+    const labelRefId =
+      templateKey === "creditGrantedAbonoSale"
+        ? (source.link.saleId ?? source.link.refId)
+        : source.link.refId;
     const label = refLabels?.[labelRefId];
     if (label && label.trim().length > 0) {
       return t(templateKey, { name: label });

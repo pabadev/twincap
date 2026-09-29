@@ -113,6 +113,8 @@ const CreditGrantedSchema = new Schema<CreditGrantedDoc>(
   { timestamps: true },
 );
 
+CreditGrantedSchema.index({ workspaceId: 1, saleId: 1 });
+
 export const CreditGrantedModel =
   mongoose.models["CreditGranted"] ||
   mongoose.model<CreditGrantedDoc>("CreditGranted", CreditGrantedSchema);

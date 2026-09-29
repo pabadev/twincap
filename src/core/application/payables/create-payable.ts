@@ -1,11 +1,16 @@
-import { Payable } from '../../domain/payable';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError } from '../../domain/errors';
-import { payableCategory } from '../../domain/synthetic-categories';
-import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { CreatePayableInput } from './dto/payables';
+import { Payable } from "../../domain/payable";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ValidationError } from "../../domain/errors";
+import { payableCategory } from "../../domain/synthetic-categories";
+import type {
+  PayableRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { CreatePayableInput } from "./dto/payables";
+import type { TransactionHandle } from "../../domain/transaction";
 
 /**
  * Create a payable — a purchase on credit (H10, Fase 8).
@@ -29,70 +34,81 @@ export async function createPayable(
   accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<Payable> {
-  // D3: resolve the payment account — validates existence/ownership.
-  const account = await accountRepo.findById(workspaceId, input.accountId);
+  return uow.withTransaction((tx) =>
+    createPayableInTransaction(workspaceId, input, payableRepo, movementRepo, ids, accountRepo, tx),
+  );
+}
+
+/** Creates a payable inside a caller-owned transaction (e.g. stock receipt). */
+export async function createPayableInTransaction(
+  workspaceId: string,
+  input: CreatePayableInput,
+  payableRepo: PayableRepository,
+  movementRepo: MovementRepository,
+  ids: IdGenerator,
+  accountRepo: AccountRepository,
+  tx: TransactionHandle,
+  touchAccount = true,
+): Promise<Payable> {
+  // D3: resolve the payment account inside the same transaction that records
+  // the payable and its initial expense movement.
+  const account = await accountRepo.findById(workspaceId, input.accountId, tx);
   if (!account) {
     throw new NotFoundError(`Account ${input.accountId} not found`);
   }
 
   // ACC-1: the payable's currency must match the account's currency.
   if (input.currency !== account.currency) {
-    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
+    throw new ValidationError(
+      `Account currency is ${account.currency}, declared ${input.currency}`,
+    );
   }
 
-  // R15 Fase 2: payable + optional initial-payment movement are ONE atomic
-  // unit — a failure on the movement rolls back the payable too.
-  return uow.withTransaction(async (tx) => {
-    // R15.3.2 P2-4: mint the payable id and build the entity as the FIRST
-    // step of the transaction callback — every execution of the callback
-    // (including a transient-error replay) works from fresh ids instead of
-    // reusing values minted before the transaction started. Entity
-    // construction still validates total/initialPayment/counterparty BEFORE
-    // any write happens. Id order: payable → movement → op.
-    const payableId = ids.generate();
-    const now = new Date();
-    const payable = new Payable({
-      id: payableId,
-      workspaceId,
-      counterparty: input.counterparty,
-      total: new Money(input.total, input.currency),
-      initialPayment: input.initialPayment ?? 0,
-      accountId: input.accountId,
-      date: input.date,
-      dueDate: input.dueDate,
-      note: input.note,
-      createdAt: now,
-    });
+  // R15.3.2 P2-4: mint the payable id and build the entity as the FIRST
+  // write-phase step, so transaction retries use fresh ids. Construction
+  // validates the total/payment/counterparty before any repository write.
+  const payableId = ids.generate();
+  const now = new Date();
+  const payable = new Payable({
+    id: payableId,
+    workspaceId,
+    counterparty: input.counterparty,
+    total: new Money(input.total, input.currency),
+    initialPayment: input.initialPayment ?? 0,
+    accountId: input.accountId,
+    context: input.context,
+    date: input.date,
+    dueDate: input.dueDate,
+    note: input.note,
+    createdAt: now,
+  });
 
-    // R15.2: shared-document write — touch the payment account inside this
-    // transaction so a concurrent deleteAccount cannot commit between our read
-    // and the payable/initial-payment inserts, leaving an orphaned expense
-    // movement (matrix row 38).
+  if (touchAccount) {
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
+  }
 
-    await payableRepo.create(payable, tx);
+  await payableRepo.create(payable, tx);
 
-    if (payable.initialPayment > 0) {
-      const movementId = ids.generate();
-      const movement = new Movement({
-        id: movementId,
-        workspaceId,
-        accountId: input.accountId,
-        category: payableCategory('expense'),
-        type: 'expense',
-        amount: new Money(payable.initialPayment, input.currency),
-        date: input.date,
-        // No persisted note: display text derives at render from link.kind.
-        context: 'Personal',
-        link: { kind: 'payableInitialPayment', refId: payableId, opId: ids.generate() },
-        createdAt: now,
-      });
-      await movementRepo.create(movement, tx);
-    }
+  if (payable.initialPayment > 0) {
+    const movementId = ids.generate();
+    const movement = new Movement({
+      id: movementId,
+      workspaceId,
+      accountId: input.accountId,
+      category: payableCategory("expense"),
+      type: "expense",
+      amount: new Money(payable.initialPayment, input.currency),
+      date: input.date,
+      // No persisted note: display text derives at render from link.kind.
+      context: payable.context,
+      link: { kind: "payableInitialPayment", refId: payableId, opId: ids.generate() },
+      createdAt: now,
+    });
+    await movementRepo.create(movement, tx);
+  }
 
-    return payable;
-  });
+  return payable;
 }

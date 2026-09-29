@@ -6,12 +6,22 @@ import {
   assertSafeMinorUnits,
   deriveExchangeRate,
   sumSafeMinorUnits,
+  decimalAmountToMinorUnits,
 } from "./money";
 import { ValidationError } from "./errors";
 import { CreditReceived } from "./credit-received";
 import { Sale } from "./sale";
 
 describe("Money", () => {
+  it("parses major-unit decimals exactly for each currency exponent", () => {
+    expect(decimalAmountToMinorUnits("125", "COP", true)).toBe(125);
+    expect(decimalAmountToMinorUnits("12.34", "USD", true)).toBe(1234);
+    expect(decimalAmountToMinorUnits(".5", "EUR", true)).toBe(50);
+    expect(decimalAmountToMinorUnits("10.000", "COP", true)).toBe(10);
+    expect(() => decimalAmountToMinorUnits("10.001", "COP", true)).toThrow(ValidationError);
+    expect(() => decimalAmountToMinorUnits("1.001", "USD", true)).toThrow(ValidationError);
+  });
+
   it("stores amounts as integer minor units with a currency", () => {
     const money = new Money(1_000_000, "COP");
     expect(money.amount).toBe(1_000_000);
@@ -42,22 +52,18 @@ describe("Money", () => {
   });
 
   it("re-validates the plus result and rejects non-safe-integer overflow (R15.2 D5)", () => {
-    expect(() =>
-      new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP")),
-    ).toThrow(MoneyError);
-    expect(() =>
-      new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP")),
-    ).toThrow(/after plus/);
+    expect(() => new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP"))).toThrow(
+      MoneyError,
+    );
+    expect(() => new Money(Number.MAX_SAFE_INTEGER, "COP").plus(new Money(1, "COP"))).toThrow(
+      /after plus/,
+    );
   });
 
   it("re-validates the minus result and rejects non-positive results (R15.2 D5)", () => {
-    expect(() => new Money(500, "COP").minus(new Money(700, "COP"))).toThrow(
-      MoneyError,
-    );
+    expect(() => new Money(500, "COP").minus(new Money(700, "COP"))).toThrow(MoneyError);
     // Zero result (x − x) is not a valid transactional amount either.
-    expect(() => new Money(500, "COP").minus(new Money(500, "COP"))).toThrow(
-      /after minus/,
-    );
+    expect(() => new Money(500, "COP").minus(new Money(500, "COP"))).toThrow(/after minus/);
   });
 
   it("enforces the same-currency guard on plus", () => {
@@ -75,104 +81,73 @@ describe("Money", () => {
   });
 
   it("guards standalone comparisons between currencies", () => {
-    expect(() => assertSameCurrency(new Money(1, "USD"), new Money(1, "MXN"))).toThrow(
-      MoneyError,
-    );
+    expect(() => assertSameCurrency(new Money(1, "USD"), new Money(1, "MXN"))).toThrow(MoneyError);
   });
 });
 
 describe("deriveExchangeRate", () => {
   it("returns 1 for same-currency amounts (TRA-2)", () => {
-    expect(
-      deriveExchangeRate(new Money(300_000, "COP"), new Money(300_000, "COP")),
-    ).toBe(1);
+    expect(deriveExchangeRate(new Money(300_000, "COP"), new Money(300_000, "COP"))).toBe(1);
   });
 
   it("derives the §11 convention — sourceMajor per destinationMajor (R15.3 §11)", () => {
     // 100.00 USD → 400.000 COP: (10000/100) / (400000/1) = 0,00025 USD/COP.
-    expect(
-      deriveExchangeRate(
-        new Money(100_00, "USD"),
-        new Money(400_000, "COP"),
-      ),
-    ).toBeCloseTo(0.00025, 6);
+    expect(deriveExchangeRate(new Money(100_00, "USD"), new Money(400_000, "COP"))).toBeCloseTo(
+      0.00025,
+      6,
+    );
   });
 
   it("doc example: 190.000 COP → 50 USD yields exactly 3.800 COP/USD (§11)", () => {
     // (190000 / 10^0) / (5000 / 10^2) = 190000 / 50 = 3800 — NOT the old
     // minor-unit ratio (0,0263158) nor the naive 38.
-    expect(
-      deriveExchangeRate(
-        new Money(190_000, "COP"),
-        new Money(5_000, "USD"),
-      ),
-    ).toBe(3800);
+    expect(deriveExchangeRate(new Money(190_000, "COP"), new Money(5_000, "USD"))).toBe(3800);
   });
 
   it("inverts for USD → COP: 50 USD → 190.000 COP is ≈ 1/3800 (§11)", () => {
-    expect(
-      deriveExchangeRate(
-        new Money(5_000, "USD"),
-        new Money(190_000, "COP"),
-      ),
-    ).toBeCloseTo(1 / 3800, 10);
+    expect(deriveExchangeRate(new Money(5_000, "USD"), new Money(190_000, "COP"))).toBeCloseTo(
+      1 / 3800,
+      10,
+    );
   });
 
   it("handles currencies with different exponents — COP → MXN (§11)", () => {
     // 380.000 COP → 5.000 MXN minor (50.00 MXN): 380000/1 ÷ 5000/100 = 7600.
-    expect(
-      deriveExchangeRate(
-        new Money(380_000, "COP"),
-        new Money(5_000, "MXN"),
-      ),
-    ).toBe(7600);
+    expect(deriveExchangeRate(new Money(380_000, "COP"), new Money(5_000, "MXN"))).toBe(7600);
   });
 
   it("handles currencies with different exponents — EUR → COP (§11)", () => {
     // 5.000 EUR minor (50.00 EUR) → 190.000 COP: 50/190000.
-    expect(
-      deriveExchangeRate(
-        new Money(5_000, "EUR"),
-        new Money(190_000, "COP"),
-      ),
-    ).toBeCloseTo(50 / 190_000, 10);
+    expect(deriveExchangeRate(new Money(5_000, "EUR"), new Money(190_000, "COP"))).toBeCloseTo(
+      50 / 190_000,
+      10,
+    );
   });
 
   it("handles same-exponent cross-currency — USD → EUR (§11)", () => {
     // 100.00 USD → 85.00 EUR: 100/85.
-    expect(
-      deriveExchangeRate(
-        new Money(100_00, "USD"),
-        new Money(85_00, "EUR"),
-      ),
-    ).toBeCloseTo(100 / 85, 10);
+    expect(deriveExchangeRate(new Money(100_00, "USD"), new Money(85_00, "EUR"))).toBeCloseTo(
+      100 / 85,
+      10,
+    );
   });
 
   it("rejects a zero source amount", () => {
-    expect(() =>
-      deriveExchangeRate(
-        Money.nonNegative(0, "COP"),
-        new Money(100, "COP"),
-      ),
-    ).toThrow(ValidationError);
+    expect(() => deriveExchangeRate(Money.nonNegative(0, "COP"), new Money(100, "COP"))).toThrow(
+      ValidationError,
+    );
   });
 
   it("rejects a zero destination amount", () => {
-    expect(() =>
-      deriveExchangeRate(
-        new Money(100, "COP"),
-        Money.nonNegative(0, "COP"),
-      ),
-    ).toThrow(ValidationError);
+    expect(() => deriveExchangeRate(new Money(100, "COP"), Money.nonNegative(0, "COP"))).toThrow(
+      ValidationError,
+    );
   });
 
   it("rejects a zero destination MAJOR amount (sub-cent destination, §11)", () => {
-    expect(() =>
-      deriveExchangeRate(
-        new Money(100, "COP"),
-        new Money(1, "USD"),
-      ),
-    ).not.toThrow(ValidationError); // 1 USD minor = 0.01 major > 0, valid
+    expect(() => deriveExchangeRate(new Money(100, "COP"), new Money(1, "USD"))).not.toThrow(
+      ValidationError,
+    ); // 1 USD minor = 0.01 major > 0, valid
   });
 });
 
@@ -236,13 +211,19 @@ describe("sumSafeMinorUnits (R15.3.1 P1.3)", () => {
 
   it("throws MoneyError when the RUNNING TOTAL overflows even if inputs are individually safe (two MAX_SAFE_INTEGER amounts)", () => {
     expect(() =>
-      sumSafeMinorUnits([Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], "Account balance (acc-1)"),
+      sumSafeMinorUnits(
+        [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        "Account balance (acc-1)",
+      ),
     ).toThrow(MoneyError);
   });
 
   it("throws MoneyError mid-list — the second overflow step fails with the context name", () => {
     expect(() =>
-      sumSafeMinorUnits([9_000_000_000_000_000, 9_000_000_000_000_000, 1], "Dashboard monthly income"),
+      sumSafeMinorUnits(
+        [9_000_000_000_000_000, 9_000_000_000_000_000, 1],
+        "Dashboard monthly income",
+      ),
     ).toThrow(/`Dashboard monthly income` produced an unsafe minor-units value/);
   });
 
@@ -254,9 +235,7 @@ describe("sumSafeMinorUnits (R15.3.1 P1.3)", () => {
 
   it("accepts a full MAX_SAFE_INTEGER range sum that stays safe (negative + positive)", () => {
     // MIN_SAFE_INTEGER + MAX_SAFE_INTEGER = 0 — inside the safe range.
-    expect(
-      sumSafeMinorUnits([Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], "x"),
-    ).toBe(0);
+    expect(sumSafeMinorUnits([Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], "x")).toBe(0);
   });
 });
 

@@ -1,9 +1,9 @@
-import { Payable } from '../../domain/payable';
-import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import type { PayableRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import type { EditTotalInput } from './dto/payables';
+import { Payable } from "../../domain/payable";
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import type { PayableRepository } from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import type { EditTotalInput } from "./dto/payables";
 
 /**
  * Edit the total of a payable (PAY-R-4).
@@ -30,11 +30,16 @@ export async function editTotal(
 ): Promise<Payable> {
   return uow.withTransaction(async (tx) => {
     const payable = await payableRepo.findById(workspaceId, payableId, tx);
-    if (!payable) throw new NotFoundError('Payable not found');
+    if (!payable) throw new NotFoundError("Payable not found");
+    if (await payableRepo.hasInventoryReceiptReference(workspaceId, payableId, tx)) {
+      throw new ConflictError("Cannot edit the total of a payable linked to an inventory receipt");
+    }
 
     // ACC-1: total currency is immutable.
     if (input.currency !== payable.total.currency) {
-      throw new ValidationError(`Payable currency is ${payable.total.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Payable currency is ${payable.total.currency}, declared ${input.currency}`,
+      );
     }
 
     // PAY-R-4: pending must remain >= 0
@@ -47,7 +52,7 @@ export async function editTotal(
     const paidSoFar = payable.initialPayment + totalAbonos;
     assertSafeMinorUnits(paidSoFar, "Payable edit-total paid so far");
     if (input.total < paidSoFar) {
-      throw new ConflictError('New total is less than amount already paid');
+      throw new ConflictError("New total is less than amount already paid");
     }
 
     const updatedPayable = new Payable(
@@ -58,6 +63,7 @@ export async function editTotal(
         total: new Money(input.total, input.currency),
         initialPayment: payable.initialPayment,
         accountId: payable.accountId,
+        context: payable.context,
         date: payable.date,
         dueDate: payable.dueDate,
         note: payable.note,

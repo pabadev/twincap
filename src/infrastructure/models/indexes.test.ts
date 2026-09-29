@@ -11,6 +11,7 @@ import { SaleModel } from "./sale";
 import { CreditReceivedModel } from "./credit-received";
 import { CreditGrantedModel } from "./credit-granted";
 import { PayableModel } from "./payable";
+import { InventoryReceiptModel } from "./inventory-receipt";
 
 /**
  * R15.3 §26 — REAL index verification (not schema inspection).
@@ -79,7 +80,16 @@ describe("R15.3 §26 — financial indexes materialized on a real replset", () =
       CreditReceivedModel.syncIndexes(),
       CreditGrantedModel.syncIndexes(),
       PayableModel.syncIndexes(),
+      InventoryReceiptModel.syncIndexes(),
     ]);
+    await ClientModel.collection.createIndex(
+      { workspaceId: 1, phone: 1 },
+      {
+        name: "workspaceId_1_phone_1_unique",
+        unique: true,
+        partialFilterExpression: { phone: { $gt: "" } },
+      },
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -154,6 +164,41 @@ describe("R15.3 §26 — financial indexes materialized on a real replset", () =
         expect(idx, `${name} must carry the workspaceId_1 index`).toBeDefined();
         expect(idx!.key).toEqual({ workspaceId: 1 });
       }
+    });
+
+    it("indexes sale line references used by safe combo conversion", async () => {
+      const { byName } = await indexesOf(SaleModel);
+      const idx = byName.get("workspaceId_1_items.itemId_1");
+      expect(idx).toBeDefined();
+      expect(idx!.key).toEqual({ workspaceId: 1, "items.itemId": 1 });
+    });
+  });
+
+  describe("Client phone identity", () => {
+    it("enforces a partial unique phone index within each workspace", async () => {
+      const { byName } = await indexesOf(ClientModel);
+      const idx = byName.get("workspaceId_1_phone_1_unique");
+      expect(idx).toBeDefined();
+      expect(idx!.key).toEqual({ workspaceId: 1, phone: 1 });
+      expect(idx!.unique).toBe(true);
+      expect(idx!.partialFilterExpression).toEqual({ phone: { $gt: "" } });
+    });
+  });
+
+  describe("Inventory receipt history", () => {
+    it("indexes tenant-scoped civil-date receipt pagination", async () => {
+      const { byName } = await indexesOf(InventoryReceiptModel);
+      const idx = byName.get("workspace_date_createdAt_id");
+      expect(idx).toBeDefined();
+      expect(idx!.key).toEqual({ workspaceId: 1, date: -1, createdAt: -1, _id: -1 });
+    });
+
+    it("enforces one receipt per payable while allowing receipts with no payable", async () => {
+      const { byName } = await indexesOf(InventoryReceiptModel);
+      const idx = byName.get("workspaceId_1_payableId_1");
+      expect(idx).toBeDefined();
+      expect(idx!.unique).toBe(true);
+      expect(idx!.partialFilterExpression).toEqual({ payableId: { $type: "objectId" } });
     });
   });
 });

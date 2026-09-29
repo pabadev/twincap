@@ -9,6 +9,7 @@ export interface MovementLinkDoc {
    * context), the id of the originating sale (I12). Optional by design.
    */
   saleId?: string;
+  receiptId?: string;
   /** Deterministic operation id — idempotent replay marker (design rev.2 §5). */
   opId: string;
 }
@@ -38,6 +39,7 @@ const MovementLinkSchema = new Schema<MovementLinkDoc>(
     kind: { type: String, required: true },
     refId: { type: String, required: true },
     saleId: { type: String },
+    receiptId: { type: String },
     opId: { type: String, required: true },
   },
   { _id: false },
@@ -119,5 +121,4 @@ MovementSchema.index(
 );
 
 export const MovementModel =
-  mongoose.models["Movement"] ||
-  mongoose.model<MovementDoc>("Movement", MovementSchema);
+  mongoose.models["Movement"] || mongoose.model<MovementDoc>("Movement", MovementSchema);

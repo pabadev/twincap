@@ -33,6 +33,29 @@ function sale(
 }
 
 describe("Sale entity", () => {
+  it("calculates fractional quantities from integer base atoms and rounds money half-up", () => {
+    const sale = new Sale({
+      id: "sale-weight",
+      workspaceId: "workspace-1",
+      items: [
+        {
+          itemId: "coffee",
+          quantity: 0.25,
+          unit: "kg",
+          unitPrice: new Money(100_000, "COP"),
+        },
+      ],
+      date: new Date("2026-09-28T00:00:00.000Z"),
+      paymentMode: "paid-in-full",
+      accountId: "account-1",
+      createdAt: new Date("2026-09-28T00:00:00.000Z"),
+    });
+
+    expect(sale.items[0].quantity).toBe(0.25);
+    expect(sale.items[0].stockQuantity).toBe(250_000);
+    expect(sale.total).toBe(25_000);
+  });
+
   it("computes total as sum of quantity × unitPrice (POS-2)", () => {
     const s = sale();
     // 2 × 50,000 = 100,000
@@ -51,18 +74,16 @@ describe("Sale entity", () => {
   });
 
   it("computes pending = total − Σ abonos (POS-5)", () => {
-    const s = sale(
-      { items: [saleItem({ quantity: 2, unitPrice: new Money(50_000, "COP") })] },
-      [{ id: "ab1", amount: new Money(30_000, "COP"), date: DATE, accountId: "a1" }],
-    );
+    const s = sale({ items: [saleItem({ quantity: 2, unitPrice: new Money(50_000, "COP") })] }, [
+      { id: "ab1", amount: new Money(30_000, "COP"), date: DATE, accountId: "a1" },
+    ]);
     expect(s.pending).toBe(70_000);
   });
 
   it("pending is 0 when fully paid", () => {
-    const s = sale(
-      {},
-      [{ id: "ab1", amount: new Money(100_000, "COP"), date: DATE, accountId: "a1" }],
-    );
+    const s = sale({}, [
+      { id: "ab1", amount: new Money(100_000, "COP"), date: DATE, accountId: "a1" },
+    ]);
     expect(s.pending).toBe(0);
   });
 
@@ -102,26 +123,20 @@ describe("Sale entity", () => {
 
   it("rejects overpayment (POS-5)", () => {
     expect(() =>
-      sale(
-        { items: [saleItem({ quantity: 1, unitPrice: new Money(50_000, "COP") })] },
-        [{ id: "ab1", amount: new Money(60_000, "COP"), date: DATE, accountId: "a1" }],
-      ),
+      sale({ items: [saleItem({ quantity: 1, unitPrice: new Money(50_000, "COP") })] }, [
+        { id: "ab1", amount: new Money(60_000, "COP"), date: DATE, accountId: "a1" },
+      ]),
     ).toThrow(ValidationError);
   });
 
   it("rejects abono with zero or negative amount (Money VO enforces > 0)", () => {
     expect(() =>
-      sale(
-        {},
-        [{ id: "ab1", amount: new Money(0, "COP"), date: DATE, accountId: "a1" }],
-      ),
+      sale({}, [{ id: "ab1", amount: new Money(0, "COP"), date: DATE, accountId: "a1" }]),
     ).toThrow();
   });
 
   it("rejects unknown payment mode", () => {
-    expect(() =>
-      sale({ paymentMode: "installment" as never }),
-    ).toThrow(ValidationError);
+    expect(() => sale({ paymentMode: "installment" as never })).toThrow(ValidationError);
   });
 
   it("rejects empty ids", () => {

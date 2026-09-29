@@ -1,5 +1,7 @@
-import { ConflictError, NotFoundError } from '../../domain/errors';
-import type { CatalogItemRepository, SaleRepository } from '../../domain/repositories';
+import { ConflictError, NotFoundError } from "../../domain/errors";
+import type { CatalogItemRepository, SaleRepository } from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import type { TransactionHandle } from "../../domain/transaction";
 
 /**
  * Delete a catalog item — POS-1.
@@ -11,17 +13,44 @@ export async function deleteCatalogItem(
   itemId: string,
   catalogRepo: CatalogItemRepository,
   saleRepo: SaleRepository,
+  uow?: UnitOfWork,
 ): Promise<void> {
-  const existing = await catalogRepo.findById(workspaceId, itemId);
-  if (!existing) throw new NotFoundError('Catalog item not found');
+  const remove = async (tx?: TransactionHandle) => {
+    const existing = await catalogRepo.findById(workspaceId, itemId, tx);
+    if (!existing) throw new NotFoundError("Catalog item not found");
 
-  const sales = await saleRepo.findByWorkspaceId(workspaceId);
-  const referenced = sales.some(sale =>
-    sale.items.some(item => item.itemId === itemId),
-  );
-  if (referenced) {
-    throw new ConflictError('Cannot delete catalog item referenced by a sale');
+    if (
+      catalogRepo.isFormulaComponent &&
+      (await catalogRepo.isFormulaComponent(workspaceId, itemId, tx))
+    ) {
+      throw new ConflictError("Cannot delete a product used in a prepared product formula");
+    }
+    if (
+      catalogRepo.isComboComponent &&
+      (await catalogRepo.isComboComponent(workspaceId, itemId, tx))
+    ) {
+      throw new ConflictError("Cannot delete a product used in a combo");
+    }
+
+    const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
+    const referenced = sales.some((sale) => sale.items.some((item) => item.itemId === itemId));
+    if (referenced) {
+      throw new ConflictError("Cannot delete catalog item referenced by a sale");
+    }
+
+    if (
+      catalogRepo.hasInventoryHistory &&
+      (await catalogRepo.hasInventoryHistory(workspaceId, itemId, tx))
+    ) {
+      throw new ConflictError("Cannot delete catalog item with inventory history");
+    }
+
+    await catalogRepo.delete(workspaceId, itemId, tx);
+  };
+
+  if (uow) {
+    await uow.withTransaction((tx) => remove(tx));
+    return;
   }
-
-  await catalogRepo.delete(workspaceId, itemId);
+  await remove();
 }

@@ -1,8 +1,8 @@
-import { NotFoundError, ConflictError, ValidationError } from '../core/domain/errors';
-import { DEBT_MODIFIED_MSG, MOVEMENT_MODIFIED_MSG } from '../core/domain/errors';
-import { MoneyError } from '../core/domain/money';
-import { SALE_BORN_CREDIT_DELETE_MSG } from '../core/application/credits-granted/delete-credit-granted';
-import { reportUnexpectedError } from './report-unexpected-error';
+import { NotFoundError, ConflictError, ValidationError } from "../core/domain/errors";
+import { DEBT_MODIFIED_MSG, MOVEMENT_MODIFIED_MSG } from "../core/domain/errors";
+import { MoneyError } from "../core/domain/money";
+import { SALE_BORN_CREDIT_DELETE_MSG } from "../core/application/credits-granted/delete-credit-granted";
+import { reportUnexpectedError } from "./report-unexpected-error";
 
 /**
  * Shared error handler for server actions.
@@ -16,76 +16,111 @@ import { reportUnexpectedError } from './report-unexpected-error';
  */
 export function handleActionError(error: unknown): { error: string } {
   // Next.js redirect must propagate
-  if (
-    error instanceof Error &&
-    error.message.includes('NEXT_REDIRECT')
-  ) {
+  if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
     throw error;
   }
 
   // Money-domain errors (invalid amounts, currency mismatches, non-safe
   // arithmetic results) are KNOWN failures with a descriptive key — they
   // never reach the unexpected-crash reporter (R15.2 D3).
-  if (error instanceof MoneyError) return { error: 'error.invalidAmount' };
+  if (error instanceof MoneyError) return { error: "error.invalidAmount" };
 
   // Map blocked-deletion domain errors to descriptive i18n keys.
   // Fall back to category-level keys for any other conflict/validation.
   if (error instanceof ConflictError || error instanceof ValidationError) {
     switch (error.message) {
-      case 'Account has references and cannot be deleted':
-        return { error: 'error.accountHasReferences' };
-      case 'Category has movements and cannot be deleted':
-        return { error: 'error.categoryHasMovements' };
-      case 'Client has sales and cannot be deleted':
-        return { error: 'error.clientHasSales' };
-      case 'Cannot delete catalog item referenced by a sale':
-        return { error: 'error.catalogItemReferenced' };
+      case "Account has references and cannot be deleted":
+        return { error: "error.accountHasReferences" };
+      case "Category has movements and cannot be deleted":
+        return { error: "error.categoryHasMovements" };
+      case "Client has sales and cannot be deleted":
+        return { error: "error.clientHasSales" };
+      case "Client phone must use international E.164 format":
+        return { error: "error.invalidClientPhone" };
+      case "Client phone already registered in workspace":
+        return { error: "error.clientPhoneTaken" };
+      case "Unit quantities must be whole numbers":
+        return { error: "error.quantityInteger" };
+      case "Line item total is below the currency's minimum amount":
+        return { error: "error.quantityValueTooSmall" };
+      case "Inventory quantities support at most three decimal places":
+        return { error: "error.quantityPrecision" };
+      case "A product's sale unit cannot be changed after creation":
+        return { error: "error.productSaleUnitImmutable" };
+      case "Cannot delete catalog item referenced by a sale":
+        return { error: "error.catalogItemReferenced" };
+      case "Cannot delete catalog item with inventory history":
+        return { error: "error.catalogItemHasInventoryHistory" };
+      case "Cannot delete a product used in a combo":
+        return { error: "error.catalogItemUsedInCombo" };
+      case "A product with sales history cannot be converted into a combo":
+        return { error: "error.comboItemSalesHistory" };
+      case "A product used in a prepared formula cannot become a combo":
+        return { error: "error.comboItemUsedInFormula" };
+      case "A product already used in a combo cannot become another combo":
+        return { error: "error.nestedComboNotAllowed" };
+      case "Combo composition changed; reload the sale":
+        return { error: "error.comboChangedReload" };
+      case "Supplier is required when a receipt has an outstanding balance":
+        return { error: "error.receiptSupplierRequired" };
+      case "Cannot delete a payable linked to an inventory receipt":
+        return { error: "error.receiptPayableCannotDelete" };
+      case "Cannot edit the total of a payable linked to an inventory receipt":
+        return { error: "error.receiptPayableTotalImmutable" };
+      case "Only unstocked discrete sellable products can be combos":
+        return { error: "error.comboRequiresEmptyProduct" };
       case SALE_BORN_CREDIT_DELETE_MSG:
-        return { error: 'error.saleBornCreditDelete' };
-      case 'Fixed accounts cannot be deleted':
-        return { error: 'error.fixedAccountDelete' };
-      case 'System-linked movements cannot be deleted directly':
-        return { error: 'error.systemMovementDelete' };
-      case 'Future dates are not allowed':
-        return { error: 'error.futureDate' };
+        return { error: "error.saleBornCreditDelete" };
+      case "Fixed accounts cannot be deleted":
+        return { error: "error.fixedAccountDelete" };
+      case "System-linked movements cannot be deleted directly":
+        return { error: "error.systemMovementDelete" };
+      case "Future dates are not allowed":
+        return { error: "error.futureDate" };
       // Auth-domain messages (I8): stable English identifiers shared by the
       // authentication use cases — never translated at the domain, mapped
       // here to i18n keys under the "error" namespace.
-      case 'Email already registered':
-        return { error: 'error.emailTaken' };
-      case 'Invalid email or password':
-        return { error: 'error.invalidCredentials' };
-      case 'Password must be at least 8 characters':
-        return { error: 'error.passwordTooShort' };
-      case 'Invalid or expired token':
-        return { error: 'error.invalidToken' };
-      case 'User not found':
-        return { error: 'error.userNotFound' };
-      case 'Passwords do not match':
-        return { error: 'error.passwordMismatch' };
-      case 'Too many registration attempts. Please try again later.':
-      case 'Too many login attempts. Please try again later.':
-      case 'Too many password change attempts. Please try again later.':
-        return { error: 'error.tooManyAttempts' };
-      case 'Unauthorized':
-        return { error: 'error.unauthorized' };
+      case "Email already registered":
+        return { error: "error.emailTaken" };
+      case "Invalid email or password":
+        return { error: "error.invalidCredentials" };
+      case "Password must be at least 8 characters":
+        return { error: "error.passwordTooShort" };
+      case "Invalid or expired token":
+        return { error: "error.invalidToken" };
+      case "User not found":
+        return { error: "error.userNotFound" };
+      case "Passwords do not match":
+        return { error: "error.passwordMismatch" };
+      case "Too many registration attempts. Please try again later.":
+      case "Too many login attempts. Please try again later.":
+      case "Too many password change attempts. Please try again later.":
+        return { error: "error.tooManyAttempts" };
+      case "Unauthorized":
+        return { error: "error.unauthorized" };
       case DEBT_MODIFIED_MSG:
-        return { error: 'error.debtModified' };
+        return { error: "error.debtModified" };
       case MOVEMENT_MODIFIED_MSG:
-        return { error: 'error.movementModified' };
+        return { error: "error.movementModified" };
       default:
+        if (error.message.startsWith("Quantity is too precise for ")) {
+          return { error: "error.quantityUnitPrecision" };
+        }
+        if (error.message.startsWith("Insufficient stock for")) {
+          return { error: "error.stockInsufficient" };
+        }
         return error instanceof ConflictError
-          ? { error: 'error.conflict' }
-          : { error: 'error.validation' };
+          ? { error: "error.conflict" }
+          : { error: "error.validation" };
     }
   }
 
-  if (error instanceof NotFoundError) return { error: 'error.notFound' };
+  if (error instanceof NotFoundError) return { error: "error.notFound" };
 
   // I8: legacy flows throw 'Unauthorized' as a PLAIN Error (not a domain
   // error); it is a known marker, so map it before the unexpected-crash path.
-  if (error instanceof Error && error.message === 'Unauthorized') {
-    return { error: 'error.unauthorized' };
+  if (error instanceof Error && error.message === "Unauthorized") {
+    return { error: "error.unauthorized" };
   }
 
   // Any other error is UNEXPECTED: report it (non-blocking, fail-safe) and
@@ -93,5 +128,5 @@ export function handleActionError(error: unknown): { error: string } {
   reportUnexpectedError(error);
 
   // Fallback — use i18n key instead of hardcoded string
-  return { error: 'error.operationFailed' };
+  return { error: "error.operationFailed" };
 }

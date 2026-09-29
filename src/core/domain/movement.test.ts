@@ -2,21 +2,21 @@ import { describe, expect, it } from "vitest";
 import { Category } from "./category";
 import { ValidationError } from "./errors";
 import { Money } from "./money";
-import {
-  MOVEMENT_LINK_KINDS,
-  Movement,
-  assertCategoryMatchesMovement,
-} from "./movement";
+import { MOVEMENT_LINK_KINDS, Movement, assertCategoryMatchesMovement } from "./movement";
 
 const DATE = new Date("2026-01-01T00:00:00Z");
 
 function category(type: "income" | "expense"): Category {
-  return new Category({ id: `cat-${type}`, workspaceId: "u1", name: `Cat ${type}`, type, createdAt: DATE });
+  return new Category({
+    id: `cat-${type}`,
+    workspaceId: "u1",
+    name: `Cat ${type}`,
+    type,
+    createdAt: DATE,
+  });
 }
 
-function movement(
-  overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {},
-): Movement {
+function movement(overrides: Partial<ConstructorParameters<typeof Movement>[0]> = {}): Movement {
   return new Movement({
     id: "m1",
     workspaceId: "u1",
@@ -33,7 +33,11 @@ function movement(
 
 describe("Movement entity", () => {
   it("signs the amount by type: income positive, expense negative (design rev.2 §2)", () => {
-    const income = movement({ type: "income", category: category("income"), amount: new Money(100_000, "COP") });
+    const income = movement({
+      type: "income",
+      category: category("income"),
+      amount: new Money(100_000, "COP"),
+    });
     const expense = movement({ amount: new Money(80_000, "COP") });
     expect(income.signedAmount).toBe(100_000);
     expect(expense.signedAmount).toBe(-80_000);
@@ -44,11 +48,15 @@ describe("Movement entity", () => {
   });
 
   it("rejects an expense category on an income movement (MOV-2)", () => {
-    expect(() => movement({ type: "income", category: category("expense") })).toThrow(ValidationError);
+    expect(() => movement({ type: "income", category: category("expense") })).toThrow(
+      ValidationError,
+    );
   });
 
   it("exposes the MOV-2 rule standalone for use-case reuse", () => {
-    expect(() => assertCategoryMatchesMovement(category("income"), "expense")).toThrow(ValidationError);
+    expect(() => assertCategoryMatchesMovement(category("income"), "expense")).toThrow(
+      ValidationError,
+    );
     expect(() => assertCategoryMatchesMovement(category("expense"), "expense")).not.toThrow();
   });
 
@@ -68,16 +76,33 @@ describe("Movement entity", () => {
 
   it("accepts every system link kind and marks the movement as system-linked", () => {
     for (const kind of MOVEMENT_LINK_KINDS) {
-      const linked = movement({ link: { kind, refId: "p1", opId: "op-1" } });
+      const linked = movement({
+        context: kind === "inventoryReceiptPayment" ? "Business" : undefined,
+        link: {
+          kind,
+          refId: kind === "inventoryReceiptPayment" ? "a1" : "p1",
+          ...(kind === "inventoryReceiptPayment" ? { receiptId: "receipt-1" } : {}),
+          opId: "op-1",
+        },
+      });
       expect(linked.link?.kind).toBe(kind);
       expect(linked.isSystemLinked()).toBe(true);
     }
   });
 
+  it("requires a fully-paid inventory payment link to identify its source receipt", () => {
+    expect(() =>
+      movement({
+        context: "Business",
+        link: { kind: "inventoryReceiptPayment", refId: "a1", opId: "op-1" },
+      }),
+    ).toThrow(ValidationError);
+  });
+
   it("rejects unknown link kinds (MOV-5)", () => {
-    expect(() => movement({ link: { kind: "refund" as never, refId: "p1", opId: "op-1" } })).toThrow(
-      ValidationError,
-    );
+    expect(() =>
+      movement({ link: { kind: "refund" as never, refId: "p1", opId: "op-1" } }),
+    ).toThrow(ValidationError);
   });
 
   it("rejects links without refId or opId", () => {

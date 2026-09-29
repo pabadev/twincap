@@ -1,21 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
-import { createSale } from '../../core/application/sales/create-sale';
-import { MongoSaleRepository } from '../repositories/sale-repository';
-import { MongoCatalogItemRepository } from '../repositories/catalog-repository';
-import { MongoMovementRepository } from '../repositories/movement-repository';
-import { MongoClientRepository } from '../repositories/client-repository';
-import { MongoCreditGrantedRepository } from '../repositories/credit-granted-repository';
-import { MongoAccountRepository } from '../repositories/account-repository';
-import { objectIdGenerator } from '../config/id-generator';
-import { MongoUnitOfWork } from './mongo-unit-of-work';
-import { AccountModel } from '../models/account';
-import { SaleModel } from '../models/sale';
-import { CatalogItemModel } from '../models/catalog';
-import { MovementModel } from '../models/movement';
-import { CreditGrantedModel } from '../models/credit-granted';
-import { ClientModel } from '../models/client';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import mongoose from "mongoose";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { createSale } from "../../core/application/sales/create-sale";
+import { MongoSaleRepository } from "../repositories/sale-repository";
+import { MongoCatalogItemRepository } from "../repositories/catalog-repository";
+import { MongoMovementRepository } from "../repositories/movement-repository";
+import { MongoClientRepository } from "../repositories/client-repository";
+import { MongoCreditGrantedRepository } from "../repositories/credit-granted-repository";
+import { MongoAccountRepository } from "../repositories/account-repository";
+import { objectIdGenerator } from "../config/id-generator";
+import { MongoUnitOfWork } from "./mongo-unit-of-work";
+import { AccountModel } from "../models/account";
+import { SaleModel } from "../models/sale";
+import { CatalogItemModel } from "../models/catalog";
+import { MovementModel } from "../models/movement";
+import { CreditGrantedModel } from "../models/credit-granted";
+import { ClientModel } from "../models/client";
 
 /**
  * R15.2 §38 — createSale REAL multi-document transaction: rollback across
@@ -36,24 +36,24 @@ import { ClientModel } from '../models/client';
  * BINARY PIN (R15-F2, regla permanente): mongod DEBE pinarse a 7.0.41 (latest
  * crashea en Windows). Mismo pin que la suite Fase 2 use-case-rollback.
  */
-describe('R15.2 §38 — createSale real rollback across every write phase', () => {
+describe("R15.2 §38 — createSale real rollback across every write phase", () => {
   let mongod: MongoMemoryReplSet;
 
-  const WS = 'aaaaaaaaaaaaaaaaaaaaaaaa';
-  const ACCOUNT_ID = 'bbbbbbbbbbbbbbbbbbbbbbbb';
-  const CATALOG_ID = 'cccccccccccccccccccccccc';
-  const CLIENT_ID = 'dddddddddddddddddddddddd';
+  const WS = "aaaaaaaaaaaaaaaaaaaaaaaa";
+  const ACCOUNT_ID = "bbbbbbbbbbbbbbbbbbbbbbbb";
+  const CATALOG_ID = "cccccccccccccccccccccccc";
+  const CLIENT_ID = "dddddddddddddddddddddddd";
 
   const UOW = new MongoUnitOfWork();
   const IDS = objectIdGenerator;
-  const DATE = new Date('2025-06-01');
+  const DATE = new Date("2025-06-01");
 
   beforeAll(async () => {
     mongod = await MongoMemoryReplSet.create({
-      binary: { version: '7.0.41' },
-      replSet: { count: 1, name: 'rs0' },
+      binary: { version: "7.0.41" },
+      replSet: { count: 1, name: "rs0" },
     });
-    await mongoose.connect(mongod.getUri('twincap_38'));
+    await mongoose.connect(mongod.getUri("twincap_38"));
   }, 60_000);
 
   afterAll(async () => {
@@ -71,23 +71,24 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
     await AccountModel.create({
       _id: ACCOUNT_ID,
       workspaceId: WS,
-      name: 'Cash',
-      currency: 'COP',
+      name: "Cash",
+      currency: "COP",
       isFixed: false,
     });
     await CatalogItemModel.create({
       _id: CATALOG_ID,
       workspaceId: WS,
-      name: 'Pan',
+      name: "Pan",
       unitPrice: 10000,
-      currency: 'COP',
-      type: 'product',
+      currency: "COP",
+      type: "product",
       stock: 5,
     });
     await ClientModel.create({
       _id: CLIENT_ID,
       workspaceId: WS,
-      name: 'Juan Pérez',
+      name: "Juan Pérez",
+      phone: "+573001234568",
     });
   });
 
@@ -106,8 +107,8 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
       accountId: ACCOUNT_ID,
       clientId: CLIENT_ID,
       date: DATE,
-      paymentMode: 'on-credit' as const,
-      currency: 'COP' as const,
+      paymentMode: "on-credit" as const,
+      currency: "COP" as const,
       initialPayment,
     };
   }
@@ -135,85 +136,115 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
     );
   }
 
-  it('fails on the account touch → nothing persisted', async () => {
+  it("fails on the account touch → nothing persisted", async () => {
     const accountRepo = new MongoAccountRepository();
-    vi.spyOn(accountRepo, 'touch').mockImplementationOnce(async () => {
-      throw new Error('boom: touch');
+    vi.spyOn(accountRepo, "touch").mockImplementationOnce(async () => {
+      throw new Error("boom: touch");
     });
 
     await expect(
-      run(onCreditInput(2000), new MongoSaleRepository(), new MongoCatalogItemRepository(),
-        new MongoMovementRepository(), new MongoClientRepository(),
-        new MongoCreditGrantedRepository(), accountRepo),
-    ).rejects.toThrow('boom: touch');
+      run(
+        onCreditInput(2000),
+        new MongoSaleRepository(),
+        new MongoCatalogItemRepository(),
+        new MongoMovementRepository(),
+        new MongoClientRepository(),
+        new MongoCreditGrantedRepository(),
+        accountRepo,
+      ),
+    ).rejects.toThrow("boom: touch");
 
     await expectNothingPersisted();
   });
 
-  it('fails on the stock decrement → nothing persisted, stock intact', async () => {
+  it("fails on the stock decrement → nothing persisted, stock intact", async () => {
     const catalogRepo = new MongoCatalogItemRepository();
-    vi.spyOn(catalogRepo, 'decrementStock').mockImplementationOnce(async () => {
-      throw new Error('boom: decrement');
+    vi.spyOn(catalogRepo, "decrementStock").mockImplementationOnce(async () => {
+      throw new Error("boom: decrement");
     });
 
     await expect(
-      run(onCreditInput(2000), new MongoSaleRepository(), catalogRepo,
-        new MongoMovementRepository(), new MongoClientRepository(),
-        new MongoCreditGrantedRepository(), new MongoAccountRepository()),
-    ).rejects.toThrow('boom: decrement');
+      run(
+        onCreditInput(2000),
+        new MongoSaleRepository(),
+        catalogRepo,
+        new MongoMovementRepository(),
+        new MongoClientRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
+      ),
+    ).rejects.toThrow("boom: decrement");
 
     await expectNothingPersisted();
   });
 
-  it('fails after the sale create (on the movement) → nothing persisted', async () => {
+  it("fails after the sale create (on the movement) → nothing persisted", async () => {
     const movementRepo = new MongoMovementRepository();
-    vi.spyOn(movementRepo, 'create').mockImplementationOnce(async () => {
-      throw new Error('boom: movement');
+    vi.spyOn(movementRepo, "create").mockImplementationOnce(async () => {
+      throw new Error("boom: movement");
     });
 
     await expect(
-      run(onCreditInput(2000), new MongoSaleRepository(), new MongoCatalogItemRepository(),
-        movementRepo, new MongoClientRepository(),
-        new MongoCreditGrantedRepository(), new MongoAccountRepository()),
-    ).rejects.toThrow('boom: movement');
+      run(
+        onCreditInput(2000),
+        new MongoSaleRepository(),
+        new MongoCatalogItemRepository(),
+        movementRepo,
+        new MongoClientRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
+      ),
+    ).rejects.toThrow("boom: movement");
 
     await expectNothingPersisted();
   });
 
-  it('fails after the sale create (on the credit) → nothing persisted, abono never written', async () => {
+  it("fails after the sale create (on the credit) → nothing persisted, abono never written", async () => {
     const creditRepo = new MongoCreditGrantedRepository();
-    vi.spyOn(creditRepo, 'create').mockImplementationOnce(async () => {
-      throw new Error('boom: credit');
+    vi.spyOn(creditRepo, "create").mockImplementationOnce(async () => {
+      throw new Error("boom: credit");
     });
 
     await expect(
-      run(onCreditInput(2000), new MongoSaleRepository(), new MongoCatalogItemRepository(),
-        new MongoMovementRepository(), new MongoClientRepository(), creditRepo,
-        new MongoAccountRepository()),
-    ).rejects.toThrow('boom: credit');
+      run(
+        onCreditInput(2000),
+        new MongoSaleRepository(),
+        new MongoCatalogItemRepository(),
+        new MongoMovementRepository(),
+        new MongoClientRepository(),
+        creditRepo,
+        new MongoAccountRepository(),
+      ),
+    ).rejects.toThrow("boom: credit");
 
     await expectNothingPersisted();
   });
 
-  it('fails on the FIRST abono movement (on-credit, initial payment > 0) → nothing persisted', async () => {
+  it("fails on the FIRST abono movement (on-credit, initial payment > 0) → nothing persisted", async () => {
     const movementRepo = new MongoMovementRepository();
-    vi.spyOn(movementRepo, 'create').mockImplementationOnce(async () => {
-      throw new Error('boom: abono');
+    vi.spyOn(movementRepo, "create").mockImplementationOnce(async () => {
+      throw new Error("boom: abono");
     });
 
     await expect(
-      run(onCreditInput(2000), new MongoSaleRepository(), new MongoCatalogItemRepository(),
-        movementRepo, new MongoClientRepository(),
-        new MongoCreditGrantedRepository(), new MongoAccountRepository()),
-    ).rejects.toThrow('boom: abono');
+      run(
+        onCreditInput(2000),
+        new MongoSaleRepository(),
+        new MongoCatalogItemRepository(),
+        movementRepo,
+        new MongoClientRepository(),
+        new MongoCreditGrantedRepository(),
+        new MongoAccountRepository(),
+      ),
+    ).rejects.toThrow("boom: abono");
 
     await expectNothingPersisted();
   });
 
-  it('paid-in-full: fails on the salePayment movement → nothing persisted', async () => {
+  it("paid-in-full: fails on the salePayment movement → nothing persisted", async () => {
     const movementRepo = new MongoMovementRepository();
-    vi.spyOn(movementRepo, 'create').mockImplementationOnce(async () => {
-      throw new Error('boom: salePayment');
+    vi.spyOn(movementRepo, "create").mockImplementationOnce(async () => {
+      throw new Error("boom: salePayment");
     });
 
     await expect(
@@ -223,8 +254,8 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
           items: [{ itemId: CATALOG_ID, quantity: 1, unitPrice: 10000 }],
           accountId: ACCOUNT_ID,
           date: DATE,
-          paymentMode: 'paid-in-full',
-          currency: 'COP',
+          paymentMode: "paid-in-full",
+          currency: "COP",
         },
         new MongoSaleRepository(),
         new MongoCatalogItemRepository(),
@@ -235,7 +266,7 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
         new MongoAccountRepository(),
         UOW,
       ),
-    ).rejects.toThrow('boom: salePayment');
+    ).rejects.toThrow("boom: salePayment");
 
     // paid-in-full writes no credit: same zero-evidence contract.
     expect(await SaleModel.countDocuments({ workspaceId: WS })).toBe(0);
@@ -245,7 +276,7 @@ describe('R15.2 §38 — createSale real rollback across every write phase', () 
     expect(await AccountModel.countDocuments({ workspaceId: WS })).toBe(1);
   });
 
-  it('succeeds when nothing fails — the fixture itself is sound', async () => {
+  it("succeeds when nothing fails — the fixture itself is sound", async () => {
     const sale = await run(
       onCreditInput(2000),
       new MongoSaleRepository(),

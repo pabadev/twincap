@@ -1,9 +1,6 @@
 import { Types } from "mongoose";
 import type { MovementDocument } from "../models/movement";
-import {
-  Movement,
-  type MovementLinkKind,
-} from "../../core/domain/movement";
+import { Movement, type MovementLinkKind } from "../../core/domain/movement";
 import type { Category } from "../../core/domain/category";
 import type { Currency } from "../../core/domain/currency";
 import { Money } from "../../core/domain/money";
@@ -35,6 +32,7 @@ export function toMovementEntity(
           kind: doc.link.kind as MovementLinkKind,
           refId: doc.link.refId,
           saleId: doc.link.saleId,
+          receiptId: doc.link.receiptId,
           opId: doc.link.opId,
         }
       : undefined,
@@ -62,6 +60,7 @@ export function toMovementDocData(entity: Movement): Record<string, unknown> {
           kind: entity.link.kind,
           refId: entity.link.refId,
           saleId: entity.link.saleId,
+          receiptId: entity.link.receiptId,
           opId: entity.link.opId,
         }
       : undefined,

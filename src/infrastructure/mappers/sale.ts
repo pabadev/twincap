@@ -1,12 +1,9 @@
 import { Types } from "mongoose";
 import type { SaleDocument } from "../models/sale";
-import {
-  Sale,
-  type SaleLineItemInput,
-  type SaleAbonoInput,
-} from "../../core/domain/sale";
+import { Sale, type SaleLineItemInput, type SaleAbonoInput } from "../../core/domain/sale";
 import type { Currency } from "../../core/domain/currency";
 import { Money } from "../../core/domain/money";
+import type { InventoryUnit } from "../../core/domain/inventory-units";
 
 /**
  * Convert a Mongoose SaleDocument to a domain Sale entity.
@@ -14,14 +11,37 @@ import { Money } from "../../core/domain/money";
  * The doc stores monetary amounts as raw numbers. The Currency must be
  * provided by the caller (the sale's account currency).
  */
-export function toSaleEntity(
-  doc: SaleDocument,
-  currency: Currency,
-): Sale {
+export function toSaleEntity(doc: SaleDocument, currency: Currency): Sale {
   const items: SaleLineItemInput[] = doc.items.map((item) => ({
     itemId: item.itemId.toString(),
     quantity: item.quantity,
+    unit: item.unit as InventoryUnit | undefined,
+    stockQuantity: item.stockQuantity,
     unitPrice: new Money(item.unitPrice, currency),
+    formulaSnapshot: item.formulaSnapshot
+      ? {
+          version: item.formulaSnapshot.version,
+          outputQuantity: item.formulaSnapshot.outputQuantity,
+          outputUnit: item.formulaSnapshot.outputUnit as InventoryUnit,
+          components: item.formulaSnapshot.components.map((component) => ({
+            itemId: component.itemId.toString(),
+            name: component.name,
+            unit: component.unit as InventoryUnit,
+            stockQuantity: component.stockQuantity,
+          })),
+        }
+      : undefined,
+    comboSnapshot: item.comboSnapshot
+      ? {
+          version: item.comboSnapshot.version,
+          components: item.comboSnapshot.components.map((component) => ({
+            itemId: component.itemId.toString(),
+            name: component.name,
+            unit: component.unit as InventoryUnit,
+            stockQuantity: component.stockQuantity,
+          })),
+        }
+      : undefined,
   }));
 
   const abonos: SaleAbonoInput[] = doc.abonos.map((abono) => ({
@@ -57,8 +77,28 @@ export function toSaleDocData(entity: Sale): Record<string, unknown> {
     items: entity.items.map((item) => ({
       itemId: new Types.ObjectId(item.itemId),
       quantity: item.quantity,
+      unit: item.unit,
+      stockQuantity: item.stockQuantity,
       unitPrice: item.unitPrice.amount,
       subtotal: item.subtotal,
+      formulaSnapshot: item.formulaSnapshot
+        ? {
+            ...item.formulaSnapshot,
+            components: item.formulaSnapshot.components.map((component) => ({
+              ...component,
+              itemId: new Types.ObjectId(component.itemId),
+            })),
+          }
+        : undefined,
+      comboSnapshot: item.comboSnapshot
+        ? {
+            ...item.comboSnapshot,
+            components: item.comboSnapshot.components.map((component) => ({
+              ...component,
+              itemId: new Types.ObjectId(component.itemId),
+            })),
+          }
+        : undefined,
     })),
     date: entity.date,
     paymentMode: entity.paymentMode,

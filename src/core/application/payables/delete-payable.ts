@@ -1,7 +1,11 @@
-import { NotFoundError } from '../../domain/errors';
-import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccounts } from '../financial/touch-accounts';
+import { ConflictError, NotFoundError } from "../../domain/errors";
+import type {
+  PayableRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccounts } from "../financial/touch-accounts";
 
 /**
  * Delete a payable and cascade-delete ALL linked movements (PAY-R-5).
@@ -45,8 +49,11 @@ export async function deletePayable(
 ): Promise<void> {
   return uow.withTransaction(async (tx) => {
     const payables = await payableRepo.findByWorkspaceId(workspaceId, tx);
-    const payable = payables.find(p => p.id === payableId);
-    if (!payable) throw new NotFoundError('Payable not found');
+    const payable = payables.find((p) => p.id === payableId);
+    if (!payable) throw new NotFoundError("Payable not found");
+    if (await payableRepo.hasInventoryReceiptReference(workspaceId, payableId, tx)) {
+      throw new ConflictError("Cannot delete a payable linked to an inventory receipt");
+    }
 
     // Robust format-agnostic cascade: delete every movement that references
     // the payable (payableInitialPayment + payableAbono — ObjectId or UUID
@@ -63,7 +70,7 @@ export async function deletePayable(
     await touchAccounts(
       accountRepo,
       workspaceId,
-      [payable.accountId, ...payable.abonos.map(a => a.accountId)],
+      [payable.accountId, ...payable.abonos.map((a) => a.accountId)],
       tx,
     );
   });

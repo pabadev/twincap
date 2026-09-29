@@ -6,21 +6,43 @@ import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError, DEBT_MODIFIED_MSG } from "../../core/domain/errors";
 import { PayableModel, type PayableDocument } from "../models/payable";
 import { AccountModel, type AccountDocument } from "../models/account";
-import {
-  toPayableEntity,
-  toPayableDocData,
-} from "../mappers/payable";
+import { InventoryReceiptModel } from "../models/inventory-receipt";
+import { toPayableEntity, toPayableDocData } from "../mappers/payable";
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 import { runVersionedUpdate } from "../transactions/versioned-update";
 
 export class MongoPayableRepository implements PayableRepository {
+  async findExistingIds(workspaceId: string, payableIds: string[]): Promise<string[]> {
+    if (payableIds.length === 0) return [];
+    const docs = await PayableModel.find(
+      {
+        _id: { $in: payableIds.map((id) => new Types.ObjectId(id)) },
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { _id: 1 },
+    )
+      .lean()
+      .exec();
+    return docs.map((doc) => String(doc._id));
+  }
+
+  async hasInventoryReceiptReference(
+    workspaceId: string,
+    payableId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean> {
+    const receipt = await InventoryReceiptModel.exists({
+      workspaceId: new Types.ObjectId(workspaceId),
+      payableId: new Types.ObjectId(payableId),
+    })
+      .session(sessionOf(tx) ?? null)
+      .exec();
+    return receipt !== null;
+  }
+
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
    *  transaction session (snapshot-consistent aggregate validation). */
-  async findById(
-    workspaceId: string,
-    id: string,
-    tx?: TransactionHandle,
-  ): Promise<Payable | null> {
+  async findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Payable | null> {
     const session = sessionOf(tx);
     const doc = await PayableModel.findOne(
       {
@@ -41,10 +63,7 @@ export class MongoPayableRepository implements PayableRepository {
 
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
    *  transaction session (snapshot-consistent aggregate validation). */
-  async findByWorkspaceId(
-    workspaceId: string,
-    tx?: TransactionHandle,
-  ): Promise<Payable[]> {
+  async findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Payable[]> {
     const session = sessionOf(tx);
     const docs = await PayableModel.find(
       {
@@ -52,17 +71,13 @@ export class MongoPayableRepository implements PayableRepository {
       },
       null,
       { session },
-    ).sort({ date: -1, createdAt: -1 }).exec();
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
-    const accountIds = [
-      ...new Set(docs.map((d) => d.accountId.toString())),
-    ];
-    const currencyMap = await this.resolveBulkAccountCurrencies(
-      workspaceId,
-      accountIds,
-      session,
-    );
+    const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds, session);
 
     return docs.map((doc) => {
       const payableDoc = doc as PayableDocument;
@@ -75,10 +90,7 @@ export class MongoPayableRepository implements PayableRepository {
     try {
       const session = sessionOf(tx);
       const docData = toPayableDocData(payable);
-      const created = await PayableModel.create(
-        [{ ...docData, _id: payable.id }],
-        { session },
-      );
+      const created = await PayableModel.create([{ ...docData, _id: payable.id }], { session });
       // R15-F6: resolve the account currency WITH the transaction session so a
       // concurrent deleteAccount cannot commit between this read and the insert
       // above, leaving the entity mapped from a now-gone account.
@@ -90,9 +102,7 @@ export class MongoPayableRepository implements PayableRepository {
       return toPayableEntity(created[0] as PayableDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
-        throw new ConflictError(
-          `Payable for user ${payable.workspaceId} already exists`,
-        );
+        throw new ConflictError(`Payable for user ${payable.workspaceId} already exists`);
       }
       throw err;
     }
@@ -117,14 +127,9 @@ export class MongoPayableRepository implements PayableRepository {
         { new: true, session },
       ).exec();
       if (!result) {
-        throw new NotFoundError(
-          `Payable ${payable.id} not found for user ${payable.workspaceId}`,
-        );
+        throw new NotFoundError(`Payable ${payable.id} not found for user ${payable.workspaceId}`);
       }
-      const currency = await this.resolveAccountCurrency(
-        payable.workspaceId,
-        payable.accountId,
-      );
+      const currency = await this.resolveAccountCurrency(payable.workspaceId, payable.accountId);
       return toPayableEntity(result as PayableDocument, currency);
     }
     // R15-F4 CAS path: bump `__v` and reject on concurrent modification.
@@ -138,35 +143,29 @@ export class MongoPayableRepository implements PayableRepository {
     if (matched === 0) {
       const current = await PayableModel.findOne(filter, null, { session }).exec();
       if (!current) {
-        throw new NotFoundError(
-          `Payable ${payable.id} not found for user ${payable.workspaceId}`,
-        );
+        throw new NotFoundError(`Payable ${payable.id} not found for user ${payable.workspaceId}`);
       }
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
     const updated = await PayableModel.findOne(filter, null, { session }).exec();
     if (!updated) {
-      throw new NotFoundError(
-        `Payable ${payable.id} not found for user ${payable.workspaceId}`,
-      );
+      throw new NotFoundError(`Payable ${payable.id} not found for user ${payable.workspaceId}`);
     }
-    const currency = await this.resolveAccountCurrency(
-      payable.workspaceId,
-      payable.accountId,
-    );
+    const currency = await this.resolveAccountCurrency(payable.workspaceId, payable.accountId);
     return toPayableEntity(updated as PayableDocument, currency);
   }
 
   async delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void> {
     const session = sessionOf(tx);
-    const result = await PayableModel.findOneAndDelete({
-      _id: id,
-      workspaceId: new Types.ObjectId(workspaceId),
-    }, { session }).exec();
+    const result = await PayableModel.findOneAndDelete(
+      {
+        _id: id,
+        workspaceId: new Types.ObjectId(workspaceId),
+      },
+      { session },
+    ).exec();
     if (!result) {
-      throw new NotFoundError(
-        `Payable ${id} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Payable ${id} not found for user ${workspaceId}`);
     }
   }
 
@@ -214,18 +213,13 @@ export class MongoPayableRepository implements PayableRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Payable ${payableId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Payable ${payableId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as PayableDocument;
     if (currentDoc.__v !== expectedVersion) {
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
-    if (
-      abono.movementId &&
-      currentDoc.abonos.some((a) => a.movementId === abono.movementId)
-    ) {
+    if (abono.movementId && currentDoc.abonos.some((a) => a.movementId === abono.movementId)) {
       // Idempotent retry of an already-applied movement: silent, no bump.
       return;
     }
@@ -269,9 +263,7 @@ export class MongoPayableRepository implements PayableRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Payable ${payableId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Payable ${payableId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as PayableDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -314,9 +306,7 @@ export class MongoPayableRepository implements PayableRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Payable ${payableId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Payable ${payableId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as PayableDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -346,9 +336,7 @@ export class MongoPayableRepository implements PayableRepository {
       { session },
     ).exec();
     if (!doc) {
-      throw new NotFoundError(
-        `Account ${accountId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Account ${accountId} not found for user ${workspaceId}`);
     }
     return (doc as AccountDocument).currency as Currency;
   }

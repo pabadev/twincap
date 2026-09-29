@@ -97,6 +97,8 @@ function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRep
     abonosDeleted,
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findExistingIds: vi.fn().mockResolvedValue([]),
+    hasInventoryReceiptReference: vi.fn().mockResolvedValue(false),
     create: vi.fn().mockImplementation(async (payable: Payable) => {
       created.push(payable);
       return payable;
@@ -328,7 +330,7 @@ describe("createPayable", () => {
     expect(movementRepo.created[0].amount.amount).toBe(50000);
   });
 
-  it("sets context to Personal (hardcoded) for payable initial payment movement", async () => {
+  it("uses the payable context for its initial payment movement", async () => {
     const payableRepo = fakePayableRepo();
     const movementRepo = fakeMovementRepo();
     const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
@@ -342,6 +344,7 @@ describe("createPayable", () => {
         currency: "COP",
         initialPayment: 30000,
         accountId: "acc-1",
+        context: "Business",
         date: new Date("2025-06-01"),
       },
       payableRepo,
@@ -351,7 +354,7 @@ describe("createPayable", () => {
       fakeUow(),
     );
 
-    expect(movementRepo.created[0].context).toBe("Personal");
+    expect(movementRepo.created[0].context).toBe("Business");
   });
 
   it("throws NotFoundError when the payment account does not exist (D3 tenant guard)", async () => {
@@ -551,8 +554,8 @@ describe("addAbono", () => {
     expect(movement.link?.refId).toBe("pay-1");
   });
 
-  it("sets context to Personal (hardcoded) for payable abono movement", async () => {
-    const payable = makePayable(); // payable.accountId = acc-1
+  it("inherits the payable context for installment movements", async () => {
+    const payable = makePayable({ context: "Business" }); // payable.accountId = acc-1
     const payableRepo = fakePayableRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
     });
@@ -573,7 +576,7 @@ describe("addAbono", () => {
 
     const movement = movementRepo.created[0];
     expect(movement.accountId).toBe("acc-1");
-    expect(movement.context).toBe("Personal");
+    expect(movement.context).toBe("Business");
   });
 
   it("throws ValidationError when the payment account currency differs from the abono currency (ACC-1)", async () => {
@@ -1241,6 +1244,19 @@ describe("editTotal", () => {
     expect(result.pending).toBe(0);
   });
 
+  it("does not allow changing the total of an inventory-receipt payable", async () => {
+    const payable = makePayable();
+    const payableRepo = fakePayableRepo({
+      findById: vi.fn().mockResolvedValue(payable),
+      hasInventoryReceiptReference: vi.fn().mockResolvedValue(true),
+    });
+
+    await expect(
+      editTotal("user-1", "pay-1", { total: 120000, currency: "COP" }, payableRepo, fakeUow()),
+    ).rejects.toThrow("Cannot edit the total of a payable linked to an inventory receipt");
+    expect(payableRepo.update).not.toHaveBeenCalled();
+  });
+
   it("throws ConflictError when new total is below paid amount (PAY-R-4)", async () => {
     const payable = makePayable({ initialPayment: 30000 }, [
       { id: "ab-1", amount: new Money(40000, "COP"), date: new Date(), accountId: "acc-1" },
@@ -1343,6 +1359,22 @@ describe("deletePayable", () => {
 
     expect(movementRepo.deleteByRefId).toHaveBeenCalledWith("user-1", "pay-1", expect.anything());
     expect(payableRepo.deleted).toContain("pay-1");
+  });
+
+  it("preserves a payable referenced by an inventory receipt and its movements", async () => {
+    const payable = makePayable();
+    const payableRepo = fakePayableRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([payable]),
+      hasInventoryReceiptReference: vi.fn().mockResolvedValue(true),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      deletePayable("user-1", "pay-1", payableRepo, movementRepo, accountRepo, fakeUow()),
+    ).rejects.toThrow("Cannot delete a payable linked to an inventory receipt");
+
+    expect(movementRepo.deleteByRefId).not.toHaveBeenCalled();
+    expect(payableRepo.delete).not.toHaveBeenCalled();
   });
 
   it("is tolerant of an already-deleted linked movement (R5-B) and still deletes the payable", async () => {

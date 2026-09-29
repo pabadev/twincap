@@ -62,9 +62,20 @@ describe("R15.3 §28 — workspace isolation of new repo methods (real DB + real
     await ClientModel.deleteMany({});
     await MovementModel.deleteMany({});
     // Tenant A data.
-    await AccountModel.create({ _id: ACC_A, workspaceId: WS_A, name: "Cash", currency: "COP", isFixed: false });
+    await AccountModel.create({
+      _id: ACC_A,
+      workspaceId: WS_A,
+      name: "Cash",
+      currency: "COP",
+      isFixed: false,
+    });
     await CategoryModel.create({ _id: CAT_A, workspaceId: WS_A, name: "Food", type: "expense" });
-    await ClientModel.create({ _id: CLIENT_A, workspaceId: WS_A, name: "Someone" });
+    await ClientModel.create({
+      _id: CLIENT_A,
+      workspaceId: WS_A,
+      name: "Someone",
+      phone: "+573001234570",
+    });
     await MovementModel.create({
       workspaceId: WS_A,
       accountId: ACC_A,

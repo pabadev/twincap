@@ -1,8 +1,12 @@
-import { Payable } from '../../domain/payable';
-import { NotFoundError } from '../../domain/errors';
-import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccount } from '../financial/touch-accounts';
+import { Payable } from "../../domain/payable";
+import { NotFoundError } from "../../domain/errors";
+import type {
+  PayableRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccount } from "../financial/touch-accounts";
 
 /**
  * Delete an embedded abono from a payable (PAY-R-3).
@@ -34,11 +38,11 @@ export async function deleteAbono(
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const payables = await payableRepo.findByWorkspaceId(workspaceId, tx);
-    const payable = payables.find(p => p.id === payableId);
-    if (!payable) throw new NotFoundError('Payable not found');
+    const payable = payables.find((p) => p.id === payableId);
+    if (!payable) throw new NotFoundError("Payable not found");
 
-    const abono = payable.abonos.find(a => a.id === abonoId);
-    if (!abono) throw new NotFoundError('Abono not found');
+    const abono = payable.abonos.find((a) => a.id === abonoId);
+    if (!abono) throw new NotFoundError("Abono not found");
 
     // R5-B: reverse the linked movement FIRST, then pull the abono. Deleting
     // the movement first means a mid-way failure leaves the abono intact (debt
@@ -70,13 +74,14 @@ export async function deleteAbono(
         total: payable.total,
         initialPayment: payable.initialPayment,
         accountId: payable.accountId,
+        context: payable.context,
         date: payable.date,
         dueDate: payable.dueDate,
         note: payable.note,
         createdAt: payable.createdAt,
         version: payable.version + 1,
       },
-      payable.abonos.filter(a => a.id !== abonoId),
+      payable.abonos.filter((a) => a.id !== abonoId),
     );
   });
 }

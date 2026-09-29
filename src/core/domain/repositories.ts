@@ -22,6 +22,7 @@
 
 import type { Account } from "./account";
 import type { CatalogItem } from "./catalog";
+import type { InventoryReceipt } from "./inventory-receipt";
 import type { Category } from "./category";
 import type { Client } from "./client";
 import type { CreditGranted } from "./credit-granted";
@@ -350,6 +351,8 @@ export interface CreditGrantedRepository {
   /** @param tx optional transaction handle (R15 Fase 3): the read joins the
    *   caller's transaction session (snapshot-consistent aggregate validation). */
   findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<CreditGranted[]>;
+  /** Returns only sale-born credits whose source sale is in this workspace. */
+  findBySaleIds(workspaceId: string, saleIds: string[]): Promise<CreditGranted[]>;
   /**
    * Persist a new granted credit.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.
@@ -433,6 +436,13 @@ export interface PayableRepository {
   /** @param tx optional transaction handle (R15 Fase 3): the read joins the
    *   caller's transaction session (snapshot-consistent aggregate validation). */
   findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Payable[]>;
+  findExistingIds(workspaceId: string, payableIds: string[]): Promise<string[]>;
+  /** True when an inventory receipt keeps this payable as its financial parent. */
+  hasInventoryReceiptReference(
+    workspaceId: string,
+    payableId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
   /**
    * Persist a new payable.
    * @param tx optional transaction handle (R15); joins the caller's transaction
@@ -490,6 +500,7 @@ export interface ClientRepository {
   findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Client | null>;
   findByWorkspaceId(workspaceId: string): Promise<Client[]>;
   findByName(workspaceId: string, name: string): Promise<Client | null>;
+  findByPhone(workspaceId: string, phone: string, excludingId?: string): Promise<Client | null>;
   create(client: Client): Promise<Client>;
   update(client: Client): Promise<Client>;
   /** @param tx optional transaction handle (R15.3 §10): the write joins the
@@ -518,10 +529,18 @@ export interface CatalogItemRepository {
    *   caller's transaction (deleteSale reads the item INSIDE the tx so the
    *   stock restore is snapshot-consistent). */
   findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<CatalogItem | null>;
+  /** Write-conflict guard for sale references that intentionally do not change this item's stock. */
+  touchProduct?(workspaceId: string, itemId: string, tx?: TransactionHandle): Promise<boolean>;
+  isFormulaComponent?(
+    workspaceId: string,
+    itemId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  isComboComponent?(workspaceId: string, itemId: string, tx?: TransactionHandle): Promise<boolean>;
   findByWorkspaceId(workspaceId: string): Promise<CatalogItem[]>;
-  create(item: CatalogItem): Promise<CatalogItem>;
-  update(item: CatalogItem): Promise<CatalogItem>;
-  delete(workspaceId: string, id: string): Promise<void>;
+  create(item: CatalogItem, tx?: TransactionHandle, actorUserId?: string): Promise<CatalogItem>;
+  update(item: CatalogItem, tx?: TransactionHandle): Promise<CatalogItem>;
+  delete(workspaceId: string, id: string, tx?: TransactionHandle): Promise<void>;
   /**
    * Atomic stock decrement for products (POS-3). Returns false if insufficient stock.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.
@@ -531,6 +550,12 @@ export interface CatalogItemRepository {
     itemId: string,
     quantity: number,
     tx?: TransactionHandle,
+    record?: {
+      saleId: string;
+      actorUserId?: string;
+      date?: Date;
+      unit: import("./inventory-units").InventoryUnit;
+    },
   ): Promise<boolean>;
   /** Atomic stock increment for products (stock restore on sale delete).
    *  @param tx optional transaction handle (R15); joins the caller's transaction
@@ -540,7 +565,99 @@ export interface CatalogItemRepository {
     itemId: string,
     quantity: number,
     tx?: TransactionHandle,
+    record?: {
+      saleId: string;
+      actorUserId?: string;
+      date?: Date;
+      unit: import("./inventory-units").InventoryUnit;
+    },
   ): Promise<void>;
+  /** Human-entered stock change. Delta is in integer base atoms; false means insufficient stock/item. */
+  adjustStock?(
+    workspaceId: string,
+    itemId: string,
+    delta: number,
+    record: {
+      reason: string;
+      actorUserId: string;
+      date?: Date;
+      unit: import("./inventory-units").InventoryUnit;
+    },
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  /** Atomic stock receipt for an already purchased item; ledger links to receipt id. */
+  receiveStock?(
+    workspaceId: string,
+    itemId: string,
+    quantity: number,
+    record: {
+      receiptId: string;
+      actorUserId: string;
+      date: Date;
+      unit: import("./inventory-units").InventoryUnit;
+    },
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  /** Recent immutable history for one tenant-scoped catalog item. */
+  findStockHistory?(
+    workspaceId: string,
+    itemId: string,
+    limit: number,
+  ): Promise<
+    Array<{
+      id: string;
+      delta: number;
+      unit: string;
+      kind: "opening" | "adjustment" | "receipt" | "sale" | "sale-reversal";
+      reason: string;
+      saleId?: string;
+      receiptId?: string;
+      createdAt: Date;
+    }>
+  >;
+  /** Protect receipt and stock-ledger history from orphaning on item deletion. */
+  hasInventoryHistory?(
+    workspaceId: string,
+    itemId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  /** Append a new immutable formula version to a product, using a tenant-scoped CAS. */
+  appendFormulaVersion?(
+    workspaceId: string,
+    itemId: string,
+    expectedVersionCount: number,
+    formula: import("./product-formula").ProductFormulaVersion,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  appendComboVersion?(
+    workspaceId: string,
+    itemId: string,
+    expectedVersionCount: number,
+    combo: import("./product-combo").ProductComboVersion,
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+}
+
+// ─── Inventory Receipt ───────────────────────────────────────────────
+
+export interface InventoryReceiptRepository {
+  create(receipt: InventoryReceipt, tx?: TransactionHandle): Promise<InventoryReceipt>;
+  findById(
+    workspaceId: string,
+    id: string,
+    tx?: TransactionHandle,
+  ): Promise<InventoryReceipt | null>;
+  findByWorkspaceId(workspaceId: string, limit?: number): Promise<InventoryReceipt[]>;
+  findPage(
+    workspaceId: string,
+    input: {
+      page: number;
+      pageSize: number;
+      search?: string;
+      dateFrom?: Date;
+      dateToExclusive?: Date;
+    },
+  ): Promise<{ items: InventoryReceipt[]; total: number }>;
 }
 
 // ─── Sale ────────────────────────────────────────────────────────────
@@ -552,6 +669,15 @@ export interface SaleRepository {
   /** @param tx optional transaction handle (R15 Fase 3): the read joins the
    *   caller's transaction session (snapshot-consistent aggregate validation). */
   findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Sale[]>;
+  /** Indexed/tenant-scoped reference check for safe catalog type transitions. */
+  hasSaleReference?(workspaceId: string, itemId: string, tx?: TransactionHandle): Promise<boolean>;
+  /** Bounded active-sale history for one tenant-scoped client. */
+  findByClientIdPage(
+    workspaceId: string,
+    clientId: string,
+    skip: number,
+    limit: number,
+  ): Promise<{ sales: Sale[]; total: number }>;
   /**
    * Persist a new sale.
    * @param tx optional R14-B transaction handle; all writes join the same transaction.

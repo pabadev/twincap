@@ -1,4 +1,4 @@
-import { Category, type CategoryType } from '../domain/category';
+import { Category, type CategoryType } from "../domain/category";
 
 /**
  * Well-known synthetic category IDs for system-linked movements.
@@ -7,41 +7,61 @@ import { Category, type CategoryType } from '../domain/category';
  * as in-memory Category objects used by the Movement domain constructor.
  */
 const SYNTHETIC_IDS = {
-  credit: '000000000000000000000001',
-  creditGranted: '000000000000000000000002',
-  transfer: '000000000000000000000003',
-  sale: '000000000000000000000004',
-  opening: '000000000000000000000005',
-  payable: '000000000000000000000006',
+  credit: "000000000000000000000001",
+  creditGranted: "000000000000000000000002",
+  transfer: "000000000000000000000003",
+  sale: "000000000000000000000004",
+  opening: "000000000000000000000005",
+  payable: "000000000000000000000006",
+  inventoryReceipt: "000000000000000000000007",
 } as const;
 
 function makeCategory(id: string, name: string, type: CategoryType): Category {
-  return new Category({ id, workspaceId: '__system__', name, type, createdAt: new Date(0) });
+  return new Category({ id, workspaceId: "__system__", name, type, createdAt: new Date(0) });
 }
 
 // Key = `${id}:${type}` → supports same ID with different types
 const SYNTHETIC_CATEGORIES = new Map<string, Category>([
-  [`${SYNTHETIC_IDS.credit}:income`, makeCategory(SYNTHETIC_IDS.credit, 'Credit', 'income')],
-  [`${SYNTHETIC_IDS.credit}:expense`, makeCategory(SYNTHETIC_IDS.credit, 'Credit', 'expense')],
-  [`${SYNTHETIC_IDS.creditGranted}:income`, makeCategory(SYNTHETIC_IDS.creditGranted, 'Credit granted', 'income')],
-  [`${SYNTHETIC_IDS.creditGranted}:expense`, makeCategory(SYNTHETIC_IDS.creditGranted, 'Credit granted', 'expense')],
-  [`${SYNTHETIC_IDS.transfer}:income`, makeCategory(SYNTHETIC_IDS.transfer, 'Transfer', 'income')],
-  [`${SYNTHETIC_IDS.transfer}:expense`, makeCategory(SYNTHETIC_IDS.transfer, 'Transfer', 'expense')],
-  [`${SYNTHETIC_IDS.sale}:income`, makeCategory(SYNTHETIC_IDS.sale, 'Sale', 'income')],
-  [`${SYNTHETIC_IDS.sale}:expense`, makeCategory(SYNTHETIC_IDS.sale, 'Sale', 'expense')],
-  [`${SYNTHETIC_IDS.opening}:income`, makeCategory(SYNTHETIC_IDS.opening, 'Opening balance', 'income')],
-  [`${SYNTHETIC_IDS.payable}:income`, makeCategory(SYNTHETIC_IDS.payable, 'Payable', 'income')],
-  [`${SYNTHETIC_IDS.payable}:expense`, makeCategory(SYNTHETIC_IDS.payable, 'Payable', 'expense')],
+  [`${SYNTHETIC_IDS.credit}:income`, makeCategory(SYNTHETIC_IDS.credit, "Credit", "income")],
+  [`${SYNTHETIC_IDS.credit}:expense`, makeCategory(SYNTHETIC_IDS.credit, "Credit", "expense")],
+  [
+    `${SYNTHETIC_IDS.creditGranted}:income`,
+    makeCategory(SYNTHETIC_IDS.creditGranted, "Credit granted", "income"),
+  ],
+  [
+    `${SYNTHETIC_IDS.creditGranted}:expense`,
+    makeCategory(SYNTHETIC_IDS.creditGranted, "Credit granted", "expense"),
+  ],
+  [`${SYNTHETIC_IDS.transfer}:income`, makeCategory(SYNTHETIC_IDS.transfer, "Transfer", "income")],
+  [
+    `${SYNTHETIC_IDS.transfer}:expense`,
+    makeCategory(SYNTHETIC_IDS.transfer, "Transfer", "expense"),
+  ],
+  [`${SYNTHETIC_IDS.sale}:income`, makeCategory(SYNTHETIC_IDS.sale, "Sale", "income")],
+  [`${SYNTHETIC_IDS.sale}:expense`, makeCategory(SYNTHETIC_IDS.sale, "Sale", "expense")],
+  [
+    `${SYNTHETIC_IDS.opening}:income`,
+    makeCategory(SYNTHETIC_IDS.opening, "Opening balance", "income"),
+  ],
+  [`${SYNTHETIC_IDS.payable}:income`, makeCategory(SYNTHETIC_IDS.payable, "Payable", "income")],
+  [`${SYNTHETIC_IDS.payable}:expense`, makeCategory(SYNTHETIC_IDS.payable, "Payable", "expense")],
+  [
+    `${SYNTHETIC_IDS.inventoryReceipt}:expense`,
+    makeCategory(SYNTHETIC_IDS.inventoryReceipt, "Inventory receipt", "expense"),
+  ],
 ]);
 
 /**
  * Resolve a synthetic category by ID and movement type.
  * Returns the Category if the ID matches a well-known synthetic constant, null otherwise.
  */
-export function resolveSyntheticCategory(categoryId: string, movementType?: CategoryType): Category | null {
+export function resolveSyntheticCategory(
+  categoryId: string,
+  movementType?: CategoryType,
+): Category | null {
   if (!movementType) {
     // Fallback: return the first match (income preferred)
-    for (const type of ['income', 'expense'] as CategoryType[]) {
+    for (const type of ["income", "expense"] as CategoryType[]) {
       const cat = SYNTHETIC_CATEGORIES.get(`${categoryId}:${type}`);
       if (cat) return cat;
     }
@@ -54,7 +74,9 @@ export function resolveSyntheticCategory(categoryId: string, movementType?: Cate
  * Check if a category ID is synthetic (system-linked).
  */
 export function isSyntheticCategoryId(categoryId: string): boolean {
-  return Object.values(SYNTHETIC_IDS).includes(categoryId as typeof SYNTHETIC_IDS[keyof typeof SYNTHETIC_IDS]);
+  return Object.values(SYNTHETIC_IDS).includes(
+    categoryId as (typeof SYNTHETIC_IDS)[keyof typeof SYNTHETIC_IDS],
+  );
 }
 
 // ─── Convenience exports for application layer ─────────────────────
@@ -65,27 +87,32 @@ export const TRANSFER_CATEGORY_ID = SYNTHETIC_IDS.transfer;
 export const SALE_CATEGORY_ID = SYNTHETIC_IDS.sale;
 export const OPENING_CATEGORY_ID = SYNTHETIC_IDS.opening;
 export const PAYABLE_CATEGORY_ID = SYNTHETIC_IDS.payable;
+export const INVENTORY_RECEIPT_CATEGORY_ID = SYNTHETIC_IDS.inventoryReceipt;
 
 export function creditCategory(type: CategoryType): Category {
-  return makeCategory(CREDIT_CATEGORY_ID, 'Credit', type);
+  return makeCategory(CREDIT_CATEGORY_ID, "Credit", type);
 }
 
 export function creditGrantedCategory(type: CategoryType): Category {
-  return makeCategory(CREDIT_GRANTED_CATEGORY_ID, 'Credit granted', type);
+  return makeCategory(CREDIT_GRANTED_CATEGORY_ID, "Credit granted", type);
 }
 
 export function transferCategory(type: CategoryType): Category {
-  return makeCategory(TRANSFER_CATEGORY_ID, 'Transfer', type);
+  return makeCategory(TRANSFER_CATEGORY_ID, "Transfer", type);
 }
 
 export function saleCategory(type: CategoryType): Category {
-  return makeCategory(SALE_CATEGORY_ID, 'Sale', type);
+  return makeCategory(SALE_CATEGORY_ID, "Sale", type);
 }
 
 export function openingCategory(): Category {
-  return makeCategory(OPENING_CATEGORY_ID, 'Opening balance', 'income');
+  return makeCategory(OPENING_CATEGORY_ID, "Opening balance", "income");
 }
 
 export function payableCategory(type: CategoryType): Category {
-  return makeCategory(PAYABLE_CATEGORY_ID, 'Payable', type);
+  return makeCategory(PAYABLE_CATEGORY_ID, "Payable", type);
+}
+
+export function inventoryReceiptCategory(): Category {
+  return makeCategory(INVENTORY_RECEIPT_CATEGORY_ID, "Inventory receipt", "expense");
 }

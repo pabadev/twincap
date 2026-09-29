@@ -13,11 +13,7 @@ import { runVersionedUpdate } from "../transactions/versioned-update";
 export class MongoSaleRepository implements SaleRepository {
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
    *  transaction session (snapshot-consistent aggregate validation). */
-  async findById(
-    workspaceId: string,
-    id: string,
-    tx?: TransactionHandle,
-  ): Promise<Sale | null> {
+  async findById(workspaceId: string, id: string, tx?: TransactionHandle): Promise<Sale | null> {
     const session = sessionOf(tx);
     const doc = await SaleModel.findOne(
       {
@@ -38,10 +34,7 @@ export class MongoSaleRepository implements SaleRepository {
 
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
    *  transaction session (snapshot-consistent aggregate validation). */
-  async findByWorkspaceId(
-    workspaceId: string,
-    tx?: TransactionHandle,
-  ): Promise<Sale[]> {
+  async findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Sale[]> {
     const session = sessionOf(tx);
     const docs = await SaleModel.find(
       {
@@ -49,21 +42,63 @@ export class MongoSaleRepository implements SaleRepository {
       },
       null,
       { session },
-    ).sort({ date: -1, createdAt: -1 }).exec();
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
     const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
-    const currencyMap = await this.resolveBulkAccountCurrencies(
-      workspaceId,
-      accountIds,
-      session,
-    );
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds, session);
 
     return docs.map((doc) => {
       const saleDoc = doc as SaleDocument;
       const currency = currencyMap.get(saleDoc.accountId.toString())!;
       return toSaleEntity(saleDoc, currency);
     });
+  }
+
+  async hasSaleReference(
+    workspaceId: string,
+    itemId: string,
+    tx?: TransactionHandle,
+  ): Promise<boolean> {
+    const result = await SaleModel.exists({
+      workspaceId: new Types.ObjectId(workspaceId),
+      "items.itemId": new Types.ObjectId(itemId),
+    })
+      .session(sessionOf(tx) ?? null)
+      .exec();
+    return result !== null;
+  }
+
+  async findByClientIdPage(
+    workspaceId: string,
+    clientId: string,
+    skip: number,
+    limit: number,
+  ): Promise<{ sales: Sale[]; total: number }> {
+    const filter = {
+      workspaceId: new Types.ObjectId(workspaceId),
+      clientId: new Types.ObjectId(clientId),
+      deletedAt: { $exists: false },
+    };
+    const [docs, total] = await Promise.all([
+      SaleModel.find(filter).sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit).exec(),
+      SaleModel.countDocuments(filter).exec(),
+    ]);
+    if (docs.length === 0) return { sales: [], total };
+
+    const accountIds = [...new Set(docs.map((doc) => doc.accountId.toString()))];
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds);
+    const sales = docs.map((doc) => {
+      const saleDoc = doc as SaleDocument;
+      const currency = currencyMap.get(saleDoc.accountId.toString());
+      if (!currency) {
+        throw new Error(`Sale ${saleDoc._id.toString()} has an unresolved account currency`);
+      }
+      return toSaleEntity(saleDoc, currency);
+    });
+    return { sales, total };
   }
 
   async create(sale: Sale, tx?: TransactionHandle): Promise<Sale> {
@@ -74,27 +109,17 @@ export class MongoSaleRepository implements SaleRepository {
       // R15-F6: resolve the account currency WITH the transaction session so a
       // concurrent deleteAccount cannot commit between this read and the insert
       // above, leaving the entity mapped from a now-gone account.
-      const currency = await this.resolveAccountCurrency(
-        sale.workspaceId,
-        sale.accountId,
-        session,
-      );
+      const currency = await this.resolveAccountCurrency(sale.workspaceId, sale.accountId, session);
       return toSaleEntity(created[0] as SaleDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
-        throw new ConflictError(
-          `Sale for user ${sale.workspaceId} already exists`,
-        );
+        throw new ConflictError(`Sale for user ${sale.workspaceId} already exists`);
       }
       throw err;
     }
   }
 
-  async update(
-    sale: Sale,
-    tx?: TransactionHandle,
-    expectedVersion?: number,
-  ): Promise<Sale> {
+  async update(sale: Sale, tx?: TransactionHandle, expectedVersion?: number): Promise<Sale> {
     const session = sessionOf(tx);
     const docData = toSaleDocData(sale);
     const filter = {
@@ -109,14 +134,9 @@ export class MongoSaleRepository implements SaleRepository {
         { new: true, session },
       ).exec();
       if (!result) {
-        throw new NotFoundError(
-          `Sale ${sale.id} not found for user ${sale.workspaceId}`,
-        );
+        throw new NotFoundError(`Sale ${sale.id} not found for user ${sale.workspaceId}`);
       }
-      const currency = await this.resolveAccountCurrency(
-        sale.workspaceId,
-        sale.accountId,
-      );
+      const currency = await this.resolveAccountCurrency(sale.workspaceId, sale.accountId);
       return toSaleEntity(result as SaleDocument, currency);
     }
     // R15-F4 CAS path: bump `__v` and reject on concurrent modification.
@@ -130,22 +150,15 @@ export class MongoSaleRepository implements SaleRepository {
     if (matched === 0) {
       const current = await SaleModel.findOne(filter, null, { session }).exec();
       if (!current) {
-        throw new NotFoundError(
-          `Sale ${sale.id} not found for user ${sale.workspaceId}`,
-        );
+        throw new NotFoundError(`Sale ${sale.id} not found for user ${sale.workspaceId}`);
       }
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
     const updated = await SaleModel.findOne(filter, null, { session }).exec();
     if (!updated) {
-      throw new NotFoundError(
-        `Sale ${sale.id} not found for user ${sale.workspaceId}`,
-      );
+      throw new NotFoundError(`Sale ${sale.id} not found for user ${sale.workspaceId}`);
     }
-    const currency = await this.resolveAccountCurrency(
-      sale.workspaceId,
-      sale.accountId,
-    );
+    const currency = await this.resolveAccountCurrency(sale.workspaceId, sale.accountId);
     return toSaleEntity(updated as SaleDocument, currency);
   }
 
@@ -207,18 +220,13 @@ export class MongoSaleRepository implements SaleRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Sale ${saleId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Sale ${saleId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as SaleDocument;
     if (currentDoc.__v !== expectedVersion) {
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
-    if (
-      abono.movementId &&
-      currentDoc.abonos.some((a) => a.movementId === abono.movementId)
-    ) {
+    if (abono.movementId && currentDoc.abonos.some((a) => a.movementId === abono.movementId)) {
       // Idempotent retry of an already-applied movement: silent, no bump.
       return;
     }
@@ -262,9 +270,7 @@ export class MongoSaleRepository implements SaleRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Sale ${saleId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Sale ${saleId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as SaleDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -307,9 +313,7 @@ export class MongoSaleRepository implements SaleRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `Sale ${saleId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Sale ${saleId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as SaleDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -339,9 +343,7 @@ export class MongoSaleRepository implements SaleRepository {
       { session },
     ).exec();
     if (!doc) {
-      throw new NotFoundError(
-        `Account ${accountId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Account ${accountId} not found for user ${workspaceId}`);
     }
     return (doc as AccountDocument).currency as Currency;
   }

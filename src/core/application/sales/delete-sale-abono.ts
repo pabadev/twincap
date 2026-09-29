@@ -1,8 +1,12 @@
-import { Sale } from '../../domain/sale';
-import { NotFoundError } from '../../domain/errors';
-import type { SaleRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccount } from '../financial/touch-accounts';
+import { Sale } from "../../domain/sale";
+import { NotFoundError } from "../../domain/errors";
+import type {
+  SaleRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccount } from "../financial/touch-accounts";
 
 /**
  * LEGACY FALLBACK — delete an embedded abono from an on-credit sale (POS-6).
@@ -38,11 +42,11 @@ export async function deleteSaleAbono(
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) throw new NotFoundError('Sale not found');
+    const sale = sales.find((s) => s.id === saleId);
+    if (!sale) throw new NotFoundError("Sale not found");
 
-    const abono = sale.abonos.find(a => a.id === abonoId);
-    if (!abono) throw new NotFoundError('Abono not found');
+    const abono = sale.abonos.find((a) => a.id === abonoId);
+    if (!abono) throw new NotFoundError("Abono not found");
 
     // R5-B: reverse the linked movement FIRST, then pull the abono. Deleting
     // the movement first means a mid-way failure leaves the abono intact (no
@@ -69,7 +73,13 @@ export async function deleteSaleAbono(
       {
         id: sale.id,
         workspaceId: sale.workspaceId,
-        items: sale.items.map(i => ({ itemId: i.itemId, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: sale.items.map((i) => ({
+          itemId: i.itemId,
+          quantity: i.quantity,
+          unit: i.unit,
+          stockQuantity: i.stockQuantity,
+          unitPrice: i.unitPrice,
+        })),
         date: sale.date,
         paymentMode: sale.paymentMode,
         accountId: sale.accountId,
@@ -79,7 +89,7 @@ export async function deleteSaleAbono(
         createdAt: sale.createdAt,
         version: sale.version + 1,
       },
-      sale.abonos.filter(a => a.id !== abonoId),
+      sale.abonos.filter((a) => a.id !== abonoId),
     );
   });
 }

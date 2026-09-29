@@ -5,8 +5,9 @@ import {
   SALE_CATEGORY_ID,
   OPENING_CATEGORY_ID,
   PAYABLE_CATEGORY_ID,
-} from '../core/domain/synthetic-categories';
-import type { TranslateFn } from './system-note';
+  INVENTORY_RECEIPT_CATEGORY_ID,
+} from "../core/domain/synthetic-categories";
+import type { TranslateFn } from "./system-note";
 
 /**
  * Presentation-layer resolution of synthetic (system) category labels.
@@ -19,12 +20,13 @@ import type { TranslateFn } from './system-note';
  * concepts).
  */
 const SYNTHETIC_LABEL_KEYS: Record<string, string> = {
-  [CREDIT_CATEGORY_ID]: 'categoryCredit',
-  [CREDIT_GRANTED_CATEGORY_ID]: 'categoryCreditGranted',
-  [TRANSFER_CATEGORY_ID]: 'categoryTransfer',
-  [SALE_CATEGORY_ID]: 'categorySale',
-  [OPENING_CATEGORY_ID]: 'categoryOpening',
-  [PAYABLE_CATEGORY_ID]: 'categoryPayable',
+  [CREDIT_CATEGORY_ID]: "categoryCredit",
+  [CREDIT_GRANTED_CATEGORY_ID]: "categoryCreditGranted",
+  [TRANSFER_CATEGORY_ID]: "categoryTransfer",
+  [SALE_CATEGORY_ID]: "categorySale",
+  [OPENING_CATEGORY_ID]: "categoryOpening",
+  [PAYABLE_CATEGORY_ID]: "categoryPayable",
+  [INVENTORY_RECEIPT_CATEGORY_ID]: "categoryInventoryReceipt",
 };
 
 /**
@@ -32,10 +34,7 @@ const SYNTHETIC_LABEL_KEYS: Record<string, string> = {
  * Returns undefined when the id is not a well-known synthetic constant
  * (real user categories are resolved elsewhere).
  */
-export function syntheticCategoryLabel(
-  categoryId: string,
-  t: TranslateFn,
-): string | undefined {
+export function syntheticCategoryLabel(categoryId: string, t: TranslateFn): string | undefined {
   const key = SYNTHETIC_LABEL_KEYS[categoryId];
   if (!key) return undefined;
   return t(key);

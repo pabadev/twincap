@@ -65,6 +65,8 @@ function fakeCreditReceivedRepo(credits: CreditReceived[]): CreditReceivedReposi
   return {
     findById: async () => null,
     findByWorkspaceId: async () => credits,
+    findBySaleIds: async (_workspaceId, saleIds) =>
+      credits.filter((credit) => credit.saleId && saleIds.includes(credit.saleId)),
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
@@ -92,6 +94,10 @@ function fakeSaleRepo(sales: Sale[]): SaleRepository {
   return {
     findById: async () => null,
     findByWorkspaceId: async () => sales,
+    findByClientIdPage: async (_workspaceId, clientId, skip, limit) => {
+      const matches = sales.filter((sale) => sale.clientId === clientId);
+      return { sales: matches.slice(skip, skip + limit), total: matches.length };
+    },
     create: async (s) => s,
     update: async (s) => s,
     delete: async () => {},

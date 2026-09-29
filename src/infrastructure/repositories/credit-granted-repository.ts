@@ -4,15 +4,9 @@ import type { CreditGranted } from "../../core/domain/credit-granted";
 import type { TransactionHandle } from "../../core/domain/transaction";
 import type { Currency } from "../../core/domain/currency";
 import { NotFoundError, ConflictError, DEBT_MODIFIED_MSG } from "../../core/domain/errors";
-import {
-  CreditGrantedModel,
-  type CreditGrantedDocument,
-} from "../models/credit-granted";
+import { CreditGrantedModel, type CreditGrantedDocument } from "../models/credit-granted";
 import { AccountModel, type AccountDocument } from "../models/account";
-import {
-  toCreditGrantedEntity,
-  toCreditGrantedDocData,
-} from "../mappers/credit-granted";
+import { toCreditGrantedEntity, toCreditGrantedDocData } from "../mappers/credit-granted";
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 import { runVersionedUpdate } from "../transactions/versioned-update";
 
@@ -44,10 +38,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
 
   /** @param tx optional R15 Fase 3 handle: the read joins the caller's
    *  transaction session (snapshot-consistent aggregate validation). */
-  async findByWorkspaceId(
-    workspaceId: string,
-    tx?: TransactionHandle,
-  ): Promise<CreditGranted[]> {
+  async findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<CreditGranted[]> {
     const session = sessionOf(tx);
     const docs = await CreditGrantedModel.find(
       {
@@ -55,17 +46,13 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       },
       null,
       { session },
-    ).sort({ date: -1, createdAt: -1 }).exec();
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
     if (docs.length === 0) return [];
 
-    const accountIds = [
-      ...new Set(docs.map((d) => d.accountId.toString())),
-    ];
-    const currencyMap = await this.resolveBulkAccountCurrencies(
-      workspaceId,
-      accountIds,
-      session,
-    );
+    const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds, session);
 
     return docs.map((doc) => {
       const creditDoc = doc as CreditGrantedDocument;
@@ -74,11 +61,37 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
     });
   }
 
+  async findBySaleIds(workspaceId: string, saleIds: string[]): Promise<CreditGranted[]> {
+    if (saleIds.length === 0) return [];
+    const docs = await CreditGrantedModel.find({
+      workspaceId: new Types.ObjectId(workspaceId),
+      saleId: { $in: saleIds },
+    })
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
+    if (docs.length === 0) return [];
+
+    const accountIds = [...new Set(docs.map((doc) => doc.accountId.toString()))];
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds);
+    return docs.map((doc) => {
+      const creditDoc = doc as CreditGrantedDocument;
+      const currency = currencyMap.get(creditDoc.accountId.toString());
+      if (!currency) {
+        throw new Error(
+          `Granted credit ${creditDoc._id.toString()} has an unresolved account currency`,
+        );
+      }
+      return toCreditGrantedEntity(creditDoc, currency);
+    });
+  }
+
   async create(credit: CreditGranted, tx?: TransactionHandle): Promise<CreditGranted> {
     try {
       const session = sessionOf(tx);
       const docData = toCreditGrantedDocData(credit);
-      const created = await CreditGrantedModel.create([{ ...docData, _id: credit.id }], { session });
+      const created = await CreditGrantedModel.create([{ ...docData, _id: credit.id }], {
+        session,
+      });
       // R15-F6: resolve the account currency WITH the transaction session so a
       // concurrent deleteAccount cannot commit between this read and the insert
       // above, leaving the entity mapped from a now-gone account.
@@ -90,9 +103,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       return toCreditGrantedEntity(created[0] as CreditGrantedDocument, currency);
     } catch (err: unknown) {
       if (isMongoDuplicateKey(err)) {
-        throw new ConflictError(
-          `CreditGranted for user ${credit.workspaceId} already exists`,
-        );
+        throw new ConflictError(`CreditGranted for user ${credit.workspaceId} already exists`);
       }
       throw err;
     }
@@ -121,10 +132,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
           `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
         );
       }
-      const currency = await this.resolveAccountCurrency(
-        credit.workspaceId,
-        credit.accountId,
-      );
+      const currency = await this.resolveAccountCurrency(credit.workspaceId, credit.accountId);
       return toCreditGrantedEntity(result as CreditGrantedDocument, currency);
     }
     // R15-F4 CAS path: bump `__v` and reject on concurrent modification.
@@ -150,10 +158,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
         `CreditGranted ${credit.id} not found for user ${credit.workspaceId}`,
       );
     }
-    const currency = await this.resolveAccountCurrency(
-      credit.workspaceId,
-      credit.accountId,
-    );
+    const currency = await this.resolveAccountCurrency(credit.workspaceId, credit.accountId);
     return toCreditGrantedEntity(updated as CreditGrantedDocument, currency);
   }
 
@@ -167,9 +172,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!result) {
-      throw new NotFoundError(
-        `CreditGranted ${id} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`CreditGranted ${id} not found for user ${workspaceId}`);
     }
   }
 
@@ -223,18 +226,13 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `CreditGranted ${creditId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`CreditGranted ${creditId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as CreditGrantedDocument;
     if (currentDoc.__v !== expectedVersion) {
       throw new ConflictError(DEBT_MODIFIED_MSG);
     }
-    if (
-      abono.movementId &&
-      currentDoc.abonos.some((a) => a.movementId === abono.movementId)
-    ) {
+    if (abono.movementId && currentDoc.abonos.some((a) => a.movementId === abono.movementId)) {
       // Idempotent retry of an already-applied movement: silent, no bump.
       return;
     }
@@ -299,9 +297,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `CreditGranted ${creditId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`CreditGranted ${creditId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as CreditGrantedDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -344,9 +340,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `CreditGranted ${creditId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`CreditGranted ${creditId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as CreditGrantedDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -389,9 +383,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!current) {
-      throw new NotFoundError(
-        `CreditGranted ${creditId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`CreditGranted ${creditId} not found for user ${workspaceId}`);
     }
     const currentDoc = current as CreditGrantedDocument;
     if (currentDoc.__v !== expectedVersion) {
@@ -418,9 +410,7 @@ export class MongoCreditGrantedRepository implements CreditGrantedRepository {
       { session },
     ).exec();
     if (!doc) {
-      throw new NotFoundError(
-        `Account ${accountId} not found for user ${workspaceId}`,
-      );
+      throw new NotFoundError(`Account ${accountId} not found for user ${workspaceId}`);
     }
     return (doc as AccountDocument).currency as Currency;
   }

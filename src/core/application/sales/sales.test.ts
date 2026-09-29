@@ -10,6 +10,8 @@ import { Client } from "../../domain/client";
 import { Movement } from "../../domain/movement";
 import { Account } from "../../domain/account";
 import { Money } from "../../domain/money";
+import { createProductFormulaVersion } from "../../domain/product-formula";
+import { createProductComboVersion } from "../../domain/product-combo";
 import { CatalogItem } from "../../domain/catalog";
 import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
 import type {
@@ -66,6 +68,7 @@ function fakeSaleRepo(overrides: Partial<SaleRepository> = {}): SaleRepository &
     abonosDeleted,
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findByClientIdPage: vi.fn().mockResolvedValue({ sales: [], total: 0 }),
     create: vi.fn().mockImplementation(async (sale: Sale) => {
       created.push(sale);
       return sale;
@@ -115,6 +118,7 @@ function fakeCatalogRepo(overrides: Partial<CatalogItemRepository> = {}) {
     incremented,
     state,
     findById: vi.fn().mockResolvedValue(null),
+    touchProduct: vi.fn().mockResolvedValue(true),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (item: CatalogItem) => item),
     update: vi.fn().mockImplementation(async (item: CatalogItem) => item),
@@ -197,7 +201,7 @@ function fakeClientRepo(
     id: "client-1",
     workspaceId: "user-1",
     name: "Juan Pérez",
-    phone: "",
+    phone: "+573001234567",
     email: "",
     note: "",
     createdAt: new Date(),
@@ -207,6 +211,7 @@ function fakeClientRepo(
     findById: vi.fn().mockResolvedValue(client),
     findByWorkspaceId: vi.fn().mockResolvedValue([client]),
     findByName: vi.fn().mockResolvedValue(null),
+    findByPhone: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockImplementation(async (c: Client) => c),
     update: vi.fn().mockImplementation(async (c: Client) => c),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -225,6 +230,7 @@ function fakeCreditGrantedRepo(
     deleted,
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (credit: CreditGranted) => {
       created.push(credit);
       return credit;
@@ -324,6 +330,203 @@ beforeEach(() => {
 // ─── Create Sale ────────────────────────────────────────────────────
 
 describe("createSale", () => {
+  it("sells one combo line and consumes its fixed, granular components atomically", async () => {
+    const cup = makeProduct({ id: "cup", name: "Cup", stock: 10, saleUnit: "unit" });
+    const coffee = makeProduct({
+      id: "coffee",
+      name: "Coffee",
+      stock: 1_000_000,
+      saleUnit: "g",
+    });
+    const version = createProductComboVersion({
+      version: 1,
+      components: [
+        { itemId: cup.id, name: cup.name, quantity: 1, unit: "unit" },
+        { itemId: coffee.id, name: coffee.name, quantity: 250, unit: "g" },
+      ],
+    });
+    const combo = makeProduct({
+      id: "combo",
+      name: "Coffee set",
+      saleUnit: "unit",
+      stock: 0,
+      comboVersions: [version],
+    });
+    const items = new Map([
+      [combo.id, combo],
+      [cup.id, cup],
+      [coffee.id, coffee],
+    ]);
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi
+        .fn()
+        .mockImplementation(async (_workspaceId: string, id: string) => items.get(id) ?? null),
+    });
+    const saleRepo = fakeSaleRepo();
+
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [{ itemId: combo.id, quantity: 2, unitPrice: 15000, comboVersion: 1 }],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      saleRepo,
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeIdGen(),
+      fakeClientRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+
+    expect(sale.items).toHaveLength(1);
+    expect(sale.items[0].comboSnapshot).toMatchObject({
+      version: 1,
+      components: [
+        { itemId: cup.id, stockQuantity: 2 },
+        { itemId: coffee.id, stockQuantity: 500_000 },
+      ],
+    });
+    expect(catalogRepo.decremented).toEqual([
+      { itemId: cup.id, quantity: 2 },
+      { itemId: coffee.id, quantity: 500_000 },
+    ]);
+    expect(catalogRepo.decremented.some((entry) => entry.itemId === combo.id)).toBe(false);
+  });
+
+  it("consumes customized formula components and snapshots the actual quantities", async () => {
+    const supply = makeProduct({
+      id: "supply-1",
+      name: "Flour",
+      productRole: "supply",
+      saleUnit: "g",
+      stock: 1_000_000,
+      unitPrice: Money.nonNegative(0, "COP"),
+    });
+    const formula = createProductFormulaVersion({
+      version: 1,
+      yieldQuantity: 1,
+      yieldUnit: "unit",
+      components: [{ itemId: supply.id, name: supply.name, quantity: 250, unit: "g" }],
+    });
+    const prepared = makeProduct({ formulaVersions: [formula], stock: 0 });
+    const items = new Map([
+      [prepared.id, prepared],
+      [supply.id, supply],
+    ]);
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi
+        .fn()
+        .mockImplementation(async (_workspaceId: string, id: string) => items.get(id) ?? null),
+    });
+    const saleRepo = fakeSaleRepo();
+
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [
+          {
+            itemId: prepared.id,
+            quantity: 2,
+            unitPrice: 50000,
+            formula: {
+              version: 1,
+              components: [{ itemId: supply.id, quantity: 300, unit: "g" }],
+            },
+          },
+        ],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      saleRepo,
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeIdGen(),
+      fakeClientRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+
+    expect(catalogRepo.decremented).toEqual([{ itemId: supply.id, quantity: 600_000 }]);
+    expect(sale.items[0].formulaSnapshot).toMatchObject({
+      version: 1,
+      outputQuantity: 2,
+      outputUnit: "unit",
+      components: [{ itemId: supply.id, name: "Flour", unit: "g", stockQuantity: 600_000 }],
+    });
+  });
+
+  it("sells from prepared stock when no formula is selected", async () => {
+    const recipe = createProductFormulaVersion({
+      version: 1,
+      yieldQuantity: 1,
+      yieldUnit: "unit",
+      components: [{ itemId: "supply-1", name: "Flour", quantity: 100, unit: "g" }],
+    });
+    const prepared = makeProduct({ formulaVersions: [recipe] });
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({ findById: vi.fn().mockResolvedValue(prepared) });
+
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [{ itemId: prepared.id, quantity: 1, unitPrice: 50000 }],
+        accountId: "acc-1",
+        date: new Date(),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      saleRepo,
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeIdGen(),
+      fakeClientRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+    expect(sale.items[0].formulaSnapshot).toBeUndefined();
+    expect(catalogRepo.decremented).toEqual([{ itemId: prepared.id, quantity: 1 }]);
+    expect(saleRepo.created).toHaveLength(1);
+  });
+
+  it("rejects supply-only catalog items before writing a sale or movement", async () => {
+    const supply = makeProduct({ productRole: "supply" });
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({ findById: vi.fn().mockResolvedValue(supply) });
+    const movementRepo = fakeMovementRepo();
+
+    await expect(
+      createSale(
+        "user-1",
+        {
+          items: [{ itemId: supply.id, quantity: 1, unitPrice: 50000 }],
+          accountId: "acc-1",
+          date: new Date("2025-06-01"),
+          paymentMode: "paid-in-full",
+          currency: "COP",
+        },
+        saleRepo,
+        catalogRepo,
+        movementRepo,
+        fakeIdGen(),
+        fakeClientRepo(),
+        fakeCreditGrantedRepo(),
+        fakeAccountRepo([makeAccount("acc-1")]),
+        fakeUow(),
+      ),
+    ).rejects.toThrow("cannot be sold directly");
+    expect(saleRepo.created).toHaveLength(0);
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
   it("creates a paid-in-full sale with line items and income movement (POS-2, POS-4)", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
@@ -370,7 +573,7 @@ describe("createSale", () => {
     expect(accountRepo.touch).toHaveBeenCalledWith("user-1", "acc-1", expect.anything());
   });
 
-  it("rejects fractional line-item quantities — Sale aggregate integer rule (R15.3.1 P3)", async () => {
+  it("rejects fractional line-item quantities for discrete unit products", async () => {
     const product = makeProduct();
     const saleRepo = fakeSaleRepo();
     const catalogRepo = fakeCatalogRepo({
@@ -405,6 +608,41 @@ describe("createSale", () => {
     expect(saleRepo.created).toHaveLength(0);
     expect(movementRepo.created).toHaveLength(0);
     expect(catalogRepo.decremented).toHaveLength(0);
+  });
+
+  it("converts fractional sale quantities to base stock atoms before decrementing", async () => {
+    const product = makeProduct({ stock: 500_000, saleUnit: "kg" });
+    const saleRepo = fakeSaleRepo();
+    const catalogRepo = fakeCatalogRepo({ findById: vi.fn().mockResolvedValue(product) });
+    const movementRepo = fakeMovementRepo();
+    const clientRepo = fakeClientRepo();
+    const creditRepo = fakeCreditGrantedRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [{ itemId: "item-1", quantity: 0.25, unitPrice: 100_000 }],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      saleRepo,
+      catalogRepo,
+      movementRepo,
+      fakeIdGen(),
+      clientRepo,
+      creditRepo,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(sale.items[0].quantity).toBe(0.25);
+    expect(sale.items[0].unit).toBe("kg");
+    expect(sale.items[0].stockQuantity).toBe(250_000);
+    expect(sale.total).toBe(25_000);
+    expect(catalogRepo.decremented[0].quantity).toBe(250_000);
   });
 
   it("rejects a paid-in-full sale carrying an initial payment (H14)", async () => {
@@ -1333,6 +1571,43 @@ describe("deleteSaleAbono", () => {
 // ─── Delete Sale ───────────────────────────────────────────────────
 
 describe("deleteSale", () => {
+  it("reverses formula stock from the sale snapshot instead of the current formula", async () => {
+    const sale = makeSale({
+      items: [
+        {
+          itemId: "prepared-1",
+          quantity: 2,
+          unit: "unit",
+          stockQuantity: 2,
+          unitPrice: new Money(50000, "COP"),
+          formulaSnapshot: {
+            version: 1,
+            outputQuantity: 2,
+            outputUnit: "unit",
+            components: [{ itemId: "supply-1", name: "Flour", unit: "g", stockQuantity: 600_000 }],
+          },
+        },
+      ],
+    });
+    const catalogRepo = fakeCatalogRepo({
+      findById: vi.fn().mockResolvedValue(makeProduct({ id: "prepared-1" })),
+    });
+    const saleRepo = fakeSaleRepo({ findByWorkspaceId: vi.fn().mockResolvedValue([sale]) });
+
+    await deleteSale(
+      "user-1",
+      sale.id,
+      saleRepo,
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+
+    expect(catalogRepo.incremented).toEqual([{ itemId: "supply-1", quantity: 600_000 }]);
+  });
+
   const accountRepo = fakeAccountRepo();
   it("deletes sale, reverses movements, and restores stock (POS-8)", async () => {
     const product = makeProduct();

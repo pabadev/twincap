@@ -1,13 +1,17 @@
-import { Payable } from '../../domain/payable';
-import { Movement } from '../../domain/movement';
-import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from '../../domain/money';
-import { NotFoundError, ConflictError } from '../../domain/errors';
-import { isModernRecord } from '../../domain/modern-record';
-import { payableCategory } from '../../domain/synthetic-categories';
-import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccount } from '../financial/touch-accounts';
-import type { EditAbonoInput } from './dto/payables';
+import { Payable } from "../../domain/payable";
+import { Movement } from "../../domain/movement";
+import { Money, assertSafeMinorUnits, sumSafeMinorUnits } from "../../domain/money";
+import { NotFoundError, ConflictError } from "../../domain/errors";
+import { isModernRecord } from "../../domain/modern-record";
+import { payableCategory } from "../../domain/synthetic-categories";
+import type {
+  PayableRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccount } from "../financial/touch-accounts";
+import type { EditAbonoInput } from "./dto/payables";
 
 /**
  * Edit an embedded abono on a payable (PAY-R-3).
@@ -35,15 +39,15 @@ export async function editAbono(
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const payables = await payableRepo.findByWorkspaceId(workspaceId, tx);
-    const payable = payables.find(p => p.id === payableId);
-    if (!payable) throw new NotFoundError('Payable not found');
+    const payable = payables.find((p) => p.id === payableId);
+    if (!payable) throw new NotFoundError("Payable not found");
 
-    const abono = payable.abonos.find(a => a.id === abonoId);
-    if (!abono) throw new NotFoundError('Abono not found');
+    const abono = payable.abonos.find((a) => a.id === abonoId);
+    if (!abono) throw new NotFoundError("Abono not found");
 
     // PAY-R-2: recalculate pending with new amount
     if (input.amount !== undefined) {
-      const otherAbonos = payable.abonos.filter(a => a.id !== abonoId);
+      const otherAbonos = payable.abonos.filter((a) => a.id !== abonoId);
       // R15.3.2 P2-7: aggregate through sumSafeMinorUnits (per-step guard).
       const totalOther = sumSafeMinorUnits(
         otherAbonos.map((a) => a.amount.amount),
@@ -52,13 +56,12 @@ export async function editAbono(
       const pending = payable.total.amount - payable.initialPayment - totalOther;
       assertSafeMinorUnits(pending, "EditAbono pending");
       if (input.amount > pending) {
-        throw new ConflictError('Abono exceeds pending amount');
+        throw new ConflictError("Abono exceeds pending amount");
       }
     }
 
-    const updatedAmount = input.amount !== undefined
-      ? new Money(input.amount, abono.amount.currency)
-      : abono.amount;
+    const updatedAmount =
+      input.amount !== undefined ? new Money(input.amount, abono.amount.currency) : abono.amount;
     // R15.3 §16: the abono keeps its original account — editing is amount/date
     // only, changing the account is not a product capability.
     const updatedAccountId = abono.accountId;
@@ -75,9 +78,9 @@ export async function editAbono(
         // missing one is an integrity violation (ConflictError + rollback).
         // Legacy aggregates keep the tolerant behavior with a reconciliation log.
         if (isModernRecord(payable.createdAt)) {
-          throw new ConflictError('Required movement not found for modern record');
+          throw new ConflictError("Required movement not found for modern record");
         }
-        console.warn('[reconcile] Legacy record missing movement, continuing', {
+        console.warn("[reconcile] Legacy record missing movement, continuing", {
           aggregateId: payable.id,
           movementId: abono.movementId,
         });
@@ -86,8 +89,8 @@ export async function editAbono(
           id: movement.id,
           workspaceId: movement.workspaceId,
           accountId: updatedAccountId,
-          category: payableCategory('expense'),
-          type: 'expense',
+          category: payableCategory("expense"),
+          type: "expense",
           amount: updatedAmount,
           date: updatedDate,
           note: movement.note,
@@ -103,10 +106,17 @@ export async function editAbono(
     // R15.3.2 Fase 4: persist the abono with the SAME resolved amount that was
     // written into the movement (fixes the amount=0 desync between aggregate
     // and ledger, where the truthy check fell back to the old amount here).
-    await payableRepo.editAbono(workspaceId, payableId, abonoId, {
-      amount: updatedAmount.amount,
-      date: input.date,
-    }, tx, payable.version);
+    await payableRepo.editAbono(
+      workspaceId,
+      payableId,
+      abonoId,
+      {
+        amount: updatedAmount.amount,
+        date: input.date,
+      },
+      tx,
+      payable.version,
+    );
 
     // R15.3.2: the movement write changed the account's derived balance — touch
     // it as the LAST write of the transaction (shared-document conflict point,
@@ -124,15 +134,22 @@ export async function editAbono(
         total: payable.total,
         initialPayment: payable.initialPayment,
         accountId: payable.accountId,
+        context: payable.context,
         date: payable.date,
         dueDate: payable.dueDate,
         note: payable.note,
         createdAt: payable.createdAt,
         version: payable.version + 1,
       },
-      payable.abonos.map(a =>
+      payable.abonos.map((a) =>
         a.id === abonoId
-          ? { id: a.id, amount: updatedAmount, date: updatedDate, accountId: updatedAccountId, movementId: a.movementId }
+          ? {
+              id: a.id,
+              amount: updatedAmount,
+              date: updatedDate,
+              accountId: updatedAccountId,
+              movementId: a.movementId,
+            }
           : a,
       ),
     );

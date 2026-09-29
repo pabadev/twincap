@@ -1,5 +1,11 @@
 import { ValidationError } from "./errors";
 import { Money, assertSafeMinorUnits } from "./money";
+import {
+  calculateQuantitySubtotal,
+  getUnitFactorToBase,
+  quantityToBaseUnits,
+  type InventoryUnit,
+} from "./inventory-units";
 
 /** POS-2: payment mode for a sale. */
 export const PAYMENT_MODES = ["paid-in-full", "on-credit"] as const;
@@ -13,21 +19,38 @@ export function isPaymentMode(value: string): value is PaymentMode {
 export interface SaleLineItem {
   /** Reference to a CatalogItem. */
   itemId: string;
-  /** Discrete count — positive integer (R15.3.1 P3). */
+  /** Quantity in the sale unit, snapshotted for display. */
   quantity: number;
+  /** Unit snapshot, defaults to discrete item for legacy sales. */
+  unit: InventoryUnit;
+  /** Integer stock atoms consumed, captured for exact sale reversal. */
+  stockQuantity: number;
   /** Unit price snapshot at the time of the sale (POS-7: may change independently). */
   unitPrice: Money;
-  /** Computed: quantity × unitPrice (minor units). */
+  /** Computed from stock atoms and the sale unit's conversion factor. */
   readonly subtotal: number;
+  /** Immutable formula and actual consumption used for this sale line, if prepared on demand. */
+  readonly formulaSnapshot?: {
+    version: number;
+    outputQuantity: number;
+    outputUnit: InventoryUnit;
+    components: Array<{ itemId: string; name: string; unit: InventoryUnit; stockQuantity: number }>;
+  };
+  readonly comboSnapshot?: {
+    version: number;
+    components: Array<{ itemId: string; name: string; unit: InventoryUnit; stockQuantity: number }>;
+  };
 }
 
 /** Computed subtotal for a line item in minor units. */
-export function computeLineItemSubtotal(quantity: number, unitPrice: Money): number {
+export function computeLineItemSubtotal(
+  quantity: number,
+  unitPrice: Money,
+  unit: InventoryUnit = "unit",
+): number {
   // R15.3 §18: quantity × unitPrice can overflow the safe-integer range
   // before the subtotal re-enters Money — fail fast here.
-  const subtotal = quantity * unitPrice.amount;
-  assertSafeMinorUnits(subtotal, "Sale line item subtotal");
-  return subtotal;
+  return calculateQuantitySubtotal(quantityToBaseUnits(quantity, unit), unit, unitPrice.amount);
 }
 
 /** Embedded abono for a sale (POS-4/5). */
@@ -66,9 +89,13 @@ export interface SaleInput {
 /** Input for a line item — subtotal is computed, not provided. */
 export interface SaleLineItemInput {
   itemId: string;
-  /** Discrete count — positive integer (R15.3.1 P3). */
+  /** Quantity in the catalog item's sale unit. */
   quantity: number;
+  unit?: InventoryUnit;
+  stockQuantity?: number;
   unitPrice: Money;
+  formulaSnapshot?: SaleLineItem["formulaSnapshot"];
+  comboSnapshot?: SaleLineItem["comboSnapshot"];
 }
 
 export interface SaleAbonoInput {
@@ -138,23 +165,98 @@ export class Sale {
       if (raw.itemId.length === 0) {
         throw new ValidationError("Sale line item itemId must not be empty");
       }
-      // R15.3.1 P3: quantity is a DISCRETE count — positive integer only.
-      // Fractional quantities are rejected here (the same rule the
-      // catalog-repository decrementStock guard enforces); unitPrice is
-      // fixed-point minor units and may be an integer of any safe size.
-      if (!Number.isInteger(raw.quantity) || raw.quantity <= 0) {
+      // Sale quantity is normalized to integer inventory atoms before money
+      // is calculated; this avoids binary floating-point in stock and totals.
+      const unit = raw.unit ?? "unit";
+      const convertedQuantity = quantityToBaseUnits(raw.quantity, unit);
+      const stockQuantity = raw.stockQuantity ?? convertedQuantity;
+      if (!Number.isSafeInteger(stockQuantity) || stockQuantity <= 0) {
         throw new ValidationError(
-          `Sale line item quantity must be a positive whole number, got ${raw.quantity}`,
+          `Sale line item base quantity must be a positive integer, got ${stockQuantity}`,
         );
+      }
+      if (stockQuantity !== convertedQuantity) {
+        throw new ValidationError("Sale quantity does not match its base stock quantity");
       }
       if (raw.unitPrice.amount <= 0) {
         throw new ValidationError("Sale line item unitPrice must be positive");
       }
-      const subtotal = computeLineItemSubtotal(raw.quantity, raw.unitPrice);
+      if (raw.formulaSnapshot) {
+        const snapshot = raw.formulaSnapshot;
+        if (
+          !Number.isSafeInteger(snapshot.version) ||
+          snapshot.version < 1 ||
+          snapshot.outputUnit !== unit ||
+          quantityToBaseUnits(snapshot.outputQuantity, snapshot.outputUnit) !== convertedQuantity ||
+          snapshot.components.length === 0
+        ) {
+          throw new ValidationError("Sale formula snapshot is invalid");
+        }
+        const componentIds = new Set<string>();
+        for (const component of snapshot.components) {
+          if (
+            !component.itemId ||
+            !component.name.trim() ||
+            !Number.isSafeInteger(component.stockQuantity) ||
+            component.stockQuantity <= 0 ||
+            componentIds.has(component.itemId)
+          ) {
+            throw new ValidationError("Sale formula component snapshot is invalid");
+          }
+          getUnitFactorToBase(component.unit);
+          componentIds.add(component.itemId);
+        }
+      }
+      if (raw.comboSnapshot) {
+        const snapshot = raw.comboSnapshot;
+        if (
+          !Number.isSafeInteger(snapshot.version) ||
+          snapshot.version < 1 ||
+          unit !== "unit" ||
+          !Number.isInteger(raw.quantity) ||
+          snapshot.components.length === 0
+        ) {
+          throw new ValidationError("Sale combo snapshot is invalid");
+        }
+        const componentIds = new Set<string>();
+        for (const component of snapshot.components) {
+          if (
+            !component.itemId ||
+            !component.name.trim() ||
+            !Number.isSafeInteger(component.stockQuantity) ||
+            component.stockQuantity <= 0 ||
+            componentIds.has(component.itemId)
+          ) {
+            throw new ValidationError("Sale combo component snapshot is invalid");
+          }
+          getUnitFactorToBase(component.unit);
+          componentIds.add(component.itemId);
+        }
+      }
+      if (raw.comboSnapshot && raw.formulaSnapshot) {
+        throw new ValidationError("A sale line cannot be both a combo and prepared formula");
+      }
+      const subtotal = calculateQuantitySubtotal(stockQuantity, unit, raw.unitPrice.amount);
       items.push({
         itemId: raw.itemId,
-        quantity: raw.quantity,
+        quantity: stockQuantity / getUnitFactorToBase(unit),
+        unit,
+        stockQuantity,
         unitPrice: raw.unitPrice,
+        formulaSnapshot: raw.formulaSnapshot
+          ? {
+              version: raw.formulaSnapshot.version,
+              outputQuantity: raw.formulaSnapshot.outputQuantity,
+              outputUnit: raw.formulaSnapshot.outputUnit,
+              components: raw.formulaSnapshot.components.map((component) => ({ ...component })),
+            }
+          : undefined,
+        comboSnapshot: raw.comboSnapshot
+          ? {
+              version: raw.comboSnapshot.version,
+              components: raw.comboSnapshot.components.map((component) => ({ ...component })),
+            }
+          : undefined,
         subtotal,
       });
       total += subtotal;
@@ -198,6 +300,18 @@ export class Sale {
       items: this.items.map((item) => ({
         ...item,
         unitPrice: item.unitPrice.toJSON(),
+        formulaSnapshot: item.formulaSnapshot
+          ? {
+              ...item.formulaSnapshot,
+              components: item.formulaSnapshot.components.map((c) => ({ ...c })),
+            }
+          : undefined,
+        comboSnapshot: item.comboSnapshot
+          ? {
+              ...item.comboSnapshot,
+              components: item.comboSnapshot.components.map((component) => ({ ...component })),
+            }
+          : undefined,
       })),
       date: this.date,
       paymentMode: this.paymentMode,
@@ -215,4 +329,4 @@ export class Sale {
 }
 
 /** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
-export type SerializedSale = ReturnType<Sale['toJSON']>;
+export type SerializedSale = ReturnType<Sale["toJSON"]>;

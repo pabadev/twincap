@@ -1,11 +1,15 @@
-import { Sale } from '../../domain/sale';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import type { SaleRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { AddSaleAbonoInput } from './dto/sales';
-import { saleCategory } from './helpers';
+import { Sale } from "../../domain/sale";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import type {
+  SaleRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { AddSaleAbonoInput } from "./dto/sales";
+import { saleCategory } from "./helpers";
 
 /**
  * LEGACY FALLBACK — add an abono to an on-credit sale (POS-4, POS-5).
@@ -52,15 +56,15 @@ export async function addSaleAbono(
     // the tx (static reference resolved up front; matrix row 70).
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     // Re-fetch via repo — returns Sale instance with pending getter.
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) throw new NotFoundError('Sale not found');
+    const sale = sales.find((s) => s.id === saleId);
+    if (!sale) throw new NotFoundError("Sale not found");
 
     // ACC-1: the abono's currency must match the sale's currency (the debt
     // currency, fixed at creation from the collection account). The sale's
@@ -72,38 +76,46 @@ export async function addSaleAbono(
       throw new NotFoundError(`Account ${sale.accountId} not found`);
     }
     if (input.currency !== saleAccount.currency) {
-      throw new ValidationError(`Sale currency is ${saleAccount.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Sale currency is ${saleAccount.currency}, declared ${input.currency}`,
+      );
     }
 
     // POS-5: overpayment check
     if (input.amount > sale.pending) {
-      throw new ConflictError('Abono exceeds pending amount');
+      throw new ConflictError("Abono exceeds pending amount");
     }
 
     const abonoId = ids.generate();
     const movementId = ids.generate();
     const now = new Date();
 
-    await saleRepo.addAbono(workspaceId, saleId, {
-      id: abonoId,
-      amount: input.amount,
-      date: input.date,
-      accountId: input.accountId,
-      movementId,
-    }, tx, sale.version);
+    await saleRepo.addAbono(
+      workspaceId,
+      saleId,
+      {
+        id: abonoId,
+        amount: input.amount,
+        date: input.date,
+        accountId: input.accountId,
+        movementId,
+      },
+      tx,
+      sale.version,
+    );
 
     // POS-4: each abono creates an income movement
     const movement = new Movement({
       id: movementId,
       workspaceId,
       accountId: input.accountId,
-      category: saleCategory('income'),
-      type: 'income',
+      category: saleCategory("income"),
+      type: "income",
       amount: new Money(input.amount, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: 'Business',
-      link: { kind: 'salePayment', refId: saleId, opId: ids.generate() },
+      context: "Business",
+      link: { kind: "salePayment", refId: saleId, opId: ids.generate() },
       createdAt: now,
     });
     await movementRepo.create(movement, tx);
@@ -120,7 +132,13 @@ export async function addSaleAbono(
       {
         id: sale.id,
         workspaceId: sale.workspaceId,
-        items: sale.items.map(i => ({ itemId: i.itemId, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: sale.items.map((i) => ({
+          itemId: i.itemId,
+          quantity: i.quantity,
+          unit: i.unit,
+          stockQuantity: i.stockQuantity,
+          unitPrice: i.unitPrice,
+        })),
         date: sale.date,
         paymentMode: sale.paymentMode,
         accountId: sale.accountId,

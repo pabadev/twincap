@@ -1,18 +1,23 @@
-import { Payable } from '../../domain/payable';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import { payableCategory } from '../../domain/synthetic-categories';
-import type { PayableRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { AddAbonoInput } from './dto/payables';
+import { Payable } from "../../domain/payable";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import { payableCategory } from "../../domain/synthetic-categories";
+import type {
+  PayableRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { AddAbonoInput } from "./dto/payables";
 
 /**
  * Add an abono (payment) to a payable (PAY-R-2).
  *
  * Pending = total − initialPayment − Σ abonos. Overpayment is rejected.
  * Produces exactly ONE linked expense movement (kind 'payableAbono').
- * Movement context: always 'Personal' — payable abonos are personal purchases.
+ * Movement context inherits the payable: legacy/personal payables default to
+ * Personal; business supply purchases remain Business across all installments.
  *
  * R15 Fase 3: the aggregate read AND the balance/currency validations that
  * derive from it run INSIDE the transaction (snapshot-consistent), and the two
@@ -53,50 +58,58 @@ export async function addAbono(
     // the tx (static reference resolved up front; matrix row 70).
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     // Re-fetch via repo — returns Payable instance with pending getter.
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const payables = await payableRepo.findByWorkspaceId(workspaceId, tx);
-    const payable = payables.find(p => p.id === payableId);
-    if (!payable) throw new NotFoundError('Payable not found');
+    const payable = payables.find((p) => p.id === payableId);
+    if (!payable) throw new NotFoundError("Payable not found");
 
     // ACC-1: the abono's currency must match the payable's total currency.
     if (input.currency !== payable.total.currency) {
-      throw new ValidationError(`Payable currency is ${payable.total.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Payable currency is ${payable.total.currency}, declared ${input.currency}`,
+      );
     }
 
     // PAY-R-2: pending = total − initialPayment − Σ abonos; overpayment rejected
     if (input.amount > payable.pending) {
-      throw new ConflictError('Abono exceeds pending amount');
+      throw new ConflictError("Abono exceeds pending amount");
     }
 
     const abonoId = ids.generate();
     const movementId = ids.generate();
     const now = new Date();
 
-    await payableRepo.addAbono(workspaceId, payableId, {
-      id: abonoId,
-      amount: input.amount,
-      date: input.date,
-      accountId: input.accountId,
-      movementId,
-    }, tx, payable.version);
+    await payableRepo.addAbono(
+      workspaceId,
+      payableId,
+      {
+        id: abonoId,
+        amount: input.amount,
+        date: input.date,
+        accountId: input.accountId,
+        movementId,
+      },
+      tx,
+      payable.version,
+    );
 
     // Create expense movement (abono = payment from account)
     const movement = new Movement({
       id: movementId,
       workspaceId,
       accountId: input.accountId,
-      category: payableCategory('expense'),
-      type: 'expense',
+      category: payableCategory("expense"),
+      type: "expense",
       amount: new Money(input.amount, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
-      link: { kind: 'payableAbono', refId: payableId, opId: ids.generate() },
+      context: payable.context,
+      link: { kind: "payableAbono", refId: payableId, opId: ids.generate() },
       createdAt: now,
     });
     await movementRepo.create(movement, tx);
@@ -117,6 +130,7 @@ export async function addAbono(
         total: payable.total,
         initialPayment: payable.initialPayment,
         accountId: payable.accountId,
+        context: payable.context,
         date: payable.date,
         dueDate: payable.dueDate,
         note: payable.note,

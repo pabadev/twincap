@@ -8,7 +8,10 @@ import { createCreditReceived } from "../../core/application/credits-received/cr
 import { addAbono as addAbonoReceived } from "../../core/application/credits-received/add-abono";
 import { createCreditGranted } from "../../core/application/credits-granted/create-credit-granted";
 import { addAbono as addAbonoGranted } from "../../core/application/credits-granted/add-abono";
-import { writeOffCreditGranted, WRITE_OFF_ALREADY_MSG } from "../../core/application/credits-granted/write-off-credit-granted";
+import {
+  writeOffCreditGranted,
+  WRITE_OFF_ALREADY_MSG,
+} from "../../core/application/credits-granted/write-off-credit-granted";
 import { createSale } from "../../core/application/sales/create-sale";
 import { deleteSale } from "../../core/application/sales/delete-sale";
 import { createTransfer } from "../../core/application/transfers/create-transfer";
@@ -89,7 +92,9 @@ function expectedFxDestinationMinor(
   // Documented formula (§9f verification): rate is quoted as "destination
   // currency units per 1 source currency unit". Match on integer minors:
   // dest_minor == src_minor × rate × 10^(destExp − srcExp).
-  return Math.round(sourceMinor * rate * 10 ** (exponentOf(destinationCurrency) - exponentOf(sourceCurrency)));
+  return Math.round(
+    sourceMinor * rate * 10 ** (exponentOf(destinationCurrency) - exponentOf(sourceCurrency)),
+  );
 }
 
 describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
@@ -224,9 +229,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         for (const loser of losers) {
           expect(loser.reason).toBeInstanceOf(ConflictError);
           expect(
-            [WRITE_OFF_ALREADY_MSG, DEBT_MODIFIED_MSG].includes(
-              (loser.reason as Error).message,
-            ),
+            [WRITE_OFF_ALREADY_MSG, DEBT_MODIFIED_MSG].includes((loser.reason as Error).message),
           ).toBe(true);
         }
 
@@ -301,7 +304,11 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
           signedAmount: 2000,
           date: new Date("2025-06-02"),
           categoryId: ACCOUNT_ID,
-          link: { kind: "creditGrantedAbono", refId: CREDIT_ID, opId: objectIdGenerator.generate() },
+          link: {
+            kind: "creditGrantedAbono",
+            refId: CREDIT_ID,
+            opId: objectIdGenerator.generate(),
+          },
         },
       ]);
     }
@@ -347,7 +354,13 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         // P = 120_000, abono = 50_000 → 2 rows fit (3 would need 150_000).
         const credit = await createCreditReceived(
           WS,
-          { counterparty: "Juan", principal: 120_000, currency: "COP", accountId: ACCOUNT_ID, date },
+          {
+            counterparty: "Juan",
+            principal: 120_000,
+            currency: "COP",
+            accountId: ACCOUNT_ID,
+            date,
+          },
           new MongoCreditReceivedRepository(),
           new MongoMovementRepository(),
           objectIdGenerator,
@@ -505,9 +518,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         // source unit, account-style). Production no longer receives the rate
         // (R15.1 Fase 4) — it derives effectiveExchangeRate per R15.3 §11
         // (sourceMajor / destinationMajor) from the two real amounts.
-        expect(
-          expectedFxDestinationMinor(fx.srcMinor, fx.rate, "USD", "COP"),
-        ).toBe(fx.destMinor);
+        expect(expectedFxDestinationMinor(fx.srcMinor, fx.rate, "USD", "COP")).toBe(fx.destMinor);
 
         const res = await createTransfer(
           WS,
@@ -558,8 +569,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         // R15.3 §11: rate = sourceMajor / destinationMajor — USD (exp 2) → COP
         // (exp 0) here, i.e. (srcMinor / 100) / (destMinor / 1).
         expect(transferDoc!.effectiveExchangeRate).toBe(
-          (fx.srcMinor / 10 ** exponentOf("USD")) /
-            (fx.destMinor / 10 ** exponentOf("COP")),
+          fx.srcMinor / 10 ** exponentOf("USD") / (fx.destMinor / 10 ** exponentOf("COP")),
         );
       }
 
@@ -606,7 +616,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
         _id: CLIENT_ID,
         workspaceId: WS,
         name: "Cliente Test",
-        phone: "",
+        phone: "+573001234567",
         email: "",
         note: "",
       });
@@ -686,9 +696,7 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
       const creditAfter = await CreditGrantedModel.findById(creditDoc!._id);
       expect(versionOf(creditAfter)).toBe(1);
       expect(creditAfter!.abonos).toHaveLength(2);
-      expect(
-        creditAfter!.principal - abonosTotal(creditAfter!.abonos),
-      ).toBe(13_000 - 7_000);
+      expect(creditAfter!.principal - abonosTotal(creditAfter!.abonos)).toBe(13_000 - 7_000);
 
       // Σ credit-abono movements == Σ abonos == 7_000, all Business, all
       // referencing the credit; the sale document itself never gains abonos.
@@ -870,7 +878,10 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
       const remaining = await MovementModel.find({ workspaceId: WS });
       expect(remaining[0].link.kind).toBe("creditGrantedPrincipal");
       expect(
-        await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "creditGrantedWriteOff" }),
+        await MovementModel.countDocuments({
+          workspaceId: WS,
+          "link.kind": "creditGrantedWriteOff",
+        }),
       ).toBe(0);
     }, 60_000);
   });
@@ -927,7 +938,9 @@ describe("R15 Fase 7 — integrity suite (§25/§14)", () => {
 
       // Cada venta commiteada == 1 sale doc + 1 movement salePayment.
       expect(await SaleModel.countDocuments({ workspaceId: WS })).toBe(3);
-      expect(await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "salePayment" })).toBe(3);
+      expect(
+        await MovementModel.countDocuments({ workspaceId: WS, "link.kind": "salePayment" }),
+      ).toBe(3);
     }, 120_000);
   });
 });

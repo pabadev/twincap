@@ -1,5 +1,6 @@
 import { ValidationError } from "./errors";
 import { Money, assertSafeMinorUnits } from "./money";
+import type { MovementContext } from "./movement";
 
 /** Embedded abono for payables (payments toward a purchase on credit). */
 export interface PayableAbono {
@@ -21,6 +22,8 @@ export interface PayableInput {
   initialPayment: number;
   /** Account the initial payment left from. */
   accountId: string;
+  /** Financial context for payments; legacy payables remain Personal. */
+  context?: MovementContext;
   date: Date;
   /** Informational only — no auto-formulas. */
   dueDate?: Date;
@@ -47,8 +50,9 @@ export class Payable {
   readonly total: Money;
   readonly initialPayment: number;
   readonly accountId: string;
+  readonly context: MovementContext;
   readonly date: Date;
-  readonly   dueDate?: Date;
+  readonly dueDate?: Date;
   readonly note?: string;
   readonly createdAt: Date;
   /** Optimistic-concurrency version (`__v`), default 0. */
@@ -123,6 +127,7 @@ export class Payable {
     this.total = input.total;
     this.initialPayment = input.initialPayment;
     this.accountId = input.accountId;
+    this.context = input.context ?? "Personal";
     this.date = input.date;
     this.dueDate = input.dueDate;
     this.note = input.note;
@@ -140,6 +145,7 @@ export class Payable {
       total: this.total.toJSON(),
       initialPayment: this.initialPayment,
       accountId: this.accountId,
+      context: this.context,
       date: this.date,
       dueDate: this.dueDate,
       note: this.note,
@@ -152,4 +158,4 @@ export class Payable {
 }
 
 /** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
-export type SerializedPayable = ReturnType<Payable['toJSON']>;
+export type SerializedPayable = ReturnType<Payable["toJSON"]>;

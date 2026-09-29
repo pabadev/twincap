@@ -1,12 +1,12 @@
-import { NotFoundError } from '../../domain/errors';
+import { NotFoundError } from "../../domain/errors";
 import type {
   SaleRepository,
   ClientRepository,
   CatalogItemRepository,
   AccountRepository,
   CreditGrantedRepository,
-} from '../../domain/repositories';
-import type { SaleDetailSnapshot } from './dto/sales';
+} from "../../domain/repositories";
+import type { SaleDetailSnapshot } from "./dto/sales";
 
 /**
  * H17: assemble the full sale detail read model.
@@ -58,7 +58,7 @@ export async function getSaleDetail(
 
   let initialPayment: number;
   let pending: number;
-  let abonos: SaleDetailSnapshot['abonos'];
+  let abonos: SaleDetailSnapshot["abonos"];
 
   if (linkedCredit) {
     // R5-A: dual-model derivation. NEW model (principal === total) → the
@@ -75,7 +75,7 @@ export async function getSaleDetail(
       amount: abono.amount.toJSON(),
       date: abono.date,
     }));
-  } else if (sale.paymentMode === 'paid-in-full') {
+  } else if (sale.paymentMode === "paid-in-full") {
     initialPayment = sale.total;
     pending = 0;
     abonos = [];
@@ -95,12 +95,25 @@ export async function getSaleDetail(
     date: sale.date,
     clientName,
     paymentMode: sale.paymentMode,
-    status: pending === 0 ? 'paid' : 'pending',
+    status: pending === 0 ? "paid" : "pending",
     items: sale.items.map((item) => ({
       itemName: itemNameById.get(item.itemId) ?? null,
       quantity: item.quantity,
+      unit: item.unit,
       unitPrice: item.unitPrice.toJSON(),
       subtotal: item.subtotal,
+      formulaSnapshot: item.formulaSnapshot
+        ? {
+            version: item.formulaSnapshot.version,
+            components: item.formulaSnapshot.components.map((component) => ({ ...component })),
+          }
+        : undefined,
+      comboSnapshot: item.comboSnapshot
+        ? {
+            version: item.comboSnapshot.version,
+            components: item.comboSnapshot.components.map((component) => ({ ...component })),
+          }
+        : undefined,
     })),
     total: sale.total,
     initialPayment,

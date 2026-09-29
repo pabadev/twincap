@@ -28,6 +28,7 @@ export const MOVEMENT_LINK_KINDS = [
   "salePayment",
   "payableInitialPayment",
   "payableAbono",
+  "inventoryReceiptPayment",
 ] as const;
 export type MovementLinkKind = (typeof MOVEMENT_LINK_KINDS)[number];
 
@@ -46,23 +47,49 @@ export type MovementLinkKind = (typeof MOVEMENT_LINK_KINDS)[number];
  * - parentCollection: which repository to query for the parent
  */
 export interface MovementLinkKindMeta {
-  owner: 'account' | 'transfer' | 'credit-received' | 'credit-granted' | 'payable' | 'sale';
-  lookup: 'id' | 'value';
-  parentCollection: 'accounts' | 'transfers' | 'credits-received' | 'credits-granted' | 'payables' | 'sales';
+  owner: "account" | "transfer" | "credit-received" | "credit-granted" | "payable" | "sale";
+  lookup: "id" | "value";
+  parentCollection:
+    "accounts" | "transfers" | "credits-received" | "credits-granted" | "payables" | "sales";
 }
 
 export const MOVEMENT_LINK_KIND_REGISTRY: Record<MovementLinkKind, MovementLinkKindMeta> = {
-  opening:                    { owner: 'account',          lookup: 'id',    parentCollection: 'accounts' },
-  transfer:                   { owner: 'transfer',         lookup: 'id',    parentCollection: 'transfers' },
-  creditReceivedPrincipal:    { owner: 'credit-received',  lookup: 'value', parentCollection: 'credits-received' },
-  creditReceivedAbono:        { owner: 'credit-received',  lookup: 'id',    parentCollection: 'credits-received' },
-  creditGrantedPrincipal:     { owner: 'credit-granted',   lookup: 'value', parentCollection: 'credits-granted' },
-  creditGrantedAbono:         { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
-  creditGrantedAbonoInterest: { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
-  creditGrantedWriteOff:      { owner: 'credit-granted',   lookup: 'id',    parentCollection: 'credits-granted' },
-  salePayment:                { owner: 'sale',             lookup: 'value', parentCollection: 'sales' },
-  payableInitialPayment:      { owner: 'payable',          lookup: 'id',    parentCollection: 'payables' },
-  payableAbono:               { owner: 'payable',          lookup: 'id',    parentCollection: 'payables' },
+  opening: { owner: "account", lookup: "id", parentCollection: "accounts" },
+  transfer: { owner: "transfer", lookup: "id", parentCollection: "transfers" },
+  creditReceivedPrincipal: {
+    owner: "credit-received",
+    lookup: "value",
+    parentCollection: "credits-received",
+  },
+  creditReceivedAbono: {
+    owner: "credit-received",
+    lookup: "id",
+    parentCollection: "credits-received",
+  },
+  creditGrantedPrincipal: {
+    owner: "credit-granted",
+    lookup: "value",
+    parentCollection: "credits-granted",
+  },
+  creditGrantedAbono: {
+    owner: "credit-granted",
+    lookup: "id",
+    parentCollection: "credits-granted",
+  },
+  creditGrantedAbonoInterest: {
+    owner: "credit-granted",
+    lookup: "id",
+    parentCollection: "credits-granted",
+  },
+  creditGrantedWriteOff: {
+    owner: "credit-granted",
+    lookup: "id",
+    parentCollection: "credits-granted",
+  },
+  salePayment: { owner: "sale", lookup: "value", parentCollection: "sales" },
+  payableInitialPayment: { owner: "payable", lookup: "id", parentCollection: "payables" },
+  payableAbono: { owner: "payable", lookup: "id", parentCollection: "payables" },
+  inventoryReceiptPayment: { owner: "account", lookup: "id", parentCollection: "accounts" },
 };
 
 export interface MovementLink {
@@ -75,6 +102,7 @@ export interface MovementLink {
    * the source sale (I12). Absent for standalone granted credits.
    */
   saleId?: string;
+  receiptId?: string;
   /** Deterministic operation id — idempotent replay marker (design rev.2 §5). */
   opId: string;
 }
@@ -176,6 +204,20 @@ export class Movement {
       if (input.link.saleId !== undefined && input.link.saleId.length === 0) {
         throw new ValidationError("Movement link saleId must not be empty when present");
       }
+      if (input.link.receiptId !== undefined && input.link.receiptId.length === 0) {
+        throw new ValidationError("Movement link receiptId must not be empty when present");
+      }
+      if (
+        input.link.kind === "inventoryReceiptPayment" &&
+        (!input.link.receiptId ||
+          input.link.refId !== input.accountId ||
+          input.type !== "expense" ||
+          input.context !== "Business")
+      ) {
+        throw new ValidationError(
+          "Inventory receipt payments require a Business expense linked to its account and receipt",
+        );
+      }
     }
     this.id = input.id;
     this.workspaceId = input.workspaceId;
@@ -218,7 +260,7 @@ export class Movement {
 }
 
 /** Wire-format DTO produced by toJSON(); safe to use as a client component prop. */
-export type SerializedMovement = ReturnType<Movement['toJSON']>;
+export type SerializedMovement = ReturnType<Movement["toJSON"]>;
 
 /**
  * R15.2 corrective — structural subset of {@link Movement} consumed by the

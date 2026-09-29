@@ -1,9 +1,23 @@
-import type { Currency } from '../../../domain/currency';
-import type { PaymentMode } from '../../../domain/sale';
+import type { Currency } from "../../../domain/currency";
+import type { PaymentMode } from "../../../domain/sale";
 
 export interface CreateSaleInput {
-  /** quantity: discrete count — positive integer (R15.3.1 P3); enforced by the Sale aggregate. */
-  items: { itemId: string; quantity: number; unitPrice: number }[];
+  actorUserId?: string;
+  /** Quantity is expressed in the catalog item's sale unit. */
+  items: {
+    itemId: string;
+    quantity: number;
+    unitPrice: number;
+    formula?: {
+      version: number;
+      components: Array<{
+        itemId: string;
+        quantity: number;
+        unit: import("../../../domain/inventory-units").InventoryUnit;
+      }>;
+    };
+    comboVersion?: number;
+  }[];
   accountId: string;
   clientId?: string;
   date: Date;
@@ -34,12 +48,31 @@ export interface SaleDetailSnapshot {
   clientName: string | null;
   paymentMode: PaymentMode;
   /** Derived: 'paid' when nothing is pending, 'pending' otherwise. */
-  status: 'paid' | 'pending';
+  status: "paid" | "pending";
   items: {
     itemName: string | null;
     quantity: number;
+    unit: import("../../../domain/inventory-units").InventoryUnit;
     unitPrice: { amount: number; currency: Currency };
     subtotal: number;
+    formulaSnapshot?: {
+      version: number;
+      components: Array<{
+        itemId: string;
+        name: string;
+        unit: import("../../../domain/inventory-units").InventoryUnit;
+        stockQuantity: number;
+      }>;
+    };
+    comboSnapshot?: {
+      version: number;
+      components: Array<{
+        itemId: string;
+        name: string;
+        unit: import("../../../domain/inventory-units").InventoryUnit;
+        stockQuantity: number;
+      }>;
+    };
   }[];
   total: number;
   initialPayment: number;

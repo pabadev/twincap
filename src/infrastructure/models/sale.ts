@@ -1,11 +1,34 @@
 import mongoose, { Schema, type HydratedDocument } from "mongoose";
+import { INVENTORY_UNITS } from "../../core/domain/inventory-units";
 
 /** Subdocument shape for a sale line item. */
 export interface SaleLineItemDoc {
   itemId: mongoose.Types.ObjectId;
   quantity: number;
+  unit?: string;
+  stockQuantity?: number;
   unitPrice: number;
   subtotal: number;
+  formulaSnapshot?: {
+    version: number;
+    outputQuantity: number;
+    outputUnit: string;
+    components: Array<{
+      itemId: mongoose.Types.ObjectId;
+      name: string;
+      unit: string;
+      stockQuantity: number;
+    }>;
+  };
+  comboSnapshot?: {
+    version: number;
+    components: Array<{
+      itemId: mongoose.Types.ObjectId;
+      name: string;
+      unit: string;
+      stockQuantity: number;
+    }>;
+  };
 }
 
 /** Subdocument shape for an embedded abono (POS-4/5). */
@@ -39,8 +62,66 @@ const SaleLineItemSchema = new Schema<SaleLineItemDoc>(
   {
     itemId: { type: Schema.Types.ObjectId, required: true },
     quantity: { type: Number, required: true },
+    unit: { type: String, enum: INVENTORY_UNITS, default: "unit" },
+    stockQuantity: {
+      type: Number,
+      min: 1,
+      validate: {
+        validator: (value: number | undefined) =>
+          value === undefined || Number.isSafeInteger(value),
+        message: "Sale stock quantity must be a safe integer",
+      },
+    },
     unitPrice: { type: Number, required: true },
     subtotal: { type: Number, required: true },
+    formulaSnapshot: {
+      type: new Schema(
+        {
+          version: { type: Number, required: true },
+          outputQuantity: { type: Number, required: true },
+          outputUnit: { type: String, enum: INVENTORY_UNITS, required: true },
+          components: {
+            type: [
+              new Schema(
+                {
+                  itemId: { type: Schema.Types.ObjectId, required: true },
+                  name: { type: String, required: true },
+                  unit: { type: String, enum: INVENTORY_UNITS, required: true },
+                  stockQuantity: { type: Number, min: 1, required: true },
+                },
+                { _id: false },
+              ),
+            ],
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
+    comboSnapshot: {
+      type: new Schema(
+        {
+          version: { type: Number, required: true },
+          components: {
+            type: [
+              new Schema(
+                {
+                  itemId: { type: Schema.Types.ObjectId, required: true },
+                  name: { type: String, required: true },
+                  unit: { type: String, enum: INVENTORY_UNITS, required: true },
+                  stockQuantity: { type: Number, min: 1, required: true },
+                },
+                { _id: false },
+              ),
+            ],
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
   },
   { _id: false },
 );
@@ -108,6 +189,7 @@ const SaleSchema = new Schema<SaleDoc>(
   { timestamps: true },
 );
 
-export const SaleModel =
-  mongoose.models["Sale"] ||
-  mongoose.model<SaleDoc>("Sale", SaleSchema);
+SaleSchema.index({ workspaceId: 1, clientId: 1, date: -1, createdAt: -1 });
+SaleSchema.index({ workspaceId: 1, "items.itemId": 1 });
+
+export const SaleModel = mongoose.models["Sale"] || mongoose.model<SaleDoc>("Sale", SaleSchema);

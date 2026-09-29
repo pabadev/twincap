@@ -113,6 +113,7 @@ describe("concurrencia referencias (R15.3 P2)", () => {
       _id: CLIENT,
       workspaceId: WS,
       name: "Juan Pérez",
+      phone: "+573001234569",
     });
     await CatalogItemModel.create({
       _id: CATALOG_ITEM,
@@ -165,7 +166,9 @@ describe("concurrencia referencias (R15.3 P2)", () => {
           s.reason instanceof NotFoundError ||
           s.reason instanceof ConflictError ||
           s.reason instanceof ValidationError;
-        expect(ok, `unexpected rejection class: ${s.reason?.message ?? String(s.reason)}`).toBe(true);
+        expect(ok, `unexpected rejection class: ${s.reason?.message ?? String(s.reason)}`).toBe(
+          true,
+        );
       }
     }
   }
@@ -194,7 +197,10 @@ describe("concurrencia referencias (R15.3 P2)", () => {
       const ops = settled.slice(0, 9);
       const deleteResult = settled[9];
       const srcExists = (await AccountModel.countDocuments({ _id: SRC, workspaceId: WS })) > 0;
-      const movementsOnSrc = await MovementModel.countDocuments({ workspaceId: WS, accountId: SRC });
+      const movementsOnSrc = await MovementModel.countDocuments({
+        workspaceId: WS,
+        accountId: SRC,
+      });
       const fulfilledOps = ops.filter((s) => s.status === "fulfilled").length;
 
       for (const r of ops) {
@@ -205,15 +211,17 @@ describe("concurrencia referencias (R15.3 P2)", () => {
           //  – ConflictError(MOVEMENT_MODIFIED_MSG): the movement's `__v` was
           //    bumped by a concurrent edit that committed (P2 CAS — the edit
           //    loser is re-prompted, never silently overwritten).
-          const ok =
-            r.reason instanceof NotFoundError ||
-            r.reason instanceof ConflictError;
-          expect(ok, `unexpected rejection class: ${r.reason?.message ?? String(r.reason)}`).toBe(true);
+          const ok = r.reason instanceof NotFoundError || r.reason instanceof ConflictError;
+          expect(ok, `unexpected rejection class: ${r.reason?.message ?? String(r.reason)}`).toBe(
+            true,
+          );
         }
       }
       if (srcExists) {
         // Account alive → every committed edit migrated the movement to SRC.
-        expect(deleteResult.status, "invariant: cuenta viva ⇒ el delete DEBE haber rechazado").toBe("rejected");
+        expect(deleteResult.status, "invariant: cuenta viva ⇒ el delete DEBE haber rechazado").toBe(
+          "rejected",
+        );
         const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
         expect(reason).toBeInstanceOf(ConflictError);
         expect(await MovementModel.countDocuments({ workspaceId: WS, accountId: AUX })).toBe(0);
@@ -233,23 +241,26 @@ describe("concurrencia referencias (R15.3 P2)", () => {
 
       const settled = await Promise.allSettled([
         ...Array.from({ length: 9 }, () =>
-updateMovement(
-          WS,
-          { movementId: MOVEMENT, categoryId: CAT_B },
-          movementRepo(),
-          categoryRepo(),
-          accountRepo(),
-          uow(),
+          updateMovement(
+            WS,
+            { movementId: MOVEMENT, categoryId: CAT_B },
+            movementRepo(),
+            categoryRepo(),
+            accountRepo(),
+            uow(),
+          ),
         ),
-      ),
-      deleteCategory(WS, CAT_B, categoryRepo(), movementRepo(), uow()),
-    ]);
+        deleteCategory(WS, CAT_B, categoryRepo(), movementRepo(), uow()),
+      ]);
 
-    assertNoTransactionErrors(settled);
-    assertCleanAborts(settled);
-    const deleteResult = settled[9];
+      assertNoTransactionErrors(settled);
+      assertCleanAborts(settled);
+      const deleteResult = settled[9];
       const catBExists = (await CategoryModel.countDocuments({ _id: CAT_B, workspaceId: WS })) > 0;
-      const movementsOnCatB = await MovementModel.countDocuments({ workspaceId: WS, categoryId: CAT_B });
+      const movementsOnCatB = await MovementModel.countDocuments({
+        workspaceId: WS,
+        categoryId: CAT_B,
+      });
 
       if (!catBExists) {
         // Delete won → every reassignment aborted (NotFoundError) and the
@@ -260,7 +271,10 @@ updateMovement(
       } else {
         // Reassignment won (at least one commit) → the delete's reference
         // guard rejected with ConflictError; the category lives with its refs.
-        expect(deleteResult.status, "invariant: categoría viva ⇒ el delete DEBE haber rechazado").toBe("rejected");
+        expect(
+          deleteResult.status,
+          "invariant: categoría viva ⇒ el delete DEBE haber rechazado",
+        ).toBe("rejected");
         const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
         expect(reason).toBeInstanceOf(ConflictError);
         expect(movementsOnCatB).toBe(1);
@@ -298,7 +312,10 @@ updateMovement(
       const ops = settled.slice(0, 9);
       const deleteResult = settled[9];
       const catBExists = (await CategoryModel.countDocuments({ _id: CAT_B, workspaceId: WS })) > 0;
-      const movementsOnCatB = await MovementModel.countDocuments({ workspaceId: WS, categoryId: CAT_B });
+      const movementsOnCatB = await MovementModel.countDocuments({
+        workspaceId: WS,
+        categoryId: CAT_B,
+      });
       const fulfilledCreates = ops.filter((s) => s.status === "fulfilled").length;
 
       // Accounting invariant: each committed create = exactly 1 movement.
@@ -312,7 +329,10 @@ updateMovement(
         expect(fulfilledCreates).toBe(0);
       } else {
         // Creates won → the delete's reference guard rejected.
-        expect(deleteResult.status, "invariant: categoría viva ⇒ el delete DEBE haber rechazado").toBe("rejected");
+        expect(
+          deleteResult.status,
+          "invariant: categoría viva ⇒ el delete DEBE haber rechazado",
+        ).toBe("rejected");
         const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
         expect(reason).toBeInstanceOf(ConflictError);
         expect(fulfilledCreates).toBeGreaterThan(0);
@@ -365,7 +385,9 @@ updateMovement(
         expect(fulfilledSales).toBe(0);
       } else {
         // Creates won → the active-sales guard rejected the delete (D2).
-        expect(deleteResult.status, "invariant: client vivo ⇒ el delete DEBE haber rechazado").toBe("rejected");
+        expect(deleteResult.status, "invariant: client vivo ⇒ el delete DEBE haber rechazado").toBe(
+          "rejected",
+        );
         const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
         expect(reason).toBeInstanceOf(ConflictError);
         expect(fulfilledSales).toBeGreaterThan(0);
@@ -416,7 +438,9 @@ updateMovement(
         0,
       );
       expect(total).toBe(amounts.reduce((acc, a) => acc + a, 0));
-      expect(new Set(movements.map((m) => String((m as unknown as { _id: unknown })._id))).size).toBe(n);
+      expect(
+        new Set(movements.map((m) => String((m as unknown as { _id: unknown })._id))).size,
+      ).toBe(n);
     }, 120_000);
   });
 });

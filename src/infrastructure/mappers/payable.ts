@@ -12,10 +12,7 @@ import { Money } from "../../core/domain/money";
  * total is always strictly positive in storage: the record keeps the purchase
  * TOTAL and pending is only derived — so the strict Money constructor is safe.
  */
-export function toPayableEntity(
-  doc: PayableDocument,
-  currency: Currency,
-): Payable {
+export function toPayableEntity(doc: PayableDocument, currency: Currency): Payable {
   const abonos: PayableAbono[] = doc.abonos.map((a) => ({
     id: a.id,
     amount: new Money(a.amount, currency),
@@ -32,6 +29,7 @@ export function toPayableEntity(
       total: new Money(doc.total, currency),
       initialPayment: doc.initialPayment,
       accountId: doc.accountId.toString(),
+      context: doc.context ?? "Personal",
       date: doc.date,
       dueDate: doc.dueDate,
       note: doc.note,
@@ -43,15 +41,14 @@ export function toPayableEntity(
 }
 
 /** Convert a domain Payable entity to plain data for Mongoose writes. */
-export function toPayableDocData(
-  entity: Payable,
-): Record<string, unknown> {
+export function toPayableDocData(entity: Payable): Record<string, unknown> {
   return {
     workspaceId: new Types.ObjectId(entity.workspaceId),
     counterparty: entity.counterparty,
     total: entity.total.amount,
     initialPayment: entity.initialPayment,
     accountId: new Types.ObjectId(entity.accountId),
+    context: entity.context,
     date: entity.date,
     dueDate: entity.dueDate,
     note: entity.note,

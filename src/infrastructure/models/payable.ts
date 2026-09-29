@@ -6,6 +6,7 @@ export interface PayableAbonoDoc {
   amount: number;
   date: Date;
   accountId: mongoose.Types.ObjectId;
+  context?: "Personal" | "Business";
   movementId?: string;
 }
 
@@ -16,6 +17,7 @@ export interface PayableDoc {
   total: number;
   initialPayment: number;
   accountId: mongoose.Types.ObjectId;
+  context?: "Personal" | "Business";
   date: Date;
   dueDate?: Date;
   note?: string;
@@ -62,6 +64,7 @@ const PayableSchema = new Schema<PayableDoc>(
       type: Schema.Types.ObjectId,
       required: true,
     },
+    context: { type: String, enum: ["Personal", "Business"], default: "Personal" },
     date: {
       type: Date,
       required: true,
@@ -81,5 +84,4 @@ const PayableSchema = new Schema<PayableDoc>(
 );
 
 export const PayableModel =
-  mongoose.models["Payable"] ||
-  mongoose.model<PayableDoc>("Payable", PayableSchema);
+  mongoose.models["Payable"] || mongoose.model<PayableDoc>("Payable", PayableSchema);

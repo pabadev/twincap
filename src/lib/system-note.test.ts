@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   deriveSystemNote,
   systemNoteTemplateKey,
   SYSTEM_NOTES_NAMESPACE,
   type TranslateFn,
-} from './system-note';
-import { interpolate } from '../i18n/interpolate';
+} from "./system-note";
+import { interpolate } from "../i18n/interpolate";
 
-function makeT(locale: 'es' | 'en'): TranslateFn {
+function makeT(locale: "es" | "en"): TranslateFn {
   const filePath = fileURLToPath(new URL(`../../messages/${locale}.json`, import.meta.url));
-  const catalog = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<
+  const catalog = JSON.parse(readFileSync(filePath, "utf-8")) as Record<
     string,
     Record<string, string>
   >;
@@ -22,8 +22,8 @@ function makeT(locale: 'es' | 'en'): TranslateFn {
   };
 }
 
-const tEs = makeT('es');
-const tEn = makeT('en');
+const tEs = makeT("es");
+const tEn = makeT("en");
 
 function movement(partial: {
   note?: string;
@@ -40,161 +40,159 @@ function movement(partial: {
         ? undefined
         : {
             kind: partial.kind,
-            refId: partial.refId ?? 'ref-1',
+            refId: partial.refId ?? "ref-1",
             saleId: partial.saleId,
-            opId: 'op-1',
+            opId: "op-1",
           },
   };
 }
 
-describe('systemNoteTemplateKey', () => {
-  it('maps all nine known link kinds', () => {
+describe("systemNoteTemplateKey", () => {
+  it("maps all nine known link kinds", () => {
     const kinds = [
-      'opening',
-      'transfer',
-      'creditReceivedPrincipal',
-      'creditReceivedAbono',
-      'creditGrantedPrincipal',
-      'creditGrantedAbono',
-      'salePayment',
-      'payableInitialPayment',
-      'payableAbono',
+      "opening",
+      "transfer",
+      "creditReceivedPrincipal",
+      "creditReceivedAbono",
+      "creditGrantedPrincipal",
+      "creditGrantedAbono",
+      "salePayment",
+      "payableInitialPayment",
+      "payableAbono",
     ];
     for (const kind of kinds) {
       expect(systemNoteTemplateKey(kind)).toBe(kind);
     }
   });
 
-  it('returns null for unknown kinds', () => {
-    expect(systemNoteTemplateKey('futureKind')).toBeNull();
-    expect(systemNoteTemplateKey('')).toBeNull();
+  it("returns null for unknown kinds", () => {
+    expect(systemNoteTemplateKey("futureKind")).toBeNull();
+    expect(systemNoteTemplateKey("")).toBeNull();
   });
 
   // I12: a creditGrantedAbono with saleId was born from an on-credit sale and
   // resolves to the sale variant; without saleId it stays the credit variant.
-  it('maps creditGrantedAbono with saleId to the sale variant key', () => {
-    expect(systemNoteTemplateKey('creditGrantedAbono', 'sale-1')).toBe(
-      'creditGrantedAbonoSale',
-    );
+  it("maps creditGrantedAbono with saleId to the sale variant key", () => {
+    expect(systemNoteTemplateKey("creditGrantedAbono", "sale-1")).toBe("creditGrantedAbonoSale");
   });
 
-  it('keeps the credit variant key when creditGrantedAbono has no saleId', () => {
-    expect(systemNoteTemplateKey('creditGrantedAbono')).toBe('creditGrantedAbono');
-    expect(systemNoteTemplateKey('creditGrantedAbono', undefined)).toBe(
-      'creditGrantedAbono',
-    );
+  it("keeps the credit variant key when creditGrantedAbono has no saleId", () => {
+    expect(systemNoteTemplateKey("creditGrantedAbono")).toBe("creditGrantedAbono");
+    expect(systemNoteTemplateKey("creditGrantedAbono", undefined)).toBe("creditGrantedAbono");
   });
 
-  it('only applies the sale variant to creditGrantedAbono', () => {
-    expect(systemNoteTemplateKey('salePayment', 'sale-1')).toBe('salePayment');
-    expect(systemNoteTemplateKey('creditReceivedAbono', 'sale-1')).toBe(
-      'creditReceivedAbono',
-    );
+  it("only applies the sale variant to creditGrantedAbono", () => {
+    expect(systemNoteTemplateKey("salePayment", "sale-1")).toBe("salePayment");
+    expect(systemNoteTemplateKey("creditReceivedAbono", "sale-1")).toBe("creditReceivedAbono");
   });
 });
 
-describe('deriveSystemNote', () => {
-  it('returns undefined for non-system movements', () => {
+describe("deriveSystemNote", () => {
+  it("returns undefined for non-system movements", () => {
     expect(deriveSystemNote(movement({}), tEs)).toBeUndefined();
-    expect(deriveSystemNote({ note: 'manual', link: undefined }, tEs)).toBeUndefined();
+    expect(deriveSystemNote({ note: "manual", link: undefined }, tEs)).toBeUndefined();
   });
 
-  it('derives localized text for every counterparty kind (with parent label)', () => {
+  it("derives localized text for every counterparty kind (with parent label)", () => {
     const cases: Array<{ kind: string; label: string; es: string; en: string }> = [
       {
-        kind: 'creditReceivedPrincipal',
-        label: 'Proveedora XYZ',
-        es: 'Crédito recibido de Proveedora XYZ',
-        en: 'Credit received from Proveedora XYZ',
+        kind: "creditReceivedPrincipal",
+        label: "Proveedora XYZ",
+        es: "Crédito recibido de Proveedora XYZ",
+        en: "Credit received from Proveedora XYZ",
       },
       {
-        kind: 'creditReceivedAbono',
-        label: 'Proveedora XYZ',
-        es: 'Abono del crédito de Proveedora XYZ',
-        en: 'Abono for credit from Proveedora XYZ',
+        kind: "creditReceivedAbono",
+        label: "Proveedora XYZ",
+        es: "Abono del crédito de Proveedora XYZ",
+        en: "Abono for credit from Proveedora XYZ",
       },
       {
-        kind: 'creditGrantedPrincipal',
-        label: 'Juan Pérez',
-        es: 'Crédito otorgado a Juan Pérez',
-        en: 'Credit granted to Juan Pérez',
+        kind: "creditGrantedPrincipal",
+        label: "Juan Pérez",
+        es: "Crédito otorgado a Juan Pérez",
+        en: "Credit granted to Juan Pérez",
       },
       {
-        kind: 'creditGrantedAbono',
-        label: 'Juan Pérez',
-        es: 'Abono del crédito otorgado a Juan Pérez',
-        en: 'Abono for granted credit of Juan Pérez',
+        kind: "creditGrantedAbono",
+        label: "Juan Pérez",
+        es: "Abono del crédito otorgado a Juan Pérez",
+        en: "Abono for granted credit of Juan Pérez",
       },
       {
-        kind: 'salePayment',
-        label: 'María',
-        es: 'Pago de venta de María',
-        en: 'Sale payment from María',
+        kind: "salePayment",
+        label: "María",
+        es: "Pago de venta de María",
+        en: "Sale payment from María",
       },
       {
-        kind: 'payableInitialPayment',
-        label: 'Distribuidora',
-        es: 'Pago inicial de la compra a Distribuidora',
-        en: 'Initial payment for purchase from Distribuidora',
+        kind: "payableInitialPayment",
+        label: "Distribuidora",
+        es: "Pago inicial de la compra a Distribuidora",
+        en: "Initial payment for purchase from Distribuidora",
       },
       {
-        kind: 'payableAbono',
-        label: 'Distribuidora',
-        es: 'Abono de la compra a Distribuidora',
-        en: 'Abono for purchase from Distribuidora',
+        kind: "payableAbono",
+        label: "Distribuidora",
+        es: "Abono de la compra a Distribuidora",
+        en: "Abono for purchase from Distribuidora",
       },
     ];
     for (const c of cases) {
       const m = movement({ kind: c.kind });
-      expect(deriveSystemNote(m, tEs, { 'ref-1': c.label })).toBe(c.es);
-      expect(deriveSystemNote(m, tEn, { 'ref-1': c.label })).toBe(c.en);
+      expect(deriveSystemNote(m, tEs, { "ref-1": c.label })).toBe(c.es);
+      expect(deriveSystemNote(m, tEn, { "ref-1": c.label })).toBe(c.en);
     }
   });
 
   // I12: sale-born abonos label from the SALES map (link.saleId), not the
   // credit map (link.refId).
-  it('labels sale-born abonos from the sales map via saleId', () => {
-    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
-    expect(deriveSystemNote(m, tEs, { 'sale-1': 'María' })).toBe(
-      'Abono del crédito otorgado a María (venta)',
+  it("labels sale-born abonos from the sales map via saleId", () => {
+    const m = movement({ kind: "creditGrantedAbono", refId: "credit-1", saleId: "sale-1" });
+    expect(deriveSystemNote(m, tEs, { "sale-1": "María" })).toBe(
+      "Abono del crédito otorgado a María (venta)",
     );
-    expect(deriveSystemNote(m, tEn, { 'sale-1': 'María' })).toBe(
-      'Abono for granted credit of María (sale)',
+    expect(deriveSystemNote(m, tEn, { "sale-1": "María" })).toBe(
+      "Abono for granted credit of María (sale)",
     );
   });
 
-  it('ignores the credit label for sale-born abonos (saleId wins)', () => {
-    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
+  it("ignores the credit label for sale-born abonos (saleId wins)", () => {
+    const m = movement({ kind: "creditGrantedAbono", refId: "credit-1", saleId: "sale-1" });
     // 'credit-1' is present in refLabels but the sale took place without a
     // named client — the label must come from sale-1 only.
-    expect(deriveSystemNote(m, tEs, { 'credit-1': 'Juan Pérez' })).toBe(
-      'Abono de crédito otorgado (venta)',
+    expect(deriveSystemNote(m, tEs, { "credit-1": "Juan Pérez" })).toBe(
+      "Abono de crédito otorgado (venta)",
     );
   });
 
-  it('falls back to the sale Plain variant for orphan sale-born abonos', () => {
-    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1', saleId: 'sale-1' });
-    expect(deriveSystemNote(m, tEs)).toBe('Abono de crédito otorgado (venta)');
-    expect(deriveSystemNote(m, tEn)).toBe('Granted credit abono (sale)');
+  it("falls back to the sale Plain variant for orphan sale-born abonos", () => {
+    const m = movement({ kind: "creditGrantedAbono", refId: "credit-1", saleId: "sale-1" });
+    expect(deriveSystemNote(m, tEs)).toBe("Abono de crédito otorgado (venta)");
+    expect(deriveSystemNote(m, tEn)).toBe("Granted credit abono (sale)");
   });
 
-  it('keeps the credit variant for abonos without saleId (standalone credits)', () => {
-    const m = movement({ kind: 'creditGrantedAbono', refId: 'credit-1' });
-    expect(deriveSystemNote(m, tEs, { 'credit-1': 'Juan Pérez' })).toBe(
-      'Abono del crédito otorgado a Juan Pérez',
+  it("keeps the credit variant for abonos without saleId (standalone credits)", () => {
+    const m = movement({ kind: "creditGrantedAbono", refId: "credit-1" });
+    expect(deriveSystemNote(m, tEs, { "credit-1": "Juan Pérez" })).toBe(
+      "Abono del crédito otorgado a Juan Pérez",
     );
-    expect(deriveSystemNote(m, tEs)).toBe('Abono de crédito otorgado');
+    expect(deriveSystemNote(m, tEs)).toBe("Abono de crédito otorgado");
   });
 
-  it('falls back to the Plain template when the parent label is missing (orphan)', () => {
+  it("falls back to the Plain template when the parent label is missing (orphan)", () => {
     const cases: Record<string, { es: string; en: string }> = {
-      creditReceivedPrincipal: { es: 'Crédito recibido', en: 'Credit received' },
-      creditReceivedAbono: { es: 'Abono de crédito recibido', en: 'Credit abono' },
-      creditGrantedPrincipal: { es: 'Crédito otorgado', en: 'Credit granted' },
-      creditGrantedAbono: { es: 'Abono de crédito otorgado', en: 'Granted credit abono' },
-      salePayment: { es: 'Pago de venta', en: 'Sale payment' },
-      payableInitialPayment: { es: 'Pago inicial de compra', en: 'Purchase initial payment' },
-      payableAbono: { es: 'Abono de cuenta por pagar', en: 'Payable abono' },
+      creditReceivedPrincipal: { es: "Crédito recibido", en: "Credit received" },
+      creditReceivedAbono: { es: "Abono de crédito recibido", en: "Credit abono" },
+      creditGrantedPrincipal: { es: "Crédito otorgado", en: "Credit granted" },
+      creditGrantedAbono: { es: "Abono de crédito otorgado", en: "Granted credit abono" },
+      salePayment: { es: "Pago de venta", en: "Sale payment" },
+      payableInitialPayment: { es: "Pago inicial de compra", en: "Purchase initial payment" },
+      payableAbono: { es: "Abono de cuenta por pagar", en: "Payable abono" },
+      inventoryReceiptPayment: {
+        es: "Pago de entrada de insumos",
+        en: "Inventory receipt payment",
+      },
     };
     for (const [kind, expected] of Object.entries(cases)) {
       const m = movement({ kind }); // no refLabels → orphan
@@ -203,57 +201,53 @@ describe('deriveSystemNote', () => {
     }
   });
 
-  it('ignores blank labels and uses the Plain variant', () => {
-    const m = movement({ kind: 'payableAbono', refId: 'p1' });
-    expect(deriveSystemNote(m, tEs, { p1: '   ' })).toBe('Abono de cuenta por pagar');
+  it("ignores blank labels and uses the Plain variant", () => {
+    const m = movement({ kind: "payableAbono", refId: "p1" });
+    expect(deriveSystemNote(m, tEs, { p1: "   " })).toBe("Abono de cuenta por pagar");
   });
 
-  it('uses fixed templates for opening and transfer kinds', () => {
-    expect(deriveSystemNote(movement({ kind: 'opening' }), tEs)).toBe(
-      'Saldo inicial de la cuenta',
+  it("uses fixed templates for opening and transfer kinds", () => {
+    expect(deriveSystemNote(movement({ kind: "opening" }), tEs)).toBe("Saldo inicial de la cuenta");
+    expect(deriveSystemNote(movement({ kind: "opening" }), tEn)).toBe("Account opening balance");
+    expect(deriveSystemNote(movement({ kind: "transfer" }), tEs)).toBe(
+      "Transferencia entre cuentas propias",
     );
-    expect(deriveSystemNote(movement({ kind: 'opening' }), tEn)).toBe(
-      'Account opening balance',
-    );
-    expect(deriveSystemNote(movement({ kind: 'transfer' }), tEs)).toBe(
-      'Transferencia entre cuentas propias',
-    );
-    expect(deriveSystemNote(movement({ kind: 'transfer' }), tEn)).toBe(
-      'Internal transfer between own accounts',
+    expect(deriveSystemNote(movement({ kind: "transfer" }), tEn)).toBe(
+      "Internal transfer between own accounts",
     );
   });
 
-  it('prefers the derived template over persisted legacy auto-notes (historical rows)', () => {
+  it("prefers the derived template over persisted legacy auto-notes (historical rows)", () => {
     const historical = [
-      { kind: 'opening', persisted: 'Opening balance' },
-      { kind: 'creditReceivedPrincipal', persisted: 'Credit received from Old Vendor' },
-      { kind: 'salePayment', persisted: 'Sale payment' },
-      { kind: 'payableAbono', persisted: 'Abono for purchase from Old Vendor' },
+      { kind: "opening", persisted: "Opening balance" },
+      { kind: "creditReceivedPrincipal", persisted: "Credit received from Old Vendor" },
+      { kind: "salePayment", persisted: "Sale payment" },
+      { kind: "payableAbono", persisted: "Abono for purchase from Old Vendor" },
     ];
     for (const h of historical) {
       const m = movement({ kind: h.kind, note: h.persisted });
       const derived = deriveSystemNote(m, tEs);
       expect(derived).toBeDefined();
-      expect(derived).not.toContain('Opening balance');
-      expect(derived).not.toContain('Old Vendor');
+      expect(derived).not.toContain("Opening balance");
+      expect(derived).not.toContain("Old Vendor");
       expect(derived).not.toBe(h.persisted);
     }
   });
 
-  it('shows user-typed transfer notes verbatim instead of the template', () => {
-    const m = movement({ kind: 'transfer', note: 'Ahorros de diciembre' });
+  it("shows user-typed transfer notes verbatim instead of the template", () => {
+    const m = movement({ kind: "transfer", note: "Ahorros de diciembre" });
     expect(deriveSystemNote(m, tEs)).toBeUndefined();
   });
 
   it("treats the legacy literal 'Transfer' as auto text, not user data", () => {
-    const m = movement({ kind: 'transfer', note: 'Transfer' });
-    expect(deriveSystemNote(m, tEs)).toBe('Transferencia entre cuentas propias');
-    const mSpaced = movement({ kind: 'transfer', note: '  transfer  ' });
-    expect(deriveSystemNote(mSpaced, tEn)).toBe('Internal transfer between own accounts');
+    const m = movement({ kind: "transfer", note: "Transfer" });
+    expect(deriveSystemNote(m, tEs)).toBe("Transferencia entre cuentas propias");
+    const mSpaced = movement({ kind: "transfer", note: "  transfer  " });
+    expect(deriveSystemNote(mSpaced, tEn)).toBe("Internal transfer between own accounts");
   });
 
-  it('returns undefined for unknown kinds so callers can fall back', () => {
-    const m = movement({ kind: 'mysteryKind', note: 'Legacy text' });
+  it("returns undefined for unknown kinds so callers can fall back", () => {
+    const m = movement({ kind: "mysteryKind", note: "Legacy text" });
     expect(deriveSystemNote(m, tEs)).toBeUndefined();
   });
 });
