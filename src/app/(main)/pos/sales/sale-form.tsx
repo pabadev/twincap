@@ -336,6 +336,20 @@ export function SaleForm({
           quantity: 1,
           unitPrice: item.unitPrice.amount,
           comboVersion: item.comboVersions.at(-1)?.version,
+          // Prepared products default to producing on demand with the
+          // LATEST recipe version (owner decision 2026-09-29: the
+          // pre-stocked mode is not used for now; the user can still
+          // switch that line back to stock via the select).
+          formula: item.formulaVersions.at(-1)
+            ? {
+                version: item.formulaVersions.at(-1)!.version,
+                components: item.formulaVersions.at(-1)!.components.map((component) => ({
+                  itemId: component.itemId,
+                  quantity: component.quantity,
+                  unit: component.unit,
+                })),
+              }
+            : undefined,
         },
       ];
     });
