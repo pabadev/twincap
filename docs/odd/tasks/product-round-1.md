@@ -1,7 +1,7 @@
 # Ronda Producto 1 — Flujos claros para pequeños negocios
 
 > Fecha de inicio: 2026-09-27  
-> Estado: **ACTIVA; Fases 1–2 implementadas; Fase 3 con bloqueo operativo de MongoDB; Fase 5 implementada pendiente de verificación; Fase 6 recepción integrada por inspección con incidente de persistencia abierto; Fases 7–8 implementadas por inspección, pendientes de verificación; Fase 9 pendiente; pruebas diferidas**
+> Estado: **ACTIVA; Fases 1–8 implementadas y verificadas en Fase 9 (gates verdes); Fase 9 EJECUTADA (2026-09-29) — suites enfocadas 342/342, suite completa 1808/1808, tsc/lint/build en 0; 8 fallos de cierre resueltos; pendiente: commit documental + push a origin/master y materialización/verificación de índices en Atlas**
 > Documento maestro: `docs/AUDIT-AND-PLAN.md`  
 > Protocolo de pruebas: `AGENTS.md` y `docs/PROJECT-RULES.md` §14.
 
@@ -118,10 +118,23 @@ Mejorar los flujos cotidianos de un pequeño negocio y preparar la evolución de
 
 ### Fase 9 — Verificación y cierre
 
-- [ ] Ejecutar primero suites enfocadas de cambios nuevos y riesgos de integridad.
-- [ ] Ejecutar una única suite Vitest completa con timeout explícito ≥45 minutos; E2E completa solo con timeout ≥90 minutos y si el alcance integrado lo requiere.
-- [ ] Ejecutar typecheck, lint, formato y gates necesarios del repo; no declarar PASS sin ejecución.
-- [ ] Resolver fallos, documentar resultados, actualizar este tracker y emitir cierre.
+- [x] Ejecutar primero suites enfocadas de cambios nuevos y riesgos de integridad. **HECHO (2026-09-29): 342/342 tests en 27 archivos** (catalog/inventory/sales/clients/POS UI/transfers/tenant-isolation/reconcile).
+- [x] Ejecutar una única suite Vitest completa con timeout explícito ≥45 minutos; E2E completa solo con timeout ≥90 minutos y si el alcance integrado lo requiere. **HECHO: 1808/1808 en 188 archivos, 28.6 min (timeout corrida 60 min). E2E no requerida por esta ronda.**
+- [x] Ejecutar typecheck, lint, formato y gates necesarios del repo; no declarar PASS sin ejecución. **HECHO: `tsc --noEmit` EXIT 0 (deuda BigInt + fakes resuelta, commit f8231b3); `eslint src` 0 errores/16 warnings (idénticos al baseline pre-ronda, 0 nuevos); prettier --check OK en todo archivo tocado; `pnpm build` EXIT 0.**
+- [x] Resolver fallos, documentar resultados, actualizar este tracker y emitir cierre. **HECHO: 8 fallos de la primera corrida completa resueltos en 3 commits (f8231b3 tsc/lint, 2ffa113 regresiones de producción, cfad994 cierres de suite). Ver registro Fase 9.**
+
+### Fase 9 — Registro de ejecución (2026-09-29)
+
+- **Corrida completa 1**: 1800/1808 (8 fallos en 7 archivos). Corrida completa 2 (post-fixes): **1808/1808 VERDE**.
+- **Regresiones de producción detectadas y corregidas (2ffa113):**
+  1. `create-catalog-item.ts` silenciaba `stock` en servicios (normalización a `undefined`) en contra del contrato del DTO y del dominio ("Service must not have stock"); restaurada la `ValidationError` — ningún form real envía stock para servicio (input solo para kind product; parse produce `undefined` si ausente/vacío).
+  2. `delete-catalog-item.ts` invertía el orden de guards diseñado: el bloqueo por historial de inventario (autoridad para preservar recibos/ledger, y el chequeo selectivo más barato) ahora se evalúa ANTES del scan de ventas; el test estructural verifica que el repo de ventas no se consulta cuando hay historial.
+- **Stale tests corregidos (cfad994):** formato CSV unit-aware (`2 unit × Café`, deliberate en `export-csv.ts:87`); mensajes reworded de semántica discreta (R15.3.1 P3) sin cambio de semántica; shape de `decrementStock` con guard `$or` anti-combo + `{session}` explícito; fixture de `inventoryReceiptPayment` (Business/expense/receiptId/refId=accountId) para la cobertura estructural §14; test responsive actualizado a la fila de teléfono canonical-aware.
+- **i18n (gap real de la ronda, cfad994):** `Common.previousPage/nextPage` faltantes (receipt-history-list) añadidas es/en; `Sales.formulaComponent` era un misuse de namespace en sale-form (la clave vive en Catalog) — corregido a `tCatalog`.
+- **Integración Mongo (Fase 3, cfad994):** `client-phone-uniqueness.test.ts` PASA 2/2 contra replSet real (1 winner + 7 ConflictError en carrera N=8). El índice NO se declara en el schema (deliberado: creación en producción queda gateada al audit script `ensure-client-phone-index --apply` porque los datos Atlas aún no fueron auditados); el test materializa la definición canónica del script en su setup.
+- **Auditoría del diff completo (checklist pre-push):** 183 archivos, +12,627/−2,466 en 16 commits vs `1a1beac`. Sin cambios en workflows/`.vercel`/`package.json`/lockfile/`.env.example`; sin secretos (grep pattern); cambios de `money.ts` aditivos (`decimalAmountToMinorUnits`, exactitud del audit correctivo); composición acorde al contrato de la ronda.
+- **Gates finales:** `pnpm test` 1808/1808 · `tsc --noEmit` 0 · `eslint src` 0 errores (16 warnings preexistentes del baseline) · `pnpm build` EXIT 0.
+- **Pendiente operativo (post-push):** materializar/verificar índices en Atlas — `verify-client-phone-index` sigue FAIL hasta auditar colisiones y aplicar `ensure-client-phone-index --apply`; los índices de inventario/referencias `payableId` y el índice de referencia de ventas (combo) requieren `ensure-inventory-receipt-indexes --apply` + `verify-all-indexes` cuando haya ventana autorizada y conectividad.
 
 ## Riesgos y fronteras
 
