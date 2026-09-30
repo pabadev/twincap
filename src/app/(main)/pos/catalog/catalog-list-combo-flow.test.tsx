@@ -75,15 +75,24 @@ vi.mock("./product-formula-form", () => ({
   ),
 }));
 
+let root: Root | undefined;
+let container: HTMLDivElement | undefined;
+
 afterEach(() => {
+  // Unmount INSIDE the still-alive jsdom environment: a lingering React 19
+  // root schedules scheduler work (performWorkUntilDeadline) on node timers
+  // that dereference `window` after teardown → unhandled ReferenceError in CI.
+  if (root) {
+    const mounted = root;
+    act(() => mounted.unmount());
+    root = undefined;
+    container = undefined;
+  }
   formOnDone.current = null;
   document.body.innerHTML = "";
 });
 
 describe("CatalogList guided combo flow", () => {
-  let root: Root | undefined;
-  let container: HTMLDivElement | undefined;
-
   function mount(ui: React.ReactElement) {
     container = document.createElement("div");
     document.body.appendChild(container);
