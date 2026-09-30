@@ -60,8 +60,17 @@ export function AbonoForm({
     }
   }, [state?.success, addToast, tToast, router]);
 
+  // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
+  // identity is unstable after `router.refresh()` (messages re-import per RSC
+  // request), so while the same error stays in `state` this effect could
+  // re-fire and stack toasts. Memoize per error VALUE: a toast fires once
+  // per distinct error; re-submitting and getting a DIFFERENT one still
+  // shows. Same class as the sibling `successShownRef` guards.
+  const lastErrorShownRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (state?.error) {
+    if (state?.error && state.error !== lastErrorShownRef.current) {
+      lastErrorShownRef.current = state.error;
       addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
@@ -107,6 +116,7 @@ export function AbonoForm({
         <Input
           id={`amount-${creditId}`}
           name="amount"
+          hint={tCommon("moneyNoSeparators")}
           type="number"
           label={t("amount")}
           min="1"

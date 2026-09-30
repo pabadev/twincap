@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
 import type { SerializedAccount } from "../../../../core/domain/account";
 import {
@@ -94,8 +94,15 @@ export function InventoryReceiptForm({
   const [date] = useState(() => toDateInputValue());
   const locale = useLocale();
 
+  // U1 regression fix (same bug class as the 26+ sibling forms): one-shot
+  // `successShownRef` guard. `useActionState` keeps `state.success` truthy
+  // forever and `tt`/`onDone` identities change after a refresh or parent
+  // re-render; without the guard the effect re-fires and stacks toasts.
+  const successShownRef = useRef(false);
+
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       addToast(tt(state.success), "success");
       onDone();
     }
@@ -315,6 +322,7 @@ export function InventoryReceiptForm({
           <Input
             id="receiptInitialPayment"
             name="initialPayment"
+            hint={tc("moneyNoSeparators")}
             type="number"
             label={
               currency

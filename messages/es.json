@@ -27,7 +27,8 @@
     "previousPage": "Anterior",
     "nextPage": "Siguiente",
     "offline": "Sin conexión a internet. Para registrar operaciones financieras necesitas conexión.",
-    "connectionRestored": "Conexión restablecida. Puedes continuar."
+    "connectionRestored": "Conexión restablecida. Puedes continuar.",
+    "moneyNoSeparators": "Escribe el valor solo con números, sin puntos ni comas. Ejemplo: 150000"
   },
   "Nav": {
     "dashboard": "Resumen",

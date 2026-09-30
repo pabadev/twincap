@@ -27,7 +27,8 @@
     "previousPage": "Previous",
     "nextPage": "Next",
     "offline": "You are offline. A connection is required to record financial operations.",
-    "connectionRestored": "Connection restored. You can continue."
+    "connectionRestored": "Connection restored. You can continue.",
+    "moneyNoSeparators": "Enter the value as numbers only, without dots or commas. Example: 150000"
   },
   "Nav": {
     "dashboard": "Summary",

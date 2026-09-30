@@ -81,29 +81,42 @@ export function InitialBalanceButton({
   // machinery untouched.
   const [awaitingResult, setAwaitingResult] = useState(false);
 
+  // U1 regression fix (same bug class as the 26+ sibling forms): one-shot
+  // `successShownRef` guard. `useActionState` keeps `state.success` truthy
+  // forever and the `tToast` identity changes after every `router.refresh()`
+  // (messages are re-imported per RSC request); without the guard the effect
+  // re-fires on each re-render and stacks an unbounded number of success
+  // toasts ("renderiza infinitamente"). The ref must be reset when the form
+  // reopens so a second intentional use shows its own toast.
+  const successShownRef = useRef(false);
+
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       // The outer modal closes on success (setShowForm below); the inner
       // confirmation state does not need a reset here because reopening the
       // modal always starts un-confirmed (the button's onClick resets
-      // awaitingResult on a fresh open). The eslint-disable is required by
-      // react-hooks/set-state-in-effect: reacting to a useActionState result
-      // is the one legitimate effect-to-state sync here — deriving the modal
-      // open state in render from useActionState is not applicable because
-      // the state spans multiple unrelated actions.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar. Refactorizar derivaría el estado en render y no es aplicable aquí.
+      // awaitingResult on a fresh open).
       setShowForm(false);
       addToast(tToast(state.success), "success");
       router.refresh();
     }
   }, [state?.success, addToast, tToast, router]);
 
+  // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
+  // identity is unstable after `router.refresh()` (messages re-import per RSC
+  // request), so while the same error stays in `state` this effect could
+  // re-fire and stack toasts. Memoize per error VALUE: a toast fires once
+  // per distinct error; re-submitting and getting a DIFFERENT one still
+  // shows. Same class as the sibling `successShownRef` guards.
+  const lastErrorShownRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (state?.error) {
+    if (state?.error && state.error !== lastErrorShownRef.current) {
+      lastErrorShownRef.current = state.error;
       // Reset so a retry submits through the confirmation dialog again (UX-6:
       // every submit confirms first). The inner dialog reopens with the
       // previously confirmed details — cancel clears it and the form stays.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); reabre la confirmación al fallar. Derivable en render no aplicable: awaitingResult es transicional a un dispatch imperativo, no derivable del estado global.
       setAwaitingResult(false);
       addToast(translateError(state.error), "error");
     }
@@ -160,6 +173,7 @@ export function InitialBalanceButton({
           // A fresh open always starts un-confirmed (UX-6: every submit
           // confirms first), even if a previous dispatch never settled.
           setAwaitingResult(false);
+          successShownRef.current = false;
           setShowForm(true);
         }}
       >
@@ -176,6 +190,7 @@ export function InitialBalanceButton({
           <Input
             id="amount"
             name="amount"
+            hint={tCommon("moneyNoSeparators")}
             type="number"
             label={t("balanceToSet")}
             min="1"

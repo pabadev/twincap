@@ -14,7 +14,6 @@ import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
-import { TouchTarget } from "../../../components/ui/touch-target";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
@@ -54,18 +53,35 @@ export function CorrectInitialBalanceButton({
   const [confirmAmount, setConfirmAmount] = useState(0);
   const [awaitingResult, setAwaitingResult] = useState(false);
 
+  // U1 regression fix (same bug class as the 26+ sibling forms): one-shot
+  // `successShownRef` guard. `useActionState` keeps `state.success` truthy
+  // forever and the `tToast` identity changes after every `router.refresh()`
+  // (messages are re-imported per RSC request); without the guard the effect
+  // re-fires on each re-render and stacks an unbounded number of success
+  // toasts ("renderiza infinitamente"). The ref resets on a fresh open so a
+  // second intentional use still shows its own toast.
+  const successShownRef = useRef(false);
+
   useEffect(() => {
-    if (state?.success) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); cierra el modal al completar.
+    if (state?.success && !successShownRef.current) {
+      successShownRef.current = true;
       setShowForm(false);
       addToast(tToast(state.success), "success");
       router.refresh();
     }
   }, [state?.success, addToast, tToast, router]);
 
+  // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
+  // identity is unstable after `router.refresh()` (messages re-import per RSC
+  // request), so while the same error stays in `state` this effect could
+  // re-fire and stack toasts. Memoize per error VALUE: a toast fires once
+  // per distinct error; re-submitting and getting a DIFFERENT one still
+  // shows. Same class as the sibling `successShownRef` guards.
+  const lastErrorShownRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (state?.error) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacción al resultado de server action (useActionState); reabre la confirmación al fallar.
+    if (state?.error && state.error !== lastErrorShownRef.current) {
+      lastErrorShownRef.current = state.error;
       setAwaitingResult(false);
       addToast(translateError(state.error), "error");
     }
@@ -107,6 +123,7 @@ export function CorrectInitialBalanceButton({
         tone="primary"
         onClick={() => {
           setAwaitingResult(false);
+          successShownRef.current = false;
           setShowForm(true);
         }}
       />
@@ -120,6 +137,7 @@ export function CorrectInitialBalanceButton({
           <Input
             id="newAmount"
             name="newAmount"
+            hint={tCommon("moneyNoSeparators")}
             type="number"
             label={t("newBalance")}
             min="1"

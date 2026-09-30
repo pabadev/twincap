@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useT } from '../../../i18n/client';
-import { MOVEMENT_CONTEXTS } from '../../../core/domain/movement';
-import type { MovementType, SerializedMovement } from '../../../core/domain/movement';
-import { updateMovementAction } from './actions';
-import type { SerializedCategory } from '../../../core/domain/category';
-import type { SerializedAccount } from '../../../core/domain/account';
-import { Input } from '../../../components/ui/input';
-import { Select } from '../../../components/ui/select';
-import { Button } from '../../../components/ui/button';
-import { Modal } from '../../../components/ui/modal';
-import { useToast } from '../../../lib/hooks/use-toast';
-import { useActionError } from '../../../lib/use-action-error';
-import { filterCategoriesByType } from '../../../lib/movement-form';
-import { businessDateToInputValue, toDateInputValue } from '../../../lib/date';
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useT } from "../../../i18n/client";
+import { MOVEMENT_CONTEXTS } from "../../../core/domain/movement";
+import type { MovementType, SerializedMovement } from "../../../core/domain/movement";
+import { updateMovementAction } from "./actions";
+import type { SerializedCategory } from "../../../core/domain/category";
+import type { SerializedAccount } from "../../../core/domain/account";
+import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
+import { Modal } from "../../../components/ui/modal";
+import { useToast } from "../../../lib/hooks/use-toast";
+import { useActionError } from "../../../lib/use-action-error";
+import { filterCategoriesByType } from "../../../lib/movement-form";
+import { businessDateToInputValue, toDateInputValue } from "../../../lib/date";
 
 export function EditMovementModal({
   movement,
@@ -28,14 +28,11 @@ export function EditMovementModal({
   categories: SerializedCategory[];
   onClose: () => void;
 }) {
-  const [state, formAction, isPending] = useActionState(
-    updateMovementAction,
-    null,
-  );
+  const [state, formAction, isPending] = useActionState(updateMovementAction, null);
   const [selectedType, setSelectedType] = useState<MovementType>(movement.type);
-  const t = useT('Movements');
-  const tCommon = useT('Common');
-  const tToast = useT('Toast');
+  const t = useT("Movements");
+  const tCommon = useT("Common");
+  const tToast = useT("Toast");
   const translateError = useActionError();
   const { addToast } = useToast();
   const router = useRouter();
@@ -44,15 +41,24 @@ export function EditMovementModal({
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
       successShownRef.current = true;
-      addToast(tToast(state.success), 'success');
+      addToast(tToast(state.success), "success");
       router.refresh();
       onClose();
     }
   }, [state?.success, addToast, tToast, router, onClose]);
 
+  // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
+  // identity is unstable after `router.refresh()` (messages re-import per RSC
+  // request), so while the same error stays in `state` this effect could
+  // re-fire and stack toasts. Memoize per error VALUE: a toast fires once
+  // per distinct error; re-submitting and getting a DIFFERENT one still
+  // shows. Same class as the sibling `successShownRef` guards.
+  const lastErrorShownRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (state?.error) {
-      addToast(translateError(state.error), 'error');
+    if (state?.error && state.error !== lastErrorShownRef.current) {
+      lastErrorShownRef.current = state.error;
+      addToast(translateError(state.error), "error");
     }
   }, [state?.error, addToast, translateError]);
 
@@ -60,7 +66,7 @@ export function EditMovementModal({
   const account = accounts.find((a) => a.id === movement.accountId);
 
   return (
-    <Modal open onClose={onClose} title={t('editMovement')}>
+    <Modal open onClose={onClose} title={t("editMovement")}>
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
         <input type="hidden" name="movementId" value={movement.id} />
@@ -71,7 +77,7 @@ export function EditMovementModal({
         <Select
           id="edit-account"
           name="accountId"
-          label={t('account')}
+          label={t("account")}
           required
           disabled={isPending}
           defaultValue={movement.accountId}
@@ -84,21 +90,21 @@ export function EditMovementModal({
         <Select
           id="edit-type"
           name="type"
-          label={t('type')}
+          label={t("type")}
           required
           disabled
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value as MovementType)}
           options={[
-            { value: 'income', label: t('income') },
-            { value: 'expense', label: t('expense') },
+            { value: "income", label: t("income") },
+            { value: "expense", label: t("expense") },
           ]}
         />
 
         <Select
           id="edit-categoryId"
           name="categoryId"
-          label={t('category')}
+          label={t("category")}
           required
           disabled={isPending}
           defaultValue={movement.categoryId}
@@ -112,7 +118,7 @@ export function EditMovementModal({
           id="edit-date"
           name="date"
           type="date"
-          label={t('date')}
+          label={t("date")}
           required
           disabled={isPending}
           defaultValue={businessDateToInputValue(new Date(movement.date))}
@@ -122,8 +128,9 @@ export function EditMovementModal({
         <Input
           id="edit-amount"
           name="amount"
+          hint={tCommon("moneyNoSeparators")}
           type="number"
-          label={`${tCommon('amount')} (${account?.currency ?? movement.amount.currency})`}
+          label={`${tCommon("amount")} (${account?.currency ?? movement.amount.currency})`}
           min="1"
           required
           disabled={isPending}
@@ -133,12 +140,12 @@ export function EditMovementModal({
         <Select
           id="edit-context"
           name="context"
-          label={t('context')}
+          label={t("context")}
           disabled={isPending}
-          defaultValue={movement.context ?? 'Personal'}
+          defaultValue={movement.context ?? "Personal"}
           options={MOVEMENT_CONTEXTS.map((c) => ({
             value: c,
-            label: c === 'Personal' ? t('personal') : t('business'),
+            label: c === "Personal" ? t("personal") : t("business"),
           }))}
         />
 
@@ -146,9 +153,9 @@ export function EditMovementModal({
           id="edit-note"
           name="note"
           type="text"
-          label={t('note')}
+          label={t("note")}
           disabled={isPending}
-          defaultValue={movement.note ?? ''}
+          defaultValue={movement.note ?? ""}
         />
 
         <div className="flex gap-3 pt-2">
@@ -159,7 +166,7 @@ export function EditMovementModal({
             onClick={onClose}
             disabled={isPending}
           >
-            {tCommon('cancel')}
+            {tCommon("cancel")}
           </Button>
           <Button
             type="submit"
@@ -168,7 +175,7 @@ export function EditMovementModal({
             disabled={isPending}
             loading={isPending}
           >
-            {isPending ? t('saving') : tCommon('save')}
+            {isPending ? t("saving") : tCommon("save")}
           </Button>
         </div>
       </form>
