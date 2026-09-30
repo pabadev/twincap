@@ -125,6 +125,8 @@ async function seedRichData(page: Page): Promise<void> {
   await expect(credDialog).toBeVisible();
   await credDialog.getByLabel(/^Counterparty/).fill("Banco Acme");
   await credDialog.getByLabel(/^Principal/).fill("800000");
+  // Ronda Producto 1: the currency select is neutral (no default).
+  await credDialog.getByLabel("Currency").selectOption({ label: "COP" });
   await credDialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await credDialog.getByLabel(/^Date/).fill(todayInputValue());
   await credDialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
@@ -135,6 +137,9 @@ async function seedRichData(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Add Payable" }).click();
   const payDialog = page.getByRole("dialog", { name: /New Payable/i });
   await expect(payDialog).toBeVisible();
+  // Currency first: the Total/Initial Payment labels render the chosen
+  // currency (Ronda Producto 1 neutral selects).
+  await payDialog.getByLabel("Currency").selectOption({ label: "COP" });
   await payDialog.getByLabel(/^Counterparty/).fill("Proveedor Alfa");
   await payDialog.getByLabel(/^Total/).fill("300000");
   await payDialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
@@ -149,8 +154,14 @@ async function seedRichData(page: Page): Promise<void> {
   const catDialog = page.getByRole("dialog", { name: /New product or service/i });
   await expect(catDialog).toBeVisible();
   await catDialog.getByLabel(/product or service name/i).fill("Widget Test");
+  // Ronda Producto 1: guided kind + neutral selects (no implicit defaults).
+  // Currency first: the Unit Price label renders the chosen currency.
+  await catDialog.getByLabel("Type").selectOption({ label: "Product" });
+  await catDialog.getByLabel("Currency").selectOption({ label: "COP" });
   await catDialog.getByLabel(/^Unit Price/).fill("25000");
-  await catDialog.getByLabel(/^Stock/).fill("100");
+  await catDialog.getByLabel("Sale unit").selectOption({ label: "unit" });
+  await catDialog.getByLabel("Product use").selectOption({ label: "Sellable product" });
+  await catDialog.getByLabel(/^Opening stock/).fill("100");
   await catDialog.getByRole("button", { name: /^Add to catalog$/ }).click();
   await expect(catDialog).toBeHidden();
 

@@ -99,6 +99,8 @@ async function createReceivedCreditInUI(
 
   await dialog.getByLabel(/^Counterparty/).fill(counterparty);
   await dialog.getByLabel(/^Principal/).fill(principal);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
@@ -135,6 +137,8 @@ async function createGrantedCreditInUI(
 
   await dialog.getByLabel(/^Debtor/).fill(debtor);
   await dialog.getByLabel(/^Principal/).fill(principal);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
@@ -223,12 +227,17 @@ async function createCatalogItemInUI(
   await expect(dialog).toBeVisible();
 
   await dialog.getByLabel(/product or service name/i).fill(name);
+  // Ronda Producto 1: guided kind + neutral selects (no implicit defaults).
+  // Currency first: the Unit Price label renders the chosen currency.
+  await dialog
+    .getByLabel("Type")
+    .selectOption({ label: type === "service" ? "Service" : "Product" });
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Unit Price/).fill(unitPrice);
-  // Currency defaults to COP; type drives whether stock renders.
-  if (type === "service") {
-    await dialog.getByLabel(/^Type/).selectOption({ label: "Service" });
-  } else {
-    await dialog.getByLabel(/^Stock/).fill(stock ?? "0");
+  if (type !== "service") {
+    await dialog.getByLabel("Sale unit").selectOption({ label: "unit" });
+    await dialog.getByLabel("Product use").selectOption({ label: "Sellable product" });
+    await dialog.getByLabel(/^Opening stock/).fill(stock ?? "0");
   }
   await dialog.getByRole("button", { name: /^Add to catalog$/ }).click();
 
@@ -405,10 +414,11 @@ test.describe("Slice 3 — Credits + POS", () => {
       stock: "50",
     });
 
-    // Item appears in /pos/catalog.
+    // Item appears in /pos/catalog. The Ronda Producto 1 card shows a
+    // "Sellable product" badge and a unit-aware stock row ("50 unit").
     const itemCard = page.locator("div", { hasText: "Widget Test" }).first();
-    await expect(itemCard).toContainText("Product");
-    await expect(itemCard).toContainText("Stock: 50");
+    await expect(itemCard).toContainText("Sellable product");
+    await expect(itemCard).toContainText("50 unit");
     await expect(itemCard).toContainText(/COP\s+10,000/);
 
     // Sale: 2 × 10,000 = 20,000, paid in full on Efectivo.
@@ -443,11 +453,9 @@ test.describe("Slice 3 — Credits + POS", () => {
     // Income movement recorded on the account (Efectivo 0 → 20,000).
     await expectAccountBalance(page, "Efectivo", "20,000");
 
-    // Stock decremented (POS-3): 50 − 2 = 48.
+    // Stock decremented (POS-3): 50 − 2 = 48 (unit-aware row).
     await page.goto("/pos/catalog");
-    await expect(page.locator("div", { hasText: "Widget Test" }).first()).toContainText(
-      "Stock: 48",
-    );
+    await expect(page.locator("div", { hasText: "Widget Test" }).first()).toContainText("48 unit");
   });
 
   test("POS: on-credit sale creates a linked granted credit and counts the initial payment as income", async ({
@@ -473,6 +481,9 @@ test.describe("Slice 3 — Credits + POS", () => {
     const clientDialog = page.getByRole("dialog", { name: /New client/i });
     await expect(clientDialog).toBeVisible();
     await clientDialog.getByLabel(/^Name/).fill("Cliente POS");
+    // Fase 2 (Ronda Producto 1): the phone is the client's identity field and
+    // is required (canonical E.164).
+    await clientDialog.getByLabel(/^Phone/).fill("+573001112233");
     await clientDialog.getByRole("button", { name: /^New Client$/ }).click();
     await expect(clientDialog).toBeHidden();
 

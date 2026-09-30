@@ -29,9 +29,9 @@ async function createAccountInUI(
   const dialog = page.getByRole("dialog", { name: /Add Account/i });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Account Name").fill(name);
-  if (currency) {
-    await dialog.getByLabel("Currency").selectOption({ label: currency });
-  }
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default);
+  // callers that omit `currency` get COP.
+  await dialog.getByLabel("Currency").selectOption({ label: currency ?? "COP" });
   await dialog.getByLabel("Initial Balance").fill(initialBalance);
   await dialog.getByRole("button", { name: /Create Account/i }).click();
   await expect(dialog).toBeHidden();
@@ -81,6 +81,8 @@ async function createGrantedCreditInUI(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/^Debtor/).fill(debtor);
   await dialog.getByLabel(/^Principal/).fill(principal);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   await dialog.getByRole("button", { name: /^Add Credit Granted$/ }).click();
@@ -97,6 +99,8 @@ async function createReceivedCreditInUI(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/^Counterparty/).fill(counterparty);
   await dialog.getByLabel(/^Principal/).fill(principal);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   await dialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
@@ -111,6 +115,8 @@ async function createPayableInUI(
   await page.getByRole("button", { name: "Add Payable" }).click();
   const dialog = page.getByRole("dialog", { name: /New Payable/i });
   await expect(dialog).toBeVisible();
+  // Currency first: the Total/Initial Payment labels render the chosen currency.
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel("Counterparty (Vendor)").fill(vendor);
   await dialog.getByLabel("Total (COP)").fill(total);
   await dialog.getByLabel("Paying Account").selectOption({ label: "Efectivo (COP)" });
@@ -161,8 +167,14 @@ async function createCatalogItemInUI(
   const dialog = page.getByRole("dialog", { name: /New product or service/i });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/product or service name/i).fill(name);
+  // Ronda Producto 1: guided kind + neutral selects (no implicit defaults).
+  // Currency first: the Unit Price label renders the chosen currency.
+  await dialog.getByLabel("Type").selectOption({ label: "Product" });
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Unit Price/).fill(unitPrice);
-  await dialog.getByLabel(/^Stock/).fill(stock);
+  await dialog.getByLabel("Sale unit").selectOption({ label: "unit" });
+  await dialog.getByLabel("Product use").selectOption({ label: "Sellable product" });
+  await dialog.getByLabel(/^Opening stock/).fill(stock);
   await dialog.getByRole("button", { name: /^Add to catalog$/ }).click();
   await expect(dialog).toBeHidden();
 }

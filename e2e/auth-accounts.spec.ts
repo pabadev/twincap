@@ -28,6 +28,8 @@ async function createAccountInUI(page: Page, name: string, initialBalance = "0")
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Account Name").fill(name);
   await dialog.getByLabel("Initial Balance").fill(initialBalance);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByRole("button", { name: /Create Account/i }).click();
   // Modal form submits, panel refreshes and closes on success.
   await expect(page.getByRole("dialog")).toHaveCount(0);

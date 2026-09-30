@@ -39,6 +39,8 @@ async function createAccountInUI(page: Page, name: string, initialBalance: strin
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Account Name").fill(name);
   await dialog.getByLabel("Initial Balance").fill(initialBalance);
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByRole("button", { name: /Create Account/i }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
@@ -288,6 +290,9 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
     const dialog = page.getByRole("dialog", { name: /New Payable/i });
     await expect(dialog).toBeVisible();
 
+    // Currency first: the Total/Initial Payment labels render the chosen
+    // currency (Ronda Producto 1 neutral selects).
+    await dialog.getByLabel("Currency").selectOption({ label: "COP" });
     await dialog.getByLabel("Counterparty (Vendor)").fill("Proveedor Alfa");
     await dialog.getByLabel("Total (COP)").fill("100000");
     await dialog.getByLabel("Paying Account").selectOption({ label: "Efectivo (COP)" });

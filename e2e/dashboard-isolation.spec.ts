@@ -81,6 +81,8 @@ async function createAccountInUI(page: Page, name: string): Promise<void> {
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Account Name").fill(name);
   await dialog.getByLabel("Initial Balance").fill("0");
+  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
+  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByRole("button", { name: /Create Account/i }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
