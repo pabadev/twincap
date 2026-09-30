@@ -32,17 +32,20 @@ export async function deleteCatalogItem(
       throw new ConflictError("Cannot delete a product used in a combo");
     }
 
-    const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
-    const referenced = sales.some((sale) => sale.items.some((item) => item.itemId === itemId));
-    if (referenced) {
-      throw new ConflictError("Cannot delete catalog item referenced by a sale");
-    }
-
+    // Inventory history is the authoritative deletion block (receipts + stock
+    // ledger are preserved) and the cheapest selective check: evaluate it
+    // BEFORE the workspace-wide sales scan.
     if (
       catalogRepo.hasInventoryHistory &&
       (await catalogRepo.hasInventoryHistory(workspaceId, itemId, tx))
     ) {
       throw new ConflictError("Cannot delete catalog item with inventory history");
+    }
+
+    const sales = await saleRepo.findByWorkspaceId(workspaceId, tx);
+    const referenced = sales.some((sale) => sale.items.some((item) => item.itemId === itemId));
+    if (referenced) {
+      throw new ConflictError("Cannot delete catalog item referenced by a sale");
     }
 
     await catalogRepo.delete(workspaceId, itemId, tx);

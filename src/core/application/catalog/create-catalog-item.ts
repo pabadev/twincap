@@ -1,5 +1,6 @@
 import { CatalogItem } from "../../domain/catalog";
 import { Money } from "../../domain/money";
+import { ValidationError } from "../../domain/errors";
 import type { CatalogItemRepository } from "../../domain/repositories";
 import type { IdGenerator } from "../ports";
 import type { CreateCatalogItemInput } from "./dto/catalog";
@@ -28,6 +29,11 @@ export async function createCatalogItem(
       : new Money(input.unitPrice, input.currency);
   const now = new Date();
   const saleUnit = input.type === "product" ? (input.saleUnit ?? "unit") : "unit";
+  // Contract: stock is product-only. Reject instead of silently dropping the
+  // field — the caller (or API client) may be signaling an invalid intent.
+  if (input.type === "service" && input.stock !== undefined) {
+    throw new ValidationError("Service must not have stock");
+  }
   const stock =
     input.type === "product" && input.stock !== undefined
       ? quantityToBaseUnits(input.stock, saleUnit, true)

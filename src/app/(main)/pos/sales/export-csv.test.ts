@@ -109,7 +109,7 @@ describe("buildSalesCsv", () => {
     });
     const csv = buildSalesCsv([s], refs, labels);
     const lines = csv.split("\r\n");
-    expect(lines[1]).toBe("2026-09-01,María Pérez,2× Café,6000,4000,2000,COP,Crédito");
+    expect(lines[1]).toBe("2026-09-01,María Pérez,2 unit × Café,6000,4000,2000,COP,Crédito");
   });
 
   it("fixes decimals to the sale currency exponent (unknown client excluded)", () => {
@@ -131,7 +131,7 @@ describe("buildSalesCsv", () => {
     });
     const csv = buildSalesCsv([s], refs, labels);
     const lines = csv.split("\r\n");
-    expect(lines[1].startsWith("2026-09-01,Cliente minorista,1× Café,123.45,")).toBe(true);
+    expect(lines[1].startsWith("2026-09-01,Cliente minorista,1 unit × Café,123.45,")).toBe(true);
   });
 
   it("falls back to item ids for unknown catalog items", () => {
@@ -151,7 +151,7 @@ describe("buildSalesCsv", () => {
       total: 1000,
     });
     const csv = buildSalesCsv([s], refs, labels);
-    expect(csv).toContain("1× it-99");
+    expect(csv).toContain("1 unit × it-99");
   });
 
   it("keeps the given row order without re-sorting", () => {
