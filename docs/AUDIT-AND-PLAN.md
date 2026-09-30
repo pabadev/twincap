@@ -13,6 +13,24 @@
 
 ---
 
+> **RONDA FINAL PRE-BETA — INICIADA (2026-09-30).** Mandato del fundador: `docs/Prompt pre-beta.md` (leído completo). Ronda de **cierre/hardening**: auditar el estado real, implementar pendientes históricos (§5.1 comparativo contra período anterior, §6 selector de período, §7 alertas del Resumen), E2E pack E2E-01..10 (§19), aislamiento (§23), backup/restore nuevo ciclo con colecciones de inventario (§25), índices Atlas (§26), monitoreo, producción, matriz de hallazgos (§69) y Reporte Final (§73). No es una ronda de features nuevas; dominio financiero congelado salvo defectos reales de integridad.
+>
+> **Fase 1 — Auditoría del estado real (2026-09-30): GATES VERIFICADOS CON EVIDENCIA** sobre el árbol actual (incluye los cambios de la sesión, descritos abajo): suite completa `pnpm test` **1808/1808** (188 archivos, 29.6 min, timeout reglamentario 45 min), `tsc --noEmit` **0**, `pnpm exec eslint src` **0 errores / 15 warnings** (menor que el baseline de 16; 0 nuevos), prettier limpio en los archivos tocados, `pnpm build` **EXIT 0**.
+>
+> **Tareas previas del fundador completadas y verificadas en esta sesión (1 commit feat + 1 fix):**
+>
+> 1. **Fix toast de éxito infinito** al setear/corregir saldo inicial de cuenta: patrón `successShownRef` (el ya documentado en la Fase 1 de la auditoría extra pre-beta del 2026-09-04 — U1). Auditados **todos** los toasts del repo, de éxito y de error: los únicos 3 sin guard eran `accounts/initial-balance-button.tsx`, `accounts/correct-initial-balance-button.tsx` y `pos/catalog/inventory-receipt-form.tsx`; los tres recibieron el guard (el ref se resetea al reabrir el modal). El resto de toasts usa bloques imperativos (await acotado) sin `useEffect`, sin loop posible.
+> 2. **Guards de confianza para los toasts de error** (misma clase de bug latente): en los 25 forms con effect `state?.error → addToast(translateError(...))` se agregó `lastErrorShownRef` que memoiza por **valor del error** (no one-shot puro), para no suprimir reintentos que produzcan un error distinto. Causa de los re-fires: tras cada `router.refresh()` los mensajes i18n se re-importan por request RSC y `useT`/`translateError` cambian de identidad.
+> 3. **Hint de formato monetario**: nueva prop `hint` en `components/ui/input.tsx` (con `aria-describedby` compuesta) y hint "sin puntos ni comas" (`Common.moneyNoSeparators`, es/en) agregada a los 26 inputs de dinero de 21 forms (cuentas, movimientos, transferencias ×2, créditos principal/valor de cuota/abonos, payables total/pago inicial, catálogo unitPrice, pago inicial de ventas y de entrada de inventario). Cantidades de inventario NO llevan el hint (no son dinero); las líneas multi-item del receipt tampoco a propósito (grid denso).
+>    Evidencia de la sesión: 143 tests enfocados PASS (accounts/toast/i18n/movements/transfers/credits/payables/catalog/sales/clients/categories/fields-a11y) + suite completa arriba.
+>
+> **Hallazgos de la ronda ya mapeados (sin implementar todavía):**
+>
+> - **§5.1 CONFIRMADO PENDIENTE**: no existe `resultChangePct` ni comparación contra período anterior en `core/application` — el Resumen no permite entender si se mejora o empeora.
+> - **§12 DEFAULT_CURRENCY (7 usos)**: `dashboard/actions.ts:117`, `dashboard/page.tsx:142`, `summary-cards.tsx:101` (fallback §13 explícito, casos con 0 cuentas a clasificar), `sale-form.tsx:202` (`useState(COP)` inicial a clasificar), `transfer-form.tsx:82`, `pos/sales/abono-form.tsx:46` (fallbacks de preferencia del usuario), `currency.ts:11` (definición).
+
+---
+
 > ⚠️ **REGLA CRÍTICA (heredada de Ronda 2):** la ronda comienza con **AUDITORÍA**, no con implementación.
 > Prohibido escribir código hasta presentar el plan definitivo por fases y recibir aprobación explícita del usuario.
 > Cada fase se implementa SOLO con su aviso explícito (protocolo R3.13).
