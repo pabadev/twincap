@@ -20,6 +20,18 @@ describe("client phone uniqueness by workspace", () => {
     });
     await mongoose.connect(mongod.getUri("twincap_client_phone"));
     await ClientModel.syncIndexes();
+    // The phone index is script-managed in production (ensure-client-phone-index
+    // gates it behind a canonical-data audit), so it is NOT schema-declared.
+    // This integration test materializes the exact script definition to verify
+    // the repository's E11000 → ConflictError mapping and the concurrent race.
+    await ClientModel.collection.createIndex(
+      { workspaceId: 1, phone: 1 },
+      {
+        name: "workspaceId_1_phone_1_unique",
+        unique: true,
+        partialFilterExpression: { phone: { $gt: "" } },
+      },
+    );
   }, 60_000);
 
   afterAll(async () => {

@@ -45,42 +45,45 @@ describe("CatalogItem entity", () => {
       createdAt: DATE,
     });
     expect(item.name).toBe("Café");
-    expect(() =>
-      new CatalogItem({
-        id: "ci2",
-        workspaceId: "u1",
-        name: "   ",
-        unitPrice: new Money(5_000, "COP"),
-        type: "service",
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci2",
+          workspaceId: "u1",
+          name: "   ",
+          unitPrice: new Money(5_000, "COP"),
+          type: "service",
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 
   it("rejects product without stock", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 
   it("rejects product with negative stock", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        stock: -1,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          stock: -1,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 
@@ -98,93 +101,100 @@ describe("CatalogItem entity", () => {
   });
 
   it("rejects fractional stock — discrete count semantics (R15.3.1 P3)", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        stock: 1.5,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          stock: 1.5,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        stock: 2.0001,
-        createdAt: DATE,
-      }),
-    ).toThrow(/non-negative whole number/);
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          stock: 2.0001,
+          createdAt: DATE,
+        }),
+    ).toThrow(/non-negative safe integer/);
   });
 
   it("rejects service with stock", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Consultoría",
-        unitPrice: new Money(50_000, "COP"),
-        type: "service",
-        stock: 5,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Consultoría",
+          unitPrice: new Money(50_000, "COP"),
+          type: "service",
+          stock: 5,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 
   it("rejects unknown type", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "X",
-        unitPrice: new Money(5_000, "COP"),
-        type: "digital" as never,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "X",
+          unitPrice: new Money(5_000, "COP"),
+          type: "digital" as never,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 
   it("rejects zero or negative unitPrice (Money VO enforces > 0)", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(0, "COP"),
-        type: "product",
-        stock: 5,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(0, "COP"),
+          type: "product",
+          stock: 5,
+          createdAt: DATE,
+        }),
     ).toThrow();
   });
 
   it("rejects empty ids", () => {
-    expect(() =>
-      new CatalogItem({
-        id: "",
-        workspaceId: "u1",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        stock: 5,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "",
+          workspaceId: "u1",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          stock: 5,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
-    expect(() =>
-      new CatalogItem({
-        id: "ci1",
-        workspaceId: "",
-        name: "Café",
-        unitPrice: new Money(5_000, "COP"),
-        type: "product",
-        stock: 5,
-        createdAt: DATE,
-      }),
+    expect(
+      () =>
+        new CatalogItem({
+          id: "ci1",
+          workspaceId: "",
+          name: "Café",
+          unitPrice: new Money(5_000, "COP"),
+          type: "product",
+          stock: 5,
+          createdAt: DATE,
+        }),
     ).toThrow(ValidationError);
   });
 });

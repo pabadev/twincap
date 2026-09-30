@@ -95,10 +95,14 @@ describe("account and client card density", () => {
 
   it("keeps every client field row visible, including empty values", () => {
     expect(clients).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
-    expect(clients).toContain('value: client.phone || "—"');
+    // Ronda Producto 1: the phone row renders a canonical-phone-aware value
+    // (phoneMissing label instead of the raw dash) — the row itself never
+    // disappears when the value is empty.
+    expect(clients).toContain(
+      'isCanonicalPhoneE164(client.phone) ? client.phone : t("phoneMissing")',
+    );
     expect(clients).toContain('value: client.email || "—"');
     expect(clients).toContain('value: client.note || "—"');
-    expect(clients).not.toContain("...(client.phone ?");
     expect(clients).not.toContain("...(client.email ?");
     expect(clients).not.toContain("...(client.note ?");
   });

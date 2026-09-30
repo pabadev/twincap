@@ -30,25 +30,19 @@ const ITEM = new Types.ObjectId().toHexString();
 describe("MongoCatalogItemRepository.decrementStock", () => {
   it("rejects zero quantity before touching the DB", async () => {
     const repo = new MongoCatalogItemRepository();
-    await expect(repo.decrementStock(WS, ITEM, 0)).rejects.toThrow(
-      ValidationError,
-    );
+    await expect(repo.decrementStock(WS, ITEM, 0)).rejects.toThrow(ValidationError);
     expect(updateOne).not.toHaveBeenCalled();
   });
 
   it("rejects negative quantity before touching the DB", async () => {
     const repo = new MongoCatalogItemRepository();
-    await expect(repo.decrementStock(WS, ITEM, -3)).rejects.toThrow(
-      /positive whole number/,
-    );
+    await expect(repo.decrementStock(WS, ITEM, -3)).rejects.toThrow(/positive whole number/);
     expect(updateOne).not.toHaveBeenCalled();
   });
 
   it("rejects fractional quantity before touching the DB — discrete count (R15.3.1 P3)", async () => {
     const repo = new MongoCatalogItemRepository();
-    await expect(repo.decrementStock(WS, ITEM, 1.5)).rejects.toThrow(
-      ValidationError,
-    );
+    await expect(repo.decrementStock(WS, ITEM, 1.5)).rejects.toThrow(ValidationError);
     expect(updateOne).not.toHaveBeenCalled();
   });
 
@@ -62,9 +56,10 @@ describe("MongoCatalogItemRepository.decrementStock", () => {
         _id: ITEM,
         workspaceId: expect.anything(),
         stock: { $gte: 5 },
+        $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }],
       },
       { $inc: { stock: -5 } },
-      expect.anything(),
+      { session: undefined },
     );
   });
 

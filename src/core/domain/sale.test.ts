@@ -106,7 +106,7 @@ describe("Sale entity", () => {
     ).toThrow(ValidationError);
     expect(() =>
       sale({ items: [{ itemId: "i1", quantity: 2.0001, unitPrice: new Money(50_000, "COP") }] }),
-    ).toThrow(/positive whole number/);
+    ).toThrow(/must be whole numbers/);
   });
 
   it("rejects line item with zero unitPrice (Money VO enforces > 0)", () => {

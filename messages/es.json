@@ -24,6 +24,8 @@
     "select": "Seleccionar",
     "paid": "Pagado",
     "back": "Atrás",
+    "previousPage": "Anterior",
+    "nextPage": "Siguiente",
     "offline": "Sin conexión a internet. Para registrar operaciones financieras necesitas conexión.",
     "connectionRestored": "Conexión restablecida. Puedes continuar."
   },

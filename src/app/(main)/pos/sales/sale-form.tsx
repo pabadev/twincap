@@ -975,7 +975,7 @@ export function SaleForm({
                                         step={componentStep}
                                         value={component.quantity}
                                         disabled={isPending}
-                                        aria-label={`${t("formulaComponent")} ${supply?.name ?? component.itemId}`}
+                                        aria-label={`${tCatalog("formulaComponent")} ${supply?.name ?? component.itemId}`}
                                         onChange={(event) =>
                                           setLineItems((current) =>
                                             current.map((entry, row) =>

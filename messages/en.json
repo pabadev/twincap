@@ -24,6 +24,8 @@
     "select": "Select",
     "paid": "Paid",
     "back": "Back",
+    "previousPage": "Previous",
+    "nextPage": "Next",
     "offline": "You are offline. A connection is required to record financial operations.",
     "connectionRestored": "Connection restored. You can continue."
   },
