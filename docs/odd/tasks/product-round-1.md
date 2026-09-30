@@ -1,7 +1,7 @@
 # Ronda Producto 1 — Flujos claros para pequeños negocios
 
 > Fecha de inicio: 2026-09-27  
-> Estado: **ACTIVA; Fases 1–8 implementadas y verificadas en Fase 9 (gates verdes); Fase 9 EJECUTADA (2026-09-29) — suites enfocadas 342/342, suite completa 1808/1808, tsc/lint/build en 0; 8 fallos de cierre resueltos; pendiente: commit documental + push a origin/master y materialización/verificación de índices en Atlas**
+> Estado: **CERRADA FORMALMENTE (2026-09-30).** Fases 1–8 implementadas y verificadas en Fase 9 (suites enfocadas 342/342, suite completa 1808/1808, tsc/lint/build en 0, diff auditado sin hallazgos). Push `1a1beac..b43e5c9` a origin/master; CI de master VERDE (run 36712901581, Quality + E2E en 4m06s); índices Atlas materializados y verificados (ALL CONTRACTS OK, incluido `workspaceId_1_phone_1_unique` tras limpieza de datos); smoke test manual del fundador en producción CONFIRMADO ("todo funciona bien"). El tracker queda como registro histórico de la ronda.
 > Documento maestro: `docs/AUDIT-AND-PLAN.md`  
 > Protocolo de pruebas: `AGENTS.md` y `docs/PROJECT-RULES.md` §14.
 
@@ -315,3 +315,17 @@ Orden recomendado al retomar:
 - **Selects con valor neutro por defecto (RESUELTO — alta; edición conserva su valor persistido):** los selects de TODOS los formularios de alta ahora abren en "Seleccionar" en vez de precargar un valor de la lista: Cuentas (moneda), Categorías (tipo), Movimientos (tipo y contexto; la cuenta ya era neutra), Catálogo (tipo/moneda/unidad/rol + hint `typeHint_none`), Ventas (modo de pago; cuenta/cliente ya eran neutros), Créditos otorgados/recibidos y Cuentas por pagar (moneda), Entradas de inventario (líneas nuevas sin producto/unidad precargados). El `defaultCurrency` de perfil deja de inyectarse en los forms (su select propio permanece con el valor persistido). Efecto colateral corregido: `paymentMode` neutro exige que el dirty-check C12-1 compare contra `""`; `currency` de catálogo neutro usa etiqueta `unitPricePlain` hasta elegirla.
 - **Tests actualizados al nuevo contrato:** movement-form (moneda derivada tras elegir cuenta, 2/2), catalog-form-combo (select abre vacío, placeholder solo en alta, 4/4), sale-form (57/57 con dirty neutro). Suites enfocadas totales: **71/71 en 7 archivos**.
 - `tsc --noEmit`: un error menos que al inicio de la iteración (formatAmount currency narrowing); solo quedan los 4 BigInt preexistentes del target ES2017 en inventory-receipt-form. Cero errores nuevos.
+
+## Cierre formal (2026-09-30)
+
+**La Ronda Producto 1 — Flujos claros para pequeños negocios queda CERRADA FORMALMENTE.**
+
+Evidencia de cierre:
+
+1. **Verificación Fase 9 completa (2026-09-29):** suites enfocadas 342/342 (27 archivos) · suite única completa 1808/1808 (188 archivos, 28.6 min) · `tsc --noEmit` 0 · `eslint src` 0 errores (16 warnings idénticos al baseline pre-ronda) · `pnpm build` EXIT 0 · auditoría del diff completo (183 archivos, +12,627/−2,466) sin hallazgos.
+2. **Push a origin/master:** `1a1beac..b43e5c9` (20 commits: implementación fases 1–8, iteraciones UX del fundador, verificación Fase 9, scripts Atlas, estabilización CI, docs).
+3. **CI de master VERDE (run 36712901581, 2026-09-30):** Quality (typecheck · lint · tests · build) ✓ + E2E Playwright ✓ en 4m06s, tras dos rondas de estabilización (unmount de React roots `d008312`; helpers E2E alineados a los forms de la ronda `f82daf1`).
+4. **Operativa Atlas completada (2026-09-29, ventana autorizada):** `verify-all-indexes` ALL CONTRACTS OK; `workspaceId_1_phone_1_unique` creado tras limpieza one-off de 7 teléfonos irrecuperables (`clear-invalid-client-phones.mjs`); índices de recibos ya materializados.
+5. **Smoke test manual del fundador en producción (2026-09-30): CONFIRMADO — "todo funciona bien".**
+
+El alcance no implementado queda registrado en "Riesgos y fronteras" (sin Compras/ERP, sin COGS ni margen). La continuidad pasa por nuevas especificaciones del fundador; `docs/AUDIT-AND-PLAN.md` refleja el cierre y queda a la espera de la próxima ronda.
