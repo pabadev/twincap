@@ -26,7 +26,9 @@ function dependencies(item = makeItem()) {
     adjustStock: vi.fn().mockResolvedValue(true),
   } as unknown as CatalogItemRepository;
   const uow: UnitOfWork = {
-    withTransaction: vi.fn(async <T>(fn: (handle: TransactionHandle) => Promise<T>) => fn(tx)),
+    withTransaction<T>(fn: (handle: TransactionHandle) => Promise<T>) {
+      return fn(tx);
+    },
   };
   return { catalogRepo, uow };
 }

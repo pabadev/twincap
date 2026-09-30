@@ -7,7 +7,7 @@ import { CatalogItem } from "../../domain/catalog";
 import { Account } from "../../domain/account";
 import { Money } from "../../domain/money";
 import { NotFoundError } from "../../domain/errors";
-import type { SaleRepository } from "../../domain/repositories";
+import type { SaleRepository, CreditGrantedRepository } from "../../domain/repositories";
 
 // ─── Fake factories ────────────────────────────────────────────────
 
@@ -66,10 +66,11 @@ function fakeAccountRepo(account: Account | null) {
   };
 }
 
-function fakeCreditGrantedRepo(credits: CreditGranted[]) {
+function fakeCreditGrantedRepo(credits: CreditGranted[]): CreditGrantedRepository {
   return {
     findById: vi.fn().mockResolvedValue(credits[0] ?? null),
     findByWorkspaceId: vi.fn().mockResolvedValue(credits),
+    findBySaleIds: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockImplementation(async (c: CreditGranted) => c),
     update: vi.fn().mockImplementation(async (c: CreditGranted) => c),
     delete: vi.fn().mockResolvedValue(undefined),

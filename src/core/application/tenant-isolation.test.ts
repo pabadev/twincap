@@ -234,8 +234,6 @@ function fakeAccountRepo(overrides: Partial<AccountRepository> = {}): AccountRep
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
-    findExistingIds: vi.fn().mockResolvedValue([]),
-    hasInventoryReceiptReference: vi.fn().mockResolvedValue(false),
     create: vi.fn().mockImplementation(async (a: unknown) => a),
     update: vi.fn().mockImplementation(async (a: unknown) => a),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -316,6 +314,8 @@ function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRep
   return {
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    findExistingIds: vi.fn().mockResolvedValue([]),
+    hasInventoryReceiptReference: vi.fn().mockResolvedValue(false),
     create: vi.fn().mockImplementation(async (p: unknown) => p),
     update: vi.fn().mockImplementation(async (p: unknown) => p),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -1119,7 +1119,9 @@ describe("Tenant isolation (B1)", () => {
       await expect(
         updateCatalogItem(WORKSPACE_A, CATL_A, { name: "Shared" }, repo),
       ).resolves.toBeDefined();
-      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CATL_A);
+      // R15-F1 catalogs read inside the caller's transaction: the optional
+      // tx handle is the third argument (undefined without a UoW here).
+      expect(repo.findById).toHaveBeenCalledWith(WORKSPACE_A, CATL_A, undefined);
       expect(repo.update).toHaveBeenCalled();
     });
 

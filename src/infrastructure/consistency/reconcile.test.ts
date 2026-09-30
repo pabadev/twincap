@@ -65,8 +65,6 @@ function fakeCreditReceivedRepo(credits: CreditReceived[]): CreditReceivedReposi
   return {
     findById: async () => null,
     findByWorkspaceId: async () => credits,
-    findBySaleIds: async (_workspaceId, saleIds) =>
-      credits.filter((credit) => credit.saleId && saleIds.includes(credit.saleId)),
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
@@ -80,6 +78,10 @@ function fakeCreditGrantedRepo(credits: CreditGranted[]): CreditGrantedRepositor
   return {
     findById: async () => null,
     findByWorkspaceId: async () => credits,
+    // Credit-granted Read Margin (sale links) — the reconcile diagnosis does
+    // not consume this path, but the repository contract requires it (R13-F).
+    findBySaleIds: async (_workspaceId: string, saleIds: string[]) =>
+      credits.filter((credit) => credit.saleId && saleIds.includes(credit.saleId)),
     create: async (c) => c,
     update: async (c) => c,
     delete: async () => {},
@@ -124,6 +126,9 @@ function fakePayableRepo(payables: Payable[]): PayableRepository {
   return {
     findById: async () => null,
     findByWorkspaceId: async () => payables,
+    findExistingIds: async (_workspaceId: string, payableIds: string[]) =>
+      payables.map((p) => p.id).filter((id) => payableIds.includes(id)),
+    hasInventoryReceiptReference: async () => false,
     create: async (p) => p,
     update: async (p) => p,
     delete: async () => {},

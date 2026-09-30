@@ -13,7 +13,7 @@ function item(
   },
 ) {
   return new CatalogItem({
-    id: input.id,
+    // id arrives via `input` spread below; passing it twice trips TS2783.
     workspaceId: "workspace-1",
     name: input.name ?? input.id,
     unitPrice:

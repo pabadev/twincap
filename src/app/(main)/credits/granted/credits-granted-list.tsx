@@ -69,8 +69,10 @@ export function CreditsGrantedList({
       credits.map((credit) => credit.id),
     );
     if (!targetId) return;
-    setHighlightExpired(false);
     const frameId = window.requestAnimationFrame(() => {
+      // Timer re-arm lives inside the rAF callback: the effect body must not
+      // call setState synchronously (react-hooks/set-state-in-effect).
+      setHighlightExpired(false);
       document.getElementById(`credit-${targetId}`)?.scrollIntoView({
         behavior: creditHighlightScrollBehavior(
           window.matchMedia("(prefers-reduced-motion: reduce)").matches,

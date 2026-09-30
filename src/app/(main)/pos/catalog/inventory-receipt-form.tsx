@@ -75,16 +75,19 @@ export function InventoryReceiptForm({
   };
   const lineAmounts = lines.map((line) => parseMinorUnits(line.amount));
   const paymentMinorUnits = parseMinorUnits(initialPayment);
-  const totalMinorUnits = lineAmounts.reduce<bigint>((sum, amount) => sum + (amount ?? 0n), 0n);
+  // BigInt via functional calls (BigInt(x) is legal under target ES2017;
+  // 0n literals are NOT compiled below ES2020).
+  const zero = BigInt(0);
+  const totalMinorUnits = lineAmounts.reduce<bigint>((sum, amount) => sum + (amount ?? zero), zero);
   const totalIsComplete = lineAmounts.every((amount) => amount !== null);
   const totalIsValid =
-    totalIsComplete && totalMinorUnits > 0n && totalMinorUnits <= BigInt(Number.MAX_SAFE_INTEGER);
+    totalIsComplete && totalMinorUnits > zero && totalMinorUnits <= BigInt(Number.MAX_SAFE_INTEGER);
   const paymentExceedsTotal =
     totalIsValid && paymentMinorUnits !== null && paymentMinorUnits > totalMinorUnits;
   const hasOutstandingBalance = Boolean(
     currency &&
     totalIsComplete &&
-    totalMinorUnits > 0n &&
+    totalMinorUnits > zero &&
     paymentMinorUnits !== null &&
     paymentMinorUnits < totalMinorUnits,
   );
