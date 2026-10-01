@@ -9,12 +9,49 @@ import { CURRENCY_EXPONENTS } from "@/core/domain/currency";
 export function formatAmount(amount: number, currency: string, locale: string): string {
   const exponent = (CURRENCY_EXPONENTS as Record<string, number>)[currency] ?? 2;
   const value = amount / Math.pow(10, exponent);
-  return new Intl.NumberFormat(locale, {
+  const formatter = new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: exponent,
     maximumFractionDigits: exponent,
-  }).format(value);
+  });
+  // Founder rule (PROJECT-RULES §15-UX.1, ronda final pre-beta 2026-09-30):
+  // Spanish-speaking Latin America reads thousands with the dot from 1.000.
+  // CLDR `es` defaults to minimumGroupingDigits: 2 (groups only from 10.000)
+  // and the Intl option cannot be forced below that in this runtime — so for
+  // locale "es" the Intl output is post-processed to insert the locale's OWN
+  // group separator whenever the integer part has exactly 4 digits
+  // (1.000–9.999; ≥10.000 already groups natively). The reconstruction uses
+  // formatToParts, so symbols, codes, sign and decimal separator stay exactly
+  // what Intl emits (formatAmountParts and E2E regex contracts intact).
+  // Other locales (en, …) group from 1,000 natively and are untouched.
+  if (locale === "es") {
+    const parts = formatter.formatToParts(value);
+    const integerDigits = parts
+      .filter((part) => part.type === "integer")
+      .map((part) => part.value)
+      .join("");
+    const alreadyGrouped = parts.some((part) => part.type === "group");
+    if (!alreadyGrouped && integerDigits.length === 4) {
+      const group =
+        parts.find((part) => part.type === "group")?.value ??
+        new Intl.NumberFormat(locale).formatToParts(1234.5).find((part) => part.type === "group")
+          ?.value ??
+        ".";
+      let out = "";
+      for (const part of parts) {
+        if (part.type === "integer") {
+          // Insert the separator before the last 3 digits of the 4-digit
+          // integer run ("9999" → "9.999") without touching sign/text parts.
+          out += part.value.slice(0, 1) + group + part.value.slice(1);
+        } else {
+          out += part.value;
+        }
+      }
+      return out;
+    }
+  }
+  return formatter.format(value);
 }
 
 /**

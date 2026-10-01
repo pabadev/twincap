@@ -73,3 +73,37 @@ describe("formatDate", () => {
     expect(formatDate("2026-01-20", "es")).toBe("20 ene 2026");
   });
 });
+
+// Founder rule (PROJECT-RULES §15-UX.1, ronda final pre-beta 2026-09-30):
+// in locale "es" the thousands separator shows from 1.000 (Latin America
+// reads 9.999 with the dot). CLDR `es` defaults to grouping from 10.000
+// (minimumGroupingDigits: 2 — verified with Node's ICU); formatAmount
+// post-processes its own formatToParts output, so symbols/code/decimals/
+// sign stay exactly what Intl emits.
+// NOTE: the separator before the currency code is NBSP (U+00A0) exactly as
+// Intl emits it — matching literals must write "\u00a0", not a plain space.
+describe("formatAmount — es thousands separator from 1.000 (founder 2026-09-30)", () => {
+  it("groups 4-digit COP integers (9999 → 9.999)", () => {
+    expect(formatAmount(9999, "COP", "es")).toBe("9.999\u00a0COP");
+    expect(formatAmount(1000, "COP", "es")).toBe("1.000\u00a0COP");
+  });
+
+  it("leaves 3-digit values ungrouped and 5+ digits to native grouping", () => {
+    expect(formatAmount(999, "COP", "es")).toBe("999\u00a0COP");
+    expect(formatAmount(10000, "COP", "es")).toBe("10.000\u00a0COP");
+    expect(formatAmount(50000, "COP", "es")).toBe("50.000\u00a0COP");
+  });
+
+  it("groups exponent-2 currencies keeping decimal honesty (9999.00 USD es)", () => {
+    expect(formatAmount(999900, "USD", "es")).toContain("9.999,00");
+  });
+
+  it("preserves the minus sign and the code-exactly-once contract", () => {
+    expect(formatAmount(-9999, "COP", "es")).toContain("-9.999");
+    expect(formatAmount(9999, "COP", "es").match(/COP/g)).toHaveLength(1);
+  });
+
+  it("does not alter locale en (groups natively from 1,000)", () => {
+    expect(formatAmount(9999, "COP", "en")).toContain("9,999");
+  });
+});
