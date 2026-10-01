@@ -25,6 +25,7 @@ import { ContentContainer } from "../../../components/ui/content-container";
 import { computeActivosPasivos } from "../../../core/application/compute-activos-pasivos";
 import type { DashboardFilters } from "../../../components/dashboard/dashboard-filters";
 import { makeCategoryLabelResolver } from "../../../lib/resolve-category-label";
+import { getClientTzOffsetMinutes } from "../../../lib/client-tz";
 import { SYSTEM_NOTES_NAMESPACE } from "../../../lib/system-note";
 
 export const dynamic = "force-dynamic";
@@ -80,9 +81,11 @@ export default async function DashboardPage({
 
   // R14-I: snapshot reads the union window (current civil year ∪ last 6 civil
   // months); balances keep reading FULL history (R7-A semantics unchanged).
-  // Page server render uses the same default tzOffsetMinutes (0) as
-  // buildDashboardSnapshot below.
-  const { from, to } = computeDashboardWindow(new Date());
+  // Civil-clock basis: the CLIENT_TZ_OFFSET cookie (ClientTzBootstrap) gives
+  // the server the client's calendar date; 0 = first visit without the cookie
+  // (the A2 mount-sync in dashboard-content corrects that first paint).
+  const clientTzOffset = await getClientTzOffsetMinutes();
+  const { from, to } = computeDashboardWindow(new Date(), clientTzOffset);
 
   const [
     windowedMovements,
@@ -167,6 +170,7 @@ export default async function DashboardPage({
     locale,
     primaryCurrency,
     resolveCategoryLabel,
+    tzOffsetMinutes: clientTzOffset,
     // N4 (UX-5): attention section — receivables + payables pendings and
     // overdue payables are derived here from the entities the page already
     // reads; `pending` is a derived number getter, currency comes from the
