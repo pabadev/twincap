@@ -109,7 +109,11 @@ export async function registerUser(
 
   await page.goto("/register");
   await page.getByLabel(/^Email/i).fill(uniqueEmail);
-  await page.getByLabel(/^Password/i).fill(password);
+  // Fase A #3: the register field says "Create password" (en) / "Crear
+  // contraseña" (es) — a plain /^Password/i no longer matches.
+  await page
+    .getByLabel(/^(create[ ]password|crear[ ]contraseña|password|contraseña)/i)
+    .fill(password);
   await page.getByLabel(/^Confirm Password/i).fill(password);
   await page.getByRole("button", { name: /Register/i }).click();
 
