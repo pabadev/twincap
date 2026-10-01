@@ -99,8 +99,6 @@ async function createReceivedCreditInUI(
 
   await dialog.getByLabel(/^Counterparty/).fill(counterparty);
   await dialog.getByLabel(/^Principal/).fill(principal);
-  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
-  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
@@ -137,8 +135,6 @@ async function createGrantedCreditInUI(
 
   await dialog.getByLabel(/^Debtor/).fill(debtor);
   await dialog.getByLabel(/^Principal/).fill(principal);
-  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
-  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
@@ -438,6 +434,8 @@ test.describe("Slice 3 — Credits + POS", () => {
     await dialog.locator("#qty-0").fill("2");
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+20,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
+    // Founder rule (2026-09-30): no auto-close — result panel + explicit Close.
+    await dialog.getByRole("button", { name: /^Close$/ }).click();
     await expect(dialog).toBeHidden();
     // UX-6 task 6.1 (documented NO-OP): POS sale creation has no debit path,
     // so no F5 / confirmation dialog may appear. Negative assertion — a
@@ -493,6 +491,10 @@ test.describe("Slice 3 — Credits + POS", () => {
     await addSaleItemViaSearch(page, dialog, "Servicio Test");
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+10,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
+    // Founder rule (2026-09-30): result panel with the pending freeze shown;
+    // the user closes explicitly before the page-level continuations.
+    await expect(dialog.getByText(/Pending:/)).toContainText(/COP\s+6,000/);
+    await dialog.getByRole("button", { name: /^Close$/ }).click();
     await expect(dialog).toBeHidden();
     // UX-6 task 6.1 (documented NO-OP): the POS on-credit sale creation is
     // also confirmation-free (only the cobro via AbonoForm confirms, not the

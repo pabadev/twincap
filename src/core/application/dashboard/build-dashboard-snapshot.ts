@@ -180,8 +180,14 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     entry.result = entry.income - entry.expenses;
   }
 
+  // Founder review (2026-09-30, pre-suite): a currency with no movements in
+  // the period must NOT render its own line — a "USD $0" row in "available"
+  // is noise that wastes vertical space. Keep the row whenever it carries a
+  // live balance or any current-month flow; presentation-only filter (no
+  // cross-currency arithmetic introduced).
   const currencyBreakdown: CurrencyBreakdown[] = Array.from(byCurrency.entries())
     .map(([currency, data]) => ({ currency, ...data }))
+    .filter((row) => row.balance !== 0 || row.income !== 0 || row.expenses !== 0)
     .sort((a, b) =>
       a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
     );

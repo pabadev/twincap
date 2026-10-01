@@ -74,6 +74,20 @@ export function EditMovementModal({
             against it so a concurrent edit becomes error.movementModified. */}
         <input type="hidden" name="version" value={movement.version} />
 
+        {/* Founder rule (2026-09-30): Contexto first — UI order only, no
+            filtering by context (D3-bis intact). */}
+        <Select
+          id="edit-context"
+          name="context"
+          label={t("context")}
+          disabled={isPending}
+          defaultValue={movement.context ?? "Personal"}
+          options={MOVEMENT_CONTEXTS.map((c) => ({
+            value: c,
+            label: c === "Personal" ? t("personal") : t("business"),
+          }))}
+        />
+
         <Select
           id="edit-account"
           name="accountId"
@@ -135,18 +149,6 @@ export function EditMovementModal({
           required
           disabled={isPending}
           defaultValue={movement.amount.amount}
-        />
-
-        <Select
-          id="edit-context"
-          name="context"
-          label={t("context")}
-          disabled={isPending}
-          defaultValue={movement.context ?? "Personal"}
-          options={MOVEMENT_CONTEXTS.map((c) => ({
-            value: c,
-            label: c === "Personal" ? t("personal") : t("business"),
-          }))}
         />
 
         <Input

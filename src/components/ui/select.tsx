@@ -32,6 +32,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   ref,
 ) {
   const selectId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+  // Founder alignment rule (2026-09-30, REVISADA por el fundador el mismo día):
+  // labels render as a SINGLE line — the sm+ two-line reservation read as a
+  // blank "double label line" on forms whose labels never wrap. labelClassName
+  // keeps appending custom classes verbatim (opt-in for special sites).
   const labelClasses = labelClassName
     ? `mb-1 block font-medium text-zinc-700 dark:text-zinc-300 ${labelClassName}`
     : "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300";

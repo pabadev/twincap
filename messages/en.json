@@ -28,7 +28,11 @@
     "nextPage": "Next",
     "offline": "You are offline. A connection is required to record financial operations.",
     "connectionRestored": "Connection restored. You can continue.",
-    "moneyNoSeparators": "Enter the value as numbers only, without dots or commas. Example: 150000"
+    "moneyNoSeparators": "Values without dots or commas",
+    "clearSearch": "Clear search",
+    "context": "Contexto",
+    "personal": "Personal",
+    "business": "Negocio"
   },
   "Nav": {
     "dashboard": "Summary",
@@ -115,7 +119,8 @@
     "terms": "Terms",
     "cookies": "Cookies",
     "dataPolicy": "Data Processing",
-    "legalNavAriaLabel": "Legal links"
+    "legalNavAriaLabel": "Legal links",
+    "createPassword": "Crear contraseña"
   },
   "Dashboard": {
     "welcomeBack": "Welcome back",
@@ -428,7 +433,8 @@
     "filterPaid": "Paid",
     "filterSearch": "Search counterparty...",
     "noResults": "No credits found with these filters",
-    "filters": "Filters"
+    "filters": "Filters",
+    "principalPlain": "Capital"
   },
   "CreditsGranted": {
     "title": "Credits Granted",
@@ -486,7 +492,8 @@
     "capital": "Principal",
     "interest": "Interest",
     "noResults": "No credits found with these filters",
-    "filters": "Filters"
+    "filters": "Filters",
+    "principalPlain": "Capital"
   },
   "Payables": {
     "title": "Payables",
@@ -528,7 +535,9 @@
     "filterPaid": "Paid",
     "filterSearch": "Search supplier...",
     "noResults": "No payables found with these filters",
-    "filters": "Filters"
+    "filters": "Filters",
+    "totalPlain": "Total",
+    "initialPaymentPlain": "Pago inicial"
   },
   "Catalog": {
     "receiveSupplies": "Record supply receipt",
@@ -637,6 +646,7 @@
     "productRole_both": "Product and supply",
     "notForSale": "Not sold directly",
     "supplyPriceHint": "Cost is entered when recording the receipt.",
+    "priceNotApplicable": "Not applicable",
     "supplyAndStockUnitHint": "Stock is measured in {unit}; cost is entered when recording a receipt.",
     "formulaTitle": "Prepared product formula",
     "comboTitle": "Combo contents",
@@ -770,7 +780,9 @@
     "closeSaleTitle": "Leave sale?",
     "closeSaleDescription": "You have unsaved changes. If you leave now, you will lose the entered data.",
     "continueEditing": "Continue editing",
-    "leaveWithoutSaving": "Leave without saving"
+    "leaveWithoutSaving": "Leave without saving",
+    "saleRegisteredTitle": "Venta registrada",
+    "invoiceAnother": "Volver a facturar"
   },
   "Export": {
     "button": "Export CSV",

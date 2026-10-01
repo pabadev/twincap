@@ -38,6 +38,13 @@ function FieldGroup({ title, children }: { title: string; children: React.ReactN
     </fieldset>
   );
 }
+// Founder review round 2 (2026-09-30): this form pins every label block to
+// one 24px line (leading-6). The shell default is already single-line, but
+// this form needs the EXPLICIT height because the categoría field hosts an
+// inline add-category button in its header row — pinning keeps every grid
+// row's selects aligned at the same y.
+const compactLabelClasses =
+  "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300 leading-6";
 
 export function MovementForm({
   accounts,
@@ -194,6 +201,23 @@ export function MovementForm({
             use case still verifies this value against the persisted account. */}
         <input type="hidden" name="currency" value={selectedAccount?.currency ?? ""} />
         <FieldGroup title={t("groupSelection")}>
+          {/* Founder rule (2026-09-30): Contexto first so the user decides
+              Personal/Business from the start. UI order only — options are NOT
+              filtered by context (categories are type-scoped; Account.scope is
+              forbidden by D3-bis). */}
+          <Select
+            id="context"
+            name="context"
+            label={t("context")}
+            disabled={isPending}
+            placeholder={tCommon("select")}
+            labelClassName={compactLabelClasses}
+            options={MOVEMENT_CONTEXTS.map((c) => ({
+              value: c,
+              label: c === "Personal" ? t("personal") : t("business"),
+            }))}
+          />
+
           <Select
             id="account"
             name="accountId"
@@ -203,12 +227,15 @@ export function MovementForm({
             value={selectedAccountId}
             onChange={(event) => setSelectedAccountId(event.target.value)}
             placeholder={t("selectAccount")}
+            labelClassName={compactLabelClasses}
             options={accounts.map((a) => ({
               value: a.id,
               label: `${a.name} (${a.currency})`,
             }))}
           />
 
+          {/* Founder review round 2 (2026-09-30): Tipo and Categoría share the
+              same line (both half-width columns, like contexto/account). */}
           <Select
             id="type"
             name="type"
@@ -217,6 +244,7 @@ export function MovementForm({
             disabled={isPending}
             value={selectedType}
             placeholder={tCommon("select")}
+            labelClassName={compactLabelClasses}
             onChange={(e) => {
               const newType = e.target.value as MovementType;
               setSelectedType(newType);
@@ -232,7 +260,10 @@ export function MovementForm({
           />
 
           <div>
-            <div className="mb-1 flex items-center justify-between">
+            {/* Same 24px label-line height as the compact labels of the
+                sibling fields (button is py-0.5 ≈ 24px, so the header row
+                neither grows nor lets the categoría select sit lower). */}
+            <div className="mb-1 flex h-6 items-center justify-between">
               <label
                 htmlFor="categoryId"
                 className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
@@ -243,7 +274,7 @@ export function MovementForm({
                 type="button"
                 onClick={() => setShowCategoryForm(true)}
                 disabled={isPending}
-                className="inline-flex min-h-[32px] cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-soft"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-soft"
                 aria-label={t("addCategoryInline")}
               >
                 <Plus size={12} aria-hidden="true" />
@@ -264,45 +295,47 @@ export function MovementForm({
               }))}
             />
           </div>
-
-          <Input
-            id="date"
-            name="date"
-            type="date"
-            label={t("date")}
-            required
-            disabled={isPending}
-            defaultValue={toDateInputValue()}
-            max={toDateInputValue()}
-          />
         </FieldGroup>
 
         <FieldGroup title={t("groupDetails")}>
-          <Input
-            id="amount"
-            name="amount"
-            hint={tCommon("moneyNoSeparators")}
-            type="number"
-            label={selectedAccount ? `${t("amount")} (${selectedAccount.currency})` : t("amount")}
-            min="1"
-            required
-            disabled={isPending}
-          />
+          {/* Founder review round 2 (2026-09-30): the pair spans BOTH columns
+              of the group grid, so fecha and monto get the same half-width
+              columns as every other field (no nested-quarter widths). */}
+          <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2 sm:gap-x-4">
+            <Input
+              id="amount"
+              name="amount"
+              hint={tCommon("moneyNoSeparators")}
+              type="number"
+              label={selectedAccount ? `${t("amount")} (${selectedAccount.currency})` : t("amount")}
+              min="1"
+              required
+              disabled={isPending}
+              labelClassName={compactLabelClasses}
+            />
 
-          <Select
-            id="context"
-            name="context"
-            label={t("context")}
-            disabled={isPending}
-            placeholder={tCommon("select")}
-            options={MOVEMENT_CONTEXTS.map((c) => ({
-              value: c,
-              label: c === "Personal" ? t("personal") : t("business"),
-            }))}
-          />
+            <Input
+              id="date"
+              name="date"
+              type="date"
+              label={t("date")}
+              required
+              disabled={isPending}
+              defaultValue={toDateInputValue()}
+              max={toDateInputValue()}
+              labelClassName={compactLabelClasses}
+            />
+          </div>
 
           <div className="sm:col-span-2">
-            <Input id="note" name="note" type="text" label={t("note")} disabled={isPending} />
+            <Input
+              id="note"
+              name="note"
+              type="text"
+              label={t("note")}
+              disabled={isPending}
+              labelClassName={compactLabelClasses}
+            />
           </div>
         </FieldGroup>
 

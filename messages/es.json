@@ -28,7 +28,11 @@
     "nextPage": "Siguiente",
     "offline": "Sin conexión a internet. Para registrar operaciones financieras necesitas conexión.",
     "connectionRestored": "Conexión restablecida. Puedes continuar.",
-    "moneyNoSeparators": "Escribe el valor solo con números, sin puntos ni comas. Ejemplo: 150000"
+    "moneyNoSeparators": "Valores sin puntos ni comas",
+    "clearSearch": "Limpiar búsqueda",
+    "context": "Contexto",
+    "personal": "Personal",
+    "business": "Negocio"
   },
   "Nav": {
     "dashboard": "Resumen",
@@ -115,7 +119,8 @@
     "terms": "Términos",
     "cookies": "Cookies",
     "dataPolicy": "Tratamiento de Datos",
-    "legalNavAriaLabel": "Enlaces legales"
+    "legalNavAriaLabel": "Enlaces legales",
+    "createPassword": "Crear contraseña"
   },
   "Dashboard": {
     "welcomeBack": "Bienvenido de nuevo",
@@ -428,7 +433,8 @@
     "filterPaid": "Pagado",
     "filterSearch": "Buscar contraparte...",
     "noResults": "No se encontraron créditos con estos filtros",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "principalPlain": "Capital"
   },
   "CreditsGranted": {
     "title": "Créditos Otorgados",
@@ -486,7 +492,8 @@
     "capital": "Capital",
     "interest": "Interés",
     "noResults": "No se encontraron créditos con estos filtros",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "principalPlain": "Capital"
   },
   "Payables": {
     "title": "Cuentas por pagar",
@@ -528,7 +535,9 @@
     "filterPaid": "Pagado",
     "filterSearch": "Buscar proveedor...",
     "noResults": "No se encontraron cuentas con estos filtros",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "totalPlain": "Total",
+    "initialPaymentPlain": "Pago inicial"
   },
   "Catalog": {
     "receiveSupplies": "Registrar entrada de insumos",
@@ -637,6 +646,7 @@
     "productRole_both": "Producto e insumo",
     "notForSale": "No se vende directamente",
     "supplyPriceHint": "El costo se captura al registrar la entrada.",
+    "priceNotApplicable": "No aplica",
     "supplyAndStockUnitHint": "Las existencias se expresan en {unit}; el costo se captura al registrar la entrada.",
     "formulaTitle": "Fórmula del preparado",
     "comboTitle": "Composición del combo",
@@ -770,7 +780,9 @@
     "closeSaleTitle": "¿Salir de la venta?",
     "closeSaleDescription": "Tienes información sin guardar. Si sales ahora, perderás los datos ingresados.",
     "continueEditing": "Continuar editando",
-    "leaveWithoutSaving": "Salir sin guardar"
+    "leaveWithoutSaving": "Salir sin guardar",
+    "saleRegisteredTitle": "Venta registrada",
+    "invoiceAnother": "Volver a facturar"
   },
   "Export": {
     "button": "Exportar CSV",

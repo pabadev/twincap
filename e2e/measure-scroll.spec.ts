@@ -81,8 +81,6 @@ async function createGrantedCreditInUI(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/^Debtor/).fill(debtor);
   await dialog.getByLabel(/^Principal/).fill(principal);
-  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
-  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   await dialog.getByRole("button", { name: /^Add Credit Granted$/ }).click();
@@ -99,8 +97,6 @@ async function createReceivedCreditInUI(
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/^Counterparty/).fill(counterparty);
   await dialog.getByLabel(/^Principal/).fill(principal);
-  // Fase 1 (Ronda Producto 1): the currency select is neutral (no default).
-  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   await dialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
@@ -115,11 +111,12 @@ async function createPayableInUI(
   await page.getByRole("button", { name: "Add Payable" }).click();
   const dialog = page.getByRole("dialog", { name: /New Payable/i });
   await expect(dialog).toBeVisible();
-  // Currency first: the Total/Initial Payment labels render the chosen currency.
-  await dialog.getByLabel("Currency").selectOption({ label: "COP" });
   await dialog.getByLabel("Counterparty (Vendor)").fill(vendor);
-  await dialog.getByLabel("Total (COP)").fill(total);
+  // Founder norm (PROJECT-RULES §4, ronda final pre-beta): there is NO
+  // currency picker — the selected account decides the currency; Total/
+  // Initial Payment labels render the chosen account's currency.
   await dialog.getByLabel("Paying Account").selectOption({ label: "Efectivo (COP)" });
+  await dialog.getByLabel("Total (COP)").fill(total);
   await dialog.getByLabel("Initial Payment (COP)").fill(initialPayment);
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   await dialog.getByRole("button", { name: "Add Payable" }).click();
@@ -198,6 +195,8 @@ async function createPosSaleInUI(
   await dialog.getByRole("option", { name: new RegExp(itemName) }).click();
   await dialog.locator("#qty-0").fill(qty);
   await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
+  // Founder rule (2026-09-30): no auto-close — result panel + explicit Close.
+  await dialog.getByRole("button", { name: /^Close$/ }).click();
   await expect(dialog).toBeHidden();
 }
 

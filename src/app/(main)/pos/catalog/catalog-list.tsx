@@ -8,6 +8,7 @@ import { DeleteCatalogItemButton } from "./delete-catalog-item-button";
 import { formatAmount } from "../../../../lib/format";
 import { EmptyState } from "../../../../components/ui/empty-state";
 import { Icon } from "../../../../components/ui/icon";
+import { SearchInput } from "../../../../components/ui/search-input";
 import { Modal } from "../../../../components/ui/modal";
 import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
@@ -38,6 +39,7 @@ export function CatalogList({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const t = useT("Catalog");
+  const tCommon = useT("Common");
   const locale = useLocale();
   const stockByItemId = new Map(items.map((item) => [item.id, item.stock ?? 0]));
 
@@ -79,12 +81,14 @@ export function CatalogList({
         priceLabel={t("unitPriceLabel")}
         price={
           item.productRole === "supply"
-            ? t("notForSale")
+            ? t("priceNotApplicable")
             : formatAmount(item.unitPrice.amount, currency, locale)
         }
         priceUnit={
           item.productRole === "supply"
-            ? t("supplyPriceHint")
+            ? // Founder rule (2026-09-30): the long per-card cost explanation moved
+              // to the group-level note (renderGroup, supply section).
+              ""
             : item.comboVersions.length > 0
               ? t("perCombo")
               : t("perUnit", { unit: t(`unit_${item.saleUnit}`) })
@@ -188,7 +192,14 @@ export function CatalogList({
             {groupItems.length}
           </span>
         </summary>
-        <div className="px-4 pb-4">{body}</div>
+        <div className="px-4 pb-4">
+          {/* Founder rule (2026-09-30): the cost explanation is shown ONCE at
+              group level instead of repeating it inside every supply card. */}
+          <p className="mb-3 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {t("supplyPriceHint")}
+          </p>
+          {body}
+        </div>
       </details>
     );
   }
@@ -252,19 +263,12 @@ export function CatalogList({
       {/* Search input */}
       {items.length > 0 && (
         <div className="mb-4">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Icon icon={Search} size="sm" className="text-zinc-400" />
-            </div>
-            <input
-              type="text"
-              aria-label={t("search")}
-              placeholder={t("search")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
-            />
-          </div>
+          <SearchInput
+            ariaLabel={t("search")}
+            clearLabel={tCommon("clearSearch")}
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
           {/* Unified empty state (H-10 residue): zero matches are presented
               exclusively by the EmptyState below — the counter renders only
               for non-empty results. */}

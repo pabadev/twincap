@@ -122,3 +122,31 @@ describe("Field error association via aria-describedby (S7.1/S7.2)", () => {
     expect(html).toContain('aria-invalid="true"');
   });
 });
+
+// Founder alignment rule (2026-09-30, REVISADA por el fundador el mismo día):
+// shell labels render as a SINGLE line. The earlier sm+ two-line reservation
+// read as a blank "double label line" on every form (no product label wraps
+// at the contract breakpoints). labelClassName appends custom classes.
+describe("Desktop label alignment contract (founder 2026-09-30)", () => {
+  it("Input label is a single line by default", () => {
+    const html = renderToStaticMarkup(createElement(Input, { label: "Amount" }));
+    const label = html.slice(html.indexOf("<label"), html.indexOf("</label>"));
+    expect(label).not.toContain("sm:min-h-[2.5rem]");
+    expect(label).not.toContain("sm:flex-col");
+  });
+
+  it("Select label is a single line by default", () => {
+    const html = renderToStaticMarkup(createElement(Select, { label: "Account", options }));
+    const label = html.slice(html.indexOf("<label"), html.indexOf("</label>"));
+    expect(label).not.toContain("sm:min-h-[2.5rem]");
+    expect(label).not.toContain("sm:flex-col");
+  });
+
+  it("labelClassName still appends verbatim (opt-in styling site)", () => {
+    const compact = renderToStaticMarkup(
+      createElement(Input, { label: "Amount", labelClassName: "text-xs" }),
+    );
+    const compactLabel = compact.slice(compact.indexOf("<label"), compact.indexOf("</label>"));
+    expect(compactLabel).toContain("text-xs");
+  });
+});

@@ -23,8 +23,17 @@ vi.mock("../../../../i18n/client", () => ({
   useLocale: () => "es",
 }));
 
+// Controllable action mock (must be vi.hoisted: the vi.mock factory runs at
+// module import time). Base behavior returns null — preserved by legacy tests;
+// the result-panel tests override mockResolvedValueOnce.
+const actionMocks = vi.hoisted(() => ({
+  createSaleAction: vi.fn<() => Promise<{ success?: string; error?: string } | null>>(() =>
+    Promise.resolve(null),
+  ),
+}));
+
 vi.mock("./actions", () => ({
-  createSaleAction: () => null,
+  createSaleAction: actionMocks.createSaleAction,
 }));
 
 vi.mock("../../../../lib/use-action-error", () => ({
@@ -442,8 +451,9 @@ describe("SaleForm responsive layout (C12-3 + C12-3c)", () => {
     selectFromSearch(container, 0);
     const footerSection = container.querySelector('[data-testid="sale-footer"]');
     expect(footerSection!.textContent).toContain("total");
-    // Total = 1 item × qty 1 × unitPrice 1000 = 1000 COP.
-    expect(footerSection!.textContent).toContain("1000");
+    // Total = 1 item × qty 1 × unitPrice 1000 = 1000 COP rendered as 1.000
+    // (Fase B — LatAm formatting: dot separator at 4 digits for locale es).
+    expect(footerSection!.textContent).toContain("1.000");
   });
 
   it("keeps DOM order stable and reorders visually on mobile: payment → cart → footer (C12-3i)", () => {
@@ -506,8 +516,8 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     expect(subtotalCells[0].querySelector("input")).toBeNull();
     // Right-aligned numeric cell (header lockstep).
     expect(subtotalCells[0].className).toContain("text-right");
-    // Contains the formatted amount (1 × 1000 = 1000 COP).
-    expect(subtotalCells[0].textContent).toContain("1000");
+    // Contains the formatted amount (1 × 1000 = 1.000, Fase B Lit; no input).
+    expect(subtotalCells[0].textContent).toContain("1.000");
     // Desktop span keeps the full format with the currency code.
     const full = subtotalCells[0].querySelector('[data-testid="subtotal-full"]');
     expect(full).not.toBeNull();
@@ -516,7 +526,7 @@ describe("SaleForm visual hierarchy (C12-3b + C12-3c)", () => {
     const compact = subtotalCells[0].querySelector('[data-testid="subtotal-compact"]');
     expect(compact).not.toBeNull();
     expect(compact!.textContent).not.toContain("COP");
-    expect(compact!.textContent).toContain("1000");
+    expect(compact!.textContent).toContain("1.000");
   });
 
   it("renders delete button with neutral base styling (red on hover)", () => {
@@ -648,7 +658,7 @@ describe("SaleForm POS search-add pattern (C12-3c)", () => {
     // Subtotal should be 3 × 1000 = 3000.
     const subtotalCells = container.querySelectorAll('[data-testid="subtotal-cell"]');
     expect(subtotalCells.length).toBe(1);
-    expect(subtotalCells[0].textContent).toContain("3000");
+    expect(subtotalCells[0].textContent).toContain("3.000");
   });
 
   it("search combobox keyboard select (Enter) adds a row", () => {
@@ -864,15 +874,15 @@ describe("SaleForm catalog propagation (C12-3d)", () => {
     // The subtotal cell should format in COP (the new item's currency).
     const subtotalCell = container.querySelector('[data-testid="subtotal-cell"]');
     expect(subtotalCell).not.toBeNull();
-    // Desktop span: full format with the currency code.
+    // Desktop span: full format with the currency code (Fase B: 5.000 for es).
     const full = subtotalCell!.querySelector('[data-testid="subtotal-full"]');
     expect(full).not.toBeNull();
-    expect(full!.textContent).toContain("5000");
+    expect(full!.textContent).toContain("5.000");
     expect(full!.textContent).toContain("COP");
     // Mobile span: compact value without the currency code (C12-3i).
     const compact = subtotalCell!.querySelector('[data-testid="subtotal-compact"]');
     expect(compact).not.toBeNull();
-    expect(compact!.textContent).toContain("5000");
+    expect(compact!.textContent).toContain("5.000");
     expect(compact!.textContent).not.toContain("COP");
   });
 });
@@ -1251,5 +1261,83 @@ describe("SaleForm real-browser fine-tuning (C12-3g)", () => {
     // Compact numerals: the mobile inputs/text use text-xs below lg.
     expect(qtyInput!.className).toContain("max-lg:text-xs");
     expect(qtyInput!.className).toContain("max-lg:px-1!");
+  });
+});
+
+// Founder rule (2026-09-30): a successful sale does NOT auto-close the modal.
+// The form swaps to a result panel (snapshot of what was sold); the user
+// re-invoices (fresh idempotency key, clean slate) or closes explicitly.
+describe("SaleForm result panel (no auto-close — founder 2026-09-30)", () => {
+  async function createOneSale() {
+    const onDone = vi.fn();
+    const mounted_ = mount(<SaleForm {...baseProps} onDone={onDone} />);
+    // The idempotency key must be captured BEFORE the sale: once the result
+    // panel replaces the form, the IdempotencyField input is unmounted.
+    const keyBefore = mounted_.container.querySelector<HTMLInputElement>(
+      'input[name="idempotencyKey"]',
+    )!.value;
+    selectFromSearch(mounted_.container, 0);
+    switchPaymentMode(mounted_.container, "paid-in-full");
+    const form = mounted_.container.querySelector("form")!;
+    actionMocks.createSaleAction.mockResolvedValueOnce({ success: "saleCreated" });
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+    return { container: mounted_.container, onDone, keyBefore };
+  }
+
+  it("keeps the modal open: success shows the result panel instead of calling onDone", async () => {
+    const { container, onDone } = await createOneSale();
+    expect(onDone).not.toHaveBeenCalled();
+    const panel = container.querySelector('[data-testid="sale-result-panel"]');
+    expect(panel).not.toBeNull();
+    expect(panel!.textContent).toContain("saleRegisteredTitle");
+    expect(panel!.textContent).toContain("paidInFull");
+    expect(panel!.textContent).toContain("generalClient");
+  });
+
+  it("explicit Close is the only close path (calls onDone once)", async () => {
+    const { container, onDone } = await createOneSale();
+    const closeBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent === "close",
+    )!;
+    act(() => {
+      closeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("clicking invoiceAnother resets to an empty sale with a fresh idempotency key", async () => {
+    const { container, keyBefore } = await createOneSale();
+    const againBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent === "invoiceAnother",
+    )!;
+    act(() => {
+      againBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="sale-result-panel"]')).toBeNull();
+    expect(container.querySelectorAll<HTMLInputElement>('input[id^="qty-"]').length).toBe(0);
+    const paymentMode = container.querySelector<HTMLSelectElement>("#paymentMode")!;
+    expect(paymentMode.value).toBe("");
+    const keyAfter = container.querySelector<HTMLInputElement>(
+      'input[name="idempotencyKey"]',
+    )!.value;
+    expect(keyAfter).not.toBe(keyBefore);
+  });
+
+  it("after a sale the close-guard reads a clean dirtyRef (no spurious confirmation)", async () => {
+    const dirtyRef = { current: false };
+    const { container } = mount(<SaleForm {...baseProps} dirtyRef={dirtyRef} />);
+    selectFromSearch(container, 0);
+    switchPaymentMode(container, "paid-in-full");
+    expect(dirtyRef.current).toBe(true);
+    const form = container.querySelector("form")!;
+    actionMocks.createSaleAction.mockResolvedValueOnce({ success: "saleCreated" });
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+    expect(dirtyRef.current).toBe(false);
   });
 });

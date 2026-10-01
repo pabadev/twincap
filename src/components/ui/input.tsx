@@ -25,6 +25,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   ref,
 ) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+  // Founder alignment rule (2026-09-30, REVISADA por el fundador el mismo día):
+  // labels render as a SINGLE line. The earlier sm+ two-line reservation
+  // (sm:min-h-[2.5rem] bottom-justified) read as a blank "double label line"
+  // on every form whose labels never wrap — which is all of them (all label
+  // copy stays single-line at the contract breakpoints). Sites that opt into
+  // custom styling (labelClassName) append their own classes verbatim.
   const labelClasses = labelClassName
     ? `mb-1 block font-medium text-zinc-700 dark:text-zinc-300 ${labelClassName}`
     : "mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300";

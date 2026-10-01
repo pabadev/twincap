@@ -273,7 +273,7 @@ export function SummaryCards({
             <div className="shrink-0 rounded-lg bg-income/10 p-2">
               <Icon icon={TrendingUp} size="md" className="text-income" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center sm:justify-start">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                 {t("incomeThisMonth")}
               </p>
@@ -299,7 +299,7 @@ export function SummaryCards({
             <div className="shrink-0 rounded-lg bg-expense/10 p-2">
               <Icon icon={TrendingDown} size="md" className="text-expense" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center sm:justify-start">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                 {t("expensesThisMonth")}
               </p>
@@ -330,7 +330,7 @@ export function SummaryCards({
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={Wallet} size="md" className="text-info" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center sm:justify-start">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                 {t("totalBalance")}
               </p>
@@ -355,7 +355,7 @@ export function SummaryCards({
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={ArrowLeftRight} size="md" className="text-info" />
             </div>
-            <div className="min-w-0 flex flex-col gap-0.5">
+            <div className="min-h-[3.5rem] min-w-0 flex flex-col justify-center sm:justify-start gap-0.5">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                 {t("financingThisMonth")}
               </p>
@@ -408,7 +408,7 @@ export function SummaryCards({
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={User} size="md" className="text-income" />
                 </div>
-                <div className="min-w-0 flex flex-col gap-0.5">
+                <div className="min-h-[3.5rem] min-w-0 flex flex-col justify-center sm:justify-start gap-0.5">
                   <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                     {t("filterScopePersonal")}
                   </p>
@@ -428,7 +428,7 @@ export function SummaryCards({
                 <div className="shrink-0 rounded-lg bg-income/10 p-2">
                   <Icon icon={Briefcase} size="md" className="text-income" />
                 </div>
-                <div className="min-w-0 flex flex-col gap-0.5">
+                <div className="min-h-[3.5rem] min-w-0 flex flex-col justify-center sm:justify-start gap-0.5">
                   <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
                     {t("filterScopeBusiness")}
                   </p>

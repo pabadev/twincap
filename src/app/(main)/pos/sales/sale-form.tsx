@@ -33,7 +33,7 @@ import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Modal } from "../../../../components/ui/modal";
-import { Trash2, X } from "lucide-react";
+import { CheckCircle, Trash2, X } from "lucide-react";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { formatAmount, formatAmountParts } from "../../../../lib/format";
 import { toDateInputValue } from "../../../../lib/date";
@@ -141,7 +141,24 @@ export function SaleForm({
   const locale = useLocale();
   const { addToast } = useToast();
   const router = useRouter();
-  const successShownRef = useRef(false);
+
+  // Founder rule (2026-09-30): after a successful sale the modal does NOT
+  // close itself. `saleResult` freezes a snapshot of the just-registered sale
+  // (from the local form state) and swaps the form for a result panel; the
+  // user either invoices another sale or closes the modal explicitly.
+  const [saleResult, setSaleResult] = useState<{
+    total: number;
+    currency: string;
+    paymentMode: "" | "paid-in-full" | "on-credit";
+    clientId: string;
+    initialPayment: number;
+  } | null>(null);
+  // Each dispatch replaces the action state with a NEW object; a success is
+  // consumed ONCE per object identity (sibling of the U1 value-memo error
+  // guard): re-fires caused by refreshed translation identities see the same
+  // object and no-op, while every new submission (including "facturar otra
+  // venta") gets its own toast.
+  const consumedSuccessState = useRef<unknown>(null);
 
   // A1 (F2+F3): the client <Select> options must come from a LOCAL copy of
   // `clients`, not the prop directly. The prop is a one-shot snapshot from
@@ -173,16 +190,27 @@ export function SaleForm({
     return Array.from(map.values());
   }, [catalogItems, localCatalogItems]);
 
+  // Success effect: toast ONCE per submission, refresh for fresh references,
+  // then FREEZE the result panel (no onDone — the modal stays open by design).
+  // Read-only consumers of the local state snapshot are queued BEFORE refresh
+  // (a refresh may suspend + remount the tree via loading.tsx).
   useEffect(() => {
-    if (state?.success && !successShownRef.current) {
-      successShownRef.current = true;
-      addToast(tToast(state.success), "success");
-      // Consumer first, refresh last: a refresh may suspend + remount the tree
-      // (loading.tsx), so any consumer state change must already be queued.
-      onDone?.();
-      router.refresh();
-    }
-  }, [state?.success, addToast, tToast, router, onDone]);
+    if (!state?.success || consumedSuccessState.current === state) return;
+    consumedSuccessState.current = state;
+    setSaleResult({
+      total,
+      currency,
+      paymentMode,
+      clientId,
+      initialPayment: parsedInitialPayment,
+    });
+    addToast(tToast(state.success), "success");
+    router.refresh();
+    // The cart snapshot (total/currency/paymentMode/clientId/initialPayment)
+    // is intentionally read at dispatch-resolution time, NOT from deps —
+    // including it would re-show the toast for already-consumed states.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, addToast, tToast, router]);
 
   // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
   // identity is unstable after `router.refresh()` (messages re-import per RSC
@@ -207,6 +235,9 @@ export function SaleForm({
   const [showItemForm, setShowItemForm] = useState(false);
   // C12-3c: start with an empty cart. The user adds items via the top search.
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  // Bumped by sellAnother() so IdempotencyField mints a fresh key for the
+  // next invoice (PROY-2026-09-30: reuse would cause duplicateRequest).
+  const [saleRound, setSaleRound] = useState(0);
 
   // C12-3b: track which unit price input is focused (for format-on-blur).
   // When focused, show raw value; when blurred, show formatted value.
@@ -252,7 +283,10 @@ export function SaleForm({
   // C12-3c: dirty detection — the form has unsaved changes when any field
   // deviates from its initial value. Initial state is an empty cart, neutral
   // ("select") payment mode, no client, default currency, zero initial payment.
+  // After a successful sale the snapshot panel is showing: the registered data
+  // is persisted server-side, so closing the modal must NOT warn.
   const isDirty = useMemo(() => {
+    if (saleResult) return false;
     if (lineItems.length > 0) return true;
     if (clientId !== "") return true;
     if (paymentMode !== "") return true;
@@ -260,7 +294,26 @@ export function SaleForm({
     if (initialPayment !== "0") return true;
     if (localClients.length > 0) return true;
     return false;
-  }, [lineItems, clientId, paymentMode, currency, initialPayment, localClients]);
+  }, [saleResult, lineItems, clientId, paymentMode, currency, initialPayment, localClients]);
+
+  // "Facturar otra venta": clean slate for the next invoice while the modal
+  // stays open. A new idempotency key is REQUIRED (the current key's claim is
+  // consumed — a committed sale must never reuse it: duplicateRequest).
+  function sellAnother() {
+    setSaleResult(null);
+    setLineItems([]);
+    setPaymentMode("");
+    setClientId("");
+    setInitialPayment("0");
+    setCurrency(DEFAULT_CURRENCY);
+    setSearchQuery("");
+    setIsComboOpen(false);
+    setComboActiveIdx(-1);
+    setFocusedPriceIdx(null);
+    setOpenFormulaPanels(new Set());
+    setOpenComboPanels(new Set());
+    setSaleRound((round) => round + 1);
+  }
 
   // Sync dirty flag to the parent-owned ref so the close-guard handler can
   // read it without stale-closure issues.
@@ -517,6 +570,61 @@ export function SaleForm({
       parsedInitialPayment > total);
   const submitBlocked = isPending || needsClient || initialPaymentInvalid;
 
+  // Founder rule (2026-09-30): after a successful sale the modal stays open
+  // showing the sale result; the user re-invoices or closes explicitly.
+  if (saleResult) {
+    const client = clientOptions.find((c) => c.id === saleResult.clientId);
+    const pending =
+      saleResult.initialPayment > 0 ? saleResult.total - saleResult.initialPayment : 0;
+    return (
+      // Founder review (2026-09-30): the modal is lg:94vw/1180px for the FORM,
+      // but the result panel must NOT stretch across it — capped at the sales
+      // cards' content width (page container max-w-3xl) with side padding,
+      // centered. The form width itself is untouched.
+      <div
+        data-testid="sale-result-panel"
+        className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 sm:px-6 py-2"
+      >
+        <div className="flex items-center gap-2">
+          <CheckCircle size={20} className="shrink-0 text-income" aria-hidden="true" />
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-white">
+            {t("saleRegisteredTitle")}
+          </h3>
+        </div>
+        <dl className="mx-0 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-zinc-600 dark:text-zinc-400">{t("paymentMode")}</dt>
+          <dd className="text-right font-medium text-zinc-900 dark:text-white">
+            {saleResult.paymentMode === "on-credit" ? t("onCredit") : t("paidInFull")}
+          </dd>
+          <dt className="text-zinc-600 dark:text-zinc-400">{t("client")}</dt>
+          <dd className="min-w-0 truncate text-right font-medium text-zinc-900 dark:text-white">
+            {client ? client.name : t("generalClient")}
+          </dd>
+          <dt className="text-zinc-600 dark:text-zinc-400">{t("total")}</dt>
+          <dd className="text-right font-semibold text-zinc-900 dark:text-white">
+            {formatAmount(saleResult.total, saleResult.currency, locale)}
+          </dd>
+          {pending > 0 && (
+            <>
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("pending")}</dt>
+              <dd className="text-right font-medium text-zinc-900 dark:text-white">
+                {formatAmount(pending, saleResult.currency, locale)}
+              </dd>
+            </>
+          )}
+        </dl>
+        <div className="flex gap-3 pt-2">
+          <Button type="button" variant="secondary" className="flex-1" onClick={() => onDone?.()}>
+            {tCommon("close")}
+          </Button>
+          <Button type="button" variant="primary" className="flex-1" onClick={sellAnother}>
+            {t("invoiceAnother")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     // C12-3f: at desktop the root fills the modal body completely (lg:h-full)
     // so the 3-part flex layout works (body flex-1 + footer shrink-0).
@@ -540,7 +648,7 @@ export function SaleForm({
         /* fixed-region: required min-h-0 chain */
         className="flex min-h-0 flex-1 flex-col"
       >
-        <IdempotencyField />
+        <IdempotencyField resetKey={saleRound} />
         <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
         {state?.error && <Alert variant="danger">{translateError(state.error)}</Alert>}
 

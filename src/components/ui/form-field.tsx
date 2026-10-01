@@ -66,9 +66,14 @@ export function FormField({
 
   const control = isValidElement(children) ? cloneElement(children, injected) : children;
 
-  const labelClasses = `mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300${
-    labelClassName ? ` ${labelClassName}` : ""
-  }`;
+  // Founder alignment rule (2026-09-30, REVISADA por el fundador el mismo día)
+  // — same contract as ui/input.tsx: labels render as a SINGLE line. The
+  // earlier sm+ two-line reservation read as a blank "double label line" on
+  // every form whose labels never wrap. labelClassName appends verbatim.
+  const labelClasses = `
+    mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300${
+      labelClassName ? ` ${labelClassName}` : ""
+    }`;
 
   return (
     <div>

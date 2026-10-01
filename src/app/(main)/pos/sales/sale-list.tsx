@@ -18,6 +18,7 @@ import { ConfirmDialog } from "../../../../components/ui/confirm-dialog";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Select } from "../../../../components/ui/select";
+import { SearchInput } from "../../../../components/ui/search-input";
 import { Eye, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-react";
 import { downloadCsv } from "../../../../lib/download-csv";
 import { useToast } from "../../../../lib/hooks/use-toast";
@@ -78,6 +79,7 @@ export function SaleList({
   const [isExporting, setIsExporting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Sales");
+  const tCommon = useT("Common");
   const tExport = useT("Export");
   const locale = useLocale();
   const { addToast } = useToast();
@@ -285,13 +287,14 @@ export function SaleList({
                   >
                     {t("filterSearch")}
                   </label>
-                  <input
-                    id="sale-filter-search-mobile"
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                  <SearchInput
+                    ariaLabel={t("filterSearch")}
                     placeholder={t("filterSearch")}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    clearLabel={tCommon("clearSearch")}
+                    value={search}
+                    onValueChange={setSearch}
+                    inputProps={{ id: "sale-filter-search-mobile" }}
+                    hideIcon
                   />
                 </div>
               </div>
@@ -356,13 +359,14 @@ export function SaleList({
               >
                 {t("filterSearch")}
               </label>
-              <input
-                id="sale-filter-search"
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              <SearchInput
+                ariaLabel={t("filterSearch")}
                 placeholder={t("filterSearch")}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                clearLabel={tCommon("clearSearch")}
+                value={search}
+                onValueChange={setSearch}
+                inputProps={{ id: "sale-filter-search" }}
+                hideIcon
               />
             </div>
           </div>

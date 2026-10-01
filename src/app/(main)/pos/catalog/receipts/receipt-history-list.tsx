@@ -13,6 +13,7 @@ import { Modal } from "../../../../../components/ui/modal";
 import { Button } from "../../../../../components/ui/button";
 import { MovementCard } from "../../../../../components/ui/movement-card";
 import { CalendarDays, Package } from "lucide-react";
+import { SearchInput } from "../../../../../components/ui/search-input";
 import { InventoryReceiptForm } from "../inventory-receipt-form";
 import { CatalogSectionNav } from "../catalog-section-nav";
 
@@ -46,6 +47,10 @@ export function ReceiptHistoryList({
   const locale = useLocale();
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptFormKey, setReceiptFormKey] = useState(0);
+  // X-clear founder rule (§15): the GET-form search input becomes a controlled
+  // island seeded from the server search param; submit still navigates with
+  // the live value via the native form GET.
+  const [searchDraft, setSearchDraft] = useState(search);
   const products = items.filter(
     (item) => item.type === "product" && item.comboVersions.length === 0,
   );
@@ -100,14 +105,15 @@ export function ReceiptHistoryList({
       >
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t("receiptSearchLabel")}
-          <input
-            name="q"
-            type="search"
-            maxLength={100}
-            defaultValue={search}
-            placeholder={t("receiptSearchPlaceholder")}
-            className="mt-1 block h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-surface-card dark:text-white"
-          />
+          <div className="mt-1">
+            <SearchInput
+              ariaLabel={t("receiptSearchPlaceholder")}
+              clearLabel={tc("clearSearch")}
+              value={searchDraft}
+              onValueChange={setSearchDraft}
+              inputProps={{ name: "q", maxLength: 100, type: "text" }}
+            />
+          </div>
         </label>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {t("receiptFromDate")}

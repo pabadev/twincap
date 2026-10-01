@@ -290,12 +290,11 @@ test.describe("Slice 2 — Movements + Transfers + Payables", () => {
     const dialog = page.getByRole("dialog", { name: /New Payable/i });
     await expect(dialog).toBeVisible();
 
-    // Currency first: the Total/Initial Payment labels render the chosen
-    // currency (Ronda Producto 1 neutral selects).
-    await dialog.getByLabel("Currency").selectOption({ label: "COP" });
+    // Founder norm (PROJECT-RULES §4): no currency picker — the account
+    // decides the currency (labels render it after the account selection).
     await dialog.getByLabel("Counterparty (Vendor)").fill("Proveedor Alfa");
-    await dialog.getByLabel("Total (COP)").fill("100000");
     await dialog.getByLabel("Paying Account").selectOption({ label: "Efectivo (COP)" });
+    await dialog.getByLabel("Total (COP)").fill("100000");
     await dialog.getByLabel("Initial Payment (COP)").fill("20000");
     // Anchored: the form also has "Due Date (optional)" — substring "Date"
     // would match both. The required date's accessible name is "Date*".

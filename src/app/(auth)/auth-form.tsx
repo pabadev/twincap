@@ -60,7 +60,9 @@ export function AuthForm({
         <PasswordInput
           id="password"
           name="password"
-          label={t("password")}
+          // Founder rule (2026-09-30): register reads "Create password" for
+          // clarity; login keeps the plain "Password" label.
+          label={authMode === "register" ? t("createPassword") : t("password")}
           required
           minLength={8}
           autoComplete={authMode === "login" ? "current-password" : "new-password"}

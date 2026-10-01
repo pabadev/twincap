@@ -5,6 +5,7 @@ import { useT } from "../../../i18n/client";
 import { DeleteClientButton } from "./delete-client-button";
 import { ClientForm } from "./client-form";
 import { Icon } from "../../../components/ui/icon";
+import { SearchInput } from "../../../components/ui/search-input";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
@@ -58,19 +59,12 @@ export function ClientsList({ clients }: { clients: SerializedClient[] }) {
 
       {clients.length > 0 && (
         <div className="mb-4">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Icon icon={Search} size="sm" className="text-zinc-400" />
-            </div>
-            <input
-              type="text"
-              aria-label={t("searchPlaceholder")}
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-lg border border-surface-border bg-surface-input py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
-            />
-          </div>
+          <SearchInput
+            ariaLabel={t("searchPlaceholder")}
+            clearLabel={tCommon("clearSearch")}
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
           {(!debouncedQuery.trim() || filteredClients.length > 0) && (
             <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               {debouncedQuery.trim()

@@ -330,6 +330,45 @@ describe("buildDashboardSnapshot", () => {
     ]);
   });
 
+  // Founder review (2026-09-30, pre-suite): a currency with no movements in
+  // the period AND no live balance must not render its own line — the USD
+  // "$0" row in "available" was visual noise. Presentation-only filtering:
+  // a currency that carries a balance or any current-month flow is kept.
+  it("founder review: hides currency rows with zero balance and no period movements", () => {
+    const zeroUsdAccounts = [
+      accounts[0],
+      { id: "acc-2", name: "Ahorros", currency: "USD", isFixed: false, balance: 0 },
+    ];
+
+    // "next month" scenario: no movements at all — only COP survives.
+    const idle = buildDashboardSnapshot({ ...buildInput([]), accounts: zeroUsdAccounts });
+    expect(idle.currencyBreakdown).toEqual([
+      { currency: "COP", balance: 2_000_000, income: 0, expenses: 0, result: 0 },
+    ]);
+
+    // USD stays visible as soon as it has either balance or period flows.
+    const withFlow = buildDashboardSnapshot({
+      ...buildInput([
+        movement({
+          type: "expense",
+          amount: 400,
+          accountId: "acc-2",
+          currency: "USD",
+          categoryId: "cat-food",
+        }),
+      ]),
+      accounts: zeroUsdAccounts,
+    });
+    expect(withFlow.currencyBreakdown.map((r) => r.currency)).toEqual(["COP", "USD"]);
+
+    // ...and with a non-zero balance even without movements (live account).
+    const withBalance = buildDashboardSnapshot({
+      ...buildInput([]),
+      accounts, // acc-2 USD balance 1500, no movements
+    });
+    expect(withBalance.currencyBreakdown.map((r) => r.currency)).toEqual(["COP", "USD"]);
+  });
+
   it("monthlyData: 6-month window padded, oldest first, current month last", () => {
     const july = movement({
       type: "income",

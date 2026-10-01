@@ -103,3 +103,38 @@ describe("CatalogItemCard", () => {
     expect(footer!.className).not.toContain("grid-cols-");
   });
 });
+
+// Founder rule (ronda final pre-beta, 2026-09-30): the supply card shows the
+// plain "No aplica" price row (no long per-card cost text — that moved to the
+// group-level note in the catalog list).
+describe("CatalogItemCard supply price row (founder 2026-09-30)", () => {
+  it("renders the price row as 'No aplica' with NO unit line when supply is configured", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <CatalogItemCard
+          name="Insumo de prueba"
+          type="product"
+          typeLabel="Insumo"
+          priceLabel="Precio"
+          price="No aplica"
+          priceUnit=""
+          stockLabel="Stock"
+          stock="100"
+          stockUnit="unidades"
+          notApplicable="No aplica"
+          actions={<span>Acciones</span>}
+        />,
+      );
+    });
+    const priceRow = container.querySelector('[data-card-detail="price"]')!;
+    expect(priceRow.textContent).toContain("No aplica");
+    // The (suppressed) unit line must not render an empty <div>.
+    const unitNodes = [...priceRow.children].filter((n) => n.textContent === "");
+    expect(unitNodes.length).toBe(0);
+    act(() => root.unmount());
+    container.remove();
+  });
+});

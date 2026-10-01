@@ -65,9 +65,11 @@ export function CatalogItemCard({
             >
               {price}
             </div>
-            <div className="truncate text-xs text-zinc-500 dark:text-zinc-400" title={priceUnit}>
-              {priceUnit}
-            </div>
+            {priceUnit ? (
+              <div className="truncate text-xs text-zinc-500 dark:text-zinc-400" title={priceUnit}>
+                {priceUnit}
+              </div>
+            ) : null}
           </dd>
         </div>
         <div data-card-detail="stock" className="flex items-start justify-between gap-3">

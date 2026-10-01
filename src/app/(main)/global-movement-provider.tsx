@@ -302,8 +302,10 @@ export function GlobalMovementProvider({
       </Modal>
 
       {/* Shared POS sale form — same in-place pattern as the movement modal.
-          SaleForm reuses the list page's form component (no logic duplicated)
-          and closes itself via onDone after a successful create.
+          SaleForm reuses the list page's form component (no logic duplicated).
+          Founder rule (2026-09-30): the modal does NOT auto-close after a
+          successful create — SaleForm shows the result panel and only closes
+          when the user closes it (onDone from the panel's Close button).
           C12-1: onRequestClose gates ESC/X/backdrop through the dirty-check. */}
       <Modal
         open={posModalOpen}

@@ -125,8 +125,6 @@ async function seedRichData(page: Page): Promise<void> {
   await expect(credDialog).toBeVisible();
   await credDialog.getByLabel(/^Counterparty/).fill("Banco Acme");
   await credDialog.getByLabel(/^Principal/).fill("800000");
-  // Ronda Producto 1: the currency select is neutral (no default).
-  await credDialog.getByLabel("Currency").selectOption({ label: "COP" });
   await credDialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await credDialog.getByLabel(/^Date/).fill(todayInputValue());
   await credDialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
@@ -137,12 +135,11 @@ async function seedRichData(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Add Payable" }).click();
   const payDialog = page.getByRole("dialog", { name: /New Payable/i });
   await expect(payDialog).toBeVisible();
-  // Currency first: the Total/Initial Payment labels render the chosen
-  // currency (Ronda Producto 1 neutral selects).
-  await payDialog.getByLabel("Currency").selectOption({ label: "COP" });
+  // Founder norm (PROJECT-RULES §4): no currency picker — the account
+  // decides the currency (labels render it after the account selection).
   await payDialog.getByLabel(/^Counterparty/).fill("Proveedor Alfa");
-  await payDialog.getByLabel(/^Total/).fill("300000");
   await payDialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
+  await payDialog.getByLabel(/^Total/).fill("300000");
   await payDialog.getByLabel(/^Initial Payment/).fill("50000");
   await payDialog.getByLabel(/^Date/).fill(todayInputValue());
   await payDialog.getByRole("button", { name: "Add Payable" }).click();
@@ -177,6 +174,9 @@ async function seedRichData(page: Page): Promise<void> {
   await saleDialog.getByRole("option", { name: /Widget Test/ }).click();
   await saleDialog.locator("#qty-0").fill("2");
   await saleDialog.getByRole("button", { name: /^Create Sale$/ }).click();
+  // Founder rule (2026-09-30): the modal does NOT auto-close — it shows the
+  // result panel; the user closes it explicitly.
+  await saleDialog.getByRole("button", { name: /^Close$/ }).click();
   await expect(saleDialog).toBeHidden();
 }
 
