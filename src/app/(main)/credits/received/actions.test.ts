@@ -90,6 +90,7 @@ function setupMutationMocks() {
     addAbono,
   }));
   MongoMovementRepository.mockImplementation(() => ({
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
     create: createMovement,
   }));
   releaseIdempotency.mockResolvedValue(undefined);
@@ -147,6 +148,7 @@ describe("createCreditReceivedAction", () => {
       create: vi.fn().mockResolvedValue(undefined),
     }));
     MongoMovementRepository.mockImplementation(() => ({
+      findByWorkspaceId: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue(undefined),
     }));
     claimIdempotency.mockResolvedValue(true);
@@ -292,4 +294,55 @@ describe("markAsPaidAction — R15.3.1 §21 post-commit failure (mocked)", () =>
     expect(connectDb).not.toHaveBeenCalled();
     expect(releaseIdempotency).not.toHaveBeenCalled();
   });
+});
+
+// Founder norm (PROJECT-RULES §4, ronda final pre-beta — Fase C): the server
+// action resolves the account and uses its PERSISTED currency; the
+// client-sent currency is never trusted.
+it("ignores a divergent client-sent currency and uses the account's currency", async () => {
+  getCurrentUser.mockResolvedValue({ userId: "user-1", workspaceId: "user-1" });
+  connectDb.mockResolvedValue(undefined);
+  trackAnalytics.mockResolvedValue(undefined);
+  claimIdempotency.mockResolvedValue(true);
+  MongoOperationLogger.mockImplementation(() => ({
+    log: vi.fn().mockResolvedValue(undefined),
+  }));
+  MongoUnitOfWork.mockImplementation(() => ({
+    withTransaction: vi.fn(async (fn: (tx?: unknown) => Promise<unknown>) => fn(undefined)),
+  }));
+  MongoAccountRepository.mockImplementation(() => ({
+    findById: vi.fn().mockResolvedValue({
+      id: "acc-1",
+      workspaceId: "user-1",
+      name: "Cash",
+      currency: "COP",
+      isFixed: false,
+    }),
+    touch: vi.fn().mockResolvedValue(true),
+  }));
+  MongoCreditReceivedRepository.mockImplementation(() => ({
+    create: vi.fn().mockResolvedValue(undefined),
+  }));
+  MongoMovementRepository.mockImplementation(() => ({
+    findByWorkspaceId: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue(undefined),
+  }));
+
+  const fd = new FormData();
+  fd.append("counterparty", "Banco Acme");
+  fd.append("principal", "200000");
+  // Divergent client value — the account (COP) must win.
+  fd.append("currency", "USD");
+  fd.append("accountId", "acc-1");
+  fd.append("date", "2026-09-01");
+  fd.append("tzOffset", "300");
+  fd.append("idempotencyKey", "key-credit-received-currency");
+
+  const result = await createCreditReceivedAction(null, fd);
+
+  expect(result).toEqual({ success: "creditCreated" });
+  const accountRepoInstance = MongoAccountRepository.mock.results[0]?.value as {
+    findById: ReturnType<typeof vi.fn>;
+  };
+  expect(accountRepoInstance.findById).toHaveBeenCalledWith("user-1", "acc-1");
 });

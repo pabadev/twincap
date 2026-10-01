@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   createPayable,
@@ -7,22 +7,24 @@ import {
   deleteAbono,
   editTotal,
   deletePayable,
-} from '../../../core/application/payables';
-import type { Currency } from '../../../core/domain/currency';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { assertBusinessDateNotFuture } from '../../../lib/date';
-import { handleActionError } from '../../../lib/handle-action-error';
-import { revalidateMovementData } from '../../../lib/revalidate';
-import { withAudit } from '../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
-import { trackAnalytics } from '../../../lib/track-analytics';
+} from "../../../core/application/payables";
+import { NotFoundError } from "../../../core/domain/errors";
+import type { Currency } from "../../../core/domain/currency";
+import { isMovementContext } from "../../../core/domain/movement";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { claimIdempotency, releaseIdempotency } from "../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { assertBusinessDateNotFuture } from "../../../lib/date";
+import { handleActionError } from "../../../lib/handle-action-error";
+import { revalidateMovementData } from "../../../lib/revalidate";
+import { withAudit } from "../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
+import { trackAnalytics } from "../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -31,21 +33,24 @@ export async function createPayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const counterparty = formData.get('counterparty') as string;
-  const total = Number(formData.get('total') || '0');
-  const initialPayment = Number(formData.get('initialPayment') || '0');
-  const currency = formData.get('currency') as Currency;
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const dueDateRaw = formData.get('dueDate') as string;
+  const counterparty = formData.get("counterparty") as string;
+  const total = Number(formData.get("total") || "0");
+  const initialPayment = Number(formData.get("initialPayment") || "0");
+  const accountId = formData.get("accountId") as string;
+  // EXC-1 (founder 2026-09-30): optional user-selected Personal/Business
+  // context; the entity defaults legacy payables to 'Personal'.
+  const contextRaw = formData.get("context") as string | null;
+  const context = contextRaw && isMovementContext(contextRaw) ? contextRaw : undefined;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const dueDateRaw = formData.get("dueDate") as string;
   const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
-  const note = ((formData.get('note') as string) || '').trim() || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const note = ((formData.get("note") as string) || "").trim() || undefined;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
@@ -56,35 +61,59 @@ export async function createPayableAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createPayable');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createPayable");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createPayable',
-        entityType: 'payable',
-        result: 'duplicate',
+        action: "createPayable",
+        entityType: "payable",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createPayable', entityType: 'payable', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createPayable",
+        entityType: "payable",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return createPayable(
-          user.workspaceId!,
-          { counterparty, total, initialPayment, currency, accountId, date, dueDate, note },
-          payableRepo,
-          movementRepo,
-          ids,
-          accountRepo,
-          new MongoUnitOfWork(),
-        );
+        return (async () => {
+          // Founder norm (PROJECT-RULES §4): the server resolves the account by
+          // workspace and uses its PERSISTED currency — the client-sent currency
+          // is never trusted. ACC-1 inside the use case stays as a second guard.
+          const account = await accountRepo.findById(user.workspaceId!, accountId);
+          if (!account) {
+            throw new NotFoundError(`Account ${accountId} not found`);
+          }
+          return createPayable(
+            user.workspaceId!,
+            {
+              counterparty,
+              total,
+              initialPayment,
+              currency: account.currency,
+              accountId,
+              context,
+              date,
+              dueDate,
+              note,
+            },
+            payableRepo,
+            movementRepo,
+            ids,
+            accountRepo,
+            new MongoUnitOfWork(),
+          );
+        })();
       },
     );
     // Commit point: the payable (and any initial-payment movement) is persisted
@@ -94,18 +123,18 @@ export async function createPayableAction(
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
     // R13-H: regular payable creation event (APPENDED) for product analytics.
-    await trackAnalytics('payableCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("payableCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'createPayable');
+      await releaseIdempotency(user.userId, idempotencyKey, "createPayable");
     }
     return handleActionError(error);
   }
 
-  return { success: 'payableCreated' };
+  return { success: "payableCreated" };
 }
 
 export async function addAbonoAction(
@@ -113,17 +142,17 @@ export async function addAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const payableId = formData.get('payableId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const currency = formData.get('currency') as Currency;
-  const accountId = formData.get('accountId') as string;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const payableId = formData.get("payableId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const currency = formData.get("currency") as Currency;
+  const accountId = formData.get("accountId") as string;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
 
   // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
@@ -134,22 +163,27 @@ export async function addAbonoAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'addAbono');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "addAbono");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'addAbono',
-        entityType: 'payable',
-        result: 'duplicate',
+        action: "addAbono",
+        entityType: "payable",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'addAbono', entityType: 'payable', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "addAbono",
+        entityType: "payable",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
@@ -170,16 +204,16 @@ export async function addAbonoAction(
     // resolved). From here on the idempotency key MUST NOT be released on
     // failure (R15.3.1 P1.2).
     committed = true;
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'addAbono');
+      await releaseIdempotency(user.userId, idempotencyKey, "addAbono");
     }
     return handleActionError(error);
   }
 
-  return { success: 'abonoAdded' };
+  return { success: "abonoAdded" };
 }
 
 export async function editAbonoAction(
@@ -187,13 +221,13 @@ export async function editAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const payableId = formData.get('payableId') as string;
-  const abonoId = formData.get('abonoId') as string;
-  const amount = Number(formData.get('amount') || '0');
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
+  const payableId = formData.get("payableId") as string;
+  const abonoId = formData.get("abonoId") as string;
+  const amount = Number(formData.get("amount") || "0");
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -201,7 +235,7 @@ export async function editAbonoAction(
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'editAbono', entityType: 'payable', userId: user.userId },
+      { action: "editAbono", entityType: "payable", userId: user.userId },
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
@@ -218,12 +252,12 @@ export async function editAbonoAction(
         );
       },
     );
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoUpdated' };
+  return { success: "abonoUpdated" };
 }
 
 export async function editPayableAction(
@@ -231,18 +265,18 @@ export async function editPayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const payableId = formData.get('payableId') as string;
-  const total = Number(formData.get('total') || '0');
-  const currency = formData.get('currency') as Currency;
+  const payableId = formData.get("payableId") as string;
+  const total = Number(formData.get("total") || "0");
+  const currency = formData.get("currency") as Currency;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'editPayable', entityType: 'payable', userId: user.userId },
+      { action: "editPayable", entityType: "payable", userId: user.userId },
       () => {
         const payableRepo = new MongoPayableRepository();
         return editTotal(
@@ -254,12 +288,12 @@ export async function editPayableAction(
         );
       },
     );
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'payableUpdated' };
+  return { success: "payableUpdated" };
 }
 
 export async function deleteAbonoAction(
@@ -267,30 +301,38 @@ export async function deleteAbonoAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const payableId = formData.get('payableId') as string;
-  const abonoId = formData.get('abonoId') as string;
+  const payableId = formData.get("payableId") as string;
+  const abonoId = formData.get("abonoId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteAbono', entityType: 'payable', userId: user.userId },
+      { action: "deleteAbono", entityType: "payable", userId: user.userId },
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deleteAbono(user.workspaceId!, payableId, abonoId, payableRepo, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deleteAbono(
+          user.workspaceId!,
+          payableId,
+          abonoId,
+          payableRepo,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'abonoDeleted' };
+  return { success: "abonoDeleted" };
 }
 
 export async function deletePayableAction(
@@ -298,27 +340,34 @@ export async function deletePayableAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const payableId = formData.get('payableId') as string;
+  const payableId = formData.get("payableId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deletePayable', entityType: 'payable', userId: user.userId },
+      { action: "deletePayable", entityType: "payable", userId: user.userId },
       () => {
         const payableRepo = new MongoPayableRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return deletePayable(user.workspaceId!, payableId, payableRepo, movementRepo, accountRepo, new MongoUnitOfWork());
+        return deletePayable(
+          user.workspaceId!,
+          payableId,
+          payableRepo,
+          movementRepo,
+          accountRepo,
+          new MongoUnitOfWork(),
+        );
       },
     );
-    revalidateMovementData('/payables');
+    revalidateMovementData("/payables");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'payableDeleted' };
+  return { success: "payableDeleted" };
 }

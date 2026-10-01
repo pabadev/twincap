@@ -1,18 +1,24 @@
-import { CreditGranted } from '../../domain/credit-granted';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ValidationError } from '../../domain/errors';
-import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { CreateCreditGrantedInput } from './dto/credits-granted';
+import { CreditGranted } from "../../domain/credit-granted";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ValidationError } from "../../domain/errors";
+import { isMovementContext } from "../../domain/movement";
+import { creditGrantedCategory } from "../../domain/synthetic-categories";
+import type {
+  CreditGrantedRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { CreateCreditGrantedInput } from "./dto/credits-granted";
 
 /**
  * Create a credit granted (CRED-G-1).
  *
  * Produces a credit record and one linked expense movement on the paying account.
  * The movement is system-linked (MOV-5) and not directly editable by the user.
- * Movement context: always 'Personal' — credits granted are personal lending.
+ * Movement context: EXC-1 (founder 2026-09-30) — user-selectable Personal/
+ * Business via the form picker; default 'Personal' (legacy semantics).
  *
  * The two writes (credit + principal movement) run INSIDE a single multi-document
  * transaction (R15 Fase 2): they commit or roll back atomically.
@@ -26,6 +32,11 @@ export async function createCreditGranted(
   accountRepo: AccountRepository,
   uow: UnitOfWork,
 ): Promise<CreditGranted> {
+  // EXC-1: validate the user-selected context (undefined = legacy 'Personal').
+  if (input.context !== undefined && !isMovementContext(input.context)) {
+    throw new ValidationError(`Unknown movement context: ${String(input.context)}`);
+  }
+  const movementContext = input.context ?? "Personal";
   // D3: resolve the paying account — validates existence/ownership.
   const account = await accountRepo.findById(workspaceId, input.accountId);
   if (!account) {
@@ -34,7 +45,9 @@ export async function createCreditGranted(
 
   // ACC-1: the credit's currency must match the account's currency.
   if (input.currency !== account.currency) {
-    throw new ValidationError(`Account currency is ${account.currency}, declared ${input.currency}`);
+    throw new ValidationError(
+      `Account currency is ${account.currency}, declared ${input.currency}`,
+    );
   }
 
   // R15 Fase 2: credit + principal movement commit or roll back atomically.
@@ -55,12 +68,14 @@ export async function createCreditGranted(
     // enforcing it there would make reads throw on those records. Sale-born POS
     // credits (R5-D2) never pass installments, so they are unaffected.
     if (input.installments && input.installments > 0 && input.installmentValue === undefined) {
-      throw new ValidationError('installmentValue is required when installments > 0');
+      throw new ValidationError("installmentValue is required when installments > 0");
     }
     // Persist the installment value only when installments > 0 AND a value was
     // provided; a stray value without installments is ignored (not stored).
     const installmentValue =
-      input.installments !== undefined && input.installments > 0 && input.installmentValue !== undefined
+      input.installments !== undefined &&
+      input.installments > 0 &&
+      input.installmentValue !== undefined
         ? new Money(input.installmentValue, input.currency)
         : undefined;
 
@@ -83,7 +98,7 @@ export async function createCreditGranted(
     // (matrix row 35).
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     await creditRepo.create(credit, tx);
@@ -95,13 +110,13 @@ export async function createCreditGranted(
       id: movementId,
       workspaceId,
       accountId: input.accountId,
-      category: creditGrantedCategory('expense'),
-      type: 'expense',
+      category: creditGrantedCategory("expense"),
+      type: "expense",
       amount: principalMoney,
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
-      link: { kind: 'creditGrantedPrincipal', refId: creditId, opId },
+      context: movementContext,
+      link: { kind: "creditGrantedPrincipal", refId: creditId, opId },
       createdAt: now,
     });
     await movementRepo.create(movement, tx);

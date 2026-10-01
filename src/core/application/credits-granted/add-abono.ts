@@ -36,8 +36,9 @@ import type { AddAbonoInput } from "./dto/credits-granted";
  * owned by the sale flow (salePayment); reaching this path via markAsPaid never
  * splits. They still emit the same kind `creditGrantedAbono` as the standalone
  * path, but with context 'Business' because a sale-born abono is commercial
- * activity (matching the POS initial payment), while the standalone abono is
- * capital recovery and stays 'Personal'.
+ * activity (matching the POS initial payment). For standalone credits the
+ * abono movement inherits the context of the credit's principal movement
+ * (EXC-1, founder 2026-09-30 — source of truth lives on the movement).
  *
  * R15 Fase 3: the aggregate read AND the balance/currency validations that
  * derive from it run INSIDE the transaction (snapshot-consistent), and the
@@ -99,6 +100,16 @@ export async function addAbono(
     if (input.amount > credit.pending) {
       throw new ConflictError("Abono exceeds pending amount");
     }
+
+    // EXC-1 propagation (standalone credits): the abono movement inherits the
+    // context of the credit's principal movement (link.kind
+    // creditGrantedPrincipal). Same lookup convention as edit-principal.ts.
+    // Sale-born credits force 'Business' below (commercial activity).
+    const ledgerMovements = await movementRepo.findByWorkspaceId(workspaceId);
+    const principalMovement = ledgerMovements.find(
+      (m) => m.link?.kind === "creditGrantedPrincipal" && m.link?.refId === creditId,
+    );
+    const standaloneContext = principalMovement?.context ?? "Personal";
 
     // R15-F4 (audit §6): a written-off credit must never accept new abonos.
     // Checked on the fresh read inside the tx, so a retry after a concurrent
@@ -170,7 +181,7 @@ export async function addAbono(
             amount: new Money(capitalPortion, input.currency),
             date: input.date,
             // No persisted note: display text derives at render from link.kind.
-            context: "Personal",
+            context: standaloneContext,
             link: { kind: "creditGrantedAbono", refId: creditId, opId: ids.generate() },
             createdAt: now,
           }),
@@ -187,7 +198,7 @@ export async function addAbono(
             type: "income",
             amount: new Money(interestPortion, input.currency),
             date: input.date,
-            context: "Personal",
+            context: standaloneContext,
             link: { kind: "creditGrantedAbonoInterest", refId: creditId, opId: ids.generate() },
             createdAt: interestNow,
           }),

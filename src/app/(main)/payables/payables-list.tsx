@@ -18,6 +18,7 @@ import { Modal } from "../../../components/ui/modal";
 import { ActionIconButton } from "../../../components/ui/action-icon-button";
 import { Button } from "../../../components/ui/button";
 import { Select } from "../../../components/ui/select";
+import { SearchInput } from "../../../components/ui/search-input";
 import { Table } from "../../../components/ui/table";
 import Link from "next/link";
 import { ChevronDown, ReceiptText, Pencil, SlidersHorizontal } from "lucide-react";
@@ -187,13 +188,14 @@ export function PayablesList({
                   >
                     {t("filterSearch")}
                   </label>
-                  <input
-                    id="payables-filter-search-mobile"
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                  <SearchInput
+                    ariaLabel={t("filterSearch")}
                     placeholder={t("filterSearch")}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    clearLabel={tCommon("clearSearch")}
+                    value={search}
+                    onValueChange={setSearch}
+                    inputProps={{ id: "payables-filter-search-mobile" }}
+                    hideIcon
                   />
                 </div>
               </div>
@@ -258,13 +260,14 @@ export function PayablesList({
               >
                 {t("filterSearch")}
               </label>
-              <input
-                id="payables-filter-search"
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              <SearchInput
+                ariaLabel={t("filterSearch")}
                 placeholder={t("filterSearch")}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                clearLabel={tCommon("clearSearch")}
+                value={search}
+                onValueChange={setSearch}
+                inputProps={{ id: "payables-filter-search" }}
+                hideIcon
               />
             </div>
           </div>

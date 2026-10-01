@@ -1255,3 +1255,110 @@ describe("deleteCreditReceived", () => {
     expect(creditRepo.deleted).toContain("cr-1");
   });
 });
+
+// ─── EXC-1 (freeze exception, founder 2026-09-30): selectable context ───
+describe("credit received — selectable Personal/Business context (EXC-1)", () => {
+  it("create with context Business labels the principal movement Business", async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await createCreditReceived(
+      "user-1",
+      {
+        counterparty: "Juan",
+        principal: 100000,
+        currency: "COP",
+        accountId: "acc-1",
+        date: new Date("2026-09-01"),
+        context: "Business",
+      },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Business");
+    expect(movementRepo.created[0].link?.kind).toBe("creditReceivedPrincipal");
+  });
+
+  it("create WITHOUT context keeps the legacy Personal semantics", async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await createCreditReceived(
+      "user-1",
+      {
+        counterparty: "Juan",
+        principal: 100000,
+        currency: "COP",
+        accountId: "acc-1",
+        date: new Date("2026-09-01"),
+      },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Personal");
+  });
+
+  it("create rejects an unknown context string", async () => {
+    const creditRepo = fakeCreditRepo();
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await expect(
+      createCreditReceived(
+        "user-1",
+        {
+          counterparty: "Juan",
+          principal: 100000,
+          currency: "COP",
+          accountId: "acc-1",
+          date: new Date("2026-09-01"),
+          context: "self" as never,
+        },
+        creditRepo,
+        movementRepo,
+        fakeIdGen(),
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("abono inherits the credit's principal-movement context (Business credit → Business abono)", async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const principalMovement = makeMovement({
+      id: "mv-principal",
+      link: { kind: "creditReceivedPrincipal", refId: "cr-1", opId: "op-1" },
+      context: "Business",
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMovement]),
+    });
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await addAbono(
+      "user-1",
+      "cr-1",
+      { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Business");
+  });
+});

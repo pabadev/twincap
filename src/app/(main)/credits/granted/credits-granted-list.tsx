@@ -21,6 +21,7 @@ import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Badge } from "../../../../components/ui/badge";
 import { Select } from "../../../../components/ui/select";
+import { SearchInput } from "../../../../components/ui/search-input";
 import { Table } from "../../../../components/ui/table";
 import { ChevronDown, CreditCard, Pencil, SlidersHorizontal } from "lucide-react";
 import {
@@ -217,13 +218,14 @@ export function CreditsGrantedList({
                   >
                     {t("filterSearch")}
                   </label>
-                  <input
-                    id="credits-granted-filter-search-mobile"
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                  <SearchInput
+                    ariaLabel={t("filterSearch")}
                     placeholder={t("filterSearch")}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    clearLabel={tCommon("clearSearch")}
+                    value={search}
+                    onValueChange={setSearch}
+                    inputProps={{ id: "credits-granted-filter-search-mobile" }}
+                    hideIcon
                   />
                 </div>
               </div>
@@ -291,13 +293,14 @@ export function CreditsGrantedList({
               >
                 {t("filterSearch")}
               </label>
-              <input
-                id="credits-granted-filter-search"
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              <SearchInput
+                ariaLabel={t("filterSearch")}
                 placeholder={t("filterSearch")}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                clearLabel={tCommon("clearSearch")}
+                value={search}
+                onValueChange={setSearch}
+                inputProps={{ id: "credits-granted-filter-search" }}
+                hideIcon
               />
             </div>
           </div>

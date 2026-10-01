@@ -6,8 +6,6 @@ import { useT } from "../../../i18n/client";
 import { createPayableAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../core/domain/account";
-import { CURRENCIES } from "../../../core/domain/currency";
-import type { Currency } from "../../../core/domain/currency";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
@@ -31,7 +29,13 @@ export function PayableForm({
   const router = useRouter();
   const successShownRef = useRef(false);
 
-  const [currency, setCurrency] = useState<Currency | "">("");
+  // Founder norm (PROJECT-RULES §4): the selected account decides the
+  // currency — no independent currency picker. The server action resolves
+  // the account by workspace and uses its persisted currency (it never
+  // trusts a client-sent field); ACC-1 in the use case stays as a guard.
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const currency = selectedAccount?.currency ?? "";
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -61,6 +65,19 @@ export function PayableForm({
     <form action={formAction} className="space-y-4">
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
+      {/* EXC-1 (founder 2026-09-30): the user classifies the payable as
+          Personal or Business; derived payments inherit the classification. */}
+      <Select
+        id="context"
+        name="context"
+        label={tCommon("context")}
+        disabled={isPending}
+        placeholder={tCommon("select")}
+        options={[
+          { value: "Personal", label: tCommon("personal") },
+          { value: "Business", label: tCommon("business") },
+        ]}
+      />
       <Input
         id="counterparty"
         name="counterparty"
@@ -76,44 +93,34 @@ export function PayableForm({
           name="total"
           hint={tCommon("moneyNoSeparators")}
           type="number"
-          label={t("total", { currency })}
+          label={currency ? t("total", { currency }) : t("totalPlain")}
           min="1"
           required
           disabled={isPending}
         />
 
         <Select
-          id="currency"
-          name="currency"
-          label={t("currency")}
+          id="accountId"
+          name="accountId"
+          label={t("accountId")}
           required
           disabled={isPending}
-          value={currency}
+          value={selectedAccountId}
+          onChange={(e) => setSelectedAccountId(e.target.value)}
           placeholder={tCommon("select")}
-          onChange={(e) => setCurrency(e.target.value as typeof currency)}
-          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.currency})`,
+          }))}
         />
       </div>
-
-      <Select
-        id="accountId"
-        name="accountId"
-        label={t("accountId")}
-        required
-        disabled={isPending}
-        placeholder={tCommon("select")}
-        options={accounts.map((a) => ({
-          value: a.id,
-          label: `${a.name} (${a.currency})`,
-        }))}
-      />
 
       <Input
         id="initialPayment"
         name="initialPayment"
         hint={tCommon("moneyNoSeparators")}
         type="number"
-        label={t("initialPayment", { currency })}
+        label={currency ? t("initialPayment", { currency }) : t("initialPaymentPlain")}
         min="0"
         step="1"
         defaultValue={0}

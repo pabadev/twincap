@@ -11,6 +11,8 @@ import {
   writeOffCreditGranted,
 } from "../../../../core/application/credits-granted";
 import type { Currency } from "../../../../core/domain/currency";
+import { isMovementContext } from "../../../../core/domain/movement";
+import { NotFoundError } from "../../../../core/domain/errors";
 import { getCurrentUser } from "../../../../infrastructure/auth/getCurrentUser";
 import { MongoCreditGrantedRepository } from "../../../../infrastructure/repositories/credit-granted-repository";
 import { MongoMovementRepository } from "../../../../infrastructure/repositories/movement-repository";
@@ -37,8 +39,11 @@ export async function createCreditGrantedAction(
 
   const counterparty = formData.get("counterparty") as string;
   const principal = Number(formData.get("principal") || "0");
-  const currency = formData.get("currency") as Currency;
   const accountId = formData.get("accountId") as string;
+  // EXC-1 (founder 2026-09-30): optional user-selected Personal/Business
+  // context; the use case validates and defaults legacy to 'Personal'.
+  const contextRaw = formData.get("context") as string | null;
+  const context = contextRaw && isMovementContext(contextRaw) ? contextRaw : undefined;
   const date = new Date(formData.get("date") as string);
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
   const installments = Number(formData.get("installments") || "0") || undefined;
@@ -79,24 +84,34 @@ export async function createCreditGrantedAction(
         const creditRepo = new MongoCreditGrantedRepository();
         const movementRepo = new MongoMovementRepository();
         const accountRepo = new MongoAccountRepository();
-        return createCreditGranted(
-          user.workspaceId!,
-          {
-            counterparty,
-            principal,
-            currency,
-            accountId,
-            date,
-            installments,
-            installmentValue,
-            frequency,
-          },
-          creditRepo,
-          movementRepo,
-          ids,
-          accountRepo,
-          new MongoUnitOfWork(),
-        );
+        return (async () => {
+          // Founder norm (PROJECT-RULES §4): the server resolves the account by
+          // workspace and uses its PERSISTED currency — the client-sent currency
+          // is never trusted. ACC-1 inside the use case stays as a second guard.
+          const account = await accountRepo.findById(user.workspaceId!, accountId);
+          if (!account) {
+            throw new NotFoundError(`Account ${accountId} not found`);
+          }
+          return createCreditGranted(
+            user.workspaceId!,
+            {
+              counterparty,
+              principal,
+              currency: account.currency,
+              accountId,
+              context,
+              date,
+              installments,
+              installmentValue,
+              frequency,
+            },
+            creditRepo,
+            movementRepo,
+            ids,
+            accountRepo,
+            new MongoUnitOfWork(),
+          );
+        })();
       },
     );
     // R15.3.1 (P1.2): the financial mutation has COMMITTED — the idempotency

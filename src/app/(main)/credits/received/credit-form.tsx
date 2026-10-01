@@ -6,8 +6,6 @@ import { useT, useLocale } from "../../../../i18n/client";
 import { createCreditReceivedAction } from "./actions";
 import { IdempotencyField } from "../../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../../core/domain/account";
-import { CURRENCIES } from "../../../../core/domain/currency";
-import type { Currency } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
@@ -33,7 +31,13 @@ export function CreditForm({
   const router = useRouter();
   const successShownRef = useRef(false);
 
-  const [currency, setCurrency] = useState<Currency | "">("");
+  // Founder norm (PROJECT-RULES §4): the selected account decides the
+  // currency — no independent currency picker. The server action resolves
+  // the account by workspace and uses its persisted currency (it never
+  // trusts a client-sent field); ACC-1 in the use case stays as a guard.
+  const [accountId, setAccountId] = useState("");
+  const selectedAccount = accounts.find((a) => a.id === accountId);
+  const currency = selectedAccount?.currency ?? "";
   const [installments, setInstallments] = useState<number>(0);
   const [installmentValue, setInstallmentValue] = useState<number>(0);
 
@@ -68,6 +72,33 @@ export function CreditForm({
     <form action={formAction} className="space-y-4">
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />
+      {/* EXC-1 (founder 2026-09-30): the user classifies the credit as
+          Personal or Business; derived abonos inherit the classification.
+          Founder review (2026-09-30, pre-suite): contexto + fecha share one
+          compact row instead of two full-width lines. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Select
+          id="context"
+          name="context"
+          label={tCommon("context")}
+          disabled={isPending}
+          placeholder={tCommon("select")}
+          options={[
+            { value: "Personal", label: tCommon("personal") },
+            { value: "Business", label: tCommon("business") },
+          ]}
+        />
+        <Input
+          id="date"
+          name="date"
+          type="date"
+          label={t("date")}
+          required
+          disabled={isPending}
+          defaultValue={toDateInputValue()}
+          max={toDateInputValue()}
+        />
+      </div>
       <Input
         id="counterparty"
         name="counterparty"
@@ -83,48 +114,27 @@ export function CreditForm({
           name="principal"
           hint={tCommon("moneyNoSeparators")}
           type="number"
-          label={t("principal", { currency })}
+          label={currency ? t("principal", { currency }) : t("principalPlain")}
           min="1"
           required
           disabled={isPending}
         />
 
         <Select
-          id="currency"
-          name="currency"
-          label={t("currency")}
+          id="accountId"
+          name="accountId"
+          label={t("accountId")}
           required
           disabled={isPending}
-          value={currency}
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
           placeholder={tCommon("select")}
-          onChange={(e) => setCurrency(e.target.value as typeof currency)}
-          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.currency})`,
+          }))}
         />
       </div>
-
-      <Select
-        id="accountId"
-        name="accountId"
-        label={t("accountId")}
-        required
-        disabled={isPending}
-        placeholder={tCommon("select")}
-        options={accounts.map((a) => ({
-          value: a.id,
-          label: `${a.name} (${a.currency})`,
-        }))}
-      />
-
-      <Input
-        id="date"
-        name="date"
-        type="date"
-        label={t("date")}
-        required
-        disabled={isPending}
-        defaultValue={toDateInputValue()}
-        max={toDateInputValue()}
-      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input

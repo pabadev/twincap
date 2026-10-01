@@ -1,4 +1,5 @@
-import type { Currency } from '../../../domain/currency';
+import type { Currency } from "../../../domain/currency";
+import type { MovementContext } from "../../../domain/movement";
 
 export interface CreateCreditReceivedInput {
   counterparty: string;
@@ -10,6 +11,12 @@ export interface CreateCreditReceivedInput {
   /** Value per installment (R5-C). Required when installments > 0 (R5-D1). */
   installmentValue?: number; // minor units, > 0
   frequency?: string;
+  /**
+   * EXC-1 (freeze exception, founder 2026-09-30): user-selectable Personal/
+   * Business context for the derived principal movement. Default 'Personal'
+   * (legacy semantics preserved byte-to-byte); validated by the use case.
+   */
+  context?: MovementContext;
 }
 
 export interface AddAbonoInput {

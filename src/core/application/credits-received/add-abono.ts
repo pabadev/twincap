@@ -1,18 +1,23 @@
-import { CreditReceived } from '../../domain/credit-received';
-import { Movement } from '../../domain/movement';
-import { Money } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import { creditCategory } from '../../domain/synthetic-categories';
-import type { CreditReceivedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { IdGenerator, UnitOfWork } from '../ports';
-import type { AddAbonoInput } from './dto/credits-received';
+import { CreditReceived } from "../../domain/credit-received";
+import { Movement } from "../../domain/movement";
+import { Money } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import { creditCategory } from "../../domain/synthetic-categories";
+import type {
+  CreditReceivedRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { IdGenerator, UnitOfWork } from "../ports";
+import type { AddAbonoInput } from "./dto/credits-received";
 
 /**
  * Add an abono to a credit received (CRED-R-2, CRED-R-3).
  *
  * Pending = totalToPay − Σ abonos. Overpayment is rejected.
  * Produces a linked expense movement (payment from account).
- * Movement context: always 'Personal' — credit abonos are personal financing.
+ * Movement context: EXC-1 (founder 2026-09-30) — inherits the credit's
+ * principal movement context (source of truth lives on the movement).
  *
  * R15 Fase 3: the aggregate read AND the balance/currency validations that
  * derive from it run INSIDE the transaction (snapshot-consistent), and the two
@@ -53,50 +58,68 @@ export async function addAbono(
     // the tx (static reference resolved up front; matrix row 70).
     const touched = await accountRepo.touch(workspaceId, input.accountId, tx);
     if (!touched) {
-      throw new NotFoundError('Account not found');
+      throw new NotFoundError("Account not found");
     }
 
     // Re-fetch via repo — returns CreditReceived instance with pending getter.
     // The read joins the transaction session (Fase 3) so the aggregate is
     // snapshot-consistent with the writes that follow.
     const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
-    const credit = credits.find(c => c.id === creditId);
-    if (!credit) throw new NotFoundError('Credit not found');
+    const credit = credits.find((c) => c.id === creditId);
+    if (!credit) throw new NotFoundError("Credit not found");
+
+    // EXC-1 propagation: the abono movement inherits the context of the CREDIT
+    // (which lives on the credit's principal movement — link.kind
+    // creditReceivedPrincipal). Same lookup convention as edit-principal.ts
+    // (session-less cheap existence source; the write below joins the tx).
+    const ledgerMovements = await movementRepo.findByWorkspaceId(workspaceId);
+    const principalMovement = ledgerMovements.find(
+      (m) => m.link?.kind === "creditReceivedPrincipal" && m.link?.refId === creditId,
+    );
+    const movementContext = principalMovement?.context ?? "Personal";
 
     // ACC-1: the abono's currency must match the credit's principal currency.
     if (input.currency !== credit.principal.currency) {
-      throw new ValidationError(`Credit currency is ${credit.principal.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Credit currency is ${credit.principal.currency}, declared ${input.currency}`,
+      );
     }
 
     // CRED-R-2: pending = totalToPay − Σ abonos; overpayment rejected
     if (input.amount > credit.pending) {
-      throw new ConflictError('Abono exceeds pending amount');
+      throw new ConflictError("Abono exceeds pending amount");
     }
 
     const abonoId = ids.generate();
     const movementId = ids.generate();
     const now = new Date();
 
-    await creditRepo.addAbono(workspaceId, creditId, {
-      id: abonoId,
-      amount: input.amount,
-      date: input.date,
-      accountId: input.accountId,
-      movementId,
-    }, tx, credit.version);
+    await creditRepo.addAbono(
+      workspaceId,
+      creditId,
+      {
+        id: abonoId,
+        amount: input.amount,
+        date: input.date,
+        accountId: input.accountId,
+        movementId,
+      },
+      tx,
+      credit.version,
+    );
 
     // Create expense movement (abono = payment from account)
     const movement = new Movement({
       id: movementId,
       workspaceId,
       accountId: input.accountId,
-      category: creditCategory('expense'),
-      type: 'expense',
+      category: creditCategory("expense"),
+      type: "expense",
       amount: new Money(input.amount, input.currency),
       date: input.date,
       // No persisted note: display text derives at render from link.kind.
-      context: 'Personal',
-      link: { kind: 'creditReceivedAbono', refId: creditId, opId: ids.generate() },
+      context: movementContext,
+      link: { kind: "creditReceivedAbono", refId: creditId, opId: ids.generate() },
       createdAt: now,
     });
     await movementRepo.create(movement, tx);

@@ -2381,3 +2381,136 @@ describe("addAbono createdAt tiebreaker (B1)", () => {
     expect(interest.createdAt.getTime()).toBe(capital.createdAt.getTime() + 1);
   });
 });
+
+// ─── EXC-1 (freeze exception, founder 2026-09-30): selectable context ───
+describe("credit granted — selectable Personal/Business context (EXC-1)", () => {
+  it("create with context Business labels the principal movement Business", async () => {
+    const creditRepo = fakeCreditRepo({ create: vi.fn().mockResolvedValue(undefined) });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    const credit = await createCreditGranted(
+      "user-1",
+      {
+        counterparty: "Pedro",
+        principal: 100000,
+        currency: "COP",
+        accountId: "acc-1",
+        date: new Date("2026-09-01"),
+        context: "Business",
+      },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    void credit;
+    expect(movementRepo.created[0].context).toBe("Business");
+    expect(movementRepo.created[0].link?.kind).toBe("creditGrantedPrincipal");
+  });
+
+  it("create WITHOUT context keeps the legacy Personal semantics", async () => {
+    const creditRepo = fakeCreditRepo({ create: vi.fn().mockResolvedValue(undefined) });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await createCreditGranted(
+      "user-1",
+      {
+        counterparty: "Pedro",
+        principal: 100000,
+        currency: "COP",
+        accountId: "acc-1",
+        date: new Date("2026-09-01"),
+      },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Personal");
+  });
+
+  it("create rejects an unknown context string", async () => {
+    const creditRepo = fakeCreditRepo({ create: vi.fn().mockResolvedValue(undefined) });
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await expect(
+      createCreditGranted(
+        "user-1",
+        {
+          counterparty: "Pedro",
+          principal: 100000,
+          currency: "COP",
+          accountId: "acc-1",
+          date: new Date("2026-09-01"),
+          context: "enterprise" as never,
+        },
+        creditRepo,
+        movementRepo,
+        fakeIdGen(),
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("standalone abono inherits the credit's principal-movement context (Business credit → Business abono)", async () => {
+    const credit = makeCredit(); // standalone (no saleId)
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    // The credit's principal movement lives on the ledger with context Business
+    // (e.g. the user reclassified a standalone lending credit as Business).
+    const principalMovement = makeMovement({
+      id: "mv-principal",
+      link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-1" },
+      context: "Business",
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMovement]),
+    });
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await addAbono(
+      "user-1",
+      "cg-1",
+      { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Business");
+  });
+
+  it("sale-born abonos still force Business regardless of ledger fallback", async () => {
+    const credit = makeCredit({ saleId: "sale-1" });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    // Ledger without the movement would otherwise fall back to 'Personal'.
+    const movementRepo = fakeMovementRepo();
+    const accountRepo = fakeAccountRepo([makeAccount("acc-1")]);
+
+    await addAbono(
+      "user-1",
+      "cg-1",
+      { amount: 25000, currency: "COP", accountId: "acc-1", date: new Date("2025-07-01") },
+      creditRepo,
+      movementRepo,
+      fakeIdGen(),
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(movementRepo.created[0].context).toBe("Business");
+  });
+});
