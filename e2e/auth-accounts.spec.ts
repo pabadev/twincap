@@ -67,7 +67,9 @@ test.describe("Slice 1 — Auth + Accounts", () => {
 
     await page.goto("/login");
     await page.getByLabel(/^Email/i).fill(email);
-    await page.getByLabel(/^Password/i).fill("WrongPassword999!");
+    await page
+      .getByLabel(/^(create[ ]password|crear[ ]contraseña|password|contraseña)/i)
+      .fill("WrongPassword999!");
     await page.getByRole("button", { name: /Sign in/i }).click();
 
     // Auth form error div (bg-danger/10) with the credential error. The
@@ -94,7 +96,9 @@ test.describe("Slice 1 — Auth + Accounts", () => {
       await page.goto("/register");
       const email = `e2e-${Date.now()}-rl-${i + 1}@test.local`;
       await page.getByLabel(/^Email/i).fill(email);
-      await page.getByLabel(/^Password/i).fill("Password123!");
+      await page
+        .getByLabel(/^(create[ ]password|crear[ ]contraseña|password|contraseña)/i)
+        .fill("Password123!");
       await page.getByLabel(/^Confirm Password/i).fill("Password123!");
       await page.getByRole("button", { name: /Register/i }).click();
       // These 3 attempts are allowed → redirect to dashboard.
@@ -105,7 +109,9 @@ test.describe("Slice 1 — Auth + Accounts", () => {
     await page.goto("/register");
     const blockedEmail = `e2e-${Date.now()}-rl-4@test.local`;
     await page.getByLabel(/^Email/i).fill(blockedEmail);
-    await page.getByLabel(/^Password/i).fill("Password123!");
+    await page
+      .getByLabel(/^(create[ ]password|crear[ ]contraseña|password|contraseña)/i)
+      .fill("Password123!");
     await page.getByLabel(/^Confirm Password/i).fill("Password123!");
     await page.getByRole("button", { name: /Register/i }).click();
 

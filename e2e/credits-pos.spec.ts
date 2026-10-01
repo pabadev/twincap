@@ -98,7 +98,7 @@ async function createReceivedCreditInUI(
   await expect(dialog).toBeVisible();
 
   await dialog.getByLabel(/^Counterparty/).fill(counterparty);
-  await dialog.getByLabel(/^Principal/).fill(principal);
+  await dialog.getByLabel(/^(Capital|Principal)/i).fill(principal);
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
@@ -134,7 +134,7 @@ async function createGrantedCreditInUI(
   await expect(dialog).toBeVisible();
 
   await dialog.getByLabel(/^Debtor/).fill(debtor);
-  await dialog.getByLabel(/^Principal/).fill(principal);
+  await dialog.getByLabel(/^(Capital|Principal)/i).fill(principal);
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {

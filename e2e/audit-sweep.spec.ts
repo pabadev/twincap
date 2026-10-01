@@ -124,7 +124,7 @@ async function seedRichData(page: Page): Promise<void> {
   const credDialog = page.getByRole("dialog", { name: /New Credit Received/i });
   await expect(credDialog).toBeVisible();
   await credDialog.getByLabel(/^Counterparty/).fill("Banco Acme");
-  await credDialog.getByLabel(/^Principal/).fill("800000");
+  await credDialog.getByLabel(/^(Capital|Principal)/i).fill("800000");
   await credDialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await credDialog.getByLabel(/^Date/).fill(todayInputValue());
   await credDialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
