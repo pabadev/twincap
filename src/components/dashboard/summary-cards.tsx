@@ -38,9 +38,13 @@ function MoneyValue({
   className?: string;
 }) {
   const parts = formatAmountParts(amount, currency, locale);
+  // A sign passed by the caller (modifier like +/−) is a PRESENTATION
+  // modifier: with a zero amount it would mint "−0 COP", so it is suppressed
+  // — zero is neither income nor expense.
+  const effectiveSign = amount === 0 ? "" : sign;
   return (
     <span className={className}>
-      {sign}
+      {effectiveSign}
       {parts.sign}
       {parts.suffixFirst ? (
         <>

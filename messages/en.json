@@ -144,7 +144,7 @@
     "periodCashFlowYear": "Period cash flow",
     "prevPeriodMonthRef": "previous month",
     "prevPeriodYearRef": "previous year",
-    "prevComparePct": "{sign} {pct}% vs {ref}",
+    "prevComparePct": "{pct}% vs {ref}",
     "prevCompareNoRef": "No comparable reference",
     "prevCompareFull": "{currency} {metric} {pct}% {sign} vs the {ref}",
     "prevCompareMore": "more",

@@ -144,7 +144,7 @@
     "periodCashFlowYear": "Flujo de caja del período",
     "prevPeriodMonthRef": "mes anterior",
     "prevPeriodYearRef": "año anterior",
-    "prevComparePct": "{sign} {pct}% vs {ref}",
+    "prevComparePct": "{pct}% vs {ref}",
     "prevCompareNoRef": "Sin referencia comparable",
     "prevCompareFull": "{metric} de {currency} {sign} {pct}% vs el {ref}",
     "prevCompareMore": "más",
