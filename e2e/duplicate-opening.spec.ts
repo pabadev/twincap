@@ -145,7 +145,14 @@ test.describe("R15.3 §11 — Opening duplicado", () => {
     const loserDialog = winnerKey === "a" ? dialogB : dialogA;
 
     // The loser's dialog stays open so the user can retry with another value.
-    await expect(loserDialog).toBeVisible();
+    // Remount flicker tolerance: after the winner's refresh the (main) tree
+    // unmounts/rebuilds, so the loser dialog can be ABSENT for a poll instant
+    // and re-appear (count 0 → visible again). Retry the visibility assert —
+    // a dialog that truly closed never comes back and toPass times out
+    // honestly.
+    await expect(async () => {
+      await expect(loserDialog).toBeVisible();
+    }).toPass({ timeout: 30_000 });
 
     // DB-level (ACC-2 §4 backstop): exactly ONE opening movement exists.
     await connectE2eDb();
