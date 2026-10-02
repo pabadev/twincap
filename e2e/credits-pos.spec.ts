@@ -185,16 +185,20 @@ async function submitAbonoInUI(
   // router.refresh() after the abono re-renders the list — with sidebar
   // prefetch disabled the (main) tree remounts, so stale locators must be
   // re-resolved against the fresh DOM before further interaction.
-  amountInput = creditCard.getByLabel(/^Amount/);
-  // The toggle label is "Cancel" while the form is open (auto-waits if it is
-  // disabled during the in-flight submission). After the LAST abono the row
-  // unmounts entirely (pending <= 0), so the click is conditional; closing
-  // here guarantees the next call mounts a new form (fresh idempotency key).
-  const cancelButton = creditCard.getByRole("button", { name: /^Cancel$/ });
-  if ((await cancelButton.count()) > 0) {
-    await cancelButton.click();
-  }
-  await expect(amountInput).toBeHidden();
+  // Post-refresh remount race (CI, deterministic when timing shifts): a
+  // Cancel click fired while the (main) tree is being replaced is swallowed
+  // (click lands on a replaced node, the form stays open). Self-correcting
+  // retry: re-click the CURRENT toggle and assert closure in the same pass —
+  // when the credit became fully paid the row unmounts instead (count → 0)
+  // and the assertion passes on the re-resolved (absent) input.
+  await expect(async () => {
+    const amountInput = creditCard.getByLabel(/^Amount/);
+    const cancelButton = creditCard.getByRole("button", { name: /^Cancel$/ });
+    if ((await cancelButton.count()) > 0) {
+      await cancelButton.click();
+    }
+    await expect(amountInput).toBeHidden();
+  }).toPass({ timeout: 20_000 });
 }
 
 /**
