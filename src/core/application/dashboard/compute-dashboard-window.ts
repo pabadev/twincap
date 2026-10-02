@@ -1,11 +1,15 @@
 /**
  * Pure helper that computes the date window [from, to) for the dashboard
  * snapshot query. The window is the UNION of:
- *   - the current civil year (Jan 1 → next Jan 1), and
- *   - a 6-month sliding window (month-5 → next month after current).
+ *   - the current civil year (Jan 1 → next Jan 1),
+ *   - a 6-month sliding window (month-5 → next month after current), and
+ *   - the PREVIOUS civil year (Jan 1 of year−1 → same Jan 1) — the mandate
+ *     §5.1/§6 requires year-over-year comparison, so the read window must
+ *     cover the comparable basis.
  *
- * `from` = min(yearStart, sixMonthsStart), `to` = exclusive start of the
- * next civil month. Movements at exactly `to` are excluded ($lt).
+ * `from` = the most permissive of the three (always Jan 1 of the previous
+ civil year), `to` = exclusive start of the next civil month. Movements at
+ * exactly `to` are excluded ($lt).
  *
  * Pure: no I/O, deterministic for given inputs.
  */
@@ -35,8 +39,10 @@ export function computeDashboardWindow(now: Date, tzOffsetMinutes = 0): Dashboar
   const yearStart = Date.UTC(year, 0, 1);
   // Date.UTC handles negative months across year boundaries.
   const sixMonthsStart = Date.UTC(year, month - 5, 1);
+  // §6/§5.1: previous civil year (comparable basis for period === "year").
+  const prevYearStart = Date.UTC(year - 1, 0, 1);
 
-  const from = new Date(Math.min(yearStart, sixMonthsStart));
+  const from = new Date(Math.min(yearStart, sixMonthsStart, prevYearStart));
   // Exclusive: start of the next civil month.
   const to = new Date(Date.UTC(year, month + 1, 1));
 

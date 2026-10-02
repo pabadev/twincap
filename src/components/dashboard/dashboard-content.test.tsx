@@ -35,6 +35,10 @@ const mockSnapshot: DashboardSnapshot = {
   dataAsOf: "2026-09-16",
   attentionTotals: [],
   overduePayables: [],
+  period: "month",
+  periodComparison: [],
+  negativeBalanceAlerts: [],
+  atypicalExpenseAlert: null,
 };
 
 vi.mock("../../app/(main)/dashboard/actions", () => ({

@@ -149,6 +149,7 @@ export function DashboardContent({
     // flash, no double refetch. The next hard reload/navigation reads the
     // params in page.tsx.
     const params = new URLSearchParams();
+    if (next.period === "year") params.set("periodo", next.period);
     if (next.scope !== "all") params.set("scope", next.scope);
     if (next.accountId !== "all") params.set("cuenta", next.accountId);
     if (next.categoryId !== "all") params.set("categoria", next.categoryId);
@@ -186,6 +187,11 @@ export function DashboardContent({
     monthlyData,
     yearlyData,
     recentMovements,
+    // §5.1/§6 (pre-beta round): period granularity + comparison + alerts.
+    period,
+    periodComparison,
+    negativeBalanceAlerts,
+    atypicalExpenseAlert,
   } = snapshot;
 
   // A11: the cross-currency `totalBalance` reduce is GONE — SummaryCards now
@@ -201,9 +207,12 @@ export function DashboardContent({
   // N1 hero: period result per currency — each currency with economic
   // movement that month carries its own line; never summed cross-currency
   // (beta round 3). Available balances per currency likewise (R15.3.1 P1.3).
+  // §5.1: merged previous-period result per currency (server-computed, may
+  // be absent for a currency that had no data in either period).
   const heroResults = currencyBreakdown.map((c) => ({
     currency: c.currency,
     result: c.result,
+    prevResult: periodComparison?.find((r) => r.currency === c.currency)?.prevResult,
   }));
   const availableByCurrency = currencyBreakdown.map((c) => ({
     currency: c.currency,
@@ -229,6 +238,7 @@ export function DashboardContent({
   const greeting = userName ? t("welcomeUser", { name: userName }) : userLabel;
 
   const activeFilterCount =
+    (filters.period === "year" ? 1 : 0) +
     (filters.scope !== "all" ? 1 : 0) +
     (filters.accountId !== "all" ? 1 : 0) +
     (filters.categoryId !== "all" ? 1 : 0);
@@ -316,6 +326,7 @@ export function DashboardContent({
         available={availableByCurrency}
         dataAsOf={snapshot.dataAsOf}
         locale={locale}
+        period={period}
       />
 
       {/* ── N2 DESGLOSE ──────────────────────────────────────────── */}
@@ -323,6 +334,8 @@ export function DashboardContent({
         currency={currency}
         monthlyIncome={monthlyIncome}
         monthlyExpenses={monthlyExpenses}
+        period={period}
+        periodComparison={periodComparison}
         financingInflow={financingInflow}
         financingOutflow={financingOutflow}
         financingBreakdown={snapshot.financingBreakdown}
@@ -515,6 +528,8 @@ export function DashboardContent({
       <SummaryAttention
         attentionTotals={snapshot.attentionTotals}
         overduePayables={snapshot.overduePayables}
+        negativeBalanceAlerts={negativeBalanceAlerts}
+        atypicalExpenseAlert={atypicalExpenseAlert}
         locale={locale}
       />
 

@@ -49,7 +49,10 @@ function filtersFromSearchParams(
     typeof params.categoria === "string" && categories.some((c) => c.id === params.categoria)
       ? params.categoria
       : "all";
-  return { scope, accountId, categoryId };
+  // §6 (pre-beta): period granularity travels with the filters; anything but
+  // "year" falls back to the baseline (no optionless select from stale URLs).
+  const period = params.periodo === "year" ? "year" : "month";
+  return { scope, accountId, categoryId, period };
 }
 
 export default async function DashboardPage({

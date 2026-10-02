@@ -2,36 +2,32 @@ import { describe, expect, it } from "vitest";
 import { computeDashboardWindow } from "./compute-dashboard-window";
 
 describe("computeDashboardWindow", () => {
-  it("mid-year (Jul 15): yearStart wins — from Jan 1, to Aug 1", () => {
+  it("mid-year (Jul 15): from covers the previous civil year — Jan 1 2025, to Aug 1", () => {
     const now = new Date("2026-07-15T12:00:00Z");
     const { from, to } = computeDashboardWindow(now);
-    // yearStart = 2026-01-01, sixMonthsStart = Date.UTC(2026, 1, 1) = 2026-02-01
-    expect(from.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+    // prevYearStart (§6/§5.1) = 2025-01-01 — always the most permissive bound.
+    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
     expect(to.toISOString()).toBe("2026-08-01T00:00:00.000Z");
   });
 
-  it("early year (Feb 15): sixMonthsStart (2025-09) wins over yearStart", () => {
+  it("early year (Feb 15): prevYearStart (2025-01-01) wins", () => {
     const now = new Date("2026-02-15T12:00:00Z");
     const { from, to } = computeDashboardWindow(now);
-    // yearStart = 2026-01-01, sixMonthsStart = Date.UTC(2026, -4, 1) = 2025-09-01
-    expect(from.toISOString()).toBe("2025-09-01T00:00:00.000Z");
+    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
     expect(to.toISOString()).toBe("2026-03-01T00:00:00.000Z");
   });
 
-  it("late year (Nov 20): yearStart is earlier — the union window starts on Jan 1", () => {
+  it("late year (Nov 20): from = Jan 1 2025", () => {
     const now = new Date("2026-11-20T12:00:00Z");
     const { from, to } = computeDashboardWindow(now);
-    // yearStart = 2026-01-01, sixMonthsStart = Date.UTC(2026, 5, 1) = 2026-06-01
-    // min(2026-01-01, 2026-06-01) = 2026-01-01 (yearStart wins)
-    expect(from.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
     expect(to.toISOString()).toBe("2026-12-01T00:00:00.000Z");
   });
 
-  it("January (10): sixMonthsStart (2025-08) wins over yearStart", () => {
+  it("January (10): yearStart is already the prev civil year — from Jan 1 2025", () => {
     const now = new Date("2026-01-10T12:00:00Z");
     const { from, to } = computeDashboardWindow(now);
-    // yearStart = 2026-01-01, sixMonthsStart = Date.UTC(2026, -5, 1) = 2025-08-01
-    expect(from.toISOString()).toBe("2025-08-01T00:00:00.000Z");
+    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
     expect(to.toISOString()).toBe("2026-02-01T00:00:00.000Z");
   });
 
@@ -40,8 +36,8 @@ describe("computeDashboardWindow", () => {
     // civilNow = 2026-03-01T01:00Z - 180min = 2026-02-28T22:00Z → civil month = Feb.
     const now = new Date("2026-03-01T01:00:00Z");
     const { from, to } = computeDashboardWindow(now, 180);
-    // yearStart = 2026-01-01, sixMonthsStart = Date.UTC(2026, -4, 1) = 2025-09-01
-    expect(from.toISOString()).toBe("2025-09-01T00:00:00.000Z");
+    // civil year = 2026 → prevYearStart = 2025-01-01
+    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
     // exclusive start of civil March = 2026-03-01Z
     expect(to.toISOString()).toBe("2026-03-01T00:00:00.000Z");
   });
@@ -50,8 +46,8 @@ describe("computeDashboardWindow", () => {
     // civilNow = 2026-01-01T01:00Z - 180min = 2025-12-31T22:00Z → civil year = 2025.
     const now = new Date("2026-01-01T01:00:00Z");
     const { from, to } = computeDashboardWindow(now, 180);
-    // yearStart = 2025-01-01, sixMonthsStart = Date.UTC(2025, 6, 1) = 2025-07-01
-    expect(from.toISOString()).toBe("2025-01-01T00:00:00.000Z");
+    // civil year = 2025 → prevYearStart = 2024-01-01
+    expect(from.toISOString()).toBe("2024-01-01T00:00:00.000Z");
     // exclusive start of civil Jan 2026 = 2026-01-01Z
     expect(to.toISOString()).toBe("2026-01-01T00:00:00.000Z");
   });

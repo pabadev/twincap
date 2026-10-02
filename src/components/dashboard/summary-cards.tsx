@@ -10,7 +10,11 @@ import type {
   ContextSummary,
   ContextCurrencySummary,
 } from "../../core/application/compute-context-summary";
-import type { FinancingTotals } from "../../core/application/dashboard/dashboard-types";
+import type {
+  FinancingTotals,
+  DashboardPeriod,
+  PeriodComparisonRow,
+} from "../../core/application/dashboard/dashboard-types";
 // R14-K §14c: the breakdown type lives in core; re-exported here so the
 // presentation layer keeps its stable import path.
 import type { CurrencyBreakdown } from "../../core/application/dashboard/dashboard-types";
@@ -71,6 +75,74 @@ interface SummaryCardsProps {
   currencyBreakdown?: CurrencyBreakdown[];
   /** Personal/Business split (A6) — rendered below the total cards when present. */
   contextSummary?: ContextSummary;
+  /** §6: period granularity (pre-beta). Defaults to "month" (baseline). */
+  period?: "month" | "year";
+  /** §5.1: per-currency current-vs-previous comparison (server-computed). */
+  periodComparison?: PeriodComparisonRow[];
+}
+
+/**
+ * §5.1 (pre-beta): compact per-currency delta line under the Ingresos/Gastos
+ * cards. Each segment compares its currency with ITSELF (never cross-summed):
+ * `▲/▼ 12%` vs the previous period of the same duration; when the previous
+ * period has no comparable base the segment shows the absolute delta
+ * formatted instead of a percentage. The glyph is aria-hidden and a
+ * visually-hidden sentence carries the full meaning (accessible + safe).
+ */
+function PeriodDeltaSegments({
+  rows,
+  field,
+  period,
+  locale,
+}: {
+  rows: PeriodComparisonRow[];
+  field: "income" | "expenses";
+  period: "month" | "year";
+  locale: string;
+}) {
+  const t = useT("Dashboard");
+  const ref = period === "month" ? t("prevPeriodMonthRef") : t("prevPeriodYearRef");
+  const segments = rows
+    .filter((r) => r[field] !== 0 || (field === "income" ? r.prevIncome : r.prevExpenses) !== 0)
+    .sort((a, b) =>
+      a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
+    );
+
+  if (segments.length === 0) return null;
+
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+      {segments.map((row) => {
+        const delta = field === "income" ? row.incomeDelta : row.expenseDelta;
+        const pct = field === "income" ? row.incomePct : row.expensePct;
+        const deltaText = formatAmount(Math.abs(delta), row.currency, locale);
+        const fullSentence =
+          pct !== null
+            ? t("prevCompareFull", {
+                pct: String(Math.round(Math.abs(pct) * 100)),
+                sign: delta >= 0 ? t("prevCompareMore") : t("prevCompareLess"),
+                metric: field === "income" ? t("income") : t("expenses"),
+                currency: row.currency,
+                ref,
+              })
+            : t("prevCompareNoRefFull", {
+                metric: field === "income" ? t("income") : t("expenses"),
+                currency: row.currency,
+                ref,
+              });
+        return (
+          <span key={row.currency} className="whitespace-nowrap">
+            <span aria-hidden="true">
+              {pct !== null
+                ? `${delta > 0 ? "▲" : delta < 0 ? "▼" : "•"} ${Math.round(Math.abs(pct) * 100)}%`
+                : `～ ${(delta >= 0 ? "+" : "−") + deltaText}`}
+            </span>
+            <span className="sr-only">{fullSentence}</span>
+          </span>
+        );
+      })}
+    </p>
+  );
 }
 
 function MultiCurrencyValue({
@@ -254,9 +326,12 @@ export function SummaryCards({
   locale,
   currencyBreakdown,
   contextSummary,
+  period: periodProp,
+  periodComparison,
 }: SummaryCardsProps) {
   const t = useT("Dashboard");
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
+  const period: DashboardPeriod = periodProp ?? "month";
   // A11: the cross-currency `totalBalance` sum is gone. In mono-currency mode
   // the single currency's balance IS the total (the sum of every account
   // balance, all in that currency); multi-currency renders the per-currency
@@ -275,7 +350,7 @@ export function SummaryCards({
             </div>
             <div className="min-w-0 flex flex-col justify-center sm:justify-start">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
-                {t("incomeThisMonth")}
+                {period === "month" ? t("incomeThisMonth") : t("incomeThisPeriodYear")}
               </p>
               {multi ? (
                 <MultiCurrencyValue
@@ -290,6 +365,14 @@ export function SummaryCards({
                   <MoneyValue amount={monthlyIncome} currency={currency} locale={locale} sign="+" />
                 </p>
               )}
+              {periodComparison && (
+                <PeriodDeltaSegments
+                  rows={periodComparison}
+                  field="income"
+                  period={period}
+                  locale={locale}
+                />
+              )}
             </div>
           </div>
         </Card>
@@ -301,7 +384,7 @@ export function SummaryCards({
             </div>
             <div className="min-w-0 flex flex-col justify-center sm:justify-start">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
-                {t("expensesThisMonth")}
+                {period === "month" ? t("expensesThisMonth") : t("expensesThisPeriodYear")}
               </p>
               {multi ? (
                 <MultiCurrencyValue
@@ -320,6 +403,14 @@ export function SummaryCards({
                     sign="−"
                   />
                 </p>
+              )}
+              {periodComparison && (
+                <PeriodDeltaSegments
+                  rows={periodComparison}
+                  field="expenses"
+                  period={period}
+                  locale={locale}
+                />
               )}
             </div>
           </div>
@@ -357,7 +448,7 @@ export function SummaryCards({
             </div>
             <div className="min-h-[3.5rem] min-w-0 flex flex-col justify-center sm:justify-start gap-0.5">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
-                {t("financingThisMonth")}
+                {period === "month" ? t("financingThisMonth") : t("financingThisPeriodYear")}
               </p>
               {financingBreakdown && financingBreakdown.length > 1 ? (
                 <FinancingCurrencyRows

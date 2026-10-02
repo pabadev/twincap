@@ -1,13 +1,11 @@
 import type { Movement } from "../domain/movement";
 import { sumSafeMinorUnits } from "../domain/money";
-import {
-  countsTowardEconomicResult,
-  FINANCING_CAPITAL_LINK_KINDS,
-} from "./economic-result";
+import { countsTowardEconomicResult, FINANCING_CAPITAL_LINK_KINDS } from "./economic-result";
+import { dashboardPeriodKeyOf, type DashboardPeriod } from "./dashboard/dashboard-period";
 
 /** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
 function utcMonthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 export interface MonthBucket {
@@ -65,13 +63,18 @@ export function computeDashboardSummary(input: {
    * the current-period keys. Default 0 = UTC (server clock).
    */
   tzOffsetMinutes?: number;
+  /**
+   * §6: period granularity of the headline totals + financing flows.
+   * Default "month" (baseline unchanged); "year" scopes them to the current
+   * civil year. The 6-month chart series is unaffected.
+   */
+  period?: DashboardPeriod;
 }): DashboardMonthlySummary {
   const { movements, currency } = input;
   const now = input.now ?? new Date();
-  const civilNow = new Date(
-    now.getTime() - (input.tzOffsetMinutes ?? 0) * 60_000,
-  );
-  const currentKey = utcMonthKey(civilNow);
+  const civilNow = new Date(now.getTime() - (input.tzOffsetMinutes ?? 0) * 60_000);
+  const period = input.period ?? "month";
+  const currentKey = dashboardPeriodKeyOf(period, civilNow);
 
   let monthlyIncome = 0;
   let monthlyExpenses = 0;
@@ -80,22 +83,25 @@ export function computeDashboardSummary(input: {
   const monthlyMap = new Map<string, { income: number; expenses: number }>();
 
   for (const m of movements) {
-    const financingCapital =
-      m.link !== undefined && FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind);
+    const financingCapital = m.link !== undefined && FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind);
 
-    if (m.amount.currency === currency && financingCapital && utcMonthKey(m.date) === currentKey) {
-      if (m.type === 'income') {
+    if (
+      m.amount.currency === currency &&
+      financingCapital &&
+      dashboardPeriodKeyOf(period, m.date) === currentKey
+    ) {
+      if (m.type === "income") {
         // R15.3.1 P1.3: guarded sums — every monetary aggregation is
         // bound-checked, including the financing flows that the cards do NOT
         // show (they feed the economic-result gap diagnostics).
         financingInflow = sumSafeMinorUnits(
           [financingInflow, m.amount.amount],
-          'Dashboard monthly financing inflow',
+          "Dashboard monthly financing inflow",
         );
       } else {
         financingOutflow = sumSafeMinorUnits(
           [financingOutflow, m.amount.amount],
-          'Dashboard monthly financing outflow',
+          "Dashboard monthly financing outflow",
         );
       }
     }
@@ -105,30 +111,30 @@ export function computeDashboardSummary(input: {
 
     const key = utcMonthKey(m.date);
 
-    if (key === currentKey) {
-      if (m.type === 'income') {
+    if (dashboardPeriodKeyOf(period, m.date) === currentKey) {
+      if (m.type === "income") {
         monthlyIncome = sumSafeMinorUnits(
           [monthlyIncome, m.amount.amount],
-          'Dashboard monthly income',
+          "Dashboard monthly income",
         );
       } else {
         monthlyExpenses = sumSafeMinorUnits(
           [monthlyExpenses, m.amount.amount],
-          'Dashboard monthly expenses',
+          "Dashboard monthly expenses",
         );
       }
     }
 
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
-    if (m.type === 'income') {
+    if (m.type === "income") {
       bucket.income = sumSafeMinorUnits(
         [bucket.income, m.amount.amount],
-        'Dashboard monthly income',
+        "Dashboard monthly income",
       );
     } else {
       bucket.expenses = sumSafeMinorUnits(
         [bucket.expenses, m.amount.amount],
-        'Dashboard monthly expenses',
+        "Dashboard monthly expenses",
       );
     }
     monthlyMap.set(key, bucket);
@@ -136,9 +142,7 @@ export function computeDashboardSummary(input: {
 
   const months: MonthBucket[] = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(
-      Date.UTC(civilNow.getUTCFullYear(), civilNow.getUTCMonth() - i, 1),
-    );
+    const d = new Date(Date.UTC(civilNow.getUTCFullYear(), civilNow.getUTCMonth() - i, 1));
     const key = utcMonthKey(d);
     const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
     months.push({ month: key, ...bucket });

@@ -874,3 +874,104 @@ describe("buildDashboardSnapshot — N4 attention (UX-5)", () => {
     expect(snapshot.overduePayables.map((p) => p.id)).toEqual(["pay-4", "pay-3", "pay-2"]);
   });
 });
+
+describe("buildDashboardSnapshot — §5.1/§6/§7 (pre-beta round)", () => {
+  it("period defaults to month: snapshot carries period month + empty comparison", () => {
+    const snapshot = buildDashboardSnapshot(buildInput([]));
+    expect(snapshot.period).toBe("month");
+    expect(snapshot.periodComparison).toEqual([]);
+    expect(snapshot.negativeBalanceAlerts).toEqual([]);
+    expect(snapshot.atypicalExpenseAlert).toBeNull();
+  });
+
+  it("month comparison: current vs previous civil month, per currency", () => {
+    const snapshot = buildDashboardSnapshot(
+      buildInput([
+        movement({ type: "income", amount: 100_000 }),
+        movement({ type: "expense", amount: 40_000 }),
+        movement({ type: "income", amount: 80_000, date: inLastMonth() }),
+        movement({ type: "expense", amount: 60_000, date: inLastMonth() }),
+        // Older than the previous month → never enters the comparison.
+        movement({
+          type: "income",
+          amount: 999_999,
+          date: new Date(Date.UTC(nowYear, nowMonth - 2, 10, 12)),
+        }),
+      ]),
+    );
+    const cop = snapshot.periodComparison.find((r) => r.currency === "COP");
+    expect(cop).toBeDefined();
+    expect(cop!.income).toBe(100_000);
+    expect(cop!.prevIncome).toBe(80_000);
+    expect(cop!.prevExpenses).toBe(60_000);
+    expect(cop!.resultPct).not.toBeNull();
+  });
+
+  it("year period: cards + comparison aggregate the whole civil year vs previous year", () => {
+    const earlyThisYear = new Date(Date.UTC(nowYear, 1, 10, 12)); // Feb, always ≠ current month
+    const lastYear = new Date(Date.UTC(nowYear - 1, 5, 10, 12));
+    const snapshot = buildDashboardSnapshot(
+      buildInput(
+        [
+          movement({ type: "income", amount: 10_000, date: earlyThisYear }),
+          movement({ type: "expense", amount: 3_000 }),
+          movement({ type: "income", amount: 90_000, date: lastYear }),
+        ],
+        { scope: "all", accountId: "all", categoryId: "all", period: "year" },
+      ),
+    );
+    expect(snapshot.period).toBe("year");
+    // Cards = period income/expenses in the aggregation currency.
+    expect(snapshot.monthlyIncome).toBe(10_000);
+    expect(snapshot.monthlyExpenses).toBe(3_000);
+    const cop = snapshot.periodComparison.find((r) => r.currency === "COP");
+    expect(cop!.income).toBe(10_000);
+    expect(cop!.prevIncome).toBe(90_000);
+  });
+
+  it("negative-balance alert: account with balance < 0, period-free", () => {
+    const accountsWithNegative = [accounts[0], { ...accounts[1], balance: -500 }];
+    const snapshot = buildDashboardSnapshot({
+      ...buildInput([]),
+      accounts: accountsWithNegative,
+    });
+    expect(snapshot.negativeBalanceAlerts).toEqual([
+      { accountName: "Ahorros", currency: "USD", balance: -500 },
+    ]);
+  });
+
+  it("atypical expense: only with ≥ 3 reference months and current > 1.5× reference", () => {
+    // Three of the five previous months carry high expenses, two are zero.
+    const pastHigh = (back: number, amount: number) =>
+      new Date(Date.UTC(nowYear, nowMonth - back, 10, 12));
+    const movements = [
+      movement({ type: "expense", amount: 10_000, date: pastHigh(5, 10_000) }),
+      movement({ type: "expense", amount: 10_000, date: pastHigh(4, 10_000) }),
+      movement({ type: "expense", amount: 10_000, date: pastHigh(3, 10_000) }),
+      // Current month: 30_000 > mean(30_000 / 5 = 6_000) × 1.5 → alert.
+      movement({ type: "expense", amount: 30_000 }),
+    ];
+    const snapshot = buildDashboardSnapshot(buildInput(movements));
+    expect(snapshot.atypicalExpenseAlert).toEqual({
+      currency: "COP",
+      current: 30_000,
+      reference: 6_000,
+      monthsWithData: 3,
+      ratio: 5,
+    });
+  });
+
+  it("atypical expense: no alert when the reference data is insufficient", () => {
+    const movements = [
+      movement({
+        type: "expense",
+        amount: 10_000,
+        date: new Date(Date.UTC(nowYear, nowMonth - 5, 10, 12)),
+      }),
+      // current month blows up, but only ONE previous month has data.
+      movement({ type: "expense", amount: 100_000 }),
+    ];
+    const snapshot = buildDashboardSnapshot(buildInput(movements));
+    expect(snapshot.atypicalExpenseAlert).toBeNull();
+  });
+});

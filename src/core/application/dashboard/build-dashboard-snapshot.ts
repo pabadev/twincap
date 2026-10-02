@@ -14,11 +14,12 @@ import { computeYearlyEvolution } from "../compute-yearly-evolution";
 import { computeContextSummary } from "../compute-context-summary";
 import { countsTowardEconomicResult, FINANCING_CAPITAL_LINK_KINDS } from "../economic-result";
 import { sumSafeMinorUnits } from "../../domain/money";
-
-/** UTC year-month key of a date — business dates are midnight-UTC civil dates (D1). */
-function utcMonthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
+import {
+  dashboardPeriodKeyOf,
+  resolveDashboardPeriod,
+  type DashboardPeriod,
+} from "./dashboard-period";
+import { computePeriodComparison } from "./compute-period-comparison";
 
 /**
  * Inputs for building the aggregate dashboard snapshot.
@@ -113,13 +114,22 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     filteredMovements = filteredMovements.filter((m) => m.categoryId === filters.categoryId);
   }
 
-  // N2: clip the scope/account/category-filtered set to the current civil
-  // month for every current-month component. Same civil-date semantics as
-  // `filterMovementsByPeriod('current_month', civilNow)` in
-  // movement-period-filter.ts (Date.UTC keys + tzOffsetMinutes shift) — the
-  // movements page keeps its own period/range filters untouched.
-  const currentMonthKey = utcMonthKey(civilNow);
-  const monthlyMovements = filteredMovements.filter((m) => utcMonthKey(m.date) === currentMonthKey);
+  // N2: clip the scope/account/category-filtered set to the CURRENT PERIOD
+  // for every period-scoped component. The granularity comes from the §6
+  // selector (filters.period, default "month" — historical baseline). Same
+  // civil-date semantics as `filterMovementsByPeriod('current_month',
+  // civilNow)` in movement-period-filter.ts (Date.UTC keys +
+  // tzOffsetMinutes shift) — the movements page keeps its own period/range
+  // filters untouched.
+  const period: DashboardPeriod = filters.period ?? "month";
+  const { current: currentPeriodKey } = resolveDashboardPeriod(period, civilNow);
+  const currentPeriodMetrics = filteredMovements.filter(
+    (m) => dashboardPeriodKeyOf(period, m.date) === currentPeriodKey,
+  );
+  // Historical name kept for the period-scoped consumer set (cards,
+  // financing, categories, recent movements, context summary): the docs
+  // above ("N2 … current civil month") hold for the month baseline.
+  const monthlyMovements = currentPeriodMetrics;
 
   // Account balances — narrowed to the selected account when applicable.
   const accountBalances =
@@ -225,6 +235,7 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     movements: filteredMovements,
     currency,
     now: civilNow,
+    period,
   });
 
   // beta round 3: per-currency financing breakdown of the CURRENT month —
@@ -387,6 +398,55 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     .sort((a, b) => b.daysOverdue - a.daysOverdue)
     .slice(0, 3);
 
+  // §5.1: per-currency current-vs-previous period comparison over the FULL
+  // filtered set (both periods must be inside the read window — the caller
+  // already widened it to cover the previous civil year). Pure aggregator;
+  // the client never recomputes financial figures.
+  const periodComparison = computePeriodComparison({
+    movements: filteredMovements,
+    period,
+    civilNow,
+  });
+
+  // §7.1: negative-balance alerts — derived presentation data from the
+  // snapshot balances (independent of the selected period). Informativo
+  // (no blocking — mandate §7.1; negative balances are legal states).
+  const negativeBalanceAlerts = accountBalances
+    .filter((a) => a.balance < 0)
+    .map((a) => ({ accountName: a.name, currency: a.currency, balance: a.balance }));
+
+  // §7.2: atypical expense — ONLY in month mode and only for the aggregation
+  // currency. Reference = mean expenses of the 5 previous complete months;
+  // requires ≥ 3 of those months to carry expense data; alerts when
+  // current > reference × 1.5. With insufficient data → null (no misleading
+  // alert — mandate §7.2). Year mode → null (documented limitation: months
+  // inside a year are not a comparable expense reference at beta scale).
+  let atypicalExpenseAlert: DashboardSnapshot["atypicalExpenseAlert"] = null;
+  if (period === "month") {
+    const referenceMonths = monthlyData.filter((b) => b.month !== currentPeriodKey).slice(-5);
+    const meanCanUse = referenceMonths.filter((b) => b.expenses > 0);
+    if (meanCanUse.length >= 3) {
+      const referenceSum = sumSafeMinorUnits(
+        meanCanUse.map((b) => b.expenses),
+        "Dashboard atypical expense reference sum",
+      );
+      const reference = Math.round(referenceSum / referenceMonths.length);
+      if (reference > 0) {
+        const currentExpenses = monthlyExpenses;
+        const ratio = currentExpenses / reference;
+        if (currentExpenses > reference * 1.5) {
+          atypicalExpenseAlert = {
+            currency,
+            current: currentExpenses,
+            reference,
+            monthsWithData: meanCanUse.length,
+            ratio,
+          };
+        }
+      }
+    }
+  }
+
   return {
     filters,
     currency,
@@ -410,5 +470,9 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     contextSummary,
     chartCurrencies,
     chartDataByCurrency,
+    period,
+    periodComparison,
+    negativeBalanceAlerts,
+    atypicalExpenseAlert,
   };
 }

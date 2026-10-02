@@ -9,10 +9,12 @@ import { X } from "lucide-react";
 import type {
   DashboardFilters,
   ScopeFilter,
+  DashboardPeriod,
 } from "../../core/application/dashboard/dashboard-types";
 export type {
   DashboardFilters,
   ScopeFilter,
+  DashboardPeriod,
 } from "../../core/application/dashboard/dashboard-types";
 
 interface FilterOption {
@@ -36,7 +38,10 @@ export function DashboardFilterBar({
   const t = useT("Dashboard");
 
   const hasActiveFilters =
-    filters.scope !== "all" || filters.accountId !== "all" || filters.categoryId !== "all";
+    filters.scope !== "all" ||
+    filters.accountId !== "all" ||
+    filters.categoryId !== "all" ||
+    (filters.period ?? "month") !== "month";
 
   function updateFilter<K extends keyof DashboardFilters>(key: K, value: DashboardFilters[K]) {
     onFiltersChange({ ...filters, [key]: value });
@@ -47,12 +52,22 @@ export function DashboardFilterBar({
       scope: "all",
       accountId: "all",
       categoryId: "all",
+      period: "month",
     });
   }
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Select
+          label={t("periodLabel")}
+          value={filters.period ?? "month"}
+          onChange={(e) => updateFilter("period", e.target.value as DashboardPeriod)}
+          options={[
+            { value: "month", label: t("periodMonth") },
+            { value: "year", label: t("periodYear") },
+          ]}
+        />
         <Select
           label={t("filterScope")}
           value={filters.scope}
@@ -78,7 +93,19 @@ export function DashboardFilterBar({
       </div>
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filterScope")}:</span>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("periodLabel")}:</span>
+          {filters.period === "year" && (
+            <Badge variant="info">
+              {t("periodYear")}
+              <button
+                onClick={() => updateFilter("period", "month")}
+                className="ml-1 inline-flex items-center"
+                aria-label={t("removeFilter")}
+              >
+                <X size={12} />
+              </button>
+            </Badge>
+          )}
           {filters.scope !== "all" && (
             <Badge variant="info">
               {filters.scope === "Personal" ? t("filterScopePersonal") : t("filterScopeBusiness")}

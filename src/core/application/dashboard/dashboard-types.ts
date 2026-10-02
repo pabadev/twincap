@@ -12,6 +12,10 @@ import type { MonthBucket } from "../compute-dashboard-summary";
 import type { YearMonthBucket } from "../compute-yearly-evolution";
 import type { ContextSummary } from "../compute-context-summary";
 import type { CurrencyTotal } from "../compute-category-summary";
+import type { DashboardPeriod } from "./dashboard-period";
+import type { PeriodComparisonRow } from "./compute-period-comparison";
+
+export type { DashboardPeriod, PeriodComparisonRow };
 
 /** Dashboard scope filter: all movements or a single context. */
 export type ScopeFilter = "all" | "Personal" | "Business";
@@ -20,6 +24,11 @@ export interface DashboardFilters {
   scope: ScopeFilter;
   accountId: string;
   categoryId: string;
+  /**
+   * §6 period granularity of the headline numbers (mandate pre-beta).
+   * Optional+additive: undefined = "month" (the historical baseline).
+   */
+  period?: DashboardPeriod;
 }
 
 /** Per-currency summary of the balances + current-month income/expenses. */
@@ -146,4 +155,44 @@ export interface DashboardSnapshot {
    * selector in the chart view (no server round-trip on switch).
    */
   chartDataByCurrency?: Record<string, { monthly: MonthBucket[]; yearly: YearMonthBucket[] }>;
+  /**
+   * §6: granularity of the headline numbers in THIS snapshot ("month" when
+   * the filters don't carry the field — historical baseline).
+   */
+  period: DashboardPeriod;
+  /**
+   * §5.1: per-currency current-vs-previous period comparison (same civil
+   * duration). Rows exist only for currencies with data in EITHER period,
+   * COP-first. Percentage fields are null when the previous period has no
+   * comparable base — the UI renders a safe placeholder, never Infinity/NaN.
+   */
+  periodComparison: PeriodComparisonRow[];
+  /**
+   * §7.1: accounts with a negative balance (derived from the snapshot
+   * balances — independent of the selected period). Empty normal state.
+   */
+  negativeBalanceAlerts: Array<{
+    accountName: string;
+    currency: string;
+    balance: number;
+  }>;
+  /**
+   * §7.2: atypical expense alert — explicable statistical rule, only in
+   * "month" mode: current month expenses vs the mean of the 5 previous
+   * complete months, when ≥ 3 reference months carry expense data and the
+   * current value exceeds the reference by the ratio threshold. `null`
+   * whenever the data doesn't allow a CONFIDENT detection — no misleading
+   * alert (mandate §7.2), including year mode (documented limitation).
+   */
+  atypicalExpenseAlert: {
+    currency: string;
+    /** Current-period expenses (aggregation currency, minor units). */
+    current: number;
+    /** Mean of the reference months' expenses (minor units). */
+    reference: number;
+    /** Number of reference months that carried expense data. */
+    monthsWithData: number;
+    /** The excess ratio current / reference (≥ threshold when alerted). */
+    ratio: number;
+  } | null;
 }

@@ -9,13 +9,17 @@ interface SummaryHeroProps {
    * Period result (income − expenses) per currency — server-computed
    * `currencyBreakdown[].result` rows (beta round 3: every currency with
    * movements that month gets its own line; never summed cross-currency).
+   * §5.1 (pre-beta): `prevResult` (same civil duration) comes from the
+   * server's `periodComparison`; absent when the currency has no row.
    */
-  results: Array<{ currency: string; result: number }>;
+  results: Array<{ currency: string; result: number; prevResult?: number }>;
   /** Balances per currency (never summed across currencies). */
   available: Array<{ currency: string; balance: number }>;
   /** Data-as-of civil date of the snapshot cut (ISO string). */
   dataAsOf: string;
   locale: string;
+  /** §6: period granularity for the section label + comparison wording. */
+  period: "month" | "year";
 }
 
 /**
@@ -28,10 +32,11 @@ interface SummaryHeroProps {
  * same row rhythm and level, smaller figures, per-currency lines, semantic
  * color per row (green ≥ 0, red < 0, explicit sign).
  */
-export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHeroProps) {
+export function SummaryHero({ results, available, dataAsOf, locale, period }: SummaryHeroProps) {
   const t = useT("Dashboard");
   const hasData = available.length > 0;
   const resultRows = results.filter((r) => r.result !== 0);
+  const prevRef = period === "month" ? t("prevPeriodMonthRef") : t("prevPeriodYearRef");
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -79,7 +84,7 @@ export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHer
 
       <Card contentClassName="p-5 sm:p-6">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-          {t("monthlyCashFlow")}
+          {period === "month" ? t("monthlyCashFlow") : t("periodCashFlowYear")}
         </p>
         {hasData ? (
           <div className="mt-3 flex flex-col gap-1">
@@ -88,11 +93,32 @@ export function SummaryHero({ results, available, dataAsOf, locale }: SummaryHer
             ) : (
               resultRows.map((r) => {
                 const parts = formatAmountParts(Math.abs(r.result), r.currency, locale);
+                const pct =
+                  r.prevResult === undefined
+                    ? null
+                    : r.prevResult === 0
+                      ? null
+                      : (r.result - r.prevResult) / Math.abs(r.prevResult);
                 return (
-                  <div key={r.currency} className="flex items-baseline justify-between gap-3">
-                    <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
-                      {r.currency}
-                    </span>
+                  <div key={r.currency} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex flex-col">
+                      <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+                        {r.currency}
+                      </span>
+                      {pct !== null && (
+                        <span
+                          className="text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
+                          aria-hidden="true"
+                        >
+                          {pct > 0 ? "▲" : pct < 0 ? "▼" : "•"}{" "}
+                          {t("prevComparePct", {
+                            pct: String(Math.round(Math.abs(pct) * 100)),
+                            ref: prevRef,
+                          })}
+                        </span>
+                      )}
+                      {pct === null && <span className="sr-only">{t("prevCompareNoRef")}</span>}
+                    </div>
                     <span
                       className={`min-w-0 break-words text-right text-lg font-semibold tabular-nums sm:text-xl ${
                         r.result >= 0 ? "text-income" : "text-expense"
