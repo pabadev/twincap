@@ -169,7 +169,7 @@ async function submitAbonoInUI(
   creditCard: ReturnType<Page["locator"]>,
   amount: string,
 ): Promise<void> {
-  let amountInput = creditCard.getByLabel(/^Amount/);
+  const amountInput = creditCard.getByLabel(/^Amount/);
   if ((await amountInput.count()) === 0) {
     await creditCard.getByRole("button", { name: /^Add Abono$/ }).click();
     await expect(amountInput).toBeVisible();
