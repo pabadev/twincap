@@ -113,11 +113,16 @@ test.describe("Slice 4 — Dashboard + Isolation", () => {
     // Total balance (all-time): 100,000 + 10,000 − 30,000 = COP 80,000.
     await waitForSnapshotValue(page, summaryValue(page, "Total Balance"), /COP\s+80,000/);
     // Loans this month card: no credits seeded → borrowed/lent COP 0.
+    // (Pre-beta §5.1 zero-sign contract: a zero amount carries NO sign —
+    // "−0" is a lie; the card renders "Borrowed: COP 0".)
     const financing = page
       .getByText("Loans this month")
       .first()
       .locator("xpath=following-sibling::p");
-    await expect(financing.first()).toContainText(/\+COP\s+0/);
+    await expect(financing.first()).toContainText(/^Borrowed:\s*/);
+    await expect(financing.first()).not.toContainText(/−\s?0|-\s?0|\+\s?COP\s+0/);
+    await expect(financing.first()).toContainText(/Borrowed:\s*COP\s+0/);
+    await expect(financing.nth(1)).toContainText(/^Lent:\s*/);
     await expect(financing.nth(1)).toContainText(/COP\s+0/);
   });
 
