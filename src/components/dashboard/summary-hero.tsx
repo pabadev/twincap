@@ -105,9 +105,19 @@ export function SummaryHero({ results, available, dataAsOf, locale, period }: Su
                       <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
                         {r.currency}
                       </span>
+                      {/* Founder rule (2026-10-02): on the RESULT metric the
+                          arrow direction IS the improvement direction —
+                          ▲ improvement = green, ▼ worsening = red, flat = gray.
+                          (The metric's own value keeps its sign color.) */}
                       {pct !== null && (
                         <span
-                          className="text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
+                          className={`text-[11px] leading-tight font-medium ${
+                            pct > 0
+                              ? "text-income"
+                              : pct < 0
+                                ? "text-expense"
+                                : "text-zinc-500 dark:text-zinc-400"
+                          }`}
                           aria-hidden="true"
                         >
                           {pct > 0 ? "▲" : pct < 0 ? "▼" : "•"}{" "}
