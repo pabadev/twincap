@@ -493,6 +493,7 @@ test.describe("Slice 3 — Credits + POS", () => {
     await dialog.getByLabel(/^Initial payment/).fill("4000");
     await dialog.getByLabel(/^Date/).fill(todayInputValue());
     await addSaleItemViaSearch(page, dialog, "Servicio Test");
+    await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     // Founder rule (2026-09-30): result panel with the pending freeze shown;
     // the user closes explicitly before the page-level continuations.
     // Amount assertions are scoped to the whole panel: the summary is a
