@@ -175,8 +175,12 @@ async function seedRichData(page: Page): Promise<void> {
   await saleDialog.locator("#qty-0").fill("2");
   await saleDialog.getByRole("button", { name: /^Create Sale$/ }).click();
   // Founder rule (2026-09-30): the modal does NOT auto-close — it shows the
-  // result panel; the user closes it explicitly.
-  await saleDialog.getByRole("button", { name: /^Close$/ }).click();
+  // result panel; the user closes it explicitly. Scope to the panel: the
+  // modal ALSO renders a header-close button with aria-label "Close", so an
+  // unscoped getByRole(/^Close$/) is a strict-mode violation.
+  const panel = saleDialog.locator("[data-testid='sale-result-panel']");
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: /^Close$/ }).click();
   await expect(saleDialog).toBeHidden();
 }
 

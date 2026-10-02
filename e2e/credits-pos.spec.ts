@@ -435,7 +435,11 @@ test.describe("Slice 3 — Credits + POS", () => {
     await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+20,000/);
     await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     // Founder rule (2026-09-30): no auto-close — result panel + explicit Close.
-    await dialog.getByRole("button", { name: /^Close$/ }).click();
+    // Wait for the panel before closing: clicking too early races the React
+    // swap (form footer → result panel) and the dialog then never closes.
+    const panel = dialog.locator("[data-testid='sale-result-panel']");
+    await expect(panel).toBeVisible();
+    await panel.getByRole("button", { name: /^Close$/ }).click();
     await expect(dialog).toBeHidden();
     // UX-6 task 6.1 (documented NO-OP): POS sale creation has no debit path,
     // so no F5 / confirmation dialog may appear. Negative assertion — a
@@ -489,12 +493,15 @@ test.describe("Slice 3 — Credits + POS", () => {
     await dialog.getByLabel(/^Initial payment/).fill("4000");
     await dialog.getByLabel(/^Date/).fill(todayInputValue());
     await addSaleItemViaSearch(page, dialog, "Servicio Test");
-    await expect(dialog.getByText(/Total:/)).toContainText(/COP\s+10,000/);
-    await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
     // Founder rule (2026-09-30): result panel with the pending freeze shown;
     // the user closes explicitly before the page-level continuations.
-    await expect(dialog.getByText(/Pending:/)).toContainText(/COP\s+6,000/);
-    await dialog.getByRole("button", { name: /^Close$/ }).click();
+    // Amount assertions are scoped to the whole panel: the summary is a
+    // <dl> where "Total:"/"Pending:" <dt> labels live in cells separate
+    // from the <dd> values, so label-locators never see the amounts.
+    const resultPanel = dialog.locator("[data-testid='sale-result-panel']");
+    await expect(resultPanel).toContainText(/COP\s+10,000/);
+    await expect(resultPanel).toContainText(/COP\s+6,000/);
+    await resultPanel.getByRole("button", { name: /^Close$/ }).click();
     await expect(dialog).toBeHidden();
     // UX-6 task 6.1 (documented NO-OP): the POS on-credit sale creation is
     // also confirmation-free (only the cobro via AbonoForm confirms, not the

@@ -196,7 +196,12 @@ async function createPosSaleInUI(
   await dialog.locator("#qty-0").fill(qty);
   await dialog.getByRole("button", { name: /^Create Sale$/ }).click();
   // Founder rule (2026-09-30): no auto-close — result panel + explicit Close.
-  await dialog.getByRole("button", { name: /^Close$/ }).click();
+  // Scope to the panel: the modal ALSO renders a header-close button with
+  // aria-label "Close", so an unscoped getByRole(/^Close$/) is a strict-mode
+  // violation. Waiting for the panel also avoids racing the React swap.
+  const panel = dialog.locator("[data-testid='sale-result-panel']");
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: /^Close$/ }).click();
   await expect(dialog).toBeHidden();
 }
 
