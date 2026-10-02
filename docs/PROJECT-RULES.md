@@ -253,6 +253,9 @@ src/
   9. **Dashboard: moneda sin saldo y sin movimientos no dibuja línea** (fundador 2026-09-30): en el Resumen (hero y cards), una moneda con balance 0 y sin flujo del período NO ocupe una fila ("USD <empty> 0" era ruido). Filtro presentation-only en `build-dashboard-snapshot` (balance!=0 || income!=0 || expenses!=0); una moneda con saldo vivo o movimiento del período SIEMPRE visible.
   10. **Panel post-venta POS acotado (fundador 2026-09-30):** el contenido mostrado tras registrar una venta (resultado + Cerrar/Volver a facturar) va centrado con el ancho del contenedor de las cards de ventas desktop (`max-w-3xl`) con padding lateral; el ANCHO DEL FORM de venta no se reduce (modal 94vw/1180px para el flujo de factura).
   11. **Hint de formato monetario corto (fundador 2026-09-30):** el helper de inputs de dinero es "Valores sin puntos ni comas" (`Common.moneyNoSeparators`, es/en) — prohibido el texto largo con ejemplo.
+  12. **Comparativa de período: cero sin signo y flecha coloreada por dirección (fundador 2026-10-02):**
+      a) Un importe CERO jamás lleva signo — prohibido renderizar "−0" ("−0 es una mentira": ningún monto 0 es negativo; `MoneyValue` suprime el signo del caller con `amount===0`). Contractual en `summary-cards.test.tsx`.
+      b) En el hero del RESULTADO del período, la línea comparativa (▲/▼) se colorea por DIRECCIÓN de mejora: ▲ = verde (`text-income`), ▼ = rojo (`text-expense`), sin cambio = gris. Los tokens de interpolación incompletos (ej. `{sign}` literal) son defecto de render — el i18n con placeholders exige que el componente pase TODOS los parámetros de la clave.
 
 ## 16. Principios financieros (inquebrantables)
 
