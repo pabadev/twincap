@@ -243,7 +243,13 @@ export function InventoryReceiptForm({
                         id={`receiptQuantity-${index}`}
                         aria-label={`${t("quantityShort")} ${product?.name ?? index + 1}`}
                         type="number"
-                        min={line.unit ? String(1 / getUnitFactorToBase(line.unit)) : undefined}
+                        min={
+                          line.unit
+                            ? line.unit === "unit" || getUnitFactorToBase(line.unit) < 1000
+                              ? String(1 / getUnitFactorToBase(line.unit))
+                              : "0.001"
+                            : undefined
+                        }
                         step={
                           !line.unit
                             ? undefined
