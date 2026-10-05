@@ -105,22 +105,27 @@ export function SummaryHero({ results, available, dataAsOf, locale, period }: Su
                       <span className="shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
                         {r.currency}
                       </span>
-                      {/* Founder rule (2026-10-02): on the RESULT metric the
-                          arrow direction IS the improvement direction —
-                          ▲ improvement = green, ▼ worsening = red, flat = gray.
-                          (The metric's own value keeps its sign color.) */}
+                      {/* Founder rule (2026-10-02 §15.12) refined by the
+                          founder (2026-10-05): ONLY the glyph carries the
+                          improvement color — ▲ green / ▼ red / • gray — and
+                          the surrounding text stays NEUTRAL on both metrics
+                          (summary-cards segments were already neutral). */}
                       {pct !== null && (
                         <span
-                          className={`text-[11px] leading-tight font-medium ${
-                            pct > 0
-                              ? "text-income"
-                              : pct < 0
-                                ? "text-expense"
-                                : "text-zinc-500 dark:text-zinc-400"
-                          }`}
+                          className="text-[11px] leading-tight font-medium text-zinc-500 dark:text-zinc-400"
                           aria-hidden="true"
                         >
-                          {pct > 0 ? "▲" : pct < 0 ? "▼" : "•"}{" "}
+                          <span
+                            className={
+                              pct > 0
+                                ? "text-income"
+                                : pct < 0
+                                  ? "text-expense"
+                                  : "text-zinc-500 dark:text-zinc-400"
+                            }
+                          >
+                            {pct > 0 ? "▲" : pct < 0 ? "▼" : "•"}
+                          </span>{" "}
                           {t("prevComparePct", {
                             pct: String(Math.round(Math.abs(pct) * 100)),
                             ref: prevRef,
