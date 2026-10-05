@@ -256,6 +256,7 @@ src/
   12. **Comparativa de período: cero sin signo y flecha coloreada por dirección (fundador 2026-10-02):**
       a) Un importe CERO jamás lleva signo — prohibido renderizar "−0" ("−0 es una mentira": ningún monto 0 es negativo; `MoneyValue` suprime el signo del caller con `amount===0`). Contractual en `summary-cards.test.tsx`.
       b) En el hero del RESULTADO del período, la línea comparativa (▲/▼) se colorea por DIRECCIÓN de mejora: ▲ = verde (`text-income`), ▼ = rojo (`text-expense`), sin cambio = gris. Los tokens de interpolación incompletos (ej. `{sign}` literal) son defecto de render — el i18n con placeholders exige que el componente pase TODOS los parámetros de la clave.
+      c) **Refinamiento del fundador (2026-10-05, captura comparativos.png):** SOLO el glifo (▲/▼/•) lleva el color de mejora; el TEXTO de la línea comparativa queda NEUTRO (`text-zinc-500`) en TODAS las comparativas (hero + cards). El color sigue la dirección de mejora POR MÉTRICA: Ingresos DIRECTO (▲ más ingresos = verde, ▼ menos ingresos = rojo); Gastos INVERTIDO (▼ gastaste menos = verde, ▲ gastaste más = rojo); Resultado (hero) directo por fondo neto (▲ mejoró, ▼ empeoró). La FORMA del glifo es la dirección factual del cambio, nunca se invierte. La ausencia de base comparable (período anterior = 0) muestra `～ ±delta` sin color ni porcentaje. Tests de contrato en `summary-cards.test.tsx` (bloque "Period comparison glyph color").
 
 ## 16. Principios financieros (inquebrantables)
 
