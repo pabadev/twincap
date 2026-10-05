@@ -188,6 +188,7 @@ function fakePayableRepo(overrides: Partial<PayableRepository> = {}): PayableRep
     findById: vi.fn().mockResolvedValue(null),
     findByWorkspaceId: vi.fn().mockResolvedValue([]),
     findExistingIds: vi.fn().mockResolvedValue([]),
+    findOutstandingIds: vi.fn().mockResolvedValue([]),
     hasInventoryReceiptReference: vi.fn().mockResolvedValue(false),
     create: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),

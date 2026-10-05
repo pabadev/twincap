@@ -26,6 +26,27 @@ export class MongoPayableRepository implements PayableRepository {
     return docs.map((doc) => String(doc._id));
   }
 
+  async findOutstandingIds(workspaceId: string, payableIds: string[]): Promise<string[]> {
+    if (payableIds.length === 0) return [];
+    const wanted = new Set(payableIds);
+    const docs = await PayableModel.find({
+      _id: { $in: payableIds.map((id) => new Types.ObjectId(id)) },
+      workspaceId: new Types.ObjectId(workspaceId),
+    }).exec();
+    if (docs.length === 0) return [];
+    const accountIds = [...new Set(docs.map((d) => d.accountId.toString()))];
+    const currencyMap = await this.resolveBulkAccountCurrencies(workspaceId, accountIds);
+    const out: string[] = [];
+    for (const doc of docs) {
+      const payable = toPayableEntity(
+        doc as PayableDocument,
+        currencyMap.get(doc.accountId.toString())!,
+      );
+      if (wanted.has(payable.id) && payable.pending > 0) out.push(payable.id);
+    }
+    return out;
+  }
+
   async hasInventoryReceiptReference(
     workspaceId: string,
     payableId: string,

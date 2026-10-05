@@ -437,6 +437,13 @@ export interface PayableRepository {
    *   caller's transaction session (snapshot-consistent aggregate validation). */
   findByWorkspaceId(workspaceId: string, tx?: TransactionHandle): Promise<Payable[]>;
   findExistingIds(workspaceId: string, payableIds: string[]): Promise<string[]>;
+  /**
+   * Of the given payable ids, those the workspace still OWES money on
+   * (pending = total − initialPayment − Σ abonos > 0). Powers receipt
+   * payment-state badges: a fully paid payable must NOT keep its receipt
+   * flagged "Balance outstanding".
+   */
+  findOutstandingIds(workspaceId: string, payableIds: string[]): Promise<string[]>;
   /** True when an inventory receipt keeps this payable as its financial parent. */
   hasInventoryReceiptReference(
     workspaceId: string,

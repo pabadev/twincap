@@ -22,6 +22,7 @@ export function ReceiptHistoryList({
   accounts,
   receipts,
   payableIds,
+  missingPayableIds,
   search,
   dateFrom,
   dateTo,
@@ -34,6 +35,8 @@ export function ReceiptHistoryList({
   accounts: SerializedAccount[];
   receipts: SerializedInventoryReceipt[];
   payableIds: string[];
+  /** Payable ids the workspace no longer has (deleted) — receipt badge fallback. */
+  missingPayableIds: string[];
   search: string;
   dateFrom: string;
   dateTo: string;
@@ -204,18 +207,25 @@ export function ReceiptHistoryList({
                   {
                     key: "payment",
                     label: t("receiptPaymentStateLabel"),
+                    // Badge states (ordered): no payable → cash receipt (paid);
+                    // payable fully paid → paid; truly deleted → missing;
+                    // pending > 0 → outstanding.
                     value: !receipt.payableId
                       ? t("receiptPaidInFullShort")
                       : payableIds.includes(receipt.payableId)
                         ? t("receiptOutstanding")
-                        : t("receiptPayableMissing"),
+                        : missingPayableIds.includes(receipt.payableId)
+                          ? t("receiptPayableMissing")
+                          : t("receiptPaidInFullShort"),
                     className:
                       "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
                       (!receipt.payableId
                         ? "bg-success/10 text-success"
                         : payableIds.includes(receipt.payableId)
                           ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                          : "bg-expense/10 text-expense"),
+                          : missingPayableIds.includes(receipt.payableId)
+                            ? "bg-expense/10 text-expense"
+                            : "bg-success/10 text-success"),
                   },
                 ]}
               >

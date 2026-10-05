@@ -128,6 +128,12 @@ function fakePayableRepo(payables: Payable[]): PayableRepository {
     findByWorkspaceId: async () => payables,
     findExistingIds: async (_workspaceId: string, payableIds: string[]) =>
       payables.map((p) => p.id).filter((id) => payableIds.includes(id)),
+    findOutstandingIds: async (_workspaceId: string, payableIds: string[]) =>
+      payables
+        .map((p) => p.id)
+        .filter(
+          (id) => payableIds.includes(id) && (payables.find((p) => p.id === id)?.pending ?? 0) > 0,
+        ),
     hasInventoryReceiptReference: async () => false,
     create: async (p) => p,
     update: async (p) => p,

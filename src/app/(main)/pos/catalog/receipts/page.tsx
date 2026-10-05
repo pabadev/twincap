@@ -60,10 +60,19 @@ export default async function InventoryReceiptsPage({
     ),
   ]);
   if (!user) redirect("/login");
-  const payableIds = await payableRepo.findExistingIds(
-    authUser.workspaceId,
-    result.items.flatMap((receipt) => (receipt.payableId ? [receipt.payableId] : [])),
+  // Outstanding payables only: a FULLY paid payable must not keep its
+  // receipt flagged "Balance outstanding" (badge derives pending>0, not
+  // payable existence). Existing ids distinguish truly-missing payables
+  // (delete) from fully-paid ones.
+  const receiptPayableIds = result.items.flatMap((receipt) =>
+    receipt.payableId ? [receipt.payableId] : [],
   );
+  const payableIds = await payableRepo.findOutstandingIds(authUser.workspaceId, receiptPayableIds);
+  const existingPayableIds = await payableRepo.findExistingIds(
+    authUser.workspaceId,
+    receiptPayableIds,
+  );
+  const missingPayableIds = receiptPayableIds.filter((id) => !existingPayableIds.includes(id));
 
   return (
     <ReceiptHistoryList
@@ -71,6 +80,7 @@ export default async function InventoryReceiptsPage({
       accounts={serializeEntities(accounts)}
       receipts={serializeEntities(result.items)}
       payableIds={payableIds}
+      missingPayableIds={[...new Set(missingPayableIds)]}
       search={search}
       dateFrom={dateFrom ?? ""}
       dateTo={dateTo ?? ""}
