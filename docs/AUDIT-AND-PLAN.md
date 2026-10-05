@@ -93,6 +93,15 @@
 
 **Hallazgo i18n pendiente para la matriz §69:** `messages/en.json` contiene valores EN ESPAÑOL en claves visibles (`Sales.invoiceAnother = "Volver a facturar"`, `Sales.saleRegisteredTitle = "Venta registrada"`) — el producto muestra español con el toggle EN en esos puntos. Defecto del pack no cubierto (E2E solo asertaba "Close" en el panel). Pull request de corrección pendiente de aviso del fundador (R3.13).
 
+> **PRÓXIMA SESIÓN — donde retomar (2026-10-05, corte a pedido del fundador):** retomar las **Fases 3–6** de la ronda en orden:
+>
+> 1. **Fase 3 — Aislamiento (§23)**: nuevo ciclo de verificación cross-workspace (checklist + asserts donde aplique; read-only sobre prod + tests).
+> 2. **Fase 4 — Backup/restore (§25)**: nuevo ciclo incluyendo colecciones de inventario; app-check del fundador (operativo Atlas + runbook).
+> 3. **Fase 5 — Índices (§26)**: verificación del contrato de índices real en Atlas (`verify-*` 4/4 CONTRACT OK) tras el deploy actual (operativo read-only).
+> 4. **Fase 6 — Cierre (§69 + §73)**: matriz de hallazgos consolidada de la ronda (incluye W1/W2 CI 2026-10-01/02, el defecto UX-6 en dos patas con sus RCAs, el finding i18n de arriba, los hallazgos de estabilidad del pack) + Reporte Final + cierre formal.
+>
+> **Estado del árbol al corte:** working tree LIMPIO, master local = origin/master (`c97abe3`), **CI VERDE** (run 37385724066: Quality + E2E ✓ — primera corrida de CI que incluye el pack E2E-01..10 Y la cobertura P1–P6 como gates permanentes). Suite total Vitest NO se re-corrió esta sesión (§14 diferida; los cambios de la sesión quedaron verificados con: enfocados de dashboard 18/18, accounts 12/12 + 72/72, rejection-paths 4/4, dashboard-period 4/4, pos-acceptance 10/10, duplicate-opening 3/3 + auth-accounts set-balance 1/1, CI E2E completo ✓). Pendiente para la próxima ronda de verificación formal: una sola suite completa `pnpm test` con timeout ≥45 min antes del cierre §73.
+
 > | **3 — Aislamiento (§23)** | Nuevo ciclo de verificación de aislamiento cross-workspace (checklist + asserts donde aplique) | read-only sobre prod + tests |
 > | **4 — Backup/restore (§25)** | Backup/restore nuevo ciclo incluyendo colecciones de inventario; app-check del fundador | operativo Atlas + runbook |
 > | **5 — Índices (§26)** | Verificación del contrato de índices real en Atlas (`verify-*` 4/4 CONTRACT OK) tras el deploy actual | operativo read-only |
