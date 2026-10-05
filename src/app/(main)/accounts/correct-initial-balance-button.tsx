@@ -39,16 +39,19 @@ export function CorrectInitialBalanceButton({
   const router = useRouter();
 
   // Same UX-6 confirmation pattern as InitialBalanceButton: the submit ALWAYS
-  // opens the confirmation dialog; confirming re-dispatches via native
-  // requestSubmit (R15.3.1); cancel leaves the form populated.
+  // opens the confirmation dialog; confirming re-dispatches the captured
+  // FormData via the shared hook (2026-10-05 dispatch rework — supersedes the
+  // R15.3.1 requestSubmit re-submission, which loses the useActionState
+  // result under the current React 19 / Next 16 runtime and killed every
+  // UX-6 success toast); cancel leaves the form populated.
   const formRef = useRef<HTMLFormElement>(null);
-  const { isConfirmOpen, interceptSubmit, handleCancel } = useMoneyActionConfirmation(
-    formRef,
-    formAction,
-    isPending,
-  );
+  const {
+    isConfirmOpen,
+    interceptSubmit,
+    handleConfirm: dispatchConfirmedForm,
+    handleCancel,
+  } = useMoneyActionConfirmation(formRef, formAction, isPending);
 
-  const confirmedRef = useRef(false);
   const [confirmDetails, setConfirmDetails] = useState<ConfirmationDetailRow[]>([]);
   const [confirmAmount, setConfirmAmount] = useState(0);
   const [awaitingResult, setAwaitingResult] = useState(false);
@@ -100,10 +103,8 @@ export function CorrectInitialBalanceButton({
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    if (confirmedRef.current) {
-      confirmedRef.current = false;
-      return;
-    }
+    // UX-6: every submit goes through the confirmation dialog — there is no
+    // confirmed-re-submission shortcut anymore (the capture dispatches).
     setConfirmDetails(buildConfirmDetails());
     interceptSubmit(e, true);
   };
@@ -111,8 +112,7 @@ export function CorrectInitialBalanceButton({
   const handleConfirm = () => {
     if (isPending || awaitingResult) return;
     setAwaitingResult(true);
-    confirmedRef.current = true;
-    formRef.current?.requestSubmit();
+    dispatchConfirmedForm();
   };
 
   return (

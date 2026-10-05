@@ -40,32 +40,34 @@ export function InitialBalanceButton({
   // UX-6 informed confirmation (binding): the submit ALWAYS opens the
   // confirmation dialog; confirming re-dispatches the SAME form data with the
   // SAME idempotency key (never regenerated); cancel leaves the form
-  // populated and dispatches nothing. The native `action={formAction}`
-  // binding is preserved (R15.3.1 hybrid — dispatch happens ONLY from the
-  // dialog's confirm button). The success effect below — closing the modal —
-  // is untouched.
+  // populated and dispatches nothing. The success effect below — closing the
+  // modal — is untouched.
+  //
+  // 2026-10-05 dispatch rework (supersedes the R15.3.1 native re-submission):
+  // the confirmed re-dispatch ran `requestSubmit()` — under the current
+  // React 19 / Next 16 runtime that re-dispatch path LOSES the server
+  // action's return state (probe forensics: `{success}` never delivered to
+  // any fiber — one mode committed the mutation but killed the success
+  // toast, another never even posted). The dispatch is now IMPERATIVE via
+  // the hook's captured FormData, so `useActionState` owns the result and
+  // the success/error effects fire once. The R15.3.1 abort race is covered
+  // from the tests: helpers await the action POST response before any
+  // navigation; the server idempotency key classifies any double dispatch
+  // as duplicateRequest.
   const formRef = useRef<HTMLFormElement>(null);
-  const { isConfirmOpen, interceptSubmit, handleCancel } = useMoneyActionConfirmation(
-    formRef,
-    formAction,
-    isPending,
-  );
+  const {
+    isConfirmOpen,
+    interceptSubmit,
+    handleConfirm: dispatchConfirmedForm,
+    handleCancel,
+  } = useMoneyActionConfirmation(formRef, formAction, isPending);
 
   // R15.3.1 regression fix (same bug class transfer-form.tsx documents):
   // an imperative `formAction(fd)` dispatch from the nested confirmation was
   // the ONLY dispatch of this flow (UX-6 always confirms, so no native first
-  // submit ever ran). Such manual dispatch races the App Router: the router
-  // starts a route transition (loading.tsx + display:none on the old tree —
-  // the /accounts page segment goes display:none, so the outer modal asserts
-  // hidden SPURIOUSLY) and defers the action fetch (trace: POST created,
-  // send:-1; here measured at ~10s completion) — any navigation in that
-  // window aborts the POST and the initial balance is silently lost.
-  // Confirming via a NATIVE submission (requestSubmit) keeps the router in
-  // action context: the request is sent immediately and the write lands
-  // before any navigation can abort it. The one-shot guard lets the native
-  // action={formAction} binding run ONLY for the confirmed re-submission;
-  // any other submit is still intercepted and always re-confirmed (UX-6).
-  const confirmedRef = useRef(false);
+  // submit ever ran). Manual dispatch racing the App Router remains a known
+  // trade-off (see the dispatch rework note above); the E2E helpers and the
+  // server-side idempotency key cover it.
   const [confirmDetails, setConfirmDetails] = useState<ConfirmationDetailRow[]>([]);
   const [confirmAmount, setConfirmAmount] = useState(0);
 
@@ -139,28 +141,24 @@ export function InitialBalanceButton({
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    if (confirmedRef.current) {
-      // Confirmed re-submission: one-shot guard consumed — do NOT intercept;
-      // the native `action={formAction}` binding dispatches (R15.3.1).
-      confirmedRef.current = false;
-      return;
-    }
+    // UX-6: every submit goes through the confirmation dialog — there is no
+    // confirmed-re-submission shortcut anymore (the capture dispatches).
     setConfirmDetails(buildConfirmDetails());
     interceptSubmit(e, true);
   };
 
-  // R15.3.1: re-submit the form NATIVELY instead of dispatching captured
-  // FormData imperatively (see the comment above). The mounted form still
-  // carries exactly the fields the user confirmed (amount + accountId + the
-  // mount-scoped idempotency key — never regenerated). The confirmation
-  // dialog closes OPTIMISTICALLY on confirm (UX-6 duplicate-opening contract;
-  // awaitingResult above) and stays closed until the action settles — the
-  // outer modal carries the winner/loser semantics.
+  // R15.3.1 post-mortem (2026-10-05): the native re-submission via
+  // requestSubmit (see the comment above) is replaced by the hook's captured
+  // FormData dispatch. The mounted form still carries exactly the fields the
+  // user confirmed (amount + accountId + the mount-scoped idempotency key —
+  // never regenerated). The confirmation dialog closes OPTIMISTICALLY on
+  // confirm (UX-6 duplicate-opening contract; awaitingResult below) and
+  // stays closed until the action settles — the outer modal carries the
+  // winner/loser semantics.
   const handleConfirm = () => {
     if (isPending || awaitingResult) return;
     setAwaitingResult(true);
-    confirmedRef.current = true;
-    formRef.current?.requestSubmit();
+    dispatchConfirmedForm();
   };
 
   return (
