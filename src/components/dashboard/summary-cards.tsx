@@ -92,6 +92,12 @@ interface SummaryCardsProps {
  * period has no comparable base the segment shows the absolute delta
  * formatted instead of a percentage. The glyph is aria-hidden and a
  * visually-hidden sentence carries the full meaning (accessible + safe).
+ *
+ * Founder rule (2026-10-05): the glyph SHAPE is the factual direction of the
+ * change, but its COLOR is the improvement direction — per metric:
+ * income ▲ = green / ▼ = red (direct); expenses are INVERTED — spending
+ * less (▼) is green, spending more (▲) is red. The text stays NEUTRAL
+ * (§15.12: only the indicator carries the color).
  */
 function PeriodDeltaSegments({
   rows,
@@ -149,9 +155,24 @@ function PeriodDeltaSegments({
         return (
           <span key={row.currency} className="whitespace-nowrap">
             <span aria-hidden="true">
-              {pct !== null
-                ? `${delta > 0 ? "▲" : delta < 0 ? "▼" : "•"} ${Math.round(Math.abs(pct) * 100)}%`
-                : `～ ${(delta >= 0 ? "+" : "−") + deltaText}`}
+              {pct !== null ? (
+                <>
+                  <span
+                    className={
+                      (field === "income" ? delta > 0 : delta < 0)
+                        ? "text-income"
+                        : (field === "income" ? delta < 0 : delta > 0)
+                          ? "text-expense"
+                          : ""
+                    }
+                  >
+                    {delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}
+                  </span>{" "}
+                  {Math.round(Math.abs(pct) * 100)}%
+                </>
+              ) : (
+                `～ ${(delta >= 0 ? "+" : "−") + deltaText}`
+              )}
             </span>
             <span className="sr-only">{fullSentence}</span>
           </span>

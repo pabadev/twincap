@@ -172,3 +172,97 @@ describe("Period comparison currency filter (founder rule)", () => {
     expect(container.textContent).not.toContain("prevCompare");
   });
 });
+
+// The delta segment is span.whitespace-nowrap > span[aria-hidden] > glyph.
+function findGlyph(container: HTMLElement, glyph: string): HTMLElement | undefined {
+  const segment = [...container.querySelectorAll("span.whitespace-nowrap")].find((s) =>
+    (s.textContent ?? "").includes(glyph),
+  );
+  return [...(segment?.querySelectorAll("span") ?? [])].find((s) => s.textContent === glyph);
+}
+
+// Founder rule (2026-10-05): the glyph carries the improvement color per
+// metric — income is DIRECT (▲ more income = green, ▼ less income = red) and
+// expenses are INVERTED (▼ spending less = green, ▲ spending more = red).
+// The glyph shape remains the factual direction of the change.
+describe("Period comparison glyph color (founder rule)", () => {
+  it("colors income glyphs by improvement direction directly", async () => {
+    // Income UP (delta > 0) → green glyph; income DOWN would be red.
+    const container = await renderNode(
+      <SummaryCards
+        currency="COP"
+        monthlyIncome={40000}
+        monthlyExpenses={0}
+        financingInflow={0}
+        financingOutflow={0}
+        locale="es"
+        period="month"
+        periodComparison={[
+          compareRow("COP", {
+            income: 40000,
+            prevIncome: 30000,
+            incomeDelta: 10000,
+            incomePct: 0.25,
+          }),
+        ]}
+      />,
+    );
+    const glyph = findGlyph(container, "▲");
+    expect(glyph).toBeDefined();
+    expect(glyph!.className).toContain("text-income");
+    expect(glyph!.className).not.toContain("text-expense");
+  });
+
+  it("colors expense glyphs INVERTED: spending less (▼) is green", async () => {
+    // Expenses DOWN (delta < 0) → GREEN glyph (improvement), shape stays ▼.
+    const container = await renderNode(
+      <SummaryCards
+        currency="COP"
+        monthlyIncome={0}
+        monthlyExpenses={8000}
+        financingInflow={0}
+        financingOutflow={0}
+        locale="es"
+        period="month"
+        periodComparison={[
+          compareRow("COP", {
+            expenses: 8000,
+            prevExpenses: 15000,
+            expenseDelta: -7000,
+            expensePct: -7000 / 15000,
+          }),
+        ]}
+      />,
+    );
+    const glyph = findGlyph(container, "▼");
+    expect(glyph).toBeDefined();
+    expect(glyph!.className).toContain("text-income");
+    expect(glyph!.className).not.toContain("text-expense");
+  });
+
+  it("colors expense glyphs INVERTED: spending more (▲) is red", async () => {
+    const container = await renderNode(
+      <SummaryCards
+        currency="COP"
+        monthlyIncome={0}
+        monthlyExpenses={20000}
+        financingInflow={0}
+        financingOutflow={0}
+        locale="es"
+        period="month"
+        periodComparison={[
+          compareRow("COP", {
+            expenses: 20000,
+            prevExpenses: 10000,
+            expenseDelta: 10000,
+            expensePct: 1,
+          }),
+        ]}
+      />,
+    );
+    const glyph = findGlyph(container, "▲");
+    expect(glyph).toBeDefined();
+    expect(glyph!.className).toContain("text-expense");
+    expect(glyph!.className).not.toContain("text-income");
+  });
+});
