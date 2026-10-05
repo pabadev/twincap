@@ -98,15 +98,27 @@ function PeriodDeltaSegments({
   field,
   period,
   locale,
+  defaultCurrency,
 }: {
   rows: PeriodComparisonRow[];
   field: "income" | "expenses";
   period: "month" | "year";
   locale: string;
+  defaultCurrency: string;
 }) {
   const t = useT("Dashboard");
   const ref = period === "month" ? t("prevPeriodMonthRef") : t("prevPeriodYearRef");
+  // Founder rule (2026-10-02): a comparison line for a currency the user did
+  // NOT move in the selected current period is noise — when NO currency other
+  // than the default has movements in the current period, the indicators show
+  // ONLY the default currency (previous-period-only rows stay out of sight).
+  // When another currency IS active this period, every currency keeps its own
+  // segment (per-currency, never cross-summed). Presentation-only filter.
+  const otherCurrencyMoved = rows.some(
+    (r) => r.currency !== defaultCurrency && (r.income !== 0 || r.expenses !== 0),
+  );
   const segments = rows
+    .filter((r) => otherCurrencyMoved || r.currency === defaultCurrency)
     .filter((r) => r[field] !== 0 || (field === "income" ? r.prevIncome : r.prevExpenses) !== 0)
     .sort((a, b) =>
       a.currency === "COP" ? -1 : b.currency === "COP" ? 1 : a.currency.localeCompare(b.currency),
@@ -375,6 +387,7 @@ export function SummaryCards({
                   field="income"
                   period={period}
                   locale={locale}
+                  defaultCurrency={currency}
                 />
               )}
             </div>
@@ -414,6 +427,7 @@ export function SummaryCards({
                   field="expenses"
                   period={period}
                   locale={locale}
+                  defaultCurrency={currency}
                 />
               )}
             </div>
