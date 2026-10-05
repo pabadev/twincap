@@ -1,24 +1,15 @@
 "use client";
 
-import { useState, useActionState, useEffect, useRef, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { useT, useLocale } from "../../../i18n/client";
-import { setInitialBalanceAction } from "./actions";
-import { IdempotencyField } from "../../../components/ui/idempotency-field";
-import {
-  MoneyActionConfirmation,
-  type ConfirmationDetailRow,
-} from "../../../components/ui/money-action-confirmation";
-import { useMoneyActionConfirmation } from "../../../lib/use-money-action-confirmation";
-import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
 import { TouchTarget } from "../../../components/ui/touch-target";
-import { useToast } from "../../../lib/hooks/use-toast";
-import { useActionError } from "../../../lib/use-action-error";
-import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
-import { formatAmount } from "../../../lib/format";
+import { useT } from "../../../i18n/client";
+import { useBalanceDialog } from "./balance-dialogs";
 
+/**
+ * Row trigger (2026-10-05): the dialog no longer lives here — it is hosted
+ * at list level by BalanceDialogsProvider, whose fibers survive the RSC row
+ * swaps that a server action response re-renders (see balance-dialogs.tsx).
+ */
 export function InitialBalanceButton({
   accountId,
   currency,
@@ -26,204 +17,18 @@ export function InitialBalanceButton({
   accountId: string;
   currency?: string;
 }) {
-  const [showForm, setShowForm] = useState(false);
-  const [state, formAction, isPending] = useActionState(setInitialBalanceAction, null);
   const t = useT("Accounts");
-  const tToast = useT("Toast");
-  const tConfirm = useT("MoneyConfirmation");
-  const tCommon = useT("Common");
-  const translateError = useActionError();
-  const locale = useLocale();
-  const { addToast } = useToast();
-  const router = useRouter();
-
-  // UX-6 informed confirmation (binding): the submit ALWAYS opens the
-  // confirmation dialog; confirming re-dispatches the SAME form data with the
-  // SAME idempotency key (never regenerated); cancel leaves the form
-  // populated and dispatches nothing. The success effect below — closing the
-  // modal — is untouched.
-  //
-  // 2026-10-05 dispatch rework (supersedes the R15.3.1 native re-submission):
-  // the confirmed re-dispatch ran `requestSubmit()` — under the current
-  // React 19 / Next 16 runtime that re-dispatch path LOSES the server
-  // action's return state (probe forensics: `{success}` never delivered to
-  // any fiber — one mode committed the mutation but killed the success
-  // toast, another never even posted). The dispatch is now IMPERATIVE via
-  // the hook's captured FormData, so `useActionState` owns the result and
-  // the success/error effects fire once. The R15.3.1 abort race is covered
-  // from the tests: helpers await the action POST response before any
-  // navigation; the server idempotency key classifies any double dispatch
-  // as duplicateRequest.
-  const formRef = useRef<HTMLFormElement>(null);
-  const {
-    isConfirmOpen,
-    interceptSubmit,
-    handleConfirm: dispatchConfirmedForm,
-    handleCancel,
-  } = useMoneyActionConfirmation(formRef, formAction, isPending);
-
-  // R15.3.1 regression fix (same bug class transfer-form.tsx documents):
-  // an imperative `formAction(fd)` dispatch from the nested confirmation was
-  // the ONLY dispatch of this flow (UX-6 always confirms, so no native first
-  // submit ever ran). Manual dispatch racing the App Router remains a known
-  // trade-off (see the dispatch rework note above); the E2E helpers and the
-  // server-side idempotency key cover it.
-  const [confirmDetails, setConfirmDetails] = useState<ConfirmationDetailRow[]>([]);
-  const [confirmAmount, setConfirmAmount] = useState(0);
-
-  // UX-6 duplicate-opening contract (e2e/duplicate-opening.spec.ts §11): the
-  // confirmation dialog closes OPTIMISTICALLY on confirm — winner/loser
-  // semantics live on the OUTER modal (winner: success effect closes it;
-  // loser: stays open for retry). The a4719ba fix kept the dialog open during
-  // the pending window, so the losing tab's confirm dialog never closed
-  // (stuck open / stuck isPending) and `confirmMoneyAction` timed out on
-  // toBeHidden. This flag closes the dialog at confirm and keeps it closed
-  // until the action settles (reopens on error so the retry re-confirms); it
-  // is ORTHOGONAL to the R15.3.1 native re-submission below — dispatch
-  // machinery untouched.
-  const [awaitingResult, setAwaitingResult] = useState(false);
-
-  // U1 regression fix (same bug class as the 26+ sibling forms): one-shot
-  // `successShownRef` guard. `useActionState` keeps `state.success` truthy
-  // forever and the `tToast` identity changes after every `router.refresh()`
-  // (messages are re-imported per RSC request); without the guard the effect
-  // re-fires on each re-render and stacks an unbounded number of success
-  // toasts ("renderiza infinitamente"). The ref must be reset when the form
-  // reopens so a second intentional use shows its own toast.
-  const successShownRef = useRef(false);
-
-  useEffect(() => {
-    if (state?.success && !successShownRef.current) {
-      successShownRef.current = true;
-      // The outer modal closes on success (setShowForm below); the inner
-      // confirmation state does not need a reset here because reopening the
-      // modal always starts un-confirmed (the button's onClick resets
-      // awaitingResult on a fresh open).
-      setShowForm(false);
-      addToast(tToast(state.success), "success");
-      router.refresh();
-    }
-  }, [state?.success, addToast, tToast, router]);
-
-  // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
-  // identity is unstable after `router.refresh()` (messages re-import per RSC
-  // request), so while the same error stays in `state` this effect could
-  // re-fire and stack toasts. Memoize per error VALUE: a toast fires once
-  // per distinct error; re-submitting and getting a DIFFERENT one still
-  // shows. Same class as the sibling `successShownRef` guards.
-  const lastErrorShownRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (state?.error && state.error !== lastErrorShownRef.current) {
-      lastErrorShownRef.current = state.error;
-      // Reset so a retry submits through the confirmation dialog again (UX-6:
-      // every submit confirms first). The inner dialog reopens with the
-      // previously confirmed details — cancel clears it and the form stays.
-      setAwaitingResult(false);
-      addToast(translateError(state.error), "error");
-    }
-  }, [state?.error, addToast, translateError]);
-
-  // The row is read from the CURRENT DOM value (uncontrolled input) at submit
-  // time and stored in state so the opened dialog renders it. The raw amount
-  // is kept separately: the description template interpolates the FORMATTED
-  // amount, which cannot be derived back from the formatted row value.
-  const buildConfirmDetails = (): ConfirmationDetailRow[] => {
-    const fd = formRef.current ? new FormData(formRef.current) : null;
-    const amount = Number(fd?.get("amount") ?? 0);
-    setConfirmAmount(amount);
-    return [
-      {
-        label: t("balanceToSet"),
-        value: formatAmount(amount, currency ?? DEFAULT_CURRENCY, locale),
-      },
-    ];
-  };
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    // UX-6: every submit goes through the confirmation dialog — there is no
-    // confirmed-re-submission shortcut anymore (the capture dispatches).
-    setConfirmDetails(buildConfirmDetails());
-    interceptSubmit(e, true);
-  };
-
-  // R15.3.1 post-mortem (2026-10-05): the native re-submission via
-  // requestSubmit (see the comment above) is replaced by the hook's captured
-  // FormData dispatch. The mounted form still carries exactly the fields the
-  // user confirmed (amount + accountId + the mount-scoped idempotency key —
-  // never regenerated). The confirmation dialog closes OPTIMISTICALLY on
-  // confirm (UX-6 duplicate-opening contract; awaitingResult below) and
-  // stays closed until the action settles — the outer modal carries the
-  // winner/loser semantics.
-  const handleConfirm = () => {
-    if (isPending || awaitingResult) return;
-    setAwaitingResult(true);
-    dispatchConfirmedForm();
-  };
+  const { open } = useBalanceDialog();
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        onClick={() => {
-          // A fresh open always starts un-confirmed (UX-6: every submit
-          // confirms first), even if a previous dispatch never settled.
-          setAwaitingResult(false);
-          successShownRef.current = false;
-          setShowForm(true);
-        }}
-      >
-        {/* TouchTarget expands the Button sm hit area to >=44px (RTT-1). */}
-        <TouchTarget as="span">{t("setInitialBalance")}</TouchTarget>
-      </Button>
-
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={t("setInitialBalance")}>
-        <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-4">
-          <IdempotencyField />
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {t("setInitialBalanceDescription")}
-          </p>
-          <Input
-            id="amount"
-            name="amount"
-            hint={tCommon("moneyNoSeparators")}
-            type="number"
-            label={t("balanceToSet")}
-            min="1"
-            required
-            disabled={isPending}
-          />
-          <input type="hidden" name="accountId" value={accountId} />
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-            disabled={isPending}
-            loading={isPending}
-          >
-            {isPending ? t("saving") : t("setInitialBalance")}
-          </Button>
-
-          <MoneyActionConfirmation
-            // Closed on confirm (optimistic) and through the pending window;
-            // reopens when the action settles with an error (retry path).
-            open={isConfirmOpen && !awaitingResult}
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
-            title={tConfirm("setInitialBalanceTitle")}
-            description={tConfirm("setInitialBalanceDescription", {
-              amount: formatAmount(confirmAmount, currency ?? DEFAULT_CURRENCY, locale),
-            })}
-            confirmLabel={tConfirm("confirm")}
-            cancelLabel={tCommon("cancel")}
-            variant="normal"
-            detailRows={confirmDetails}
-            loading={isPending}
-          />
-        </form>
-      </Modal>
-    </>
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={() => open({ accountId, currency, mode: "set" })}
+    >
+      {/* TouchTarget expands the Button sm hit area to >=44px (RTT-1). */}
+      <TouchTarget as="span">{t("setInitialBalance")}</TouchTarget>
+    </Button>
   );
 }

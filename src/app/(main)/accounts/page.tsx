@@ -13,6 +13,7 @@ import { MongoTransferRepository } from "../../../infrastructure/repositories/tr
 import { MongoUserRepository } from "../../../infrastructure/repositories/user-repository";
 import { connectDb } from "../../../infrastructure/db/connection";
 import { AccountsPageClient } from "./accounts-page-client";
+import { BalanceDialogsProvider } from "./balance-dialogs";
 import { DeleteAccountButton } from "./delete-account-button";
 import { InitialBalanceButton } from "./initial-balance-button";
 import { CorrectInitialBalanceButton } from "./correct-initial-balance-button";
@@ -51,76 +52,82 @@ export default async function AccountsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
-        <AccountsPageClient />
-      </div>
+      {/* The balance dialogs are hosted at LIST level: a server action
+          response re-renders this page's RSC tree (rows swap buttons when a
+          balance lands), so the dialog fibers must live outside the rows
+          (see balance-dialogs.tsx for the RCA). */}
+      <BalanceDialogsProvider>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
+          <AccountsPageClient />
+        </div>
 
-      {accounts.length === 0 && (
-        <EmptyState
-          icon={<Icon icon={Wallet} size="xl" />}
-          title={t("emptyTitle")}
-          description={t("emptyDescription")}
-        />
-      )}
+        {accounts.length === 0 && (
+          <EmptyState
+            icon={<Icon icon={Wallet} size="xl" />}
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+          />
+        )}
 
-      {/* Cards are the only representation (product decision 2026-09-21).
+        {/* Cards are the only representation (product decision 2026-09-21).
           Beta round 4: same visual format as the dashboard "¿Dónde está mi
           dinero?" account cards (Card + currency caps + large balance +
           fixed badge), keeping the rename/initial-balance/delete actions as
           a footer row. */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {accounts.map((account) => {
-          const balance = balances.get(account.id) ?? 0;
-          const parts = formatAmountParts(balance, account.currency, locale);
-          return (
-            <div key={account.id} data-id={account.id} className="relative">
-              {/* Beta round 4: the "Fijo" badge is an overlay pinned to the
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {accounts.map((account) => {
+            const balance = balances.get(account.id) ?? 0;
+            const parts = formatAmountParts(balance, account.currency, locale);
+            return (
+              <div key={account.id} data-id={account.id} className="relative">
+                {/* Beta round 4: the "Fijo" badge is an overlay pinned to the
                   card's top-right corner (z-10, absolute) so it never adds a
                   row and keeps every card the same height in the grid. */}
-              {account.isFixed && (
-                <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
-                  {t("fixed")}
-                </span>
-              )}
-              <Card title={account.name} headerClassName="!px-3 !py-2" contentClassName="p-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                    {account.currency}
+                {account.isFixed && (
+                  <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                    {t("fixed")}
                   </span>
-                  <span className="min-w-0 min-h-[3.5rem] break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl">
-                    {parts.sign}
-                    {parts.suffixFirst ? (
-                      <>
-                        <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
-                        <span>{parts.amount}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{parts.amount}</span>{" "}
-                        <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
-                      </>
+                )}
+                <Card title={account.name} headerClassName="!px-3 !py-2" contentClassName="p-3">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                      {account.currency}
+                    </span>
+                    <span className="min-w-0 min-h-[3.5rem] break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl">
+                      {parts.sign}
+                      {parts.suffixFirst ? (
+                        <>
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                          <span>{parts.amount}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{parts.amount}</span>{" "}
+                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                    <RenameAccountButton accountId={account.id} accountName={account.name} />
+                    {!balances.has(account.id) && (
+                      <InitialBalanceButton accountId={account.id} currency={account.currency} />
                     )}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
-                  <RenameAccountButton accountId={account.id} accountName={account.name} />
-                  {!balances.has(account.id) && (
-                    <InitialBalanceButton accountId={account.id} currency={account.currency} />
-                  )}
-                  {balances.has(account.id) && (
-                    <CorrectInitialBalanceButton
-                      accountId={account.id}
-                      currency={account.currency}
-                    />
-                  )}
-                  {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
-                </div>
-              </Card>
-            </div>
-          );
-        })}
-      </div>
+                    {balances.has(account.id) && (
+                      <CorrectInitialBalanceButton
+                        accountId={account.id}
+                        currency={account.currency}
+                      />
+                    )}
+                    {!account.isFixed && <DeleteAccountButton accountId={account.id} />}
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+      </BalanceDialogsProvider>
     </div>
   );
 }
