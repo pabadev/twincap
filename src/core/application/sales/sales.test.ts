@@ -331,11 +331,18 @@ beforeEach(() => {
 
 describe("createSale", () => {
   it("sells one combo line and consumes its fixed, granular components atomically", async () => {
-    const cup = makeProduct({ id: "cup", name: "Cup", stock: 10, saleUnit: "unit" });
+    const cup = makeProduct({
+      id: "cup",
+      name: "Cup",
+      stock: 10,
+      inventoryValueMinor: 10_000,
+      saleUnit: "unit",
+    });
     const coffee = makeProduct({
       id: "coffee",
       name: "Coffee",
       stock: 1_000_000,
+      inventoryValueMinor: 20_000,
       saleUnit: "g",
     });
     const version = createProductComboVersion({
@@ -391,11 +398,83 @@ describe("createSale", () => {
         { itemId: coffee.id, stockQuantity: 500_000 },
       ],
     });
+    expect(sale.items[0].costSnapshot).toEqual({
+      totalCostMinor: 12_000,
+      components: [
+        { itemId: cup.id, name: cup.name, stockQuantity: 2, costMinor: 2_000 },
+        { itemId: coffee.id, name: coffee.name, stockQuantity: 500_000, costMinor: 10_000 },
+      ],
+    });
     expect(catalogRepo.decremented).toEqual([
       { itemId: cup.id, quantity: 2 },
       { itemId: coffee.id, quantity: 500_000 },
     ]);
     expect(catalogRepo.decremented.some((entry) => entry.itemId === combo.id)).toBe(false);
+  });
+
+  it("snapshots moving-average cost and updates the inventory value in the sale transaction", async () => {
+    const product = makeProduct({ stock: 10, inventoryValueMinor: 20_000 });
+    const catalogRepo = fakeCatalogRepo({ findById: vi.fn().mockResolvedValue(product) });
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [{ itemId: product.id, quantity: 2, unitPrice: 50_000 }],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      fakeSaleRepo(),
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeIdGen(),
+      fakeClientRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+    expect(sale.items[0]?.costSnapshot).toEqual({
+      totalCostMinor: 4_000,
+      components: [{ itemId: product.id, name: product.name, stockQuantity: 2, costMinor: 4_000 }],
+    });
+    expect(catalogRepo.decrementStock).toHaveBeenCalledWith(
+      "user-1",
+      product.id,
+      2,
+      expect.anything(),
+      expect.objectContaining({
+        expectedInventoryValueMinor: 20_000,
+        inventoryValueMinor: 16_000,
+        valueDeltaMinor: -4_000,
+      }),
+    );
+  });
+
+  it("keeps the sale cost explicitly unknown when the opening inventory has no value", async () => {
+    const product = makeProduct({ stock: 10, inventoryValueMinor: null });
+    const catalogRepo = fakeCatalogRepo({ findById: vi.fn().mockResolvedValue(product) });
+    const sale = await createSale(
+      "user-1",
+      {
+        items: [{ itemId: product.id, quantity: 2, unitPrice: 50_000 }],
+        accountId: "acc-1",
+        date: new Date("2025-06-01"),
+        paymentMode: "paid-in-full",
+        currency: "COP",
+      },
+      fakeSaleRepo(),
+      catalogRepo,
+      fakeMovementRepo(),
+      fakeIdGen(),
+      fakeClientRepo(),
+      fakeCreditGrantedRepo(),
+      fakeAccountRepo([makeAccount("acc-1")]),
+      fakeUow(),
+    );
+    expect(sale.items[0]?.costSnapshot).toEqual({
+      totalCostMinor: null,
+      components: [{ itemId: product.id, name: product.name, stockQuantity: 2, costMinor: null }],
+    });
   });
 
   it("consumes customized formula components and snapshots the actual quantities", async () => {
@@ -1262,7 +1341,21 @@ describe("createSale", () => {
 
 describe("addSaleAbono", () => {
   it("adds an abono and creates income movement (POS-4)", async () => {
-    const sale = makeSale();
+    const sale = makeSale({
+      items: [
+        {
+          itemId: "item-1",
+          quantity: 2,
+          unitPrice: new Money(50000, "COP"),
+          costSnapshot: {
+            totalCostMinor: 20000,
+            components: [
+              { itemId: "item-1", name: "Product A", stockQuantity: 2, costMinor: 20000 },
+            ],
+          },
+        },
+      ],
+    });
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
@@ -1284,6 +1377,7 @@ describe("addSaleAbono", () => {
     expect(result.abonos).toHaveLength(1);
     expect(result.abonos[0].amount.amount).toBe(25000);
     expect(result.pending).toBe(75000);
+    expect(result.items[0]?.costSnapshot?.totalCostMinor).toBe(20000);
     expect(saleRepo.addAbono).toHaveBeenCalledOnce();
     expect(movementRepo.created).toHaveLength(1);
     expect(movementRepo.created[0].type).toBe("income");
@@ -1415,15 +1509,32 @@ describe("addSaleAbono", () => {
 describe("deleteSaleAbono", () => {
   const accountRepo = fakeAccountRepo();
   it("removes abono and reverses linked movement (POS-6)", async () => {
-    const sale = makeSale({}, [
+    const sale = makeSale(
       {
-        id: "ab-1",
-        amount: new Money(25000, "COP"),
-        date: new Date("2025-07-01"),
-        accountId: "acc-1",
-        movementId: "mov-1",
+        items: [
+          {
+            itemId: "item-1",
+            quantity: 2,
+            unitPrice: new Money(50000, "COP"),
+            costSnapshot: {
+              totalCostMinor: 20000,
+              components: [
+                { itemId: "item-1", name: "Product A", stockQuantity: 2, costMinor: 20000 },
+              ],
+            },
+          },
+        ],
       },
-    ]);
+      [
+        {
+          id: "ab-1",
+          amount: new Money(25000, "COP"),
+          date: new Date("2025-07-01"),
+          accountId: "acc-1",
+          movementId: "mov-1",
+        },
+      ],
+    );
     const saleRepo = fakeSaleRepo({
       findByWorkspaceId: vi.fn().mockResolvedValue([sale]),
     });
@@ -1441,6 +1552,7 @@ describe("deleteSaleAbono", () => {
 
     expect(result.abonos).toHaveLength(0);
     expect(result.pending).toBe(100000);
+    expect(result.items[0]?.costSnapshot?.totalCostMinor).toBe(20000);
     expect(saleRepo.deleteAbono).toHaveBeenCalledOnce();
     expect(movementRepo.deleted).toContain("mov-1");
     // R15.3.2 Fase 4: the abono account is touched as the last write.
@@ -1586,11 +1698,26 @@ describe("deleteSale", () => {
             outputUnit: "unit",
             components: [{ itemId: "supply-1", name: "Flour", unit: "g", stockQuantity: 600_000 }],
           },
+          costSnapshot: {
+            totalCostMinor: 6_000,
+            components: [
+              { itemId: "supply-1", name: "Flour", stockQuantity: 600_000, costMinor: 6_000 },
+            ],
+          },
         },
       ],
     });
     const catalogRepo = fakeCatalogRepo({
-      findById: vi.fn().mockResolvedValue(makeProduct({ id: "prepared-1" })),
+      findById: vi.fn().mockImplementation(async (_workspaceId: string, id: string) =>
+        id === "supply-1"
+          ? makeProduct({
+              id: "supply-1",
+              stock: 400_000,
+              inventoryValueMinor: 4_000,
+              saleUnit: "g",
+            })
+          : makeProduct({ id: "prepared-1" }),
+      ),
     });
     const saleRepo = fakeSaleRepo({ findByWorkspaceId: vi.fn().mockResolvedValue([sale]) });
 
@@ -1606,6 +1733,17 @@ describe("deleteSale", () => {
     );
 
     expect(catalogRepo.incremented).toEqual([{ itemId: "supply-1", quantity: 600_000 }]);
+    expect(catalogRepo.incrementStock).toHaveBeenCalledWith(
+      "user-1",
+      "supply-1",
+      600_000,
+      expect.anything(),
+      expect.objectContaining({
+        expectedInventoryValueMinor: 4_000,
+        inventoryValueMinor: 10_000,
+        valueDeltaMinor: 6_000,
+      }),
+    );
   });
 
   const accountRepo = fakeAccountRepo();

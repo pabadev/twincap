@@ -46,6 +46,8 @@ export interface CatalogItemDoc {
   saleUnit?: string;
   /** Only present for products (POS-1). */
   stock?: number;
+  /** Total current inventory value in minor units; null means unknown/legacy. */
+  inventoryValueMinor?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -148,6 +150,15 @@ const CatalogItemSchema = new Schema<CatalogItemDoc>(
         validator: (value: number | undefined) =>
           value === undefined || Number.isSafeInteger(value),
         message: "Stock must be stored as a safe integer base quantity",
+      },
+    },
+    inventoryValueMinor: {
+      type: Number,
+      min: 0,
+      validate: {
+        validator: (value: number | null | undefined) =>
+          value === undefined || value === null || Number.isSafeInteger(value),
+        message: "Inventory value must be a non-negative safe integer",
       },
     },
   },

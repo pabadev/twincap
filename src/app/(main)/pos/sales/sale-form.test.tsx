@@ -69,6 +69,7 @@ const newCatalogItem: SerializedCatalogItem = {
   formulaVersions: [],
   comboVersions: [],
   stock: 5,
+  inventoryValueMinor: 0,
   createdAt: new Date(0),
 };
 
@@ -108,6 +109,7 @@ const catalogItems: SerializedCatalogItem[] = [
     formulaVersions: [],
     comboVersions: [],
     stock: 0,
+    inventoryValueMinor: 0,
     createdAt: new Date(0),
   },
   {
@@ -121,6 +123,7 @@ const catalogItems: SerializedCatalogItem[] = [
     formulaVersions: [],
     comboVersions: [],
     stock: 10,
+    inventoryValueMinor: 0,
     createdAt: new Date(0),
   },
 ];
@@ -1048,6 +1051,7 @@ describe("SaleForm layout invariants (C12-3f)", () => {
       formulaVersions: [],
       comboVersions: [],
       stock: 10,
+      inventoryValueMinor: 0,
       createdAt: new Date(0),
     }));
     const { container } = mountWithModal(<SaleForm {...baseProps} catalogItems={manyItems} />);

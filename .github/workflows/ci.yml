@@ -95,7 +95,7 @@ jobs:
       # RESEND_*/APP_BASE_URL: `next start` corre con NODE_ENV=production y env.ts
       # las exige desde R14-E; el E2E nunca envía emails reales (best-effort), por
       # eso placeholders de prueba pasan la validación.
-      MONGODB_URI: mongodb://127.0.0.1:37017/twincap_e2e
+      MONGODB_URI: mongodb://127.0.0.1:37017/twincap_e2e?replicaSet=rs0
       AUTH_SECRET: wPdh0ZCXq1krHoLD6Yxz7dVTDSWBYD6xS3pVWAfb8kM
       TZ: America/Bogota
       NEXT_LOCALE: en

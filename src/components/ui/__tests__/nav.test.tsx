@@ -204,6 +204,7 @@ describe("MainNav four-tier structure (UX-10)", () => {
     expect(seq[1]).toEqual({ kind: "link", value: "/movements" });
     expect(seq[2]).toEqual({ kind: "link", value: "/transfers" });
     expect(seq.slice(0, 3).some((e) => e.kind === "header")).toBe(false);
+    expect(seq.some((e) => e.kind === "link" && e.value === "/business-analytics")).toBe(true);
 
     // (b) Each header is immediately followed by its group's first link.
     const opIndex = seq.findIndex((e) => e.kind === "header" && e.value === "groupOperation");

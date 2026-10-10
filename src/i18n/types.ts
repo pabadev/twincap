@@ -25,6 +25,7 @@ export type Namespace =
   | "Profile"
   | "Feedback"
   | "Analytics"
+  | "BusinessAnalytics"
   | "Help"
   | "Legal"
   | "Toast"

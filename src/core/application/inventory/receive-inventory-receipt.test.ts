@@ -85,6 +85,14 @@ describe("receiveInventoryReceipt", () => {
     expect(receipt.lines).toHaveLength(2);
     expect(receipt.total.amount).toBe(2_500);
     expect(deps.catalogRepo.receiveStock).toHaveBeenCalledTimes(2);
+    expect(deps.catalogRepo.receiveStock).toHaveBeenNthCalledWith(
+      1,
+      "workspace-1",
+      "item-1",
+      2_000,
+      expect.objectContaining({ valueDeltaMinor: 1_000 }),
+      deps.tx,
+    );
     expect(deps.payableRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ context: "Business", initialPayment: 0 }),
       deps.tx,
@@ -119,6 +127,27 @@ describe("receiveInventoryReceipt", () => {
       receiveInventoryReceipt("workspace-1", deps.input, deps, "user-1"),
     ).rejects.toThrow("Supplier is required when a receipt has an outstanding balance");
     expect(deps.uow.withTransaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a receipt currency that differs from the catalog item's currency", async () => {
+    const deps = setup();
+    vi.mocked(deps.catalogRepo.findById).mockResolvedValue(
+      new CatalogItem({
+        id: "item-1",
+        workspaceId: "workspace-1",
+        name: "Esencia",
+        type: "product",
+        saleUnit: "g",
+        stock: 0,
+        unitPrice: new Money(100, "USD"),
+        createdAt: new Date(),
+      }),
+    );
+
+    await expect(
+      receiveInventoryReceipt("workspace-1", deps.input, deps, "user-1"),
+    ).rejects.toThrow("Receipt currency must match the catalog item's currency");
+    expect(deps.catalogRepo.receiveStock).not.toHaveBeenCalled();
   });
 
   it("does not create a payable when the receipt is fully paid now", async () => {

@@ -8,6 +8,7 @@ import { toCatalogItemEntity, toCatalogItemDocData } from "../mappers/catalog";
 import { sessionOf } from "../transactions/mongo-unit-of-work";
 import { InventoryStockRecordModel } from "../models/inventory-stock-record";
 import { getBaseUnit, type InventoryUnit } from "../../core/domain/inventory-units";
+import { receiveValuedStock } from "../../core/domain/inventory-valuation";
 import type { ProductFormulaVersion } from "../../core/domain/product-formula";
 import type { ProductComboVersion } from "../../core/domain/product-combo";
 
@@ -191,6 +192,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
               workspaceId: new Types.ObjectId(item.workspaceId),
               catalogItemId: created[0]._id,
               delta: item.stock,
+              valueDeltaMinor: item.inventoryValueMinor,
               unit: getBaseUnit(item.saleUnit),
               kind: "opening",
               reason: "",
@@ -254,7 +256,15 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     itemId: string,
     quantity: number,
     tx?: TransactionHandle,
-    record?: { saleId: string; actorUserId?: string; date?: Date; unit: InventoryUnit },
+    record?: {
+      saleId: string;
+      actorUserId?: string;
+      date?: Date;
+      unit: InventoryUnit;
+      expectedInventoryValueMinor?: number | null;
+      inventoryValueMinor?: number | null;
+      valueDeltaMinor?: number | null;
+    },
   ): Promise<boolean> {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       throw new ValidationError(
@@ -267,9 +277,17 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         _id: itemId,
         workspaceId: new Types.ObjectId(workspaceId),
         stock: { $gte: quantity },
+        ...(record?.expectedInventoryValueMinor !== undefined
+          ? { inventoryValueMinor: record.expectedInventoryValueMinor }
+          : {}),
         $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }],
       },
-      { $inc: { stock: -quantity } },
+      {
+        $inc: { stock: -quantity },
+        ...(record?.inventoryValueMinor !== undefined
+          ? { $set: { inventoryValueMinor: record.inventoryValueMinor } }
+          : {}),
+      },
       { session },
     ).exec();
     if (result.matchedCount === 0) return false;
@@ -284,6 +302,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
           saleId: record.saleId,
           actorUserId: record.actorUserId,
           date: record.date,
+          valueDeltaMinor: record.valueDeltaMinor,
         },
         session,
       );
@@ -297,7 +316,15 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     itemId: string,
     quantity: number,
     tx?: TransactionHandle,
-    record?: { saleId: string; actorUserId?: string; date?: Date; unit: InventoryUnit },
+    record?: {
+      saleId: string;
+      actorUserId?: string;
+      date?: Date;
+      unit: InventoryUnit;
+      expectedInventoryValueMinor?: number | null;
+      inventoryValueMinor?: number | null;
+      valueDeltaMinor?: number | null;
+    },
   ): Promise<void> {
     if (!Number.isSafeInteger(quantity) || quantity <= 0) {
       throw new ValidationError("Stock increment quantity must be a positive safe integer");
@@ -308,9 +335,17 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         _id: itemId,
         workspaceId: new Types.ObjectId(workspaceId),
         stock: { $lte: Number.MAX_SAFE_INTEGER - quantity },
+        ...(record?.expectedInventoryValueMinor !== undefined
+          ? { inventoryValueMinor: record.expectedInventoryValueMinor }
+          : {}),
         $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }],
       },
-      { $inc: { stock: quantity } },
+      {
+        $inc: { stock: quantity },
+        ...(record?.inventoryValueMinor !== undefined
+          ? { $set: { inventoryValueMinor: record.inventoryValueMinor } }
+          : {}),
+      },
       { session },
     ).exec();
     if (result.matchedCount === 0) {
@@ -329,6 +364,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
           saleId: record.saleId,
           actorUserId: record.actorUserId,
           date: record.date,
+          valueDeltaMinor: record.valueDeltaMinor,
         },
         session,
       );
@@ -339,7 +375,15 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     workspaceId: string,
     itemId: string,
     delta: number,
-    record: { reason: string; actorUserId: string; date?: Date; unit: InventoryUnit },
+    record: {
+      reason: string;
+      actorUserId: string;
+      date?: Date;
+      unit: InventoryUnit;
+      expectedInventoryValueMinor: number | null;
+      inventoryValueMinor: number | null;
+      valueDeltaMinor: number | null;
+    },
     tx?: TransactionHandle,
   ): Promise<boolean> {
     if (!Number.isSafeInteger(delta) || delta === 0) {
@@ -356,9 +400,10 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         workspaceId: new Types.ObjectId(workspaceId),
         type: "product",
         stock: stockFilter,
+        inventoryValueMinor: record.expectedInventoryValueMinor,
         $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }],
       },
-      { $inc: { stock: delta } },
+      { $inc: { stock: delta }, $set: { inventoryValueMinor: record.inventoryValueMinor } },
       { session },
     ).exec();
     if (updated.matchedCount === 0) return false;
@@ -372,8 +417,56 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         reason: record.reason,
         actorUserId: record.actorUserId,
         date: record.date,
+        valueDeltaMinor: record.valueDeltaMinor,
       },
       session,
+    );
+    return true;
+  }
+
+  async setOpeningInventoryValue(
+    workspaceId: string,
+    itemId: string,
+    expectedStock: number,
+    valueMinor: number,
+    record: { actorUserId: string; date?: Date; unit: InventoryUnit },
+    tx?: TransactionHandle,
+  ): Promise<boolean> {
+    if (
+      !Number.isSafeInteger(expectedStock) ||
+      expectedStock <= 0 ||
+      !Number.isSafeInteger(valueMinor) ||
+      valueMinor < 0
+    )
+      throw new ValidationError("Opening inventory value is invalid");
+    const session = sessionOf(tx);
+    const updated = await CatalogItemModel.updateOne(
+      {
+        _id: itemId,
+        workspaceId: new Types.ObjectId(workspaceId),
+        type: "product",
+        stock: expectedStock,
+        inventoryValueMinor: null,
+      },
+      { $set: { inventoryValueMinor: valueMinor } },
+      { session },
+    ).exec();
+    if (updated.matchedCount === 0) return false;
+    await InventoryStockRecordModel.create(
+      [
+        {
+          workspaceId: new Types.ObjectId(workspaceId),
+          catalogItemId: new Types.ObjectId(itemId),
+          delta: 0,
+          valueDeltaMinor: valueMinor,
+          unit: record.unit,
+          kind: "opening-valuation",
+          reason: "",
+          actorUserId: record.actorUserId,
+          createdAt: record.date ?? new Date(),
+        },
+      ],
+      { session },
     );
     return true;
   }
@@ -390,6 +483,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     return docs.map((doc) => ({
       id: String(doc._id),
       delta: doc.delta,
+      valueDeltaMinor: doc.valueDeltaMinor,
       unit: doc.unit,
       kind: doc.kind,
       reason: doc.reason,
@@ -418,22 +512,42 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     workspaceId: string,
     itemId: string,
     quantity: number,
-    record: { receiptId: string; actorUserId: string; date: Date; unit: InventoryUnit },
+    record: {
+      receiptId: string;
+      actorUserId: string;
+      date: Date;
+      unit: InventoryUnit;
+      valueDeltaMinor: number;
+    },
     tx?: TransactionHandle,
   ): Promise<boolean> {
     if (!Number.isSafeInteger(quantity) || quantity <= 0) {
       throw new ValidationError("Received stock must be a positive safe integer");
     }
+    const item = await this.findById(workspaceId, itemId, tx);
+    if (!item || item.type !== "product") return false;
+    const next = receiveValuedStock(
+      { quantity: item.stock!, valueMinor: item.inventoryValueMinor ?? null },
+      quantity,
+      record.valueDeltaMinor,
+    );
     const session = sessionOf(tx);
+    const inventoryValueMatch =
+      item.stock === 0 && item.inventoryValueMinor === 0
+        ? { $or: [{ inventoryValueMinor: 0 }, { inventoryValueMinor: null }] }
+        : { inventoryValueMinor: item.inventoryValueMinor ?? null };
     const updated = await CatalogItemModel.updateOne(
       {
         _id: itemId,
         workspaceId: new Types.ObjectId(workspaceId),
         type: "product",
-        stock: { $lte: Number.MAX_SAFE_INTEGER - quantity },
-        $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }],
+        stock: item.stock,
+        $and: [
+          inventoryValueMatch,
+          { $or: [{ comboVersions: { $size: 0 } }, { comboVersions: { $exists: false } }] },
+        ],
       },
-      { $inc: { stock: quantity } },
+      { $set: { stock: next.quantity, inventoryValueMinor: next.valueMinor } },
       { session },
     ).exec();
     if (updated.matchedCount === 0) return false;
@@ -447,6 +561,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
         receiptId: record.receiptId,
         actorUserId: record.actorUserId,
         date: record.date,
+        valueDeltaMinor: record.valueDeltaMinor,
       },
       session,
     );
@@ -458,13 +573,14 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
     itemId: string,
     delta: number,
     unit: InventoryUnit,
-    kind: "opening" | "adjustment" | "receipt" | "sale" | "sale-reversal",
+    kind: "opening" | "opening-valuation" | "adjustment" | "receipt" | "sale" | "sale-reversal",
     details: {
       reason?: string;
       saleId?: string;
       receiptId?: string;
       actorUserId?: string;
       date?: Date;
+      valueDeltaMinor?: number | null;
     },
     session?: ReturnType<typeof sessionOf>,
   ): Promise<void> {
@@ -474,6 +590,7 @@ export class MongoCatalogItemRepository implements CatalogItemRepository {
           workspaceId: new Types.ObjectId(workspaceId),
           catalogItemId: new Types.ObjectId(itemId),
           delta,
+          valueDeltaMinor: details.valueDeltaMinor,
           unit,
           kind,
           reason: details.reason ?? "",

@@ -74,10 +74,21 @@ describe("Sale entity", () => {
   });
 
   it("computes pending = total − Σ abonos (POS-5)", () => {
-    const s = sale({ items: [saleItem({ quantity: 2, unitPrice: new Money(50_000, "COP") })] }, [
-      { id: "ab1", amount: new Money(30_000, "COP"), date: DATE, accountId: "a1" },
-    ]);
+    const s = sale(
+      {
+        items: [saleItem({ quantity: 2, unitPrice: new Money(50_000, "COP") })],
+        paymentMode: "on-credit",
+      },
+      [{ id: "ab1", amount: new Money(30_000, "COP"), date: DATE, accountId: "a1" }],
+    );
     expect(s.pending).toBe(70_000);
+  });
+
+  it("reports no receivable for a paid-in-full sale with no embedded abono", () => {
+    const s = sale({ paymentMode: "paid-in-full" });
+
+    expect(s.pending).toBe(0);
+    expect(s.toJSON().pending).toBe(0);
   });
 
   it("pending is 0 when fully paid", () => {

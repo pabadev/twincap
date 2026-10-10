@@ -3,19 +3,36 @@
 import { useActionState, useEffect, useState } from "react";
 import type { SerializedCatalogItem } from "../../../../core/domain/catalog";
 import { quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
+import { formatAmount } from "../../../../lib/format";
 import { useLocale, useT } from "../../../../i18n/client";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Modal } from "../../../../components/ui/modal";
-import { adjustCatalogStockAction, getCatalogStockHistoryAction } from "./actions";
+import {
+  adjustCatalogStockAction,
+  getCatalogStockHistoryAction,
+  setOpeningInventoryValueAction,
+} from "./actions";
 import type { LucideIcon } from "lucide-react";
 
-type HistoryEntry = { id: string; delta: number; kind: string; reason: string; createdAt: Date };
+type HistoryEntry = {
+  id: string;
+  delta: number;
+  valueDeltaMinor?: number | null;
+  kind: string;
+  reason: string;
+  createdAt: Date;
+};
 
 export function StockControls({ item, icon }: { item: SerializedCatalogItem; icon: LucideIcon }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [direction, setDirection] = useState<"in" | "out">("in");
   const [state, formAction, pending] = useActionState(adjustCatalogStockAction, null);
+  const [openingState, openingAction, openingPending] = useActionState(
+    setOpeningInventoryValueAction,
+    null,
+  );
   const t = useT("Catalog");
   const locale = useLocale();
 
@@ -42,12 +59,45 @@ export function StockControls({ item, icon }: { item: SerializedCatalogItem; ico
         onClick={() => setOpen(true)}
       />
       <Modal open={open} onClose={() => setOpen(false)} title={t("adjustStock")}>
+        {item.type === "product" && (item.stock ?? 0) > 0 && item.inventoryValueMinor === null && (
+          <form
+            action={openingAction}
+            className="mb-4 space-y-3 rounded-md border border-amber-300 p-3"
+          >
+            <input type="hidden" name="itemId" value={item.id} />
+            <h3 className="font-medium">{t("openingValueTitle")}</h3>
+            <p className="text-sm text-zinc-500">{t("openingValueHint")}</p>
+            <input
+              name="valueMinor"
+              type="number"
+              min="0"
+              step="1"
+              required
+              className="w-full rounded-md border border-surface-border bg-surface-input p-2"
+            />
+            {openingState?.error && (
+              <p role="alert" className="text-sm text-red-600">
+                {t("adjustmentError")}
+              </p>
+            )}
+            {openingState?.success && (
+              <p role="status" className="text-sm text-green-700">
+                {t("openingValueSaved")}
+              </p>
+            )}
+            <Button type="submit" disabled={openingPending}>
+              {t("saveOpeningValue")}
+            </Button>
+          </form>
+        )}
         <form action={formAction} className="space-y-3">
           <input type="hidden" name="itemId" value={item.id} />
           <label className="block text-sm">
             {t("adjustmentType")}
             <select
               name="direction"
+              value={direction}
+              onChange={(event) => setDirection(event.target.value as "in" | "out")}
               className="mt-1 w-full rounded-md border border-surface-border bg-surface-input p-2"
             >
               <option value="in">{t("stockIn")}</option>
@@ -68,6 +118,22 @@ export function StockControls({ item, icon }: { item: SerializedCatalogItem; ico
               className="mt-1 w-full rounded-md border border-surface-border bg-surface-input p-2"
             />
           </label>
+          {direction === "in" && (
+            <label className="block text-sm">
+              {t("adjustmentValue", { currency: item.unitPrice.currency })}
+              <input
+                name="adjustmentValueMinor"
+                type="number"
+                min="0"
+                step="1"
+                required
+                className="mt-1 w-full rounded-md border border-surface-border bg-surface-input p-2"
+              />
+              <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                {t("adjustmentValueHint")}
+              </span>
+            </label>
+          )}
           <label className="block text-sm">
             {t("reason")}
             <input
@@ -107,11 +173,14 @@ export function StockControls({ item, icon }: { item: SerializedCatalogItem; ico
                   <div className="flex justify-between gap-3">
                     <span>{t(`stockKind_${entry.kind}`)}</span>
                     <strong>
-                      {entry.delta > 0 ? "+" : "−"}
-                      {new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
-                        quantity,
-                      )}{" "}
-                      {t(`unit_${item.saleUnit}`)}
+                      {entry.kind === "opening-valuation"
+                        ? formatAmount(entry.valueDeltaMinor ?? 0, item.unitPrice.currency, locale)
+                        : (entry.delta > 0 ? "+" : "−") +
+                          new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(
+                            quantity,
+                          ) +
+                          " " +
+                          t(`unit_${item.saleUnit}`)}
                     </strong>
                   </div>
                   <div className="text-zinc-500">

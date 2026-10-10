@@ -151,6 +151,7 @@ describe("CatalogForm guided combo and recipe kinds", () => {
       formulaVersions: [],
       comboVersions: [],
       stock: 3,
+      inventoryValueMinor: 0,
       createdAt: new Date(0),
     };
     mount(<CatalogForm item={item} onDone={() => {}} />);

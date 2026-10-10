@@ -320,7 +320,7 @@ describe("§18 integration — derived totals cannot overflow silently", () => {
     ).toThrow(MoneyError);
   });
 
-  it("Sale: normal line items construct fine", () => {
+  it("Sale: paid-in-full line items have no outstanding balance", () => {
     const sale = new Sale(
       {
         id: "s-3",
@@ -337,6 +337,6 @@ describe("§18 integration — derived totals cannot overflow silently", () => {
       [],
     );
     expect(sale.total).toBe(80_000);
-    expect(sale.pending).toBe(80_000);
+    expect(sale.pending).toBe(0);
   });
 });

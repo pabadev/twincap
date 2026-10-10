@@ -13,6 +13,7 @@ function makeItem(type: "product" | "service" = "product") {
     name: "Coffee",
     type,
     stock: type === "product" ? 2_000_000 : undefined,
+    inventoryValueMinor: type === "product" ? 4_000 : undefined,
     saleUnit: "kg",
     unitPrice: new Money(500, "COP"),
     createdAt: new Date(),
@@ -39,7 +40,13 @@ describe("adjustCatalogStock", () => {
     await adjustCatalogStock(
       "workspace-1",
       "item-1",
-      { direction: "in", quantity: 0.5, reason: "Conteo físico", actorUserId: "user-1" },
+      {
+        direction: "in",
+        quantity: 0.5,
+        reason: "Conteo físico",
+        actorUserId: "user-1",
+        adjustmentValueMinor: 1_000,
+      },
       catalogRepo,
       uow,
     );
@@ -47,7 +54,13 @@ describe("adjustCatalogStock", () => {
       "workspace-1",
       "item-1",
       500_000,
-      expect.objectContaining({ reason: "Conteo físico", unit: "mg" }),
+      expect.objectContaining({
+        reason: "Conteo físico",
+        unit: "mg",
+        expectedInventoryValueMinor: 4_000,
+        inventoryValueMinor: 5_000,
+        valueDeltaMinor: 1_000,
+      }),
       expect.anything(),
     );
   });
@@ -66,13 +79,48 @@ describe("adjustCatalogStock", () => {
     ).rejects.toThrow("Insufficient stock or catalog item changed");
   });
 
+  it("removes stock value at the moving average and requires cost for manual entries", async () => {
+    const { catalogRepo, uow } = dependencies();
+    await adjustCatalogStock(
+      "workspace-1",
+      "item-1",
+      { direction: "out", quantity: 0.5, reason: "Merma", actorUserId: "user-1" },
+      catalogRepo,
+      uow,
+    );
+    expect(catalogRepo.adjustStock).toHaveBeenCalledWith(
+      "workspace-1",
+      "item-1",
+      -500_000,
+      expect.objectContaining({ inventoryValueMinor: 3_000, valueDeltaMinor: -1_000 }),
+      expect.anything(),
+    );
+
+    const product = dependencies();
+    await expect(
+      adjustCatalogStock(
+        "workspace-1",
+        "item-1",
+        { direction: "in", quantity: 1, reason: "Conteo", actorUserId: "user-1" },
+        product.catalogRepo,
+        product.uow,
+      ),
+    ).rejects.toThrow("A valid total value is required for stock added manually");
+  });
+
   it("rejects services and adjustments without a reason", async () => {
     const service = dependencies(makeItem("service"));
     await expect(
       adjustCatalogStock(
         "workspace-1",
         "item-1",
-        { direction: "in", quantity: 1, reason: "ok", actorUserId: "user-1" },
+        {
+          direction: "in",
+          quantity: 1,
+          reason: "ok",
+          actorUserId: "user-1",
+          adjustmentValueMinor: 100,
+        },
         service.catalogRepo,
         service.uow,
       ),

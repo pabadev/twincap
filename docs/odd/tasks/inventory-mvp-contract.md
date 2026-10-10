@@ -93,3 +93,9 @@ Un dueño de pequeño negocio debe poder responder rápidamente: qué productos 
 - Las ventas concurrentes no producen stock negativo ni descuentos parciales.
 - El inventario no altera por sí solo saldos de cuenta, resultado económico ni cuentas por pagar.
 - Las consultas y escrituras respetan aislamiento por workspace.
+
+## Addendum: rentabilidad básica para beta (2026-10-08)
+
+El fundador autorizó una ampliación acotada para que los negocios puedan consultar costos y utilidad antes de beta. Este addendum **actualiza** las exclusiones de costo/margen/utilidad del alcance original; conserva la prohibición de crear un módulo completo de Compras y no cambia las reglas de recepción, POS, cuentas por pagar ni contexto financiero.
+
+La especificación de fuente de verdad, costo promedio ponderado móvil, inventario inicial no valorado, ajustes, snapshots de costo en venta, reversas, métricas y límites está en [`profitability-beta-core.md`](profitability-beta-core.md). La implementación debe seguir sus fases y criterios. Hasta que P1–P3 estén completos, ninguna pantalla debe insinuar que TwinCap calcula rentabilidad total.

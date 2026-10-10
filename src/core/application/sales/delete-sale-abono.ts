@@ -79,6 +79,7 @@ export async function deleteSaleAbono(
           unit: i.unit,
           stockQuantity: i.stockQuantity,
           unitPrice: i.unitPrice,
+          costSnapshot: i.costSnapshot,
         })),
         date: sale.date,
         paymentMode: sale.paymentMode,

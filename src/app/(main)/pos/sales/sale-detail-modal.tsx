@@ -132,7 +132,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             {/* Desktop (>=640px): compact modal table keeps its bespoke cells
                 (pb-1 / py-1.5, text-xs header rows) — only the `<table>`
                 element fits the ui/table contract here. */}
-            <div className="max-sm:hidden overflow-x-auto">
+            <div className="max-md:hidden overflow-x-auto">
               <Table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -140,6 +140,8 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                     <th className="pb-1 text-right">{t("qty")}</th>
                     <th className="pb-1 text-right">{t("unitPrice")}</th>
                     <th className="pb-1 text-right">{t("subtotal")}</th>
+                    <th className="pb-1 text-right">{t("inventoryCost")}</th>
+                    <th className="pb-1 text-right">{t("grossProfit")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -182,6 +184,22 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                       <td className="py-1.5 text-right">
                         {formatAmount(item.subtotal, snapshot.currency, locale)}
                       </td>
+                      <td className="py-1.5 text-right">
+                        {item.isService
+                          ? t("serviceNoInventoryCost")
+                          : item.inventoryCostMinor === null
+                            ? t(item.costTracked ? "costUnavailable" : "costNotTracked")
+                            : formatAmount(item.inventoryCostMinor, snapshot.currency, locale)}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        {item.inventoryCostMinor === null
+                          ? "—"
+                          : formatAmount(
+                              item.subtotal - item.inventoryCostMinor,
+                              snapshot.currency,
+                              locale,
+                            )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -191,7 +209,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             {/* Mobile (<640px): line items as stacked rows — 4 columns in a
                 size-lg modal is cramped at card width (§20). Row 1: item name;
                 row 2: qty × unit price; row 3: subtotal. */}
-            <div className="space-y-2 sm:hidden">
+            <div className="space-y-2 md:hidden">
               {snapshot.items.map((item, idx) => (
                 <div
                   key={idx}
@@ -233,6 +251,28 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                   <div className="mt-1 text-right font-medium tabular-nums text-zinc-900 dark:text-white">
                     {formatAmount(item.subtotal, snapshot.currency, locale)}
                   </div>
+                  <div className="mt-1 flex justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                    <span>{t("inventoryCost")}</span>
+                    <span>
+                      {item.isService
+                        ? t("serviceNoInventoryCost")
+                        : item.inventoryCostMinor === null
+                          ? t(item.costTracked ? "costUnavailable" : "costNotTracked")
+                          : formatAmount(item.inventoryCostMinor, snapshot.currency, locale)}
+                    </span>
+                  </div>
+                  {item.inventoryCostMinor !== null && (
+                    <div className="flex justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                      <span>{t("grossProfit")}</span>
+                      <span>
+                        {formatAmount(
+                          item.subtotal - item.inventoryCostMinor,
+                          snapshot.currency,
+                          locale,
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -245,6 +285,26 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                 {formatAmount(snapshot.total, snapshot.currency, locale)}
               </dd>
             </div>
+            <div className="flex justify-between">
+              <dt className="text-zinc-600 dark:text-zinc-400">{t("inventoryCost")}</dt>
+              <dd className="font-medium text-zinc-900 dark:text-white">
+                {snapshot.costComplete && snapshot.inventoryCostMinor !== null
+                  ? formatAmount(snapshot.inventoryCostMinor, snapshot.currency, locale)
+                  : t("costUnavailable")}
+              </dd>
+            </div>
+            {snapshot.costComplete && snapshot.grossProfitMinor !== null ? (
+              <div className="flex justify-between">
+                <dt className="text-zinc-600 dark:text-zinc-400">{t("grossProfit")}</dt>
+                <dd className="font-medium text-zinc-900 dark:text-white">
+                  {formatAmount(snapshot.grossProfitMinor, snapshot.currency, locale)}
+                </dd>
+              </div>
+            ) : (
+              <div className="rounded-md bg-warning/10 px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300">
+                {t("costIncompleteHint")}
+              </div>
+            )}
             {snapshot.paymentMode === "on-credit" && (
               <>
                 <div className="flex justify-between">

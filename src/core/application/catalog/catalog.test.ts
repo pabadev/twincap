@@ -131,6 +131,58 @@ describe("createCatalogItem", () => {
     expect(catalogRepo.created).toHaveLength(1);
   });
 
+  it("stores the total opening inventory value in the product currency", async () => {
+    const catalogRepo = fakeCatalogRepo();
+    const item = await createCatalogItem(
+      "user-1",
+      {
+        name: "Widget",
+        unitPrice: 5000,
+        currency: "COP",
+        type: "product",
+        stock: 10,
+        initialInventoryValueMinor: 42_000,
+      },
+      catalogRepo,
+      fakeIdGen(),
+    );
+
+    expect(item.inventoryValueMinor).toBe(42_000);
+  });
+
+  it("rejects an opening value that is invalid or attached to zero stock", async () => {
+    const catalogRepo = fakeCatalogRepo();
+    await expect(
+      createCatalogItem(
+        "user-1",
+        {
+          name: "Widget",
+          unitPrice: 5000,
+          currency: "COP",
+          type: "product",
+          stock: 0,
+          initialInventoryValueMinor: 100,
+        },
+        catalogRepo,
+        fakeIdGen(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    await expect(
+      createCatalogItem(
+        "user-1",
+        {
+          name: "Consulting",
+          unitPrice: 50000,
+          currency: "COP",
+          type: "service",
+          initialInventoryValueMinor: 10,
+        },
+        catalogRepo,
+        fakeIdGen(),
+      ),
+    ).rejects.toThrow(ValidationError);
+  });
+
   it("creates a service without stock", async () => {
     const catalogRepo = fakeCatalogRepo();
     const ids = fakeIdGen();

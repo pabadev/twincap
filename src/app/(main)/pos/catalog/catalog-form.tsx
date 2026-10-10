@@ -64,6 +64,7 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
   const [saleUnit, setSaleUnit] = useState<InventoryUnit | "">(item?.saleUnit ?? "");
   const [productRole, setProductRole] = useState<ProductRole | "">(item?.productRole ?? "");
   const [currency, setCurrency] = useState<Currency | "">(item?.unitPrice.currency ?? "");
+  const [initialStock, setInitialStock] = useState("0");
   const resolvedType: CatalogItemType =
     kind === "product" ? "product" : kind === "service" ? "service" : "product";
 
@@ -256,6 +257,19 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             step="0.001"
             required
             defaultValue={0}
+            onChange={(event) => setInitialStock(event.target.value)}
+            disabled={isPending}
+          />
+        )}
+        {kind === "product" && !isEdit && Number(initialStock) > 0 && (
+          <Input
+            id="initialInventoryValueMinor"
+            name="initialInventoryValueMinor"
+            type="number"
+            label={t("initialInventoryValue", { currency: currency || "" })}
+            hint={t("initialInventoryValueHint")}
+            min="0"
+            step="1"
             disabled={isPending}
           />
         )}

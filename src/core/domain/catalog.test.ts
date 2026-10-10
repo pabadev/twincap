@@ -19,6 +19,63 @@ describe("CatalogItem entity", () => {
     expect(item.type).toBe("product");
     expect(item.stock).toBe(10);
     expect(item.name).toBe("Café");
+    expect(item.inventoryValueMinor).toBeNull();
+  });
+
+  it("uses zero inventory value for empty stock and accepts an explicit opening value", () => {
+    const empty = new CatalogItem({
+      id: "empty",
+      workspaceId: "u1",
+      name: "Empty",
+      unitPrice: new Money(5_000, "COP"),
+      type: "product",
+      stock: 0,
+      createdAt: DATE,
+    });
+    const valued = new CatalogItem({
+      id: "valued",
+      workspaceId: "u1",
+      name: "Valued",
+      unitPrice: new Money(5_000, "COP"),
+      type: "product",
+      stock: 10,
+      inventoryValueMinor: 42_000,
+      createdAt: DATE,
+    });
+
+    expect(empty.inventoryValueMinor).toBe(0);
+    expect(valued.inventoryValueMinor).toBe(42_000);
+    expect(valued.toJSON().inventoryValueMinor).toBe(42_000);
+  });
+
+  it("rejects invalid inventory values and values attached to services", () => {
+    const productInput = {
+      id: "bad",
+      workspaceId: "u1",
+      name: "Bad",
+      unitPrice: new Money(5_000, "COP"),
+      type: "product" as const,
+      stock: 10,
+      createdAt: DATE,
+    };
+    expect(() => new CatalogItem({ ...productInput, inventoryValueMinor: -1 })).toThrow(
+      ValidationError,
+    );
+    expect(() => new CatalogItem({ ...productInput, stock: 0, inventoryValueMinor: 1 })).toThrow(
+      ValidationError,
+    );
+    expect(
+      () =>
+        new CatalogItem({
+          id: "service",
+          workspaceId: "u1",
+          name: "Service",
+          unitPrice: new Money(5_000, "COP"),
+          type: "service",
+          inventoryValueMinor: 0,
+          createdAt: DATE,
+        }),
+    ).toThrow(ValidationError);
   });
 
   it("creates a service without stock (POS-1)", () => {

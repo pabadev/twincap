@@ -129,6 +129,17 @@ function makeCatalogItem(): CatalogItem {
   });
 }
 
+function makeServiceItem(): CatalogItem {
+  return new CatalogItem({
+    id: "item-1",
+    workspaceId: "user-1",
+    name: "Mantenimiento de impresora",
+    unitPrice: new Money(50000, "COP"),
+    type: "service",
+    createdAt: new Date(),
+  });
+}
+
 function makeAccount(): Account {
   return new Account({
     id: "acc-1",
@@ -199,6 +210,72 @@ describe("getSaleDetail", () => {
     expect(snapshot.clientName).toBe("Juan Pérez");
     expect(snapshot.accountName).toBe("Efectivo");
     expect(snapshot.currency).toBe("COP");
+  });
+
+  it("returns a gross profit only when every sold item has known inventory cost", async () => {
+    const sale = makeSale({
+      paymentMode: "paid-in-full",
+      items: [
+        {
+          itemId: "item-1",
+          quantity: 2,
+          unitPrice: new Money(50_000, "COP"),
+          costSnapshot: {
+            totalCostMinor: 12_000,
+            components: [
+              { itemId: "item-1", name: "Perfume A", stockQuantity: 2, costMinor: 12_000 },
+            ],
+          },
+        },
+      ],
+    });
+    const snapshot = await getSaleDetail(
+      "user-1",
+      sale.id,
+      fakeSaleRepo(sale),
+      fakeClientRepo(null),
+      fakeCatalogRepo([makeCatalogItem()]),
+      fakeAccountRepo(makeAccount()),
+      fakeCreditGrantedRepo([]),
+    );
+    expect(snapshot.costComplete).toBe(true);
+    expect(snapshot.inventoryCostMinor).toBe(12_000);
+    expect(snapshot.grossProfitMinor).toBe(88_000);
+    expect(snapshot.items[0]?.inventoryCostMinor).toBe(12_000);
+  });
+
+  it("does not claim gross profit when a legacy sale has no cost snapshot", async () => {
+    const sale = makeSale({ paymentMode: "paid-in-full" });
+    const snapshot = await getSaleDetail(
+      "user-1",
+      sale.id,
+      fakeSaleRepo(sale),
+      fakeClientRepo(null),
+      fakeCatalogRepo([makeCatalogItem()]),
+      fakeAccountRepo(makeAccount()),
+      fakeCreditGrantedRepo([]),
+    );
+    expect(snapshot.costComplete).toBe(false);
+    expect(snapshot.inventoryCostMinor).toBeNull();
+    expect(snapshot.grossProfitMinor).toBeNull();
+  });
+
+  it("treats services as having no inventory cost and includes their gross contribution", async () => {
+    const sale = makeSale({ paymentMode: "paid-in-full" });
+    const snapshot = await getSaleDetail(
+      "user-1",
+      sale.id,
+      fakeSaleRepo(sale),
+      fakeClientRepo(null),
+      fakeCatalogRepo([makeServiceItem()]),
+      fakeAccountRepo(makeAccount()),
+      fakeCreditGrantedRepo([]),
+    );
+
+    expect(snapshot.items[0]).toMatchObject({ isService: true, inventoryCostMinor: 0 });
+    expect(snapshot.costComplete).toBe(true);
+    expect(snapshot.inventoryCostMinor).toBe(0);
+    expect(snapshot.grossProfitMinor).toBe(sale.total);
   });
 
   it("resolves item names and computes subtotals", async () => {

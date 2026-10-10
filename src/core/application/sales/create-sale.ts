@@ -21,6 +21,7 @@ import {
   getBaseUnit,
   quantityToBaseUnits,
 } from "../../domain/inventory-units";
+import { removeValuedStock } from "../../domain/inventory-valuation";
 
 /**
  * Create a sale with line items (POS-2 through POS-4, H14).
@@ -117,7 +118,13 @@ export async function createSale(
     resolvedItems.push(catalogItem);
   }
 
-  const lineItems = input.items.map((item, index) => {
+  const lineItems: Array<
+    import("../../domain/sale").SaleLineItemInput & {
+      stockQuantity: number;
+      unit: import("../../domain/inventory-units").InventoryUnit;
+      costSnapshot?: NonNullable<import("../../domain/sale").SaleLineItemInput["costSnapshot"]>;
+    }
+  > = input.items.map((item, index) => {
     const catalogItem = resolvedItems[index];
     if (!catalogItem) throw new NotFoundError(`Catalog item ${item.itemId} not found`);
     const unit = catalogItem.type === "product" ? catalogItem.saleUnit : "unit";
@@ -202,6 +209,7 @@ export async function createSale(
       unit,
       stockQuantity,
       unitPrice: new Money(item.unitPrice, input.currency),
+      costSnapshot: undefined,
       formulaSnapshot,
       comboSnapshot,
     };
@@ -262,7 +270,12 @@ export async function createSale(
     // POS-3: consume finished stock OR the exact ingredient snapshots for made-to-order products.
     const componentConsumption = new Map<
       string,
-      { quantity: number; unit: ReturnType<typeof getBaseUnit>; name: string }
+      {
+        quantity: number;
+        unit: ReturnType<typeof getBaseUnit>;
+        name: string;
+        entries: Array<{ lineIndex: number; componentIndex: number; quantity: number }>;
+      }
     >();
     for (let i = 0; i < input.items.length; i++) {
       const item = input.items[i];
@@ -275,7 +288,21 @@ export async function createSale(
             throw new NotFoundError("Prepared product or combo no longer exists");
           const snapshotComponents =
             line.formulaSnapshot?.components ?? line.comboSnapshot?.components ?? [];
-          for (const component of snapshotComponents) {
+          line.costSnapshot = {
+            totalCostMinor: null,
+            components: snapshotComponents.map((component) => ({
+              itemId: component.itemId,
+              name: component.name,
+              stockQuantity: component.stockQuantity,
+              costMinor: null,
+            })),
+          };
+          for (
+            let componentIndex = 0;
+            componentIndex < snapshotComponents.length;
+            componentIndex++
+          ) {
+            const component = snapshotComponents[componentIndex];
             const current = componentConsumption.get(component.itemId);
             const quantity = (current?.quantity ?? 0) + component.stockQuantity;
             if (!Number.isSafeInteger(quantity))
@@ -284,25 +311,38 @@ export async function createSale(
               quantity,
               unit: getBaseUnit(component.unit),
               name: component.name,
+              entries: [
+                ...(current?.entries ?? []),
+                { lineIndex: i, componentIndex, quantity: component.stockQuantity },
+              ],
             });
           }
           continue;
         }
-        const success = await catalogRepo.decrementStock(
-          workspaceId,
-          item.itemId,
-          lineItems[i].stockQuantity,
-          tx,
-          {
-            saleId,
-            actorUserId: input.actorUserId,
-            date: now,
-            unit: getBaseUnit(catalogItem.saleUnit),
-          },
-        );
-        if (!success) {
-          throw new ConflictError(`Insufficient stock for item ${catalogItem.name}`);
-        }
+        lineItems[i].costSnapshot = {
+          totalCostMinor: null,
+          components: [
+            {
+              itemId: catalogItem.id,
+              name: catalogItem.name,
+              stockQuantity: lineItems[i].stockQuantity,
+              costMinor: null,
+            },
+          ],
+        };
+        const current = componentConsumption.get(item.itemId);
+        const quantity = (current?.quantity ?? 0) + lineItems[i].stockQuantity;
+        if (!Number.isSafeInteger(quantity))
+          throw new ValidationError("Sale stock total exceeds supported range");
+        componentConsumption.set(item.itemId, {
+          quantity,
+          unit: getBaseUnit(catalogItem.saleUnit),
+          name: catalogItem.name,
+          entries: [
+            ...(current?.entries ?? []),
+            { lineIndex: i, componentIndex: 0, quantity: lineItems[i].stockQuantity },
+          ],
+        });
       }
     }
     for (const [componentId, consumption] of componentConsumption) {
@@ -310,6 +350,26 @@ export async function createSale(
       if (!component || component.type !== "product") {
         throw new ConflictError("A stock component is no longer available");
       }
+      if ((component.stock ?? 0) < consumption.quantity)
+        throw new ConflictError(`Insufficient stock for item ${consumption.name}`);
+      if (component.unitPrice.currency !== input.currency)
+        throw new ValidationError("Stock item cost currency must match sale currency");
+      const valuation = removeValuedStock(
+        { quantity: component.stock!, valueMinor: component.inventoryValueMinor ?? null },
+        consumption.quantity,
+      );
+      const allocated = allocateInventoryCost(
+        valuation.removedValueMinor,
+        consumption.entries.map((entry) => entry.quantity),
+      );
+      consumption.entries.forEach((entry, index) => {
+        const saleLine = lineItems[entry.lineIndex];
+        const snapshot = saleLine?.costSnapshot;
+        const componentCost = snapshot?.components[entry.componentIndex];
+        if (!saleLine || !snapshot || !componentCost)
+          throw new ValidationError("Sale cost snapshot allocation failed");
+        componentCost.costMinor = allocated[index] ?? null;
+      });
       const success = await catalogRepo.decrementStock(
         workspaceId,
         componentId,
@@ -320,10 +380,22 @@ export async function createSale(
           actorUserId: input.actorUserId,
           date: now,
           unit: consumption.unit,
+          expectedInventoryValueMinor: component.inventoryValueMinor ?? null,
+          inventoryValueMinor: valuation.remaining.valueMinor,
+          valueDeltaMinor:
+            valuation.removedValueMinor === null ? null : -valuation.removedValueMinor,
         },
       );
       if (!success)
         throw new ConflictError(`Insufficient stock for formula component ${consumption.name}`);
+    }
+    for (const line of lineItems) {
+      if (line.costSnapshot) {
+        const costs = line.costSnapshot.components.map((component) => component.costMinor);
+        line.costSnapshot.totalCostMinor = costs.some((cost) => cost === null)
+          ? null
+          : sumSafeMinorUnits(costs as number[], "Sale line inventory cost");
+      }
     }
 
     const sale = new Sale({
@@ -415,6 +487,27 @@ export async function createSale(
 
     return sale;
   });
+}
+
+function allocateInventoryCost(
+  totalCostMinor: number | null,
+  quantities: number[],
+): Array<number | null> {
+  if (totalCostMinor === null) return quantities.map(() => null);
+  const result: number[] = [];
+  let remainingCost = totalCostMinor;
+  let remainingQuantity = quantities.reduce((sum, quantity) => sum + quantity, 0);
+  for (let index = 0; index < quantities.length; index++) {
+    const quantity = quantities[index] ?? 0;
+    const amount =
+      index === quantities.length - 1
+        ? remainingCost
+        : Number((BigInt(remainingCost) * BigInt(quantity)) / BigInt(remainingQuantity));
+    result.push(amount);
+    remainingCost -= amount;
+    remainingQuantity -= quantity;
+  }
+  return result;
 }
 
 function buildSalePaymentMovement(args: {

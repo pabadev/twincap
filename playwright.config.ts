@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const CI = Boolean(process.env.CI);
-// beta round 3: standalone E2E port so a dev server on :3000 is never reused.
-const PORT = Number(process.env.E2E_PORT ?? 3000);
+// Keep E2E isolated from a developer's Next dev server and stale app instances.
+const PORT = Number(process.env.E2E_PORT ?? 3011);
 
 /**
  * R12-C3 E2E config (Slice 1 — Infra + Auth + Accounts).
@@ -54,7 +54,8 @@ export default defineConfig({
     // dedicated port when a dev server occupies :3000).
     command: `pnpm exec next build && pnpm exec next start -p ${PORT}`,
     port: PORT,
-    reuseExistingServer: !CI,
+    // Never silently attach to a server with a different build or environment.
+    reuseExistingServer: false,
     // `next build && next start` on a loaded dev machine takes ~3-4 min
     // (typecheck + Turbopack build + static gen); 120s was too tight.
     timeout: 300_000,

@@ -69,6 +69,12 @@ const NAV_GROUPS: readonly { headerKey: string | null; items: readonly NavItem[]
     headerKey: "groupOperation",
     items: [
       { href: "/pos/sales", key: "posSales", icon: ShoppingCart, color: "text-income" },
+      {
+        href: "/business-analytics",
+        key: "businessAnalytics",
+        icon: BarChart3,
+        color: "text-income",
+      },
       { href: "/accounts", key: "accounts", icon: Landmark, color: "text-info" },
       { href: "/clients", key: "clients", icon: Users, color: "text-info" },
     ],

@@ -4,6 +4,10 @@ import {
   confirmDialog,
   confirmMoneyAction,
   expectNoSaleConfirmationDialog,
+  connectE2eDb,
+  workspaceIdOf,
+  accountIdOf,
+  openingMovementsOf,
 } from "./helpers";
 
 /**
@@ -61,6 +65,9 @@ async function setInitialBalanceInUI(
   // UX-6: the informed-confirmation dialog opens over the form — confirm it.
   await confirmMoneyAction(page);
   await expect(dialog).toBeHidden();
+  await expect(page.locator("[aria-live='polite']").getByText(/Initial balance set/i)).toHaveCount(
+    1,
+  );
 }
 
 /** Assert an /accounts row shows the numeric COP amount (NBSP-safe). */
@@ -369,10 +376,15 @@ test.describe("Slice 3 — Credits + POS", () => {
   test("write-off renders the danger badge and excludes the credit from financial position assets", async ({
     page,
   }) => {
-    await freshUser(page);
+    const { email } = await freshUser(page);
 
     // Start from a known position: Efectivo opening 300,000.
     await setInitialBalanceInUI(page, "Efectivo", "300000");
+    await connectE2eDb();
+    const workspaceId = await workspaceIdOf(email);
+    const accountId = await accountIdOf(workspaceId, "Efectivo");
+    const openings = await openingMovementsOf(workspaceId, accountId);
+    expect(openings).toEqual([{ amount: 300_000 }]);
     await expectAccountBalance(page, "Efectivo", "300,000");
 
     // Grant 100,000 → receivable becomes an asset: 300,000 (200,000 cash +

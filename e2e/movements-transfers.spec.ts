@@ -62,6 +62,9 @@ async function setInitialBalanceInUI(
   // UX-6: the informed-confirmation dialog opens over the form — confirm it.
   await confirmMoneyAction(page);
   await expect(dialog).toBeHidden();
+  await expect(page.locator("[aria-live='polite']").getByText(/Initial balance set/i)).toHaveCount(
+    1,
+  );
 }
 
 /**

@@ -7,6 +7,7 @@ import type {
   CreditGrantedRepository,
 } from "../../domain/repositories";
 import type { SaleDetailSnapshot } from "./dto/sales";
+import { sumSafeMinorUnits } from "../../domain/money";
 
 /**
  * H17: assemble the full sale detail read model.
@@ -44,6 +45,7 @@ export async function getSaleDetail(
   // Catalog names in a single query.
   const catalogItems = await catalogRepo.findByWorkspaceId(workspaceId);
   const itemNameById = new Map(catalogItems.map((item) => [item.id, item.name]));
+  const catalogItemById = new Map(catalogItems.map((item) => [item.id, item]));
 
   // Optional joins: repos honor the nullable port contract, so a dangling
   // reference simply resolves to null instead of failing the detail view.
@@ -90,6 +92,20 @@ export async function getSaleDetail(
     }));
   }
 
+  const isService = (itemId: string) => catalogItemById.get(itemId)?.type === "service";
+  const costComplete = sale.items.every(
+    (item) =>
+      (item.costSnapshot?.totalCostMinor !== undefined &&
+        item.costSnapshot.totalCostMinor !== null) ||
+      isService(item.itemId),
+  );
+  const inventoryCostMinor = costComplete
+    ? sumSafeMinorUnits(
+        sale.items.map((item) => item.costSnapshot?.totalCostMinor ?? 0),
+        "Sale detail inventory cost",
+      )
+    : null;
+
   return {
     id: sale.id,
     date: sale.date,
@@ -102,6 +118,9 @@ export async function getSaleDetail(
       unit: item.unit,
       unitPrice: item.unitPrice.toJSON(),
       subtotal: item.subtotal,
+      inventoryCostMinor: item.costSnapshot?.totalCostMinor ?? (isService(item.itemId) ? 0 : null),
+      costTracked: item.costSnapshot !== undefined,
+      isService: isService(item.itemId),
       formulaSnapshot: item.formulaSnapshot
         ? {
             version: item.formulaSnapshot.version,
@@ -116,6 +135,9 @@ export async function getSaleDetail(
         : undefined,
     })),
     total: sale.total,
+    inventoryCostMinor,
+    grossProfitMinor: inventoryCostMinor === null ? null : sale.total - inventoryCostMinor,
+    costComplete,
     initialPayment,
     pending,
     hasLinkedCredit: linkedCredit !== null,

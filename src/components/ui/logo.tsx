@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
 interface LogoProps {
-  variant?: 'logotipo' | 'isotipo';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "logotipo" | "isotipo";
+  size?: "sm" | "md" | "lg";
+  neutral?: boolean;
 }
 
 const sizeConfig = {
-  sm: { icon: 24, text: 'text-sm', gap: 'gap-1.5' },
-  md: { icon: 32, text: 'text-lg', gap: 'gap-2' },
-  lg: { icon: 48, text: 'text-2xl', gap: 'gap-3' },
+  sm: { icon: 24, text: "text-sm", gap: "gap-1.5" },
+  md: { icon: 32, text: "text-lg", gap: "gap-2" },
+  lg: { icon: 48, text: "text-2xl", gap: "gap-3" },
 } as const;
 
 /**
@@ -22,7 +23,7 @@ function LogoIcon({ size, decorative }: { size: number; decorative: boolean }) {
       src="/isotipo-twincap.png"
       width={size}
       height={size}
-      alt={decorative ? '' : 'TwinCap'}
+      alt={decorative ? "" : "TwinCap"}
       aria-hidden={decorative || undefined}
       className="object-contain"
       draggable={false}
@@ -30,21 +31,23 @@ function LogoIcon({ size, decorative }: { size: number; decorative: boolean }) {
   );
 }
 
-export function Logo({ variant = 'logotipo', size = 'md' }: LogoProps) {
+export function Logo({ variant = "logotipo", size = "md", neutral = false }: LogoProps) {
   const config = sizeConfig[size];
 
-  if (variant === 'isotipo') {
+  if (variant === "isotipo") {
     return <LogoIcon size={config.icon} decorative={false} />;
   }
 
   return (
     <div className={`flex items-center ${config.gap}`}>
       <LogoIcon size={config.icon} decorative />
-      <span
-        className={`font-display font-bold tracking-tight ${config.text}`}
-      >
-        <span className="text-cyan-800 dark:text-brand-teal">Twin</span>
-        <span className="text-amber-800 dark:text-brand-gold">Cap</span>
+      <span className={`font-display font-bold tracking-tight ${config.text}`}>
+        <span className={neutral ? "text-cyan-800" : "text-cyan-800 dark:text-brand-teal"}>
+          Twin
+        </span>
+        <span className={neutral ? "text-amber-800" : "text-amber-800 dark:text-brand-gold"}>
+          Cap
+        </span>
       </span>
     </div>
   );

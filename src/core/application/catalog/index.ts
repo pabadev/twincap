@@ -6,3 +6,4 @@ export { adjustCatalogStock } from "./adjust-catalog-stock";
 export { configureProductFormula } from "./configure-product-formula";
 export { configureProductCombo } from "./configure-product-combo";
 export type { CreateCatalogItemInput, EditCatalogItemInput } from "./dto/catalog";
+export { setOpeningInventoryValue } from "./set-opening-inventory-value";

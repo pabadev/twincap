@@ -76,6 +76,7 @@ export async function updateCatalogItem(
         components: combo.components.map((component) => ({ ...component })),
       })),
       stock: existing.stock,
+      inventoryValueMinor: existing.inventoryValueMinor,
       saleUnit,
       createdAt: existing.createdAt,
     });

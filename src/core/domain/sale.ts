@@ -27,6 +27,16 @@ export interface SaleLineItem {
   stockQuantity: number;
   /** Unit price snapshot at the time of the sale (POS-7: may change independently). */
   unitPrice: Money;
+  /** Immutable cost of physical stock consumed; null means the cost is unknown. */
+  costSnapshot?: {
+    totalCostMinor: number | null;
+    components: Array<{
+      itemId: string;
+      name: string;
+      stockQuantity: number;
+      costMinor: number | null;
+    }>;
+  };
   /** Computed from stock atoms and the sale unit's conversion factor. */
   readonly subtotal: number;
   /** Immutable formula and actual consumption used for this sale line, if prepared on demand. */
@@ -94,6 +104,7 @@ export interface SaleLineItemInput {
   unit?: InventoryUnit;
   stockQuantity?: number;
   unitPrice: Money;
+  costSnapshot?: SaleLineItem["costSnapshot"];
   formulaSnapshot?: SaleLineItem["formulaSnapshot"];
   comboSnapshot?: SaleLineItem["comboSnapshot"];
 }
@@ -127,6 +138,10 @@ export class Sale {
 
   /** Derived pending = total − Σ abonos (POS-5). Never stored. */
   get pending(): number {
+    // Paid-in-full sales record their collection as an income movement, not as
+    // an embedded abono. Their payment mode is therefore the source of truth.
+    if (this.paymentMode === "paid-in-full") return 0;
+
     const abonoSum = this._abonos.reduce((sum, a) => sum + a.amount.amount, 0);
     assertSafeMinorUnits(abonoSum, "Sale abonos sum");
     const pending = this.total - abonoSum;
@@ -236,6 +251,34 @@ export class Sale {
       if (raw.comboSnapshot && raw.formulaSnapshot) {
         throw new ValidationError("A sale line cannot be both a combo and prepared formula");
       }
+      if (raw.costSnapshot) {
+        let total = 0;
+        let hasUnknown = false;
+        if (raw.costSnapshot.components.length === 0)
+          throw new ValidationError("Sale cost snapshot is invalid");
+        for (const component of raw.costSnapshot.components) {
+          if (
+            !component.itemId ||
+            !component.name.trim() ||
+            !Number.isSafeInteger(component.stockQuantity) ||
+            component.stockQuantity <= 0 ||
+            (component.costMinor !== null &&
+              (!Number.isSafeInteger(component.costMinor) || component.costMinor < 0))
+          )
+            throw new ValidationError("Sale cost component snapshot is invalid");
+          if (component.costMinor === null) hasUnknown = true;
+          else total += component.costMinor;
+          assertSafeMinorUnits(total, "Sale cost snapshot total");
+        }
+        if (
+          (hasUnknown && raw.costSnapshot.totalCostMinor !== null) ||
+          (!hasUnknown && raw.costSnapshot.totalCostMinor !== total) ||
+          (raw.costSnapshot.totalCostMinor !== null &&
+            (!Number.isSafeInteger(raw.costSnapshot.totalCostMinor) ||
+              raw.costSnapshot.totalCostMinor < 0))
+        )
+          throw new ValidationError("Sale cost snapshot total does not match its components");
+      }
       const subtotal = calculateQuantitySubtotal(stockQuantity, unit, raw.unitPrice.amount);
       items.push({
         itemId: raw.itemId,
@@ -243,6 +286,12 @@ export class Sale {
         unit,
         stockQuantity,
         unitPrice: raw.unitPrice,
+        costSnapshot: raw.costSnapshot
+          ? {
+              totalCostMinor: raw.costSnapshot.totalCostMinor,
+              components: raw.costSnapshot.components.map((component) => ({ ...component })),
+            }
+          : undefined,
         formulaSnapshot: raw.formulaSnapshot
           ? {
               version: raw.formulaSnapshot.version,

@@ -5,8 +5,9 @@ export interface InventoryStockRecordDoc {
   workspaceId: mongoose.Types.ObjectId;
   catalogItemId: mongoose.Types.ObjectId;
   delta: number;
+  valueDeltaMinor?: number | null;
   unit: string;
-  kind: "opening" | "adjustment" | "receipt" | "sale" | "sale-reversal";
+  kind: "opening" | "opening-valuation" | "adjustment" | "receipt" | "sale" | "sale-reversal";
   receiptId?: string;
   reason: string;
   saleId?: string;
@@ -24,14 +25,22 @@ const InventoryStockRecordSchema = new Schema<InventoryStockRecordDoc>(
       type: Number,
       required: true,
       validate: {
-        validator: (value: number) => Number.isSafeInteger(value) && value !== 0,
+        validator: (value: number) => Number.isSafeInteger(value),
         message: "Stock history delta must be a non-zero safe integer",
+      },
+    },
+    valueDeltaMinor: {
+      type: Number,
+      validate: {
+        validator: (value: number | null | undefined) =>
+          value === undefined || value === null || Number.isSafeInteger(value),
+        message: "Stock value delta must be a safe integer",
       },
     },
     unit: { type: String, enum: INVENTORY_UNITS, required: true },
     kind: {
       type: String,
-      enum: ["opening", "adjustment", "receipt", "sale", "sale-reversal"],
+      enum: ["opening", "opening-valuation", "adjustment", "receipt", "sale", "sale-reversal"],
       required: true,
     },
     receiptId: { type: String },

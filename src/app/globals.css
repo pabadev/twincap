@@ -125,6 +125,28 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Public marketing page keeps a fixed light palette regardless of app theme. */
+.landing-page {
+  color-scheme: light;
+}
+
+html:has(.landing-page) {
+  color-scheme: light;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+html:has(.landing-page)::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+html:has(.landing-page)::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+html:has(.landing-page)::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Smooth theme transitions — enabled after initial paint via ThemeProvider */
 html.theme-transition,
 html.theme-transition *,

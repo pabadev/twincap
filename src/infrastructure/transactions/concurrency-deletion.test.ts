@@ -41,6 +41,7 @@ import { TransferModel } from "../models/transfer";
 import { SaleModel } from "../models/sale";
 import { CatalogItemModel } from "../models/catalog";
 import { CategoryModel } from "../models/category";
+import { ClientModel } from "../models/client";
 
 /**
  * R15.1 Fase 3 — transactional delete concurrency for payables,
@@ -108,6 +109,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
     await AccountModel.deleteMany({});
     await SaleModel.deleteMany({});
     await CatalogItemModel.deleteMany({});
+    await ClientModel.deleteMany({});
     await CategoryModel.deleteMany({});
     await seedAccount();
   });
@@ -147,7 +149,9 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
     for (const s of settled) {
       if (s.status === "rejected") {
         const ok = s.reason instanceof NotFoundError || s.reason instanceof ConflictError;
-        expect(ok, `unexpected rejection class: ${s.reason?.message ?? String(s.reason)}`).toBe(true);
+        expect(ok, `unexpected rejection class: ${s.reason?.message ?? String(s.reason)}`).toBe(
+          true,
+        );
       }
     }
   }
@@ -221,7 +225,14 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
       const settled = await Promise.allSettled(
         Array.from({ length: 5 }, () =>
-          deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), accountRepo(), uow()),
+          deleteCreditReceived(
+            WS,
+            credit.id,
+            creditReceivedRepo(),
+            movementRepo(),
+            accountRepo(),
+            uow(),
+          ),
         ),
       );
 
@@ -265,7 +276,14 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
       const settled = await Promise.allSettled(
         Array.from({ length: 5 }, () =>
-          deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), accountRepo(), uow()),
+          deleteCreditGranted(
+            WS,
+            credit.id,
+            creditGrantedRepo(),
+            movementRepo(),
+            accountRepo(),
+            uow(),
+          ),
         ),
       );
 
@@ -352,7 +370,8 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       assertNoTransactionErrors(settled);
       assertCleanAborts(settled);
 
-      const deleted = (await PayableModel.countDocuments({ _id: payable.id, workspaceId: WS })) === 0;
+      const deleted =
+        (await PayableModel.countDocuments({ _id: payable.id, workspaceId: WS })) === 0;
       const fulfilled = settled.filter((s) => s.status === "fulfilled").length;
 
       if (deleted) {
@@ -384,7 +403,14 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const settled = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           i % 2 === 0
-            ? deleteCreditReceived(WS, credit.id, creditReceivedRepo(), movementRepo(), accountRepo(), uow())
+            ? deleteCreditReceived(
+                WS,
+                credit.id,
+                creditReceivedRepo(),
+                movementRepo(),
+                accountRepo(),
+                uow(),
+              )
             : addCreditReceivedAbono(
                 WS,
                 credit.id,
@@ -401,7 +427,8 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       assertNoTransactionErrors(settled);
       assertCleanAborts(settled);
 
-      const deleted = (await CreditReceivedModel.countDocuments({ _id: credit.id, workspaceId: WS })) === 0;
+      const deleted =
+        (await CreditReceivedModel.countDocuments({ _id: credit.id, workspaceId: WS })) === 0;
       const fulfilled = settled.filter((s) => s.status === "fulfilled").length;
 
       if (deleted) {
@@ -433,7 +460,14 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const settled = await Promise.allSettled(
         Array.from({ length: 10 }, (_, i) =>
           i % 2 === 0
-            ? deleteCreditGranted(WS, credit.id, creditGrantedRepo(), movementRepo(), accountRepo(), uow())
+            ? deleteCreditGranted(
+                WS,
+                credit.id,
+                creditGrantedRepo(),
+                movementRepo(),
+                accountRepo(),
+                uow(),
+              )
             : addCreditGrantedAbono(
                 WS,
                 credit.id,
@@ -450,7 +484,8 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       assertNoTransactionErrors(settled);
       assertCleanAborts(settled);
 
-      const deleted = (await CreditGrantedModel.countDocuments({ _id: credit.id, workspaceId: WS })) === 0;
+      const deleted =
+        (await CreditGrantedModel.countDocuments({ _id: credit.id, workspaceId: WS })) === 0;
 
       if (deleted) {
         expect(await linkedMovementCount(credit.id)).toBe(0);
@@ -512,7 +547,10 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       const deleteResult = settled[10];
 
       const accountExists = (await AccountModel.countDocuments({ _id: SRC, workspaceId: WS })) > 0;
-      const accountMovements = await MovementModel.countDocuments({ workspaceId: WS, accountId: SRC });
+      const accountMovements = await MovementModel.countDocuments({
+        workspaceId: WS,
+        accountId: SRC,
+      });
       const fulfilledCreates = createResults.filter((s) => s.status === "fulfilled").length;
 
       // Consistencia contable incondicional: el único escritor de movimientos en
@@ -531,7 +569,9 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
           throw new Error("invariant: cuenta viva ⇒ el delete DEBE haber rechazado");
         }
         expect(deleteResult.reason).toBeInstanceOf(ConflictError);
-        expect((deleteResult.reason as Error).message).toBe("Account has references and cannot be deleted");
+        expect((deleteResult.reason as Error).message).toBe(
+          "Account has references and cannot be deleted",
+        );
         expect(createResults.filter((s) => s.status === "fulfilled")).toHaveLength(10);
       } else {
         // Delete-ganó: la cuenta está borrada. R15.1-6e cerró la ventana:
@@ -623,7 +663,9 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
         // Terminal A: delete ganó → deleteByRefId(saleId) barrió el movimiento
         // del total + los abonos confirmados; sin crédito ligado no hay más.
         expect(await linkedMovementCount(sale.id)).toBe(0);
-        expect(await CreditGrantedModel.countDocuments({ workspaceId: WS, saleId: sale.id })).toBe(0);
+        expect(await CreditGrantedModel.countDocuments({ workspaceId: WS, saleId: sale.id })).toBe(
+          0,
+        );
       } else {
         // Terminal B (defensivo): sale vivo → 1 (el total) + 1 por abono ganador.
         expect(await linkedMovementCount(sale.id)).toBe(1 + fulfilled);
@@ -654,9 +696,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
     expect(deleteResult.status, SRC_MOVEMENTS_MSG).toBe("rejected");
     const reason = deleteResult.status === "rejected" ? deleteResult.reason : null;
     expect(reason).toBeInstanceOf(ConflictError);
-    expect((reason as Error).message).toBe(
-      "Account has references and cannot be deleted",
-    );
+    expect((reason as Error).message).toBe("Account has references and cannot be deleted");
   }
 
   async function assertDeleteFulfilled(deleteResult: PromiseSettledResult<unknown>): Promise<void> {
@@ -723,6 +763,13 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
 
   describe("deleteAccount × addSaleAbono (seed en SRC)", () => {
     it("3 abonos + 3 deletes interleaved → delete pierde siempre con ConflictError; 0 huérfanos (fila 32)", async () => {
+      const clientId = "dddddddddddddddddddddddd";
+      await ClientModel.create({
+        _id: clientId,
+        workspaceId: WS,
+        name: "Abono race client",
+        phone: "+573005551234",
+      });
       await CatalogItemModel.create({
         _id: "cccccccccccccccccccccccc",
         workspaceId: WS,
@@ -736,8 +783,10 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
         {
           items: [{ itemId: "cccccccccccccccccccccccc", quantity: 2, unitPrice: 50_000 }],
           date: D,
-          paymentMode: "paid-in-full",
+          paymentMode: "on-credit",
           accountId: SRC,
+          clientId,
+          initialPayment: 0,
           currency: "COP",
         },
         new MongoSaleRepository(),
@@ -768,7 +817,7 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       );
 
       assertNoTransactionErrors(settled);
-      // El doc del sale + su salePayment son referencias → el guard NUNCA deja
+      // El documento de la venta a crédito referencia la cuenta → el guard NUNCA deja
       // pasar al delete: pierde en TODAS las posiciones, la cuenta vive.
       expect(await accountExists()).toBe(true);
       const abonoResults = settled.filter((_, i) => i % 2 === 1);
@@ -777,8 +826,8 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
       for (const d of deleteResults) {
         await assertDeleteConflict(d);
       }
-      // 1 salePayment + 1 abono por ganador.
-      expect(await movementsOnSrc()).toBe(1 + abonoResults.length);
+      // Cada abono confirmado crea un movimiento; crédito no crea salePayment.
+      expect(await movementsOnSrc()).toBe(abonoResults.length);
     }, 120_000);
   });
 
@@ -788,7 +837,13 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
         ...Array.from({ length: 9 }, () =>
           createCreditReceived(
             WS,
-            { counterparty: "Banco XYZ", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+            {
+              counterparty: "Banco XYZ",
+              principal: 100_000,
+              currency: "COP",
+              accountId: SRC,
+              date: D,
+            },
             creditReceivedRepo(),
             movementRepo(),
             objectIdGenerator,
@@ -868,7 +923,13 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
         ...Array.from({ length: 9 }, () =>
           createCreditGranted(
             WS,
-            { counterparty: "Cliente", principal: 100_000, currency: "COP", accountId: SRC, date: D },
+            {
+              counterparty: "Cliente",
+              principal: 100_000,
+              currency: "COP",
+              accountId: SRC,
+              date: D,
+            },
             creditGrantedRepo(),
             movementRepo(),
             objectIdGenerator,
@@ -1145,7 +1206,10 @@ describe("concurrencia deletes transaccionales (R15.1 Fase 3)", () => {
         assertNoTransactionErrors(settled);
         const winners = settled.filter((s) => s.status === "fulfilled");
         const losers = settled.filter((s) => s.status === "rejected");
-        expect(winners, `losers: ${losers.map((l) => (l.status === "rejected" ? l.reason?.message : "")).join(" | ")}`).toHaveLength(1);
+        expect(
+          winners,
+          `losers: ${losers.map((l) => (l.status === "rejected" ? l.reason?.message : "")).join(" | ")}`,
+        ).toHaveLength(1);
         for (const loser of losers) {
           if (loser.status !== "rejected") continue;
           const err = loser.reason as { message?: string; code?: unknown } | null;

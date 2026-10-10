@@ -14,7 +14,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { TouchTarget } from "../ui/touch-target";
-import { Wallet, MessageSquare, SlidersHorizontal } from "lucide-react";
+import { Wallet, MessageSquare, SlidersHorizontal, BarChart3 } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
 import { formatAmountParts } from "../../lib/format";
 import { useT } from "../../i18n/client";
@@ -255,6 +255,13 @@ export function DashboardContent({
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
         <div className="ml-auto flex items-center gap-2">
+          <Link
+            href="/business-analytics"
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <BarChart3 className="h-4 w-4" />
+            {t("businessAnalyticsLink")}
+          </Link>
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}

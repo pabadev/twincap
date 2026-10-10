@@ -22,6 +22,7 @@ import { revalidatePath } from "next/cache";
 import { handleActionError } from "../../../../lib/handle-action-error";
 import { MongoUnitOfWork } from "../../../../infrastructure/transactions/mongo-unit-of-work";
 import { adjustCatalogStock } from "../../../../core/application/catalog/adjust-catalog-stock";
+import { setOpeningInventoryValue } from "../../../../core/application/catalog/set-opening-inventory-value";
 import { getBaseUnit } from "../../../../core/domain/inventory-units";
 import { isInventoryUnit } from "../../../../core/domain/inventory-units";
 import { receiveInventoryReceipt } from "../../../../core/application/inventory/receive-inventory-receipt";
@@ -264,6 +265,9 @@ export async function createCatalogItemAction(
   const saleUnit = (formData.get("saleUnit") as InventoryUnit) || "unit";
   const stockRaw = formData.get("stock");
   const stock = stockRaw !== null && stockRaw !== "" ? Number(stockRaw) : undefined;
+  const openingValueRaw = formData.get("initialInventoryValueMinor");
+  const initialInventoryValueMinor =
+    openingValueRaw !== null && openingValueRaw !== "" ? Number(openingValueRaw) : undefined;
 
   try {
     await connectDb();
@@ -271,7 +275,16 @@ export async function createCatalogItemAction(
     const item = await new MongoUnitOfWork().withTransaction((tx) =>
       createCatalogItem(
         user.workspaceId!,
-        { name, unitPrice, currency, type, productRole, saleUnit, stock },
+        {
+          name,
+          unitPrice,
+          currency,
+          type,
+          productRole,
+          saleUnit,
+          stock,
+          initialInventoryValueMinor,
+        },
         catalogRepo,
         ids,
         tx,
@@ -296,19 +309,53 @@ export async function adjustCatalogStockAction(
   const direction = String(formData.get("direction") ?? "");
   const quantity = Number(formData.get("quantity"));
   const reason = String(formData.get("reason") ?? "");
+  const adjustmentValueRaw = formData.get("adjustmentValueMinor");
+  const adjustmentValueMinor =
+    adjustmentValueRaw !== null && adjustmentValueRaw !== ""
+      ? Number(adjustmentValueRaw)
+      : undefined;
   if (direction !== "in" && direction !== "out") return { error: "error.validation" };
   try {
     await connectDb();
     await adjustCatalogStock(
       user.workspaceId!,
       itemId,
-      { direction, quantity, reason, actorUserId: user.userId },
+      { direction, quantity, reason, actorUserId: user.userId, adjustmentValueMinor },
       new MongoCatalogItemRepository(),
       new MongoUnitOfWork(),
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
     return { success: "stockAdjusted" };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function setOpeningInventoryValueAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "error.unauthorized" };
+  try {
+    const itemId = String(formData.get("itemId") ?? "");
+    const rawValue = formData.get("valueMinor");
+    if (rawValue === null || String(rawValue).trim() === "")
+      throw new ValidationError("Opening inventory value is required");
+    const valueMinor = Number(rawValue);
+    await connectDb();
+    await setOpeningInventoryValue(
+      user.workspaceId!,
+      itemId,
+      valueMinor,
+      user.userId,
+      new MongoCatalogItemRepository(),
+      new MongoUnitOfWork(),
+    );
+    revalidatePath("/pos/catalog");
+    revalidatePath("/pos/sales");
+    return { success: "openingValueSaved" };
   } catch (error) {
     return handleActionError(error);
   }

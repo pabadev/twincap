@@ -18,6 +18,17 @@ export function toSaleEntity(doc: SaleDocument, currency: Currency): Sale {
     unit: item.unit as InventoryUnit | undefined,
     stockQuantity: item.stockQuantity,
     unitPrice: new Money(item.unitPrice, currency),
+    costSnapshot: item.costSnapshot
+      ? {
+          totalCostMinor: item.costSnapshot.totalCostMinor ?? null,
+          components: item.costSnapshot.components.map((component) => ({
+            itemId: component.itemId.toString(),
+            name: component.name,
+            stockQuantity: component.stockQuantity,
+            costMinor: component.costMinor ?? null,
+          })),
+        }
+      : undefined,
     formulaSnapshot: item.formulaSnapshot
       ? {
           version: item.formulaSnapshot.version,
@@ -81,6 +92,15 @@ export function toSaleDocData(entity: Sale): Record<string, unknown> {
       stockQuantity: item.stockQuantity,
       unitPrice: item.unitPrice.amount,
       subtotal: item.subtotal,
+      costSnapshot: item.costSnapshot
+        ? {
+            totalCostMinor: item.costSnapshot.totalCostMinor,
+            components: item.costSnapshot.components.map((component) => ({
+              ...component,
+              itemId: new Types.ObjectId(component.itemId),
+            })),
+          }
+        : undefined,
       formulaSnapshot: item.formulaSnapshot
         ? {
             ...item.formulaSnapshot,

@@ -1,54 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { useT } from "@/i18n/client";
 import { ChevronDown } from "lucide-react";
+import { useT } from "@/i18n/client";
 
 const FAQ_ITEMS = [
   { q: "faq1Question", a: "faq1Answer" },
   { q: "faq2Question", a: "faq2Answer" },
   { q: "faq3Question", a: "faq3Answer" },
   { q: "faq4Question", a: "faq4Answer" },
+  { q: "faq5Question", a: "faq5Answer" },
 ] as const;
 
 export function Faq() {
   const t = useT("Landing");
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-surface-card py-20 dark:bg-zinc-950 sm:py-28">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
-          {t("faqTitle")}
-        </h2>
-        <div className="mt-12 space-y-4">
-          {FAQ_ITEMS.map(({ q, a }, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={q} className="rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-base font-medium text-zinc-900 hover:text-primary dark:text-white dark:hover:text-primary-soft"
-                  aria-expanded={isOpen}
-                >
-                  <span>{t(q)}</span>
-                  <ChevronDown
-                    className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform duration-200 dark:text-zinc-400 ${isOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                <div
-                  className={`grid transition-all duration-200 ease-in-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-                >
-                  <div className="overflow-hidden">
-                    <p className="px-6 pb-5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {t(a)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+    <section className="bg-white py-20 sm:py-24">
+      <div className="mx-auto max-w-3xl px-5 sm:px-8">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-800">
+            {t("faqEyebrow")}
+          </p>
+          <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            {t("faqTitle")}
+          </h2>
+        </div>
+        <div className="mt-10 space-y-3">
+          {FAQ_ITEMS.map(({ q, a }) => (
+            <details
+              key={q}
+              className="group rounded-2xl border border-slate-200 bg-white px-5 open:border-cyan-200 open:bg-cyan-50/40 sm:px-6"
+            >
+              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-base font-semibold text-slate-900 marker:content-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-800 [&::-webkit-details-marker]:hidden">
+                {t(q)}
+                <ChevronDown
+                  className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="pb-5 pr-8 text-sm leading-6 text-slate-600">{t(a)}</p>
+            </details>
+          ))}
         </div>
       </div>
     </section>

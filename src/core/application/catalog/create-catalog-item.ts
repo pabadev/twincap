@@ -38,6 +38,23 @@ export async function createCatalogItem(
     input.type === "product" && input.stock !== undefined
       ? quantityToBaseUnits(input.stock, saleUnit, true)
       : undefined;
+  if (input.type === "service" && input.initialInventoryValueMinor !== undefined) {
+    throw new ValidationError("Service must not have an initial inventory value");
+  }
+  if (
+    input.initialInventoryValueMinor !== undefined &&
+    (!Number.isSafeInteger(input.initialInventoryValueMinor) ||
+      input.initialInventoryValueMinor < 0)
+  ) {
+    throw new ValidationError("Initial inventory value must be a non-negative safe integer");
+  }
+  if (
+    stock === 0 &&
+    input.initialInventoryValueMinor !== undefined &&
+    input.initialInventoryValueMinor !== 0
+  ) {
+    throw new ValidationError("Initial inventory value must be zero when initial stock is zero");
+  }
 
   const item = new CatalogItem({
     id,
@@ -47,6 +64,7 @@ export async function createCatalogItem(
     type: input.type,
     productRole: input.productRole,
     stock,
+    inventoryValueMinor: input.initialInventoryValueMinor,
     saleUnit,
     createdAt: now,
   });

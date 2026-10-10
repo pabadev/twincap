@@ -114,6 +114,12 @@ function toggleButton(container: HTMLElement, label: string): HTMLButtonElement 
 }
 
 describe("DashboardContent chart toggles (R-9/R-10a, H-18)", () => {
+  it("provides a direct route from the summary to business profitability", () => {
+    const { container } = mount(<DashboardContent {...baseProps} />);
+    const link = container.querySelector<HTMLAnchorElement>('a[href="/business-analytics"]');
+    expect(link?.textContent).toContain("businessAnalyticsLink");
+  });
+
   it("marks the monthly toggle pressed when chartView is monthly (S9.1)", () => {
     const { container } = mount(<DashboardContent {...baseProps} />);
     expect(toggleButton(container, "viewMonthly").getAttribute("aria-pressed")).toBe("true");

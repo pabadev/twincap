@@ -33,6 +33,7 @@ const createdCombo: SerializedCatalogItem = {
   formulaVersions: [],
   comboVersions: [],
   stock: 0,
+  inventoryValueMinor: 0,
   createdAt: new Date(0),
 };
 
@@ -115,6 +116,7 @@ describe("CatalogList guided combo flow", () => {
             formulaVersions: [],
             comboVersions: [],
             stock: 10,
+            inventoryValueMinor: 0,
             createdAt: new Date(0),
           },
         ]}
@@ -148,6 +150,7 @@ describe("CatalogList guided combo flow", () => {
       formulaVersions: [],
       comboVersions: [],
       stock: 0,
+      inventoryValueMinor: 0,
       createdAt: new Date(0),
     };
     mount(
@@ -164,6 +167,7 @@ describe("CatalogList guided combo flow", () => {
             formulaVersions: [],
             comboVersions: [],
             stock: 10,
+            inventoryValueMinor: 0,
             createdAt: new Date(0),
           },
         ]}

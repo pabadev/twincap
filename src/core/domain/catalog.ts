@@ -1,6 +1,6 @@
 import { ValidationError } from "./errors";
 import { Money } from "./money";
-import { getBaseUnit, isInventoryUnit, type InventoryUnit } from "./inventory-units";
+import { isInventoryUnit, type InventoryUnit } from "./inventory-units";
 import type { ProductFormulaVersion } from "./product-formula";
 import type { ProductComboVersion } from "./product-combo";
 
@@ -27,6 +27,8 @@ export interface CatalogItemInput {
   saleUnit?: InventoryUnit;
   /** Only valid for products (integer stock >= 0). Must NOT be present on services. */
   stock?: number;
+  /** Total current inventory acquisition value in unitPrice currency; null means unknown. */
+  inventoryValueMinor?: number | null;
   createdAt: Date;
 }
 
@@ -42,6 +44,8 @@ export class CatalogItem {
   readonly saleUnit: InventoryUnit;
   /** Present only for products; integer >= 0 (POS-3, R15.3.1 P3). */
   readonly stock: number | undefined;
+  /** Total value of current stock; null means the opening cost is unknown. */
+  readonly inventoryValueMinor: number | null | undefined;
   readonly createdAt: Date;
 
   constructor(input: CatalogItemInput) {
@@ -80,12 +84,31 @@ export class CatalogItem {
         throw new ValidationError("Product stock must be a non-negative safe integer");
       }
       this.stock = input.stock;
+      const inventoryValueMinor = input.inventoryValueMinor;
+      if (
+        inventoryValueMinor !== undefined &&
+        inventoryValueMinor !== null &&
+        (!Number.isSafeInteger(inventoryValueMinor) || inventoryValueMinor < 0)
+      ) {
+        throw new ValidationError(
+          "Catalog item inventory value must be a non-negative safe integer",
+        );
+      }
+      if (input.stock === 0 && inventoryValueMinor != null && inventoryValueMinor !== 0) {
+        throw new ValidationError("An item with zero stock must have zero inventory value");
+      }
+      this.inventoryValueMinor =
+        inventoryValueMinor === undefined ? (input.stock === 0 ? 0 : null) : inventoryValueMinor;
     } else {
       // POS-1: service must NOT have stock
       if (input.stock !== undefined) {
         throw new ValidationError("Service must not have stock");
       }
       this.stock = undefined;
+      if (input.inventoryValueMinor !== undefined) {
+        throw new ValidationError("Service must not have an inventory value");
+      }
+      this.inventoryValueMinor = undefined;
     }
 
     this.id = input.id;
@@ -144,6 +167,7 @@ export class CatalogItem {
       })),
       saleUnit: this.saleUnit,
       stock: this.stock,
+      inventoryValueMinor: this.inventoryValueMinor,
       createdAt: this.createdAt,
     };
   }

@@ -9,6 +9,7 @@ import type {
 import type { UnitOfWork } from "../ports";
 import { touchAccounts } from "../financial/touch-accounts";
 import { getBaseUnit } from "../../domain/inventory-units";
+import { receiveValuedStock, restoreUnvaluedStock } from "../../domain/inventory-valuation";
 
 /**
  * Delete a sale and cascade (POS-8, R5-D0c).
@@ -70,13 +71,21 @@ export async function deleteSale(
     // snapshots. Formula reversals never depend on today's formula version.
     const formulaRestores = new Map<
       string,
-      { quantity: number; unit: ReturnType<typeof getBaseUnit>; name: string }
+      {
+        quantity: number;
+        unit: ReturnType<typeof getBaseUnit>;
+        name: string;
+        valueMinor: number | null;
+      }
     >();
     for (const item of sale.items) {
       if (item.formulaSnapshot || item.comboSnapshot) {
         const components = item.formulaSnapshot?.components ?? item.comboSnapshot?.components ?? [];
-        for (const component of components) {
+        for (let index = 0; index < components.length; index++) {
+          const component = components[index];
+          if (!component) continue;
           const prior = formulaRestores.get(component.itemId);
+          const costPart = item.costSnapshot?.components[index]?.costMinor ?? null;
           const quantity = (prior?.quantity ?? 0) + component.stockQuantity;
           if (!Number.isSafeInteger(quantity))
             throw new Error("Formula reversal quantity exceeds supported range");
@@ -84,26 +93,72 @@ export async function deleteSale(
             quantity,
             unit: getBaseUnit(component.unit),
             name: component.name,
+            valueMinor:
+              prior?.valueMinor === null || costPart === null
+                ? null
+                : (prior?.valueMinor ?? 0) + costPart,
           });
         }
         continue;
       }
       const catalogItem = await catalogRepo.findById(workspaceId, item.itemId, tx);
       if (catalogItem && catalogItem.type === "product") {
+        const currentValue = catalogItem.inventoryValueMinor ?? null;
+        const restoredCost = item.costSnapshot?.components[0]?.costMinor ?? null;
+        const valuation =
+          restoredCost === null
+            ? restoreUnvaluedStock(
+                { quantity: catalogItem.stock!, valueMinor: currentValue },
+                item.stockQuantity,
+              )
+            : receiveValuedStock(
+                { quantity: catalogItem.stock!, valueMinor: currentValue },
+                item.stockQuantity,
+                restoredCost,
+              );
         await catalogRepo.incrementStock(workspaceId, item.itemId, item.stockQuantity, tx, {
           saleId,
           actorUserId,
           date: new Date(),
           unit: getBaseUnit(catalogItem.saleUnit),
+          ...(valuation
+            ? {
+                expectedInventoryValueMinor: currentValue,
+                inventoryValueMinor: valuation.valueMinor,
+                valueDeltaMinor: restoredCost ?? null,
+              }
+            : {}),
         });
       }
     }
     for (const [componentId, restore] of formulaRestores) {
+      const current = await catalogRepo.findById(workspaceId, componentId, tx);
+      if (!current || current.type !== "product")
+        throw new NotFoundError("A stock component no longer exists");
+      const currentValue = current.inventoryValueMinor ?? null;
+      const valuation =
+        restore.valueMinor === null
+          ? restoreUnvaluedStock(
+              { quantity: current.stock!, valueMinor: currentValue },
+              restore.quantity,
+            )
+          : receiveValuedStock(
+              { quantity: current.stock!, valueMinor: currentValue },
+              restore.quantity,
+              restore.valueMinor,
+            );
       await catalogRepo.incrementStock(workspaceId, componentId, restore.quantity, tx, {
         saleId,
         actorUserId,
         date: new Date(),
         unit: restore.unit,
+        ...(valuation
+          ? {
+              expectedInventoryValueMinor: currentValue,
+              inventoryValueMinor: valuation.valueMinor,
+              valueDeltaMinor: restore.valueMinor,
+            }
+          : {}),
       });
     }
 

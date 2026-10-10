@@ -69,6 +69,7 @@ export function toCatalogItemEntity(doc: CatalogItemDocument): CatalogItem {
     ),
     saleUnit,
     stock: doc.stock,
+    inventoryValueMinor: doc.inventoryValueMinor,
     createdAt: doc.createdAt,
   });
 }
@@ -98,5 +99,6 @@ export function toCatalogItemDocData(entity: CatalogItem): Record<string, unknow
     })),
     saleUnit: entity.saleUnit,
     stock: entity.stock,
+    inventoryValueMinor: entity.inventoryValueMinor,
   };
 }

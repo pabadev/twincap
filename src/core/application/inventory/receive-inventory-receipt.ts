@@ -8,7 +8,6 @@ import type {
   MovementRepository,
   PayableRepository,
 } from "../../domain/repositories";
-import type { TransactionHandle } from "../../domain/transaction";
 import type { IdGenerator, UnitOfWork } from "../ports";
 import type { Currency } from "../../domain/currency";
 import { createPayableInTransaction } from "../payables/create-payable";
@@ -80,6 +79,9 @@ export async function receiveInventoryReceipt(
       if (!item) throw new NotFoundError("Catalog item not found");
       if (item.type !== "product")
         throw new ValidationError("Only products can be received into stock");
+      if (item.unitPrice.currency !== input.currency) {
+        throw new ValidationError("Receipt currency must match the catalog item's currency");
+      }
       if (item.comboVersions.length > 0)
         throw new ValidationError("Combo availability is derived from its components");
       if (getBaseUnit(item.saleUnit) !== getBaseUnit(line.unit)) {
@@ -174,6 +176,7 @@ export async function receiveInventoryReceipt(
           actorUserId,
           date: now,
           unit: getBaseUnit(line.unit),
+          valueDeltaMinor: line.lineAmount,
         },
         tx,
       );

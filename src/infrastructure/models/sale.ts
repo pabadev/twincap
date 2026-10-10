@@ -9,6 +9,15 @@ export interface SaleLineItemDoc {
   stockQuantity?: number;
   unitPrice: number;
   subtotal: number;
+  costSnapshot?: {
+    totalCostMinor: number | null;
+    components: Array<{
+      itemId: mongoose.Types.ObjectId;
+      name: string;
+      stockQuantity: number;
+      costMinor: number | null;
+    }>;
+  };
   formulaSnapshot?: {
     version: number;
     outputQuantity: number;
@@ -74,6 +83,29 @@ const SaleLineItemSchema = new Schema<SaleLineItemDoc>(
     },
     unitPrice: { type: Number, required: true },
     subtotal: { type: Number, required: true },
+    costSnapshot: {
+      type: new Schema(
+        {
+          totalCostMinor: { type: Number, default: null },
+          components: {
+            type: [
+              new Schema(
+                {
+                  itemId: { type: Schema.Types.ObjectId, required: true },
+                  name: { type: String, required: true },
+                  stockQuantity: { type: Number, min: 1, required: true },
+                  costMinor: { type: Number, default: null },
+                },
+                { _id: false },
+              ),
+            ],
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
     formulaSnapshot: {
       type: new Schema(
         {

@@ -12,6 +12,8 @@ export interface CreateCatalogItemInput {
   saleUnit?: InventoryUnit;
   /** Initial stock entered in saleUnit. Must NOT be present for services. */
   stock?: number;
+  /** Total value of initial stock in minor currency units; absent means unknown. */
+  initialInventoryValueMinor?: number;
 }
 
 export interface EditCatalogItemInput {

@@ -55,6 +55,10 @@ export interface SaleDetailSnapshot {
     unit: import("../../../domain/inventory-units").InventoryUnit;
     unitPrice: { amount: number; currency: Currency };
     subtotal: number;
+    inventoryCostMinor: number | null;
+    costTracked: boolean;
+    /** Service lines do not consume inventory; their inventory cost is zero. */
+    isService: boolean;
     formulaSnapshot?: {
       version: number;
       components: Array<{
@@ -75,6 +79,9 @@ export interface SaleDetailSnapshot {
     };
   }[];
   total: number;
+  inventoryCostMinor: number | null;
+  grossProfitMinor: number | null;
+  costComplete: boolean;
   initialPayment: number;
   pending: number;
   /** True when the pending/abonos come from the linked CreditGranted (H14). */

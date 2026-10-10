@@ -562,6 +562,9 @@ export interface CatalogItemRepository {
       actorUserId?: string;
       date?: Date;
       unit: import("./inventory-units").InventoryUnit;
+      expectedInventoryValueMinor?: number | null;
+      inventoryValueMinor?: number | null;
+      valueDeltaMinor?: number | null;
     },
   ): Promise<boolean>;
   /** Atomic stock increment for products (stock restore on sale delete).
@@ -577,6 +580,9 @@ export interface CatalogItemRepository {
       actorUserId?: string;
       date?: Date;
       unit: import("./inventory-units").InventoryUnit;
+      expectedInventoryValueMinor?: number | null;
+      inventoryValueMinor?: number | null;
+      valueDeltaMinor?: number | null;
     },
   ): Promise<void>;
   /** Human-entered stock change. Delta is in integer base atoms; false means insufficient stock/item. */
@@ -589,6 +595,9 @@ export interface CatalogItemRepository {
       actorUserId: string;
       date?: Date;
       unit: import("./inventory-units").InventoryUnit;
+      expectedInventoryValueMinor: number | null;
+      inventoryValueMinor: number | null;
+      valueDeltaMinor: number | null;
     },
     tx?: TransactionHandle,
   ): Promise<boolean>;
@@ -602,7 +611,17 @@ export interface CatalogItemRepository {
       actorUserId: string;
       date: Date;
       unit: import("./inventory-units").InventoryUnit;
+      valueDeltaMinor: number;
     },
+    tx?: TransactionHandle,
+  ): Promise<boolean>;
+  /** Establishes a known opening value for existing stock whose basis is unknown. */
+  setOpeningInventoryValue?(
+    workspaceId: string,
+    itemId: string,
+    expectedStock: number,
+    valueMinor: number,
+    record: { actorUserId: string; date?: Date; unit: import("./inventory-units").InventoryUnit },
     tx?: TransactionHandle,
   ): Promise<boolean>;
   /** Recent immutable history for one tenant-scoped catalog item. */
@@ -615,7 +634,7 @@ export interface CatalogItemRepository {
       id: string;
       delta: number;
       unit: string;
-      kind: "opening" | "adjustment" | "receipt" | "sale" | "sale-reversal";
+      kind: "opening" | "opening-valuation" | "adjustment" | "receipt" | "sale" | "sale-reversal";
       reason: string;
       saleId?: string;
       receiptId?: string;
