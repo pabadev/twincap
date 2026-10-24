@@ -9,7 +9,13 @@ import { Button } from "../../../components/ui/button";
 import { CATEGORY_SUGGESTIONS } from "../../../core/application/categories/category-suggestions";
 import { createSuggestedCategoriesAction } from "./actions";
 
-export function CategoriesPageClient() {
+export function CategoriesPageClient({
+  existing,
+}: {
+  /** Current workspace categories — lets the suggestion modal pre-mark the
+   *  presets the user already added (beta feedback #10). */
+  existing: { name: string; type: "income" | "expense" }[];
+}) {
   const [showForm, setShowForm] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const t = useT("Categories");
@@ -22,6 +28,16 @@ export function CategoriesPageClient() {
   useEffect(() => {
     if (suggestionState?.success) router.refresh();
   }, [suggestionState?.success, router]);
+
+  // Same duplicate criterion as createSuggestedCategories (exact trimmed name
+  // + type), resolved against the CURRENT locale's suggestion labels.
+  const existingKeys = new Set(existing.map((c) => `${c.type}:${c.name.trim()}`));
+  const preChecked = new Set(
+    CATEGORY_SUGGESTIONS.filter((s) => existingKeys.has(`${s.type}:${t(s.labelKey).trim()}`)).map(
+      (s) => s.id,
+    ),
+  );
+  const allSuggestionsExist = preChecked.size === CATEGORY_SUGGESTIONS.length;
 
   return (
     <>
@@ -45,31 +61,45 @@ export function CategoriesPageClient() {
       >
         <form action={suggestionAction} className="space-y-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("suggestedDescription")}</p>
-          {(["income", "expense"] as const).map((type) => (
-            <fieldset key={type} disabled={isSuggestionPending}>
-              <legend className="mb-2 text-sm font-semibold text-zinc-900 dark:text-white">
-                {t(type)}
-              </legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {CATEGORY_SUGGESTIONS.filter((suggestion) => suggestion.type === type).map(
-                  (suggestion) => (
-                    <label
-                      key={suggestion.id}
-                      className="flex min-h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
-                    >
-                      <input
-                        type="checkbox"
-                        name="suggestionId"
-                        value={suggestion.id}
-                        className="size-4 accent-blue-600"
-                      />
-                      <span>{t(suggestion.labelKey)}</span>
-                    </label>
-                  ),
-                )}
-              </div>
-            </fieldset>
-          ))}
+          {allSuggestionsExist ? (
+            <p role="status" className="text-sm text-green-700 dark:text-green-400">
+              {t("suggestedAllExist")}
+            </p>
+          ) : (
+            (["income", "expense"] as const).map((type) => (
+              <fieldset key={type} disabled={isSuggestionPending}>
+                <legend className="mb-2 text-sm font-semibold text-zinc-900 dark:text-white">
+                  {t(type)}
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {CATEGORY_SUGGESTIONS.filter((suggestion) => suggestion.type === type).map(
+                    (suggestion) => {
+                      const alreadyExists = preChecked.has(suggestion.id);
+                      return (
+                        <label
+                          key={suggestion.id}
+                          className={`flex min-h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 dark:border-zinc-700 dark:text-zinc-100 ${
+                            alreadyExists ? "opacity-70" : ""
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            name="suggestionId"
+                            value={suggestion.id}
+                            checked={alreadyExists}
+                            readOnly
+                            disabled={alreadyExists}
+                            className="size-4 accent-blue-600"
+                          />
+                          <span>{t(suggestion.labelKey)}</span>
+                        </label>
+                      );
+                    },
+                  )}
+                </div>
+              </fieldset>
+            ))
+          )}
           {suggestionState?.success && (
             <p role="status" className="text-sm text-green-700 dark:text-green-400">
               {t("suggestedResult", {
@@ -83,9 +113,16 @@ export function CategoriesPageClient() {
               {t("suggestedError")}
             </p>
           )}
-          <Button type="submit" variant="primary" className="w-full" loading={isSuggestionPending}>
-            {isSuggestionPending ? t("suggestedAdding") : t("suggestedSubmit")}
-          </Button>
+          {!allSuggestionsExist && (
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              loading={isSuggestionPending}
+            >
+              {isSuggestionPending ? t("suggestedAdding") : t("suggestedSubmit")}
+            </Button>
+          )}
         </form>
       </Modal>
     </>

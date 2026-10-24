@@ -19,7 +19,7 @@ import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Select } from "../../../../components/ui/select";
 import { SearchInput } from "../../../../components/ui/search-input";
-import { Eye, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-react";
+import { Eye, Pencil, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-react";
 import { downloadCsv } from "../../../../lib/download-csv";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { exportSalesCsvAction } from "./actions";
@@ -71,6 +71,9 @@ export function SaleList({
     setShowCloseConfirm(false);
   }, []);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
+  // DOM-1 (EXC-2): the pencil opens the detail modal straight into the price
+  // editor (founder: the edit was invisible — it lived only inside the eye).
+  const [detailEditMode, setDetailEditMode] = useState(false);
   const [abonoSaleId, setAbonoSaleId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -198,7 +201,15 @@ export function SaleList({
         )}
       </Modal>
 
-      <SaleDetailModal saleId={detailSaleId} onClose={() => setDetailSaleId(null)} />
+      <SaleDetailModal
+        key={`${detailSaleId ?? "none"}-${detailEditMode ? "edit" : "view"}`}
+        saleId={detailSaleId}
+        initialEditMode={detailEditMode}
+        onClose={() => {
+          setDetailSaleId(null);
+          setDetailEditMode(false);
+        }}
+      />
 
       {sales.length === 0 ? (
         <EmptyState
@@ -480,7 +491,19 @@ export function SaleList({
                         icon={Eye}
                         label={t("details")}
                         tone="primary"
-                        onClick={() => setDetailSaleId(sale.id)}
+                        onClick={() => {
+                          setDetailSaleId(sale.id);
+                          setDetailEditMode(false);
+                        }}
+                      />
+                      <ActionIconButton
+                        icon={Pencil}
+                        label={t("editPrices")}
+                        tone="primary"
+                        onClick={() => {
+                          setDetailSaleId(sale.id);
+                          setDetailEditMode(true);
+                        }}
                       />
                       {sale.paymentMode === "on-credit" &&
                         !hasLinkedCredit &&

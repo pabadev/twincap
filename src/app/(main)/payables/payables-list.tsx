@@ -23,6 +23,12 @@ import { Table } from "../../../components/ui/table";
 import Link from "next/link";
 import { ChevronDown, ReceiptText, Pencil, SlidersHorizontal } from "lucide-react";
 
+/** Newest abonos first (beta feedback #7): business date desc; ties keep
+ *  newest-inserted first (reverse + stable sort). */
+function abonosNewestFirst<T extends { date: Date }>(abonos: readonly T[]): T[] {
+  return [...abonos].reverse().sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
 export function PayablesList({
   accounts,
   payables,
@@ -395,7 +401,7 @@ export function PayablesList({
                               </tr>
                             </thead>
                             <tbody>
-                              {payable.abonos?.map((abono) => (
+                              {abonosNewestFirst(payable.abonos ?? []).map((abono) => (
                                 <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                                   <td className="py-1">{formatDate(abono.date, locale)}</td>
                                   <td className="py-1 text-right">
@@ -454,6 +460,7 @@ export function PayablesList({
                             pending={pending}
                             currency={currency}
                             accounts={accounts}
+                            onDone={() => setShowAbonoFormId(null)}
                           />
                         </div>
                       )}
@@ -468,6 +475,7 @@ export function PayablesList({
                                 payableId={payable.id}
                                 abonoId={abono.id}
                                 amount={abono.amount.amount}
+                                currency={currency}
                                 date={businessDateToInputValue(abono.date)}
                                 onCancel={() => setEditingAbonoId(null)}
                               />

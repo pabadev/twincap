@@ -216,14 +216,16 @@ test.describe.serial("Pre-beta regression paths — P3..P6", () => {
     await expect(payableCard).toBeVisible();
     await payableCard.getByText("Proveedor Beta", { exact: true }).first().click();
     await payableCard.getByRole("button", { name: /^Add Abono$/ }).click();
-    // CONTRACT: the
-    // form constrains the amount client-side (Input max = pending — PAY-R-2
-    // surfaced in the field itself): the NATIVE constraint blocks the submit
-    // BEFORE the informed-confirmation dialog — the intercept never runs and
-    // the POST never fires (trace-verified: no dialog, no POST, form intact).
+    // CONTRACT (UX-6 rework): the amount field is now a text input
+    // (tolerant money input), so the native min/max attributes are gone —
+    // MoneyInput re-creates the SAME early rejection via setCustomValidity
+    // when the parsed amount exceeds the `max` (pending) bound: the visible
+    // bound error renders and the NATIVE constraint blocks the submit BEFORE
+    // the informed-confirmation dialog — the intercept never runs and the
+    // POST never fires (same trace-verified contract as the old max attr).
     const amountInput = payableCard.getByLabel(/^Amount/).first();
     await amountInput.fill("99999");
-    await expect(amountInput).toHaveAttribute("max", "10000");
+    await expect(payableCard.getByText(/Cannot exceed/i)).toBeVisible();
     await payableCard.getByRole("button", { name: /^Add Abono$/ }).click();
 
     // Blocked: NO confirmation dialog opens, NOTHING registers — the payable

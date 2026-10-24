@@ -30,6 +30,12 @@ import {
   resolveCreditHighlightTarget,
 } from "./credit-highlight";
 
+/** Newest abonos first (beta feedback #7): business date desc; ties keep
+ *  newest-inserted first (reverse + stable sort). */
+function abonosNewestFirst<T extends { date: Date }>(abonos: readonly T[]): T[] {
+  return [...abonos].reverse().sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
 export function CreditsGrantedList({
   accounts,
   credits,
@@ -123,6 +129,9 @@ export function CreditsGrantedList({
             creditId={editingCredit.id}
             principal={editingCredit.principal.amount}
             currency={editingCredit.principal.currency}
+            installments={editingCredit.installments}
+            installmentValue={editingCredit.installmentValue?.amount}
+            frequency={editingCredit.frequency}
             onCancel={() => setEditingCredit(null)}
           />
         )}
@@ -419,7 +428,10 @@ export function CreditsGrantedList({
                       {credit.abonos?.length}{" "}
                       {credit.abonos?.length !== 1 ? t("abonoCount_plural") : t("abonoCount")}
                     </span>
-                    {!credit.writtenOff && (
+                    {/* RCA 2026-10-19: sale-born credits are edited through
+                        their SALE (the pencil cannot fix the sale's total and
+                        has no principal movement to mirror). */}
+                    {!credit.writtenOff && !credit.saleId && (
                       <ActionIconButton
                         icon={Pencil}
                         label={tCommon("edit")}
@@ -456,7 +468,7 @@ export function CreditsGrantedList({
                                 </tr>
                               </thead>
                               <tbody>
-                                {credit.abonos?.map((abono) => (
+                                {abonosNewestFirst(credit.abonos ?? []).map((abono) => (
                                   <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                                     <td className="py-1">{formatDate(abono.date, locale)}</td>
                                     <td className="py-1 text-right">
@@ -508,7 +520,7 @@ export function CreditsGrantedList({
                               a 5-column table (date/amount/capital/interest/
                               actions) is illegible at card width (§20). */}
                           <div className="space-y-2 sm:hidden">
-                            {credit.abonos?.map((abono) => (
+                            {abonosNewestFirst(credit.abonos ?? []).map((abono) => (
                               <div
                                 key={abono.id}
                                 className="rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
@@ -595,6 +607,7 @@ export function CreditsGrantedList({
                             pending={pending}
                             currency={currency}
                             accounts={accounts}
+                            onDone={() => setShowAbonoFormId(null)}
                           />
                         </div>
                       )}
@@ -609,6 +622,7 @@ export function CreditsGrantedList({
                                 creditId={credit.id}
                                 abonoId={abono.id}
                                 amount={abono.amount.amount}
+                                currency={currency}
                                 date={businessDateToInputValue(abono.date)}
                                 onCancel={() => setEditingAbonoId(null)}
                               />

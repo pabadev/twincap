@@ -123,7 +123,7 @@ export function Hero() {
                     </p>
                     <p className="mt-1 text-sm text-slate-500">{t("previewResultHelp")}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+                  <span className="shrink-0 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900">
                     {t("previewResultValue")}
                   </span>
                 </div>

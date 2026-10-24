@@ -7,11 +7,13 @@ import { createPayableAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../core/domain/account";
 import { Input } from "../../../components/ui/input";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { toDateInputValue } from "../../../lib/date";
+import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 
 export function PayableForm({
   accounts,
@@ -88,13 +90,12 @@ export function PayableForm({
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           id="total"
           name="total"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={currency ? t("total", { currency }) : t("totalPlain")}
-          min="1"
+          currency={currency || DEFAULT_CURRENCY}
+          min={1}
           required
           disabled={isPending}
         />
@@ -115,14 +116,12 @@ export function PayableForm({
         />
       </div>
 
-      <Input
+      <MoneyInput
         id="initialPayment"
         name="initialPayment"
-        hint={tCommon("moneyNoSeparators")}
-        type="number"
         label={currency ? t("initialPayment", { currency }) : t("initialPaymentPlain")}
-        min="0"
-        step="1"
+        currency={currency || DEFAULT_CURRENCY}
+        min={0}
         defaultValue={0}
         disabled={isPending}
       />

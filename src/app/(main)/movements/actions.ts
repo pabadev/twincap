@@ -5,6 +5,7 @@ import {
   deleteMovement,
   updateMovement,
   listMovementsPaged,
+  filterMovementsWithLiveParents,
 } from "../../../core/application/movements";
 import type { CreateMovementInput } from "../../../core/application/movements";
 import { getUserBalances } from "../../../core/application/balance";
@@ -38,6 +39,7 @@ import { trackAnalytics } from "../../../lib/track-analytics";
 import { getT } from "../../../i18n/server";
 import { buildMovementsCsv, filterMovementsForCsv } from "./export-csv";
 import type { MovementCsvFilters } from "./export-csv";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -50,7 +52,7 @@ export async function createMovementAction(
 
   const accountId = formData.get("accountId") as string;
   const type = formData.get("type") as CreateMovementInput["type"];
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const currency = formData.get("currency") as CreateMovementInput["currency"];
   const date = new Date(formData.get("date") as string);
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
@@ -252,7 +254,7 @@ export async function updateMovementAction(
 
   const movementId = formData.get("movementId") as string;
   const accountId = formData.get("accountId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const date = new Date(formData.get("date") as string);
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
   const note = (formData.get("note") as string) || undefined;
@@ -343,6 +345,63 @@ export async function listMovementsPagedAction(
         }
       : null,
   };
+}
+
+/**
+ * UX-7 (beta feedback #9): full workspace movement set for client-side
+ * filtering while any filter is active — filters must see ALL movements, not
+ * just the pages accumulated via "Cargar más". Same live-parent defense as
+ * the page's first page (R6-P1). Read-only: no idempotency, no revalidation,
+ * no writes of any kind.
+ */
+export async function listAllMovementsAction(): Promise<SerializedMovement[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  await connectDb();
+  const movementRepo = new MongoMovementRepository();
+  const accountRepo = new MongoAccountRepository();
+  const transferRepo = new MongoTransferRepository();
+  const creditReceivedRepo = new MongoCreditReceivedRepository();
+  const creditGrantedRepo = new MongoCreditGrantedRepository();
+  const payableRepo = new MongoPayableRepository();
+  const saleRepo = new MongoSaleRepository();
+
+  const [movements, accounts, transfers, creditsReceived, creditsGranted, payables, sales] =
+    await Promise.all([
+      movementRepo.findByWorkspaceId(user.workspaceId!),
+      accountRepo.findByWorkspaceId(user.workspaceId!),
+      transferRepo.findByWorkspaceId(user.workspaceId!),
+      creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
+      creditGrantedRepo.findByWorkspaceId(user.workspaceId!),
+      payableRepo.findByWorkspaceId(user.workspaceId!),
+      saleRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
+
+  const liveParents = {
+    accounts: new Set(accounts.map((a) => a.id)),
+    transfers: new Set(transfers.map((tr) => tr.id)),
+    creditsReceived: creditsReceived.map((c) => ({
+      id: c.id,
+      accountId: c.accountId,
+      date: c.date,
+      amount: c.principal.amount,
+    })),
+    creditsGranted: creditsGranted.map((c) => ({
+      id: c.id,
+      accountId: c.accountId,
+      date: c.date,
+      amount: c.principal.amount,
+    })),
+    sales: sales.map((s) => ({
+      id: s.id,
+      accountId: s.accountId,
+      date: s.date,
+      amount: s.total,
+    })),
+    payables: new Set(payables.map((p) => p.id)),
+  };
+  return serializeEntities(filterMovementsWithLiveParents(movements, liveParents));
 }
 
 /**

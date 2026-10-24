@@ -135,12 +135,31 @@ export async function getSaleDetail(
         : undefined,
     })),
     total: sale.total,
+    version: sale.version,
     inventoryCostMinor,
     grossProfitMinor: inventoryCostMinor === null ? null : sale.total - inventoryCostMinor,
     costComplete,
     initialPayment,
     pending,
     hasLinkedCredit: linkedCredit !== null,
+    // DOM-1 sale↔debt bridge: identity + current terms of the live linked
+    // credit, so the detail modal can offer editing the debt in place.
+    linkedCredit:
+      linkedCredit !== null
+        ? {
+            creditId: linkedCredit.id,
+            counterparty: linkedCredit.counterparty,
+            principal: linkedCredit.principal.amount,
+            installments: linkedCredit.installments,
+            installmentValue: linkedCredit.installmentValue
+              ? {
+                  amount: linkedCredit.installmentValue.amount,
+                  currency: linkedCredit.installmentValue.currency,
+                }
+              : null,
+            frequency: linkedCredit.frequency,
+          }
+        : null,
     abonos,
     accountName,
     currency,

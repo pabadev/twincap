@@ -1,29 +1,30 @@
-'use server';
+"use server";
 
 import {
   createTransfer,
   updateTransfer,
   deleteTransfer,
-} from '../../../core/application/transfers';
-import type { CreateTransferInput, UpdateTransferInput } from '../../../core/application/transfers';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { MongoTransferRepository } from '../../../infrastructure/repositories/transfer-repository';
-import { MongoMovementRepository } from '../../../infrastructure/repositories/movement-repository';
-import { MongoAccountRepository } from '../../../infrastructure/repositories/account-repository';
-import { MongoCreditReceivedRepository } from '../../../infrastructure/repositories/credit-received-repository';
-import { MongoCreditGrantedRepository } from '../../../infrastructure/repositories/credit-granted-repository';
-import { MongoSaleRepository } from '../../../infrastructure/repositories/sale-repository';
-import { MongoPayableRepository } from '../../../infrastructure/repositories/payable-repository';
-import { MongoUnitOfWork } from '../../../infrastructure/transactions/mongo-unit-of-work';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { claimIdempotency, releaseIdempotency } from '../../../infrastructure/auth/idempotency';
-import { objectIdGenerator } from '../../../infrastructure/config/id-generator';
-import { revalidatePath } from 'next/cache';
-import { assertBusinessDateNotFuture } from '../../../lib/date';
-import { handleActionError } from '../../../lib/handle-action-error';
-import { withAudit } from '../../../lib/with-audit';
-import { MongoOperationLogger } from '../../../infrastructure/repositories/operation-log-repository';
-import { trackAnalytics } from '../../../lib/track-analytics';
+} from "../../../core/application/transfers";
+import type { CreateTransferInput, UpdateTransferInput } from "../../../core/application/transfers";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { MongoTransferRepository } from "../../../infrastructure/repositories/transfer-repository";
+import { MongoMovementRepository } from "../../../infrastructure/repositories/movement-repository";
+import { MongoAccountRepository } from "../../../infrastructure/repositories/account-repository";
+import { MongoCreditReceivedRepository } from "../../../infrastructure/repositories/credit-received-repository";
+import { MongoCreditGrantedRepository } from "../../../infrastructure/repositories/credit-granted-repository";
+import { MongoSaleRepository } from "../../../infrastructure/repositories/sale-repository";
+import { MongoPayableRepository } from "../../../infrastructure/repositories/payable-repository";
+import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { claimIdempotency, releaseIdempotency } from "../../../infrastructure/auth/idempotency";
+import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
+import { revalidatePath } from "next/cache";
+import { assertBusinessDateNotFuture } from "../../../lib/date";
+import { handleActionError } from "../../../lib/handle-action-error";
+import { withAudit } from "../../../lib/with-audit";
+import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
+import { trackAnalytics } from "../../../lib/track-analytics";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -33,25 +34,33 @@ export async function createTransferAction(
 ): Promise<{
   error?: string;
   success?: string;
-  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
+  warning?: {
+    type: "insufficient_funds";
+    currentBalance: number;
+    projectedBalance: number;
+    currency: string;
+  };
 }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const sourceAccountId = formData.get('sourceAccountId') as string;
-  const destinationAccountId = formData.get('destinationAccountId') as string;
-  const sourceAmount = Number(formData.get('sourceAmount') || '0');
-  const sourceCurrency = formData.get('sourceCurrency') as CreateTransferInput['sourceCurrency'];
-  const destinationAmount = Number(formData.get('destinationAmount') || '0') || undefined;
-  const destinationCurrency = (formData.get('destinationCurrency') as CreateTransferInput['destinationCurrency']) || undefined;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const note = (formData.get('note') as string) || undefined;
-  const idempotencyKey = formData.get('idempotencyKey') as string;
+  const sourceAccountId = formData.get("sourceAccountId") as string;
+  const destinationAccountId = formData.get("destinationAccountId") as string;
+  const sourceAmount = parseMoneyInput(String(formData.get("sourceAmount") ?? "")) ?? 0;
+  const sourceCurrency = formData.get("sourceCurrency") as CreateTransferInput["sourceCurrency"];
+  const destinationAmount =
+    (parseMoneyInput(String(formData.get("destinationAmount") ?? "")) ?? 0) || undefined;
+  const destinationCurrency =
+    (formData.get("destinationCurrency") as CreateTransferInput["destinationCurrency"]) ||
+    undefined;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const note = (formData.get("note") as string) || undefined;
+  const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
-    return { error: 'error.idempotencyKeyRequired' };
+    return { error: "error.idempotencyKeyRequired" };
   }
-  const confirmNegativeBalance = formData.get('confirmNegativeBalance') === 'true';
+  const confirmNegativeBalance = formData.get("confirmNegativeBalance") === "true";
 
   const input: CreateTransferInput = {
     sourceAccountId,
@@ -80,22 +89,27 @@ export async function createTransferAction(
   try {
     assertBusinessDateNotFuture(date, tzOffset);
     await connectDb();
-    const claimed = await claimIdempotency(user.userId, idempotencyKey, 'createTransfer');
+    const claimed = await claimIdempotency(user.userId, idempotencyKey, "createTransfer");
     if (!claimed) {
       await new MongoOperationLogger().log({
         userId: user.userId,
-        action: 'createTransfer',
-        entityType: 'transfer',
-        result: 'duplicate',
+        action: "createTransfer",
+        entityType: "transfer",
+        result: "duplicate",
         correlationId: idempotencyKey ?? undefined,
         occurredAt: new Date(),
       });
-      return { error: 'error.duplicateRequest' };
+      return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'createTransfer', entityType: 'transfer', userId: user.userId, correlationId: idempotencyKey ?? undefined },
+      {
+        action: "createTransfer",
+        entityType: "transfer",
+        userId: user.userId,
+        correlationId: idempotencyKey ?? undefined,
+      },
       async () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
@@ -125,7 +139,7 @@ export async function createTransferAction(
       // the user's confirmation resubmission with the SAME key — same mounted
       // form — is not dropped as a duplicate. The claim stays consumed until
       // then: that is the intended retry flow (same key + confirmNegativeBalance).
-      await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
+      await releaseIdempotency(user.userId, idempotencyKey, "createTransfer");
       return { warning: result.warning };
     }
     // Commit point: a transfer was actually written (withAudit resolved with a
@@ -135,21 +149,21 @@ export async function createTransferAction(
     // Post-commit is safe by design: the financial commit already happened and the
     // idempotency key prevents duplicate effects on retry — revalidation failure
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
-    revalidatePath('/transfers');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/transfers");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
     // R13-H: regular transfer creation event (APPENDED) for product analytics.
-    await trackAnalytics('transferCreated', user.workspaceId!, user.userId);
+    await trackAnalytics("transferCreated", user.workspaceId!, user.userId);
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
-      await releaseIdempotency(user.userId, idempotencyKey, 'createTransfer');
+      await releaseIdempotency(user.userId, idempotencyKey, "createTransfer");
     }
     return handleActionError(error);
   }
 
-  return { success: 'transferCreated' };
+  return { success: "transferCreated" };
 }
 
 export async function updateTransferAction(
@@ -158,18 +172,24 @@ export async function updateTransferAction(
 ): Promise<{
   error?: string;
   success?: string;
-  warning?: { type: 'insufficient_funds'; currentBalance: number; projectedBalance: number; currency: string };
+  warning?: {
+    type: "insufficient_funds";
+    currentBalance: number;
+    projectedBalance: number;
+    currency: string;
+  };
 }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const transferId = formData.get('transferId') as string;
-  const sourceAmount = Number(formData.get('sourceAmount') || '0');
-  const destinationAmount = Number(formData.get('destinationAmount') || '0') || undefined;
-  const date = new Date(formData.get('date') as string);
-  const tzOffset = Number(formData.get('tzOffset') ?? 0);
-  const note = (formData.get('note') as string) || undefined;
-  const confirmNegativeBalance = formData.get('confirmNegativeBalance') === 'true';
+  const transferId = formData.get("transferId") as string;
+  const sourceAmount = parseMoneyInput(String(formData.get("sourceAmount") ?? "")) ?? 0;
+  const destinationAmount =
+    (parseMoneyInput(String(formData.get("destinationAmount") ?? "")) ?? 0) || undefined;
+  const date = new Date(formData.get("date") as string);
+  const tzOffset = Number(formData.get("tzOffset") ?? 0);
+  const note = (formData.get("note") as string) || undefined;
+  const confirmNegativeBalance = formData.get("confirmNegativeBalance") === "true";
 
   const input: UpdateTransferInput = {
     sourceAmount,
@@ -192,7 +212,7 @@ export async function updateTransferAction(
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'updateTransfer', entityType: 'transfer', userId: user.userId },
+      { action: "updateTransfer", entityType: "transfer", userId: user.userId },
       async () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
@@ -223,15 +243,15 @@ export async function updateTransferAction(
       // re-submits with confirmNegativeBalance and the edit registers.
       return { warning: result.warning };
     }
-    revalidatePath('/transfers');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/transfers");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'transferUpdated' };
+  return { success: "transferUpdated" };
 }
 
 export async function deleteTransferAction(
@@ -239,16 +259,16 @@ export async function deleteTransferAction(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { error: 'error.unauthorized' };
+  if (!user) return { error: "error.unauthorized" };
 
-  const transferId = formData.get('transferId') as string;
+  const transferId = formData.get("transferId") as string;
 
   try {
     await connectDb();
     const logger = new MongoOperationLogger();
     await withAudit(
       logger,
-      { action: 'deleteTransfer', entityType: 'transfer', userId: user.userId },
+      { action: "deleteTransfer", entityType: "transfer", userId: user.userId },
       () => {
         const transferRepo = new MongoTransferRepository();
         const movementRepo = new MongoMovementRepository();
@@ -263,13 +283,13 @@ export async function deleteTransferAction(
         );
       },
     );
-    revalidatePath('/transfers');
-    revalidatePath('/accounts');
-    revalidatePath('/dashboard');
-    revalidatePath('/movements');
+    revalidatePath("/transfers");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
   } catch (error) {
     return handleActionError(error);
   }
 
-  return { success: 'transferDeleted' };
+  return { success: "transferDeleted" };
 }

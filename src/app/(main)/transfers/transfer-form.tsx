@@ -11,10 +11,12 @@ import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
 import { businessDateToInputValue, toDateInputValue } from "../../../lib/date";
 import { formatAmount } from "../../../lib/format";
+import { parseMoneyInput } from "../../../lib/money-input";
 import { exponentOf, DEFAULT_CURRENCY } from "../../../core/domain/currency";
 
 /**
@@ -199,8 +201,11 @@ export function TransferForm({
   // minor units, so the exponents normalize them to majors here to match the
   // stored effectiveExchangeRate (COP→USD 190.000 → 50 shows 3.800). Only the
   // two real amounts are user input.
-  const sourceAmt = Number(sourceAmountStr);
-  const destAmt = Number(destAmountStr);
+  // Both input fields now hold the RAW user text (tolerant money input,
+  // beta feedback #13): the tolerant parser — the same one the backend uses —
+  // normalizes "5.000" / "5,50" before the derived rate preview.
+  const sourceAmt = parseMoneyInput(sourceAmountStr) ?? 0;
+  const destAmt = parseMoneyInput(destAmountStr) ?? 0;
   const derivedRateDisplay =
     isCrossCurrency && sourceAmt > 0 && destAmt > 0
       ? new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(
@@ -252,13 +257,12 @@ export function TransferForm({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           id="sourceAmount"
           name="sourceAmount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={t("sourceAmount", { currency: sourceCurrency })}
-          min="1"
+          currency={sourceCurrency}
+          min={1}
           required
           disabled={isPending}
           defaultValue={transfer?.sourceAmount.amount}
@@ -271,13 +275,12 @@ export function TransferForm({
 
         {isCrossCurrency && (
           <>
-            <Input
+            <MoneyInput
               id="destinationAmount"
               name="destinationAmount"
-              hint={tCommon("moneyNoSeparators")}
-              type="number"
               label={t("destAmount", { currency: destCurrency })}
-              min="1"
+              currency={destCurrency}
+              min={1}
               required
               disabled={isPending}
               defaultValue={transfer?.destinationAmount.amount}

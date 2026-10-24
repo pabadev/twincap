@@ -59,6 +59,7 @@ const FROZEN_TOAST_KEYS: string[] = [
   "creditWrittenOff",
   "saleCreated",
   "saleDeleted",
+  "saleUpdated",
   "catalogItemCreated",
   "catalogItemUpdated",
   "catalogItemDeleted",

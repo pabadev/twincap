@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "../../../i18n/client";
-import { CURRENCIES } from "../../../core/domain/currency";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import { createAccountAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import { Input } from "../../../components/ui/input";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../lib/hooks/use-toast";
@@ -14,6 +15,8 @@ import { useActionError } from "../../../lib/use-action-error";
 
 export function AccountForm({ onDone }: { onDone?: () => void }) {
   const [state, formAction, isPending] = useActionState(createAccountAction, null);
+  // Controlled so the MoneyInput preview reflects the account's real currency.
+  const [currency, setCurrency] = useState("");
   const t = useT("Accounts");
   const tCommon = useT("Common");
   const tToast = useT("Toast");
@@ -67,16 +70,17 @@ export function AccountForm({ onDone }: { onDone?: () => void }) {
         required
         disabled={isPending}
         placeholder={tCommon("select")}
+        value={currency}
+        onChange={(e) => setCurrency(e.target.value)}
         options={CURRENCIES.map((c) => ({ value: c, label: c }))}
       />
 
-      <Input
+      <MoneyInput
         id="initialBalance"
         name="initialBalance"
-        hint={tCommon("moneyNoSeparators")}
-        type="number"
         label={t("initialBalance")}
-        min="0"
+        currency={currency || DEFAULT_CURRENCY}
+        min={0}
         defaultValue="0"
         disabled={isPending}
       />

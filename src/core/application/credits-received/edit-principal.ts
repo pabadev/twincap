@@ -56,6 +56,30 @@ export async function editPrincipal(
       throw new ConflictError('New principal is less than total abonos');
     }
 
+    // DOM-1 (EXC-2): effective installment-plan terms after the PATCH —
+    // undefined keeps the current value. Informational fields only: they
+    // never touch movements or the economic result.
+    const FREQUENCIES = ["weekly", "biweekly", "monthly"];
+    const newInstallments = input.installments ?? credit.installments;
+    const newInstallmentValue = input.installmentValue ?? credit.installmentValue?.amount;
+    const newFrequency = input.frequency ?? credit.frequency;
+    if (
+      newInstallments !== undefined &&
+      (!Number.isInteger(newInstallments) || newInstallments < 0)
+    ) {
+      throw new ValidationError('Installments must be a non-negative integer');
+    }
+    if (newInstallmentValue !== undefined && newInstallmentValue < 0) {
+      throw new ValidationError('Installment value must be zero or a positive amount');
+    }
+    if (newFrequency !== undefined && !FREQUENCIES.includes(newFrequency)) {
+      throw new ValidationError(`Unknown frequency: ${String(newFrequency)}`);
+    }
+    // R5-D1 parity: a plan with installments > 0 requires a positive value.
+    if ((newInstallments ?? 0) > 0 && (newInstallmentValue ?? 0) <= 0) {
+      throw new ValidationError('Installment value is required when installments > 0');
+    }
+
     const updatedPrincipal = new Money(input.principal, input.currency);
     const updatedCredit = new CreditReceived(
       {
@@ -65,9 +89,12 @@ export async function editPrincipal(
         principal: updatedPrincipal,
         accountId: credit.accountId,
         date: credit.date,
-        installments: credit.installments,
-        installmentValue: credit.installmentValue,
-        frequency: credit.frequency,
+        installments: newInstallments,
+        installmentValue:
+          newInstallmentValue !== undefined && newInstallmentValue > 0
+            ? new Money(newInstallmentValue, credit.principal.currency)
+            : undefined,
+        frequency: newFrequency,
         createdAt: credit.createdAt,
         version: credit.version + 1,
       },

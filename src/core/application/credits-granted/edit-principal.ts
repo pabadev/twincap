@@ -1,13 +1,24 @@
-import { CreditGranted } from '../../domain/credit-granted';
-import { Movement } from '../../domain/movement';
-import { Money, sumSafeMinorUnits } from '../../domain/money';
-import { NotFoundError, ConflictError, ValidationError } from '../../domain/errors';
-import { isModernRecord } from '../../domain/modern-record';
-import { creditGrantedCategory } from '../../domain/synthetic-categories';
-import type { CreditGrantedRepository, MovementRepository, AccountRepository } from '../../domain/repositories';
-import type { UnitOfWork } from '../ports';
-import { touchAccount } from '../financial/touch-accounts';
-import type { EditPrincipalInput } from './dto/credits-granted';
+import { CreditGranted } from "../../domain/credit-granted";
+import { Movement } from "../../domain/movement";
+import { Money, sumSafeMinorUnits } from "../../domain/money";
+import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors";
+import { isModernRecord } from "../../domain/modern-record";
+import { creditGrantedCategory } from "../../domain/synthetic-categories";
+import type {
+  CreditGrantedRepository,
+  MovementRepository,
+  AccountRepository,
+} from "../../domain/repositories";
+import type { UnitOfWork } from "../ports";
+import { touchAccount } from "../financial/touch-accounts";
+import type { EditPrincipalInput } from "./dto/credits-granted";
+
+/**
+ * Sale-born credits (credit.saleId) cannot be edited directly: their capital
+ * is owned by the sale (updateSale cascades). Stable English identifier,
+ * mapped to error.saleBornCreditEdit in handle-action-error.
+ */
+export const SALE_BORN_CREDIT_EDIT_MSG = "Sale-born credit: edit the sale instead";
 
 /**
  * Edit the principal of a credit granted (CRED-G-5).
@@ -37,12 +48,48 @@ export async function editPrincipal(
     // same snapshot (and the driver's WriteConflict retry re-executes this
     // callback against fresh state).
     const credits = await creditRepo.findByWorkspaceId(workspaceId, tx);
-    const credit = credits.find(c => c.id === creditId);
-    if (!credit) throw new NotFoundError('Credit not found');
+    const credit = credits.find((c) => c.id === creditId);
+    if (!credit) throw new NotFoundError("Credit not found");
 
     // ACC-1: principal currency is immutable.
     if (input.currency !== credit.principal.currency) {
-      throw new ValidationError(`Credit currency is ${credit.principal.currency}, declared ${input.currency}`);
+      throw new ValidationError(
+        `Credit currency is ${credit.principal.currency}, declared ${input.currency}`,
+      );
+    }
+
+    // RCA 2026-10-19 (founder repro): a SALE-BORN credit's principal is owned
+    // by its SALE (principal === sale.total, NEW model R5-D0b) and it has NO
+    // `creditGrantedPrincipal` movement to mirror — a direct principal edit
+    // here would desynchronize the sale (analytics would keep the old total
+    // while the debt changes). Same discipline as the sale-born DELETE block:
+    // the correction goes through the SALE (updateSale cascades the credit).
+    if (credit.saleId) {
+      throw new ConflictError(SALE_BORN_CREDIT_EDIT_MSG);
+    }
+
+    // DOM-1 (EXC-2): effective installment-plan terms after the PATCH —
+    // undefined keeps the current value. Informational fields only: they
+    // never touch movements or the economic result.
+    const FREQUENCIES = ["weekly", "biweekly", "monthly"];
+    const newInstallments = input.installments ?? credit.installments;
+    const newInstallmentValue = input.installmentValue ?? credit.installmentValue?.amount;
+    const newFrequency = input.frequency ?? credit.frequency;
+    if (
+      newInstallments !== undefined &&
+      (!Number.isInteger(newInstallments) || newInstallments < 0)
+    ) {
+      throw new ValidationError("Installments must be a non-negative integer");
+    }
+    if (newInstallmentValue !== undefined && newInstallmentValue < 0) {
+      throw new ValidationError("Installment value must be zero or a positive amount");
+    }
+    if (newFrequency !== undefined && !FREQUENCIES.includes(newFrequency)) {
+      throw new ValidationError(`Unknown frequency: ${String(newFrequency)}`);
+    }
+    // R5-D1 parity: a plan with installments > 0 requires a positive value.
+    if ((newInstallments ?? 0) > 0 && (newInstallmentValue ?? 0) <= 0) {
+      throw new ValidationError("Installment value is required when installments > 0");
     }
 
     // CRED-G-5: pending must remain ≥ 0
@@ -53,7 +100,7 @@ export async function editPrincipal(
       "EditPrincipal abonos sum",
     );
     if (input.principal < totalAbonos) {
-      throw new ConflictError('New principal is less than total abonos');
+      throw new ConflictError("New principal is less than total abonos");
     }
 
     const updatedPrincipal = new Money(input.principal, input.currency);
@@ -65,9 +112,14 @@ export async function editPrincipal(
         principal: updatedPrincipal,
         accountId: credit.accountId,
         date: credit.date,
-        installments: credit.installments,
-        installmentValue: credit.installmentValue,
-        frequency: credit.frequency,
+        // DOM-1 (EXC-2): terms are PATCHed (validated above); 0/undefined
+        // semantics — installments 0 clears the plan, matching create.
+        installments: newInstallments,
+        installmentValue:
+          newInstallmentValue !== undefined && newInstallmentValue > 0
+            ? new Money(newInstallmentValue, credit.principal.currency)
+            : undefined,
+        frequency: newFrequency,
         saleId: credit.saleId,
         createdAt: credit.createdAt,
         version: credit.version + 1,
@@ -86,7 +138,7 @@ export async function editPrincipal(
     // the whole transaction without any partial write.
     const movements = await movementRepo.findByWorkspaceId(workspaceId);
     const principalMovement = movements.find(
-      m => m.link?.kind === 'creditGrantedPrincipal' && m.link?.refId === creditId,
+      (m) => m.link?.kind === "creditGrantedPrincipal" && m.link?.refId === creditId,
     );
     if (!principalMovement) {
       // R15.1 6c: every credit is created with its principal movement — for
@@ -94,19 +146,19 @@ export async function editPrincipal(
       // + rollback). Legacy credits keep the tolerant behavior with a
       // reconciliation log.
       if (isModernRecord(credit.createdAt)) {
-        throw new ConflictError('Required movement not found for modern record');
+        throw new ConflictError("Required movement not found for modern record");
       }
-      console.warn('[reconcile] Legacy record missing movement, continuing', {
+      console.warn("[reconcile] Legacy record missing movement, continuing", {
         aggregateId: credit.id,
-        kind: 'creditGrantedPrincipal',
+        kind: "creditGrantedPrincipal",
       });
     } else {
       const updatedMovement = new Movement({
         id: principalMovement.id,
         workspaceId: principalMovement.workspaceId,
         accountId: principalMovement.accountId,
-        category: creditGrantedCategory('expense'),
-        type: 'expense',
+        category: creditGrantedCategory("expense"),
+        type: "expense",
         amount: updatedPrincipal,
         date: principalMovement.date,
         note: principalMovement.note,

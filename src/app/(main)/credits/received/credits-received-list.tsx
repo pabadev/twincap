@@ -24,6 +24,12 @@ import { SearchInput } from "../../../../components/ui/search-input";
 import { Table } from "../../../../components/ui/table";
 import { ChevronDown, CreditCard, Pencil, SlidersHorizontal } from "lucide-react";
 
+/** Newest abonos first (beta feedback #7): business date desc; ties keep
+ *  newest-inserted first (reverse + stable sort). */
+function abonosNewestFirst<T extends { date: Date }>(abonos: readonly T[]): T[] {
+  return [...abonos].reverse().sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
 export function CreditsReceivedList({
   accounts,
   credits,
@@ -76,6 +82,9 @@ export function CreditsReceivedList({
             creditId={editingCredit.id}
             principal={editingCredit.principal.amount}
             currency={editingCredit.principal.currency}
+            installments={editingCredit.installments}
+            installmentValue={editingCredit.installmentValue?.amount}
+            frequency={editingCredit.frequency}
             onCancel={() => setEditingCredit(null)}
           />
         )}
@@ -385,7 +394,7 @@ export function CreditsReceivedList({
                               </tr>
                             </thead>
                             <tbody>
-                              {credit.abonos?.map((abono) => (
+                              {abonosNewestFirst(credit.abonos ?? []).map((abono) => (
                                 <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                                   <td className="py-1">{formatDate(abono.date, locale)}</td>
                                   <td className="py-1 text-right">
@@ -447,6 +456,7 @@ export function CreditsReceivedList({
                             pending={pending}
                             currency={currency}
                             accounts={accounts}
+                            onDone={() => setShowAbonoFormId(null)}
                           />
                         </div>
                       )}
@@ -461,6 +471,7 @@ export function CreditsReceivedList({
                                 creditId={credit.id}
                                 abonoId={abono.id}
                                 amount={abono.amount.amount}
+                                currency={currency}
                                 date={businessDateToInputValue(abono.date)}
                                 onCancel={() => setEditingAbonoId(null)}
                               />

@@ -4,12 +4,14 @@ import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } 
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "../../../i18n/client";
 import { MOVEMENT_TYPES, MOVEMENT_CONTEXTS } from "../../../core/domain/movement";
+import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import type { MovementType } from "../../../core/domain/movement";
 import { createMovementAction, listAccountBalancesAction } from "./actions";
 import { IdempotencyField } from "../../../components/ui/idempotency-field";
 import type { SerializedCategory } from "../../../core/domain/category";
 import type { SerializedAccount } from "../../../core/domain/account";
 import { Input } from "../../../components/ui/input";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
@@ -27,6 +29,7 @@ import {
   MoneyActionConfirmation,
   type ConfirmationDetailRow,
 } from "../../../components/ui/money-action-confirmation";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -153,7 +156,7 @@ export function MovementForm({
     if (!form) return;
     const fd = new FormData(form);
     const accountId = String(fd.get("accountId") ?? "");
-    const amount = Number(fd.get("amount"));
+    const amount = parseMoneyInput(String(fd.get("amount") ?? "")) ?? 0;
     const currency = String(fd.get("currency") ?? "");
     // The type select is controlled by `selectedType`; its DOM value is the
     // source of truth the server action receives ('income' | 'expense').
@@ -302,13 +305,12 @@ export function MovementForm({
               of the group grid, so fecha and monto get the same half-width
               columns as every other field (no nested-quarter widths). */}
           <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2 sm:gap-x-4">
-            <Input
+            <MoneyInput
               id="amount"
               name="amount"
-              hint={tCommon("moneyNoSeparators")}
-              type="number"
               label={selectedAccount ? `${t("amount")} (${selectedAccount.currency})` : t("amount")}
-              min="1"
+              currency={selectedAccount?.currency ?? DEFAULT_CURRENCY}
+              min={1}
               required
               disabled={isPending}
               labelClassName={compactLabelClasses}

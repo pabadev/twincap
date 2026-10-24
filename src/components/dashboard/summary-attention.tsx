@@ -53,6 +53,7 @@ export function SummaryAttention({
 
   const receivablesRows = attentionTotals.filter((r) => r.receivables > 0);
   const payablesRows = attentionTotals.filter((p) => p.payables > 0);
+  const hasStandaloneAlerts = negativeBalanceAlerts.length > 0 || atypicalExpenseAlert !== null;
   const hasContent =
     receivablesRows.length > 0 ||
     payablesRows.length > 0 ||
@@ -76,65 +77,73 @@ export function SummaryAttention({
         </Card>
       )}
 
-      {/* §7.1: negative-balance info cards — informativo, sin alarma
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 md:auto-rows-fr">
+        {/* §7.1: negative-balance info cards — informativo, sin alarma
               (mandato §7.1): explica qué ocurre, señala la cuenta/moneda y
               permite investigar (enlace a Cuentas). No bloquea nada. */}
-      {negativeBalanceAlerts.map((n) => (
-        <Card key={`neg-${n.accountName}`} contentClassName="p-4">
-          <div className="flex items-center gap-1.5">
-            <Icon icon={TriangleAlert} size="sm" className="text-warning" aria-hidden="true" />
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-              {t("negativeBalanceTitle")}
+        {negativeBalanceAlerts.map((n) => (
+          <Card key={`neg-${n.accountName}`} contentClassName="p-4">
+            <div className="flex items-center gap-1.5">
+              <Icon icon={TriangleAlert} size="sm" className="text-warning" aria-hidden="true" />
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                {t("negativeBalanceTitle")}
+              </p>
+            </div>
+            <p className="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              {n.accountName} · {n.currency}
             </p>
-          </div>
-          <p className="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            {n.accountName} · {n.currency}
-          </p>
-          <p className="mt-1 text-sm text-expense" aria-label={t("negativeBalanceDesc")}>
-            {formatAmount(n.balance, n.currency, locale)}
-          </p>
-          <div className="mt-2 flex justify-end">
-            <Link href="/accounts" className="text-sm font-medium text-primary hover:underline">
-              {t("negativeBalanceReview")}
-            </Link>
-          </div>
-        </Card>
-      ))}
+            <p className="mt-1 text-sm text-expense" aria-label={t("negativeBalanceDesc")}>
+              {formatAmount(n.balance, n.currency, locale)}
+            </p>
+            <div className="mt-2 flex justify-end">
+              <Link href="/accounts" className="text-sm font-medium text-primary hover:underline">
+                {t("negativeBalanceReview")}
+              </Link>
+            </div>
+          </Card>
+        ))}
 
-      {/* §7.2: atypical expense — regla estadística simple y explicable:
+        {/* §7.2: atypical expense — regla estadística simple y explicable:
               appears ONLY when ≥ 3 reference months made it confident. */}
-      {atypicalExpenseAlert && (
-        <Card contentClassName="p-4">
-          <div className="flex items-center gap-1.5">
-            <Icon icon={Info} size="sm" className="text-info" aria-hidden="true" />
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-              {t("atypicalExpenseTitle")}
+        {atypicalExpenseAlert && (
+          <Card contentClassName="p-4">
+            <div className="flex items-center gap-1.5">
+              <Icon icon={Info} size="sm" className="text-info" aria-hidden="true" />
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                {t("atypicalExpenseTitle")}
+              </p>
+            </div>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {t("atypicalExpenseDesc", {
+                avg: avgText,
+                months: String(atypicalExpenseAlert.monthsWithData),
+              })}
             </p>
-          </div>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {t("atypicalExpenseDesc", {
-              avg: avgText,
-              months: String(atypicalExpenseAlert.monthsWithData),
-            })}
-          </p>
-          <div className="mt-2 flex items-baseline justify-between gap-3">
-            <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {atypicalExpenseAlert.currency}
-            </span>
-            <span className="text-sm font-semibold tabular-nums text-expense">
-              {formatAmount(atypicalExpenseAlert.current, atypicalExpenseAlert.currency, locale)}
-            </span>
-          </div>
-          <div className="mt-2 flex justify-end">
-            <Link href="/movements" className="text-sm font-medium text-primary hover:underline">
-              {t("atypicalExpenseReview")}
-            </Link>
-          </div>
-        </Card>
-      )}
+            <div className="mt-2 flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                {atypicalExpenseAlert.currency}
+              </span>
+              <span className="text-sm font-semibold tabular-nums text-expense">
+                {formatAmount(atypicalExpenseAlert.current, atypicalExpenseAlert.currency, locale)}
+              </span>
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Link href="/movements" className="text-sm font-medium text-primary hover:underline">
+                {t("atypicalExpenseReview")}
+              </Link>
+            </div>
+          </Card>
+        )}
+      </div>
 
       {hasContent && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={
+            hasStandaloneAlerts
+              ? "mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+              : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          }
+        >
           {receivablesRows.length > 0 && (
             <Card contentClassName="p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">

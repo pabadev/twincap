@@ -9,15 +9,17 @@ import {
   getUnitFactorToBase,
 } from "../../../../core/domain/inventory-units";
 import type { InventoryUnit } from "../../../../core/domain/inventory-units";
-import { CURRENCY_EXPONENTS } from "../../../../core/domain/currency";
+import { CURRENCY_EXPONENTS, DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { useLocale, useT } from "../../../../i18n/client";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { Alert } from "../../../../components/ui/alert";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { useActionError } from "../../../../lib/use-action-error";
+import { parseMoneyInput } from "../../../../lib/money-input";
 import { receiveInventoryReceiptAction } from "./actions";
 import { toDateInputValue } from "../../../../lib/date";
 import { IdempotencyField } from "../../../../components/ui/idempotency-field";
@@ -68,7 +70,10 @@ export function InventoryReceiptForm({
   const parseMinorUnits = (raw: string): bigint | null => {
     if (!currency || !raw.trim()) return null;
     try {
-      return BigInt(decimalAmountToMinorUnits(raw, currency, true));
+      // Tolerant parse first (beta feedback #13): raw may be "5.000" or "5,50".
+      const parsed = parseMoneyInput(raw);
+      if (parsed === null) return null;
+      return BigInt(decimalAmountToMinorUnits(String(parsed), currency, true));
     } catch {
       return null;
     }
@@ -325,19 +330,17 @@ export function InventoryReceiptForm({
           </div>
         </section>
         <aside className="mt-3 min-h-0 space-y-2 sm:mt-4 sm:space-y-3 lg:mt-0 lg:overflow-y-auto lg:pl-1">
-          <Input
+          <MoneyInput
             id="receiptInitialPayment"
             name="initialPayment"
-            hint={tc("moneyNoSeparators")}
-            type="number"
             label={
               currency
                 ? t("receiptInitialPaymentWithCurrency", { currency })
                 : t("receiptInitialPayment")
             }
             labelClassName="text-xs sm:text-sm"
-            min="0"
-            step={currency ? (CURRENCY_EXPONENTS[currency] ? "0.01" : "1") : "any"}
+            currency={currency ?? DEFAULT_CURRENCY}
+            min={0}
             value={initialPayment}
             onChange={(event) => setInitialPayment(event.target.value)}
             disabled={!currency}

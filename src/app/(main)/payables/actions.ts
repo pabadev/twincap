@@ -25,6 +25,7 @@ import { revalidateMovementData } from "../../../lib/revalidate";
 import { withAudit } from "../../../lib/with-audit";
 import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
 import { trackAnalytics } from "../../../lib/track-analytics";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -36,8 +37,8 @@ export async function createPayableAction(
   if (!user) return { error: "error.unauthorized" };
 
   const counterparty = formData.get("counterparty") as string;
-  const total = Number(formData.get("total") || "0");
-  const initialPayment = Number(formData.get("initialPayment") || "0");
+  const total = parseMoneyInput(String(formData.get("total") ?? "")) ?? 0;
+  const initialPayment = parseMoneyInput(String(formData.get("initialPayment") ?? "")) ?? 0;
   const accountId = formData.get("accountId") as string;
   // EXC-1 (founder 2026-09-30): optional user-selected Personal/Business
   // context; the entity defaults legacy payables to 'Personal'.
@@ -145,7 +146,7 @@ export async function addAbonoAction(
   if (!user) return { error: "error.unauthorized" };
 
   const payableId = formData.get("payableId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
   const accountId = formData.get("accountId") as string;
   const date = new Date(formData.get("date") as string);
@@ -225,7 +226,7 @@ export async function editAbonoAction(
 
   const payableId = formData.get("payableId") as string;
   const abonoId = formData.get("abonoId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const date = new Date(formData.get("date") as string);
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
 
@@ -268,7 +269,7 @@ export async function editPayableAction(
   if (!user) return { error: "error.unauthorized" };
 
   const payableId = formData.get("payableId") as string;
-  const total = Number(formData.get("total") || "0");
+  const total = parseMoneyInput(String(formData.get("total") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
 
   try {

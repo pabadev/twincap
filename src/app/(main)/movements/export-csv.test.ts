@@ -163,14 +163,32 @@ describe('filterMovementsForCsv', () => {
     expect(filterMovementsForCsv([personal, business], { scope: 'Personal' })).toEqual([personal]);
   });
 
-  it('ignores the scope filter while a concrete account is selected (mirrors list UI)', () => {
+  it('applies the scope filter even with a concrete account (UX-7: tab AND account)', () => {
     const personal = movement({ id: 'p', accountId: 'acc-1', context: 'Personal' });
     const business = movement({ id: 'b', accountId: 'acc-1', context: 'Business' });
     const result = filterMovementsForCsv([personal, business], {
       accountId: 'acc-1',
       scope: 'Personal',
     });
-    expect(result).toEqual([personal, business]);
+    expect(result).toEqual([personal]);
+  });
+
+  it('filters by category id and skips the "all" sentinel', () => {
+    const keep = movement({ id: 'c1', categoryId: 'cat-1' });
+    const drop = movement({ id: 'c2', categoryId: 'cat-2' });
+    expect(filterMovementsForCsv([keep, drop], { categoryId: 'cat-1' })).toEqual([keep]);
+    expect(filterMovementsForCsv([keep, drop], { categoryId: 'all' })).toEqual([keep, drop]);
+  });
+
+  it('filters by inclusive civil date range', () => {
+    const before = movement({ id: 'd1', date: new Date('2026-10-01T12:00:00.000Z') });
+    const inside = movement({ id: 'd2', date: new Date('2026-10-05T12:00:00.000Z') });
+    const after = movement({ id: 'd3', date: new Date('2026-10-10T12:00:00.000Z') });
+    const result = filterMovementsForCsv([before, inside, after], {
+      dateFrom: '2026-10-02',
+      dateTo: '2026-10-09',
+    });
+    expect(result).toEqual([inside]);
   });
 
   it('filters by type', () => {

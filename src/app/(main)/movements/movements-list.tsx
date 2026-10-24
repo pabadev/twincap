@@ -22,10 +22,12 @@ import {
   listAccountsAction,
   listCategoriesAction,
   listMovementsPagedAction,
+  listAllMovementsAction,
   exportMovementsCsvAction,
 } from "./actions";
 import type { SerializedCursor } from "./actions";
 import { downloadCsv } from "../../../lib/download-csv";
+import { businessDateToInputValue } from "../../../lib/date";
 import { useToast } from "../../../lib/hooks/use-toast";
 
 const PAGE_SIZE = 50;
@@ -43,6 +45,40 @@ export function MovementsList({
   const [movements, setMovements] = useState<SerializedMovement[]>(initialMovements);
   const [nextCursor, setNextCursor] = useState<SerializedCursor | null>(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Reference data loaded lazily for the form / filters
+  const [accounts, setAccounts] = useState<SerializedAccount[]>([]);
+  const [categories, setCategories] = useState<SerializedCategory[]>([]);
+
+  useEffect(() => {
+    listAccountsAction().then(setAccounts);
+    listCategoriesAction().then(setCategories);
+  }, []);
+
+  const [selectedAccountId, setSelectedAccountId] = useState("all");
+  // UX-7 (beta feedback #9): tabs REPLACE the scope select — the tab IS the
+  // scope and the subfilters (account/type/category/dates) narrow within it.
+  const [tab, setTab] = useState<"all" | "Personal" | "Business">("all");
+  const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  // Full workspace set fetched once while filters are active: the paged view
+  // only sees accumulated pages, and date/category filters must see ALL
+  // movements to be honest (they are otherwise silently incomplete).
+  // Deriving, not storing, the in-flight flag (react-hooks rule: no setState
+  // in the effect body): `filtersActive && fullData === null` IS "fetching".
+  const [fullData, setFullData] = useState<SerializedMovement[] | null>(null);
+  const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const t = useT("Movements");
+  const tCommon = useT("Common");
+  const tSystemNotes = useT("SystemNotes");
+  const tExport = useT("Export");
+  const locale = useLocale();
+  const { addToast } = useToast();
+  const { openQuickMovement } = useQuickMovement();
 
   // R5-B: re-sync the table whenever the server pushes fresh first-page props
   // (after router.refresh() following a create/update/delete). The list used
@@ -63,39 +99,43 @@ export function MovementsList({
     firstPageRef.current = initialMovements;
     setMovements(initialMovements);
     setNextCursor(initialCursor);
+    // UX-7: the filtered (full-fetch) view must also see the new data.
+    setFullData(null);
   }, [initialMovements, initialCursor]);
-
-  // Reference data loaded lazily for the form / filters
-  const [accounts, setAccounts] = useState<SerializedAccount[]>([]);
-  const [categories, setCategories] = useState<SerializedCategory[]>([]);
-
-  useEffect(() => {
-    listAccountsAction().then(setAccounts);
-    listCategoriesAction().then(setCategories);
-  }, []);
-
-  const [selectedAccountId, setSelectedAccountId] = useState("all");
-  /** D3 scope filter — only meaningful while 'all accounts' is active. */
-  const [selectedScope, setSelectedScope] = useState<"all" | "Personal" | "Business">("all");
-  const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
-  const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const t = useT("Movements");
-  const tCommon = useT("Common");
-  const tSystemNotes = useT("SystemNotes");
-  const tExport = useT("Export");
-  const locale = useLocale();
-  const { addToast } = useToast();
-  const { openQuickMovement } = useQuickMovement();
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (tab !== "all") count++;
     if (selectedAccountId !== "all") count++;
-    if (selectedScope !== "all") count++;
     if (selectedType !== "all") count++;
+    if (selectedCategoryId !== "all") count++;
+    if (dateFrom) count++;
+    if (dateTo) count++;
     return count;
-  }, [selectedAccountId, selectedScope, selectedType]);
+  }, [tab, selectedAccountId, selectedType, selectedCategoryId, dateFrom, dateTo]);
+
+  const filtersActive = activeFilterCount > 0;
+
+  // Fetch the full workspace set once per filter session (invalidated by data
+  // changes in the R5-B sync above). The only setStates here run in async
+  // continuations (never synchronously in the effect body) — while the fetch
+  // is in flight `fullData` stays null, which the UI derives as "loading".
+  useEffect(() => {
+    if (!filtersActive || fullData !== null) return;
+    let cancelled = false;
+    listAllMovementsAction()
+      .then((items) => {
+        if (!cancelled) setFullData(items);
+      })
+      .catch(() => {
+        // Fail-open with an EMPTY set: the filtered view shows its empty
+        // state instead of promising data it cannot load.
+        if (!cancelled) setFullData([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersActive, fullData]);
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -125,8 +165,11 @@ export function MovementsList({
     try {
       const res = await exportMovementsCsvAction({
         accountId: selectedAccountId,
-        scope: selectedScope,
+        scope: tab,
         type: selectedType,
+        categoryId: selectedCategoryId,
+        dateFrom,
+        dateTo,
       });
       if (res.ok) {
         downloadCsv(res.csv, res.filename);
@@ -139,26 +182,137 @@ export function MovementsList({
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting, selectedAccountId, selectedScope, selectedType, addToast, tExport]);
+  }, [
+    isExporting,
+    selectedAccountId,
+    tab,
+    selectedType,
+    selectedCategoryId,
+    dateFrom,
+    dateTo,
+    addToast,
+    tExport,
+  ]);
 
-  // D3: scope filter uses Movement.context (the source of truth).
-  const allMovements = useMemo(() => {
-    if (selectedAccountId === "all") {
-      return selectedScope === "all"
-        ? movements
-        : movements.filter((m) => m.context === selectedScope);
-    }
-    return movements.filter((m) => m.accountId === selectedAccountId);
-  }, [movements, selectedAccountId, selectedScope]);
+  // UX-7: with filters active the full workspace set is the base (empty until
+  // the fetch resolves — a spinner row shows); without filters, the paged set.
+  const baseMovements = useMemo(
+    () => (filtersActive ? (fullData ?? []) : movements),
+    [filtersActive, fullData, movements],
+  );
 
+  // D3: tab = Movement.context (the source of truth). Subfilters narrow
+  // within the tab — account/type/category/dates all compose with it.
   const filteredMovements = useMemo(() => {
-    if (selectedType === "all") return allMovements;
-    return allMovements.filter((m) => m.type === selectedType);
-  }, [allMovements, selectedType]);
+    let list = baseMovements;
+    if (tab !== "all") list = list.filter((m) => m.context === tab);
+    if (selectedAccountId !== "all") list = list.filter((m) => m.accountId === selectedAccountId);
+    if (selectedType !== "all") list = list.filter((m) => m.type === selectedType);
+    if (selectedCategoryId !== "all") {
+      list = list.filter((m) => m.categoryId === selectedCategoryId);
+    }
+    if (dateFrom) list = list.filter((m) => businessDateToInputValue(m.date) >= dateFrom);
+    if (dateTo) list = list.filter((m) => businessDateToInputValue(m.date) <= dateTo);
+    return list;
+  }, [baseMovements, tab, selectedAccountId, selectedType, selectedCategoryId, dateFrom, dateTo]);
 
   // Preserve the server's complete deterministic order (date, createdAt, _id)
   // through filters and appended pages. Re-sorting by date here breaks ties.
   const orderedMovements = filteredMovements;
+
+  // UX-7 subfilter fields, shared by the mobile collapsible and the desktop
+  // bar (suffix keeps DOM ids unique while both are mounted).
+  // UX-7: while the filtered full-fetch is in flight the list is hidden —
+  // showing an empty state would read as "no data" (a lie mid-load).
+  const filtersLoading = filtersActive && fullData === null;
+
+  const subfilterFields = (suffix: string) => [
+    <div key={`account${suffix}`}>
+      <label
+        htmlFor={`account-select${suffix}`}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        {t("account")}
+      </label>
+      <Select
+        id={`account-select${suffix}`}
+        value={selectedAccountId}
+        onChange={(e) => setSelectedAccountId(e.target.value)}
+        options={[
+          { value: "all", label: t("allAccounts") },
+          ...accounts.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.currency})`,
+          })),
+        ]}
+      />
+    </div>,
+    <div key={`type${suffix}`}>
+      <label
+        htmlFor={`type-select${suffix}`}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        {t("type")}
+      </label>
+      <Select
+        id={`type-select${suffix}`}
+        value={selectedType}
+        onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
+        options={[
+          { value: "all", label: t("scopeAll") },
+          { value: "income", label: t("income") },
+          { value: "expense", label: t("expense") },
+        ]}
+      />
+    </div>,
+    <div key={`category${suffix}`}>
+      <label
+        htmlFor={`category-select${suffix}`}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        {t("category")}
+      </label>
+      <Select
+        id={`category-select${suffix}`}
+        value={selectedCategoryId}
+        onChange={(e) => setSelectedCategoryId(e.target.value)}
+        options={[
+          { value: "all", label: t("allCategories") },
+          ...categories.map((c) => ({ value: c.id, label: c.name })),
+        ]}
+      />
+    </div>,
+    <div key={`from${suffix}`}>
+      <label
+        htmlFor={`date-from${suffix}`}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        {t("filterFrom")}
+      </label>
+      <input
+        id={`date-from${suffix}`}
+        type="date"
+        value={dateFrom}
+        onChange={(e) => setDateFrom(e.target.value)}
+        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+      />
+    </div>,
+    <div key={`to${suffix}`}>
+      <label
+        htmlFor={`date-to${suffix}`}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        {t("filterTo")}
+      </label>
+      <input
+        id={`date-to${suffix}`}
+        type="date"
+        value={dateTo}
+        onChange={(e) => setDateTo(e.target.value)}
+        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+      />
+    </div>,
+  ];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -201,9 +355,37 @@ export function MovementsList({
         </div>
       </div>
 
-      {/* Account selector + scope filter + type filter */}
+      {/* Account selector + scope tabs + subfilters (UX-7) */}
       {accounts.length > 0 && (
         <>
+          {/* Scope tabs — mobile + desktop */}
+          <div
+            role="tablist"
+            aria-label={t("scope")}
+            className="mb-4 flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800"
+          >
+            {(["all", "Personal", "Business"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  tab === value
+                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white"
+                    : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                }`}
+              >
+                {value === "all"
+                  ? t("scopeAll")
+                  : value === "Personal"
+                    ? t("scopePersonal")
+                    : t("scopeBusiness")}
+              </button>
+            ))}
+          </div>
+
           {/* Mobile: toggle button */}
           <div className="mb-4 sm:hidden">
             <button
@@ -223,132 +405,16 @@ export function MovementsList({
             </button>
           </div>
 
-          {/* Mobile: collapsible filter bar */}
+          {/* Mobile: collapsible subfilter bar */}
           {filtersOpen && (
             <div id="movements-filters" className="mb-6 sm:hidden">
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label
-                    htmlFor="account-select-mobile"
-                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    {t("account")}
-                  </label>
-                  <Select
-                    id="account-select-mobile"
-                    value={selectedAccountId}
-                    onChange={(e) => setSelectedAccountId(e.target.value)}
-                    options={[
-                      { value: "all", label: t("allAccounts") },
-                      ...accounts.map((a) => ({
-                        value: a.id,
-                        label: `${a.name} (${a.currency})`,
-                      })),
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="scope-select-mobile"
-                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    {t("scope")}
-                  </label>
-                  <Select
-                    id="scope-select-mobile"
-                    value={selectedScope}
-                    disabled={selectedAccountId !== "all"}
-                    onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
-                    options={[
-                      { value: "all", label: t("scopeAll") },
-                      { value: "Personal", label: t("scopePersonal") },
-                      { value: "Business", label: t("scopeBusiness") },
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="type-select-mobile"
-                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    {t("type")}
-                  </label>
-                  <Select
-                    id="type-select-mobile"
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
-                    options={[
-                      { value: "all", label: t("scopeAll") },
-                      { value: "income", label: t("income") },
-                      { value: "expense", label: t("expense") },
-                    ]}
-                  />
-                </div>
-              </div>
+              <div className="grid grid-cols-1 gap-3">{subfilterFields("-mobile")}</div>
             </div>
           )}
 
-          {/* Desktop: always visible filter bar */}
-          <div className="mb-6 hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-3">
-            <div>
-              <label
-                htmlFor="account-select"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                {t("account")}
-              </label>
-              <Select
-                id="account-select"
-                value={selectedAccountId}
-                onChange={(e) => setSelectedAccountId(e.target.value)}
-                options={[
-                  { value: "all", label: t("allAccounts") },
-                  ...accounts.map((a) => ({
-                    value: a.id,
-                    label: `${a.name} (${a.currency})`,
-                  })),
-                ]}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="scope-select"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                {t("scope")}
-              </label>
-              {/* D3: with a specific account selected its scope governs — the
-                  Ámbito filter only applies while 'all accounts' is active. */}
-              <Select
-                id="scope-select"
-                value={selectedScope}
-                disabled={selectedAccountId !== "all"}
-                onChange={(e) => setSelectedScope(e.target.value as typeof selectedScope)}
-                options={[
-                  { value: "all", label: t("scopeAll") },
-                  { value: "Personal", label: t("scopePersonal") },
-                  { value: "Business", label: t("scopeBusiness") },
-                ]}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="type-select"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                {t("type")}
-              </label>
-              <Select
-                id="type-select"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
-                options={[
-                  { value: "all", label: t("scopeAll") },
-                  { value: "income", label: t("income") },
-                  { value: "expense", label: t("expense") },
-                ]}
-              />
-            </div>
+          {/* Desktop: always visible subfilter bar */}
+          <div className="mb-6 hidden gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-5">
+            {subfilterFields("")}
           </div>
         </>
       )}
@@ -361,131 +427,138 @@ export function MovementsList({
         />
       ) : (
         <>
-          {orderedMovements.length === 0 ? (
-            <EmptyState
-              icon={<Icon icon={ArrowLeftRight} size="xl" />}
-              title={t("emptyTitle")}
-              description={
-                selectedAccountId !== "all"
-                  ? t("emptyDescription")
-                  : selectedScope !== "all"
-                    ? t("noMovementsScope")
-                    : t("noMovementsAll")
-              }
-            />
-          ) : (
-            <>
-              {/* Cards are the only representation (product decision
-                  2026-09-21: tables retired on every breakpoint). */}
-              <div className="space-y-3">
-                {orderedMovements.map((movement) => (
-                  <MovementCard
-                    key={movement.id}
-                    id={movement.id}
-                    fields={[
-                      {
-                        key: "date",
-                        label: tCommon("date"),
-                        value: formatDate(movement.date, locale),
-                      },
-                      {
-                        key: "amount",
-                        label: tCommon("amount"),
-                        value: `${movement.type === "income" ? "+" : "−"}${formatAmount(
-                          movement.amount.amount,
-                          movement.amount.currency,
-                          locale,
-                        )}`,
-                        className: movement.type === "income" ? "text-income" : "text-expense",
-                        primary: true,
-                      },
-                      {
-                        key: "category",
-                        label: t("category"),
-                        value:
-                          categoryMap.get(movement.categoryId) ??
-                          syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
-                          "—",
-                        className: "font-medium text-zinc-800 dark:text-zinc-200",
-                      },
-                      {
-                        key: "note",
-                        label: tCommon("note"),
-                        value: movement.link
-                          ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
-                              movement.note) ||
-                            "—"
-                          : movement.note || "—",
-                      },
-                      {
-                        key: "type",
-                        label: t("type"),
-                        value: t(movement.type),
-                        className: `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          movement.type === "income"
-                            ? "bg-income/10 text-income"
-                            : "bg-expense/10 text-expense"
-                        }`,
-                      },
-                    ]}
-                    actions={
-                      !movement.link ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setEditingMovement(movement)}
-                            className="rounded text-zinc-400 hover:text-primary transition-colors"
-                            aria-label={tCommon("edit")}
-                          >
-                            {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
-                            <TouchTarget as="span">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                <path d="m15 5 4 4" />
-                              </svg>
-                            </TouchTarget>
-                          </button>
-                          <DeleteMovementButton movementId={movement.id} />
-                        </div>
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </div>
-
-              {/* Load more — list-level pagination trigger */}
-              {nextCursor && (
-                <div className="border-t border-zinc-200 p-4 text-center dark:border-zinc-700">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="h-11"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Icon icon={Loader2} size="sm" className="animate-spin" />
-                        {tCommon("loading")}
-                      </span>
-                    ) : (
-                      tCommon("loadMore")
-                    )}
-                  </Button>
-                </div>
-              )}
-            </>
+          {filtersLoading && (
+            <p className="flex items-center justify-center gap-2 py-6 text-sm text-zinc-600 dark:text-zinc-400">
+              <Icon icon={Loader2} size="sm" className="animate-spin" />
+              {tCommon("loading")}
+            </p>
           )}
+          {!filtersLoading &&
+            (orderedMovements.length === 0 ? (
+              <EmptyState
+                icon={<Icon icon={ArrowLeftRight} size="xl" />}
+                title={t("emptyTitle")}
+                description={
+                  selectedAccountId !== "all"
+                    ? t("emptyDescription")
+                    : filtersActive
+                      ? t("noMovementsFilters")
+                      : t("noMovementsAll")
+                }
+              />
+            ) : (
+              <>
+                {/* Cards are the only representation (product decision
+                  2026-09-21: tables retired on every breakpoint). */}
+                <div className="space-y-3">
+                  {orderedMovements.map((movement) => (
+                    <MovementCard
+                      key={movement.id}
+                      id={movement.id}
+                      fields={[
+                        {
+                          key: "date",
+                          label: tCommon("date"),
+                          value: formatDate(movement.date, locale),
+                        },
+                        {
+                          key: "amount",
+                          label: tCommon("amount"),
+                          value: `${movement.type === "income" ? "+" : "−"}${formatAmount(
+                            movement.amount.amount,
+                            movement.amount.currency,
+                            locale,
+                          )}`,
+                          className: movement.type === "income" ? "text-income" : "text-expense",
+                          primary: true,
+                        },
+                        {
+                          key: "category",
+                          label: t("category"),
+                          value:
+                            categoryMap.get(movement.categoryId) ??
+                            syntheticCategoryLabel(movement.categoryId, tSystemNotes) ??
+                            "—",
+                          className: "font-medium text-zinc-800 dark:text-zinc-200",
+                        },
+                        {
+                          key: "note",
+                          label: tCommon("note"),
+                          value: movement.link
+                            ? (deriveSystemNote(movement, tSystemNotes, refLabels) ??
+                                movement.note) ||
+                              "—"
+                            : movement.note || "—",
+                        },
+                        {
+                          key: "type",
+                          label: t("type"),
+                          value: t(movement.type),
+                          className: `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            movement.type === "income"
+                              ? "bg-income/10 text-income"
+                              : "bg-expense/10 text-expense"
+                          }`,
+                        },
+                      ]}
+                      actions={
+                        !movement.link ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMovement(movement)}
+                              className="rounded text-zinc-400 hover:text-primary transition-colors"
+                              aria-label={tCommon("edit")}
+                            >
+                              {/* TouchTarget expands the 24px edit hit area to >=44px (RTT-1). */}
+                              <TouchTarget as="span">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                  <path d="m15 5 4 4" />
+                                </svg>
+                              </TouchTarget>
+                            </button>
+                            <DeleteMovementButton movementId={movement.id} />
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </div>
+
+                {/* Load more — list-level pagination trigger */}
+                {nextCursor && (
+                  <div className="border-t border-zinc-200 p-4 text-center dark:border-zinc-700">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-11"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Icon icon={Loader2} size="sm" className="animate-spin" />
+                          {tCommon("loading")}
+                        </span>
+                      ) : (
+                        tCommon("loadMore")
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
+            ))}
         </>
       )}
 

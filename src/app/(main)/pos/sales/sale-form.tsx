@@ -27,6 +27,8 @@ import type { Currency } from "../../../../core/domain/currency";
 import type { InventoryUnit } from "../../../../core/domain/inventory-units";
 import { getAvailableComboCount } from "../../../../core/domain/product-combo";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
+import { parseMoneyInput } from "../../../../lib/money-input";
 import { FormField } from "../../../../components/ui/form-field";
 import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
@@ -561,7 +563,7 @@ export function SaleForm({
 
   // H14: on-credit sales require a real client and a valid upfront payment.
   const isOnCredit = paymentMode === "on-credit";
-  const parsedInitialPayment = Number(initialPayment) || 0;
+  const parsedInitialPayment = parseMoneyInput(initialPayment) ?? 0;
   const needsClient = isOnCredit && !clientId;
   const initialPaymentInvalid =
     isOnCredit &&
@@ -1289,12 +1291,12 @@ export function SaleForm({
                     : undefined
                 }
               >
-                <Input
+                <MoneyInput
                   className="h-9"
+                  id="initialPayment"
                   name="initialPayment"
-                  hint={tCommon("moneyNoSeparators")}
-                  type="number"
-                  min="0"
+                  currency={currency ?? DEFAULT_CURRENCY}
+                  min={0}
                   required
                   disabled={isPending}
                   value={initialPayment}

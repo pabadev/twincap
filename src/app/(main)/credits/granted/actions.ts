@@ -27,6 +27,7 @@ import { revalidateMovementData } from "../../../../lib/revalidate";
 import { withAudit } from "../../../../lib/with-audit";
 import { MongoOperationLogger } from "../../../../infrastructure/repositories/operation-log-repository";
 import { trackAnalytics } from "../../../../lib/track-analytics";
+import { parseMoneyInput } from "../../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -38,7 +39,7 @@ export async function createCreditGrantedAction(
   if (!user) return { error: "error.unauthorized" };
 
   const counterparty = formData.get("counterparty") as string;
-  const principal = Number(formData.get("principal") || "0");
+  const principal = parseMoneyInput(String(formData.get("principal") ?? "")) ?? 0;
   const accountId = formData.get("accountId") as string;
   // EXC-1 (founder 2026-09-30): optional user-selected Personal/Business
   // context; the use case validates and defaults legacy to 'Personal'.
@@ -48,7 +49,9 @@ export async function createCreditGrantedAction(
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
   const installments = Number(formData.get("installments") || "0") || undefined;
   const installmentValueValue = formData.get("installmentValue");
-  const installmentValue = installmentValueValue ? Number(installmentValueValue) : undefined;
+  const installmentValue = installmentValueValue
+    ? (parseMoneyInput(String(installmentValueValue)) ?? 0) || undefined
+    : undefined;
   const frequency = (formData.get("frequency") as string) || undefined;
   const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
@@ -142,7 +145,7 @@ export async function addAbonoAction(
   if (!user) return { error: "error.unauthorized" };
 
   const creditId = formData.get("creditId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
   const accountId = formData.get("accountId") as string;
   const date = new Date(formData.get("date") as string);
@@ -217,7 +220,7 @@ export async function editAbonoAction(
 
   const creditId = formData.get("creditId") as string;
   const abonoId = formData.get("abonoId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const date = new Date(formData.get("date") as string);
   const tzOffset = Number(formData.get("tzOffset") ?? 0);
 
@@ -261,8 +264,23 @@ export async function editCreditGrantedAction(
   if (!user) return { error: "error.unauthorized" };
 
   const creditId = formData.get("creditId") as string;
-  const principal = Number(formData.get("principal") || "0");
+  const principal = parseMoneyInput(String(formData.get("principal") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
+  // DOM-1 (EXC-2): optional installment-plan terms — PATCH semantics, absent
+  // = keep current. Counts are NOT money: plain Number parse (no tolerance).
+  const installmentsRaw = formData.get("installments");
+  const installmentValueRaw = formData.get("installmentValue");
+  const frequencyRaw = formData.get("frequency");
+  const installments =
+    typeof installmentsRaw === "string" && installmentsRaw !== ""
+      ? Number(installmentsRaw)
+      : undefined;
+  const installmentValue =
+    typeof installmentValueRaw === "string" && installmentValueRaw !== ""
+      ? (parseMoneyInput(installmentValueRaw) ?? 0)
+      : undefined;
+  const frequency =
+    typeof frequencyRaw === "string" && frequencyRaw !== "" ? frequencyRaw : undefined;
 
   try {
     await connectDb();
@@ -277,7 +295,7 @@ export async function editCreditGrantedAction(
         return editPrincipal(
           user.workspaceId!,
           creditId,
-          { principal, currency },
+          { principal, currency, installments, installmentValue, frequency },
           creditRepo,
           movementRepo,
           accountRepo,

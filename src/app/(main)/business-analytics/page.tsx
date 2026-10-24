@@ -120,10 +120,15 @@ export default async function BusinessAnalyticsPage({
       </header>
 
       <Card title={t("period")}>
-        <form method="get" className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <form
+          method="get"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:gap-4"
+        >
           <Input type="date" name="desde" label={t("from")} defaultValue={fromText} />
           <Input type="date" name="hasta" label={t("to")} defaultValue={toText} />
-          <Button type="submit">{t("apply")}</Button>
+          <Button type="submit" className="col-span-2 sm:col-span-1">
+            {t("apply")}
+          </Button>
         </form>
       </Card>
 
@@ -192,18 +197,6 @@ export default async function BusinessAnalyticsPage({
                   )}
                 />
                 <Metric
-                  label={t("leftAfterExpenses")}
-                  value={
-                    row.registeredResultMinor === null
-                      ? t("needsCost")
-                      : formatAmount(
-                          row.registeredResultMinor / 10 ** exponentOf(row.currency),
-                          row.currency,
-                          locale,
-                        )
-                  }
-                />
-                <Metric
                   label={t("toCollect")}
                   value={formatAmount(
                     row.receivableMinor / 10 ** exponentOf(row.currency),
@@ -213,6 +206,51 @@ export default async function BusinessAnalyticsPage({
                   description={t("toCollectHint")}
                 />
               </dl>
+
+              {/* Final result, promoted to its own prominent block (beta
+                  feedback #4). Registered result = sales − cost − expenses.
+                  Pending-to-collect is NOT deducted: the sale already counted
+                  as income (financial principle 4); collected-so-far is shown
+                  as a secondary figure instead. */}
+              <section
+                aria-label={t("finalResult")}
+                className="mt-6 rounded-lg border border-surface-border p-4 dark:border-zinc-700"
+              >
+                <p className="text-sm text-surface-muted">{t("finalResult")}</p>
+                {row.registeredResultMinor === null ? (
+                  <p className="mt-1 text-xl font-semibold text-warning">{t("needsCost")}</p>
+                ) : (
+                  <p
+                    className={`mt-1 text-2xl font-semibold tabular-nums ${
+                      row.registeredResultMinor > 0
+                        ? "text-income"
+                        : row.registeredResultMinor < 0
+                          ? "text-expense"
+                          : ""
+                    }`}
+                  >
+                    {formatAmount(
+                      row.registeredResultMinor / 10 ** exponentOf(row.currency),
+                      row.currency,
+                      locale,
+                    )}
+                  </p>
+                )}
+                <p className="mt-2 text-xs leading-5 text-surface-muted">{t("finalResultHint")}</p>
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-surface-border pt-3 text-sm dark:border-zinc-700">
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    {t("collectedFromSales")}
+                  </span>
+                  <span className="font-medium tabular-nums">
+                    {formatAmount(
+                      (row.salesMinor - row.receivableMinor) / 10 ** exponentOf(row.currency),
+                      row.currency,
+                      locale,
+                    )}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-surface-muted">{t("collectedHint")}</p>
+              </section>
               {row.incompleteSales > 0 && (
                 <p className="mt-4 rounded-md bg-warning/10 p-3 text-sm">
                   {t("incompleteHint", { count: String(row.incompleteSales) })}

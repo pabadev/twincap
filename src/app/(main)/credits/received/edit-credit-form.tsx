@@ -1,10 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "../../../../i18n/client";
 import { editCreditReceivedAction } from "./actions";
+import { MoneyInput } from "../../../../components/ui/money-input";
+import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
+import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { useActionError } from "../../../../lib/use-action-error";
@@ -13,11 +16,18 @@ export function EditCreditForm({
   creditId,
   principal,
   currency,
+  installments,
+  installmentValue,
+  frequency,
   onCancel,
 }: {
   creditId: string;
   principal: number;
   currency: string;
+  /** DOM-1 (EXC-2): current plan terms — empty input = cleared (patch). */
+  installments?: number;
+  installmentValue?: number;
+  frequency?: string;
   onCancel: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(editCreditReceivedAction, null);
@@ -28,6 +38,14 @@ export function EditCreditForm({
   const { addToast } = useToast();
   const router = useRouter();
   const successShownRef = useRef(false);
+  // Terms as raw strings: counts stay plain numbers; the installment value is
+  // a MoneyInput (server-side tolerant parse — never Number() here).
+  const [installmentsStr, setInstallmentsStr] = useState(
+    installments === undefined ? "" : String(installments),
+  );
+  const [installmentValueStr, setInstallmentValueStr] = useState(
+    installmentValue === undefined ? "" : String(installmentValue),
+  );
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -60,17 +78,56 @@ export function EditCreditForm({
           use-case DTO — it is not independently editable. */}
       <input type="hidden" name="currency" value={currency} />
 
-      <Input
+      <MoneyInput
         id={`edit-principal-${creditId}`}
         name="principal"
-        hint={tCommon("moneyNoSeparators")}
-        type="number"
+        currency={currency || DEFAULT_CURRENCY}
+        min={1}
         label={t("principal", { currency })}
-        min="1"
         required
         defaultValue={principal}
         disabled={isPending}
       />
+
+      {/* DOM-1 (EXC-2): the installment plan is editable — informational
+          fields only (they never touch movements or the economic result). */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Input
+          id={`edit-installments-${creditId}`}
+          name="installments"
+          type="number"
+          label={t("installments")}
+          min="0"
+          value={installmentsStr}
+          onChange={(e) => setInstallmentsStr(e.target.value)}
+          disabled={isPending}
+        />
+
+        <MoneyInput
+          id={`edit-installment-value-${creditId}`}
+          name="installmentValue"
+          label={t("installmentValueLabel")}
+          currency={currency || DEFAULT_CURRENCY}
+          min={0}
+          value={installmentValueStr}
+          onChange={(e) => setInstallmentValueStr(e.target.value)}
+          disabled={isPending}
+        />
+
+        <Select
+          id={`edit-frequency-${creditId}`}
+          name="frequency"
+          label={t("frequency")}
+          disabled={isPending}
+          placeholder="—"
+          defaultValue={frequency ?? ""}
+          options={[
+            { value: "weekly", label: t("weekly") },
+            { value: "biweekly", label: t("biweekly") },
+            { value: "monthly", label: t("monthly") },
+          ]}
+        />
+      </div>
 
       <div className="flex items-center gap-2">
         <Button type="submit" variant="primary" disabled={isPending} loading={isPending}>

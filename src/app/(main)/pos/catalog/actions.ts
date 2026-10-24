@@ -34,6 +34,7 @@ import { claimIdempotency, releaseIdempotency } from "../../../../infrastructure
 import { MongoOperationLogger } from "../../../../infrastructure/repositories/operation-log-repository";
 import { withAudit } from "../../../../lib/with-audit";
 import { assertBusinessDateNotFuture } from "../../../../lib/date";
+import { parseMoneyInput } from "../../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -258,7 +259,7 @@ export async function createCatalogItemAction(
   if (!user) return { error: "error.unauthorized" };
 
   const name = formData.get("name") as string;
-  const unitPrice = Number(formData.get("unitPrice") || "0");
+  const unitPrice = parseMoneyInput(String(formData.get("unitPrice") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
   const type = formData.get("type") as CatalogItemType;
   const productRole = (formData.get("productRole") as ProductRole) || "sellable";
@@ -391,7 +392,7 @@ export async function updateCatalogItemAction(
 
   const itemId = formData.get("itemId") as string;
   const name = formData.get("name") as string;
-  const unitPrice = Number(formData.get("unitPrice") || "0");
+  const unitPrice = parseMoneyInput(String(formData.get("unitPrice") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
   const saleUnit = (formData.get("saleUnit") as InventoryUnit) || "unit";
   const productRole = (formData.get("productRole") as ProductRole) || "sellable";

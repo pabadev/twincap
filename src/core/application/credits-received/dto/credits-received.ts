@@ -39,4 +39,13 @@ export interface EditAbonoInput {
 export interface EditPrincipalInput {
   principal: number; // minor units, > 0
   currency: Currency;
+  /**
+   * DOM-1 (freeze exception EXC-2, founder 2026-10-19): the installment PLAN
+   * terms become editable alongside the principal. PATCH semantics — a field
+   * left undefined keeps its current value. These are informational plan
+   * fields: they NEVER touch movements or the economic result.
+   */
+  installments?: number; // ≥ 0 integer; 0 clears the plan
+  installmentValue?: number; // minor units, ≥ 0
+  frequency?: string; // 'weekly' | 'biweekly' | 'monthly'
 }

@@ -7,12 +7,15 @@ import { createCreditGrantedAction } from "./actions";
 import { IdempotencyField } from "../../../../components/ui/idempotency-field";
 import type { SerializedAccount } from "../../../../core/domain/account";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { useActionError } from "../../../../lib/use-action-error";
 import { toDateInputValue } from "../../../../lib/date";
 import { formatAmount } from "../../../../lib/format";
+import { parseMoneyInput } from "../../../../lib/money-input";
+import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 
 export function CreditForm({
   accounts,
@@ -39,7 +42,10 @@ export function CreditForm({
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const currency = selectedAccount?.currency ?? "";
   const [installments, setInstallments] = useState<number>(0);
-  const [installmentValue, setInstallmentValue] = useState<number>(0);
+  // Raw string state: typing "5.000" or "5,50" must stay fluid while the
+  // derived total preview uses the same tolerant parser as the backend.
+  const [installmentValueStr, setInstallmentValueStr] = useState("");
+  const installmentValue = parseMoneyInput(installmentValueStr) ?? 0;
 
   useEffect(() => {
     if (state?.success && !successShownRef.current) {
@@ -109,13 +115,12 @@ export function CreditForm({
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           id="principal"
           name="principal"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={currency ? t("principal", { currency }) : t("principalPlain")}
-          min="1"
+          currency={currency || DEFAULT_CURRENCY}
+          min={1}
           required
           disabled={isPending}
         />
@@ -164,17 +169,16 @@ export function CreditForm({
 
       {installments > 0 && (
         <div className="space-y-1">
-          <Input
+          <MoneyInput
             id="installmentValue"
             name="installmentValue"
-            hint={tCommon("moneyNoSeparators")}
-            type="number"
             label={t("installmentValueLabel")}
-            min="1"
+            currency={currency || DEFAULT_CURRENCY}
+            min={1}
             required
             disabled={isPending}
-            value={installmentValue || ""}
-            onChange={(e) => setInstallmentValue(Number(e.target.value) || 0)}
+            value={installmentValueStr}
+            onChange={(e) => setInstallmentValueStr(e.target.value)}
           />
           {totalToPay !== undefined && currency && (
             <p className="text-xs text-surface-muted">

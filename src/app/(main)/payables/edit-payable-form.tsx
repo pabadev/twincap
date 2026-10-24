@@ -4,7 +4,8 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "../../../i18n/client";
 import { editPayableAction } from "./actions";
-import { Input } from "../../../components/ui/input";
+import { MoneyInput } from "../../../components/ui/money-input";
+import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
@@ -60,13 +61,12 @@ export function EditPayableForm({
           use-case DTO — it is not independently editable. */}
       <input type="hidden" name="currency" value={currency} />
 
-      <Input
+      <MoneyInput
         id={`edit-total-${payableId}`}
         name="total"
-        hint={tCommon("moneyNoSeparators")}
-        type="number"
+        currency={currency || DEFAULT_CURRENCY}
+        min={1}
         label={t("total", { currency })}
-        min="1"
         required
         defaultValue={total}
         disabled={isPending}

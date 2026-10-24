@@ -5,6 +5,7 @@ import {
   addSaleAbono,
   deleteSaleAbono,
   deleteSale,
+  updateSale,
   getSaleDetail,
   type SaleDetailSnapshot,
 } from "../../../../core/application/sales";
@@ -23,6 +24,7 @@ import { MongoSaleRepository } from "../../../../infrastructure/repositories/sal
 import { MongoMovementRepository } from "../../../../infrastructure/repositories/movement-repository";
 import { MongoClientRepository } from "../../../../infrastructure/repositories/client-repository";
 import { MongoAccountRepository } from "../../../../infrastructure/repositories/account-repository";
+import { MongoCategoryRepository } from "../../../../infrastructure/repositories/category-repository";
 import { MongoCreditGrantedRepository } from "../../../../infrastructure/repositories/credit-granted-repository";
 import { MongoUnitOfWork } from "../../../../infrastructure/transactions/mongo-unit-of-work";
 import { connectDb } from "../../../../infrastructure/db/connection";
@@ -38,6 +40,8 @@ import { serializeEntities } from "../../../../lib/serialize";
 import { getT } from "../../../../i18n/server";
 import { buildSalesCsv, filterSalesForCsv } from "./export-csv";
 import type { SaleCsvFilters } from "./export-csv";
+import { parseMoneyInput } from "../../../../lib/money-input";
+import { decimalAmountToMinorUnits } from "../../../../core/domain/money";
 
 const ids = objectIdGenerator;
 
@@ -163,7 +167,7 @@ export async function createSaleAction(
   const initialPaymentRaw = formData.get("initialPayment");
   const initialPayment =
     paymentMode === "on-credit" && initialPaymentRaw !== null
-      ? Number(initialPaymentRaw)
+      ? (parseMoneyInput(String(initialPaymentRaw)) ?? 0)
       : undefined;
 
   // R15.3.1 P1.2: the idempotency key is released ONLY when the financial
@@ -258,7 +262,7 @@ export async function addSaleAbonoAction(
   if (!user) return { error: "error.unauthorized" };
 
   const saleId = formData.get("saleId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const currency = formData.get("currency") as Currency;
   const accountId = formData.get("accountId") as string;
   const date = new Date(formData.get("date") as string);
@@ -419,6 +423,91 @@ export async function deleteSaleAction(
   }
 
   return { success: "saleDeleted" };
+}
+
+/**
+ * DOM-1 (EXC-2): edit the unit PRICES of a sale (quantities/snapshots are not
+ * editable in v1). The use case cascades: salePayment movement (paid-in-full)
+ * or the linked credit's principal + principal movement (on-credit), CAS on
+ * both aggregates, account touch last. No idempotency claim — edits are not
+ * create operations (same discipline as updateMovement).
+ */
+export async function updateSaleAction(
+  _prev: { error?: string; success?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "error.unauthorized" };
+
+  const saleId = formData.get("saleId") as string;
+  const currency = formData.get("currency") as Currency;
+  // Raw strings from the MoneyInputs — parsed here with the SAME tolerant
+  // parser the preview used, then converted to exact minor units (the use
+  // case's unitPrices contract). Counts/amounts arriving malformed are
+  // rejected, never silently coerced.
+  let unitPrices: number[];
+  try {
+    const raw = JSON.parse(String(formData.get("unitPrices") ?? "[]")) as unknown;
+    if (!Array.isArray(raw) || raw.length === 0 || raw.some((p) => typeof p !== "string")) {
+      return { error: "error.invalidInput" };
+    }
+    unitPrices = [];
+    for (const r of raw) {
+      const parsed = parseMoneyInput(r);
+      if (parsed === null) return { error: "error.invalidInput" };
+      try {
+        unitPrices.push(decimalAmountToMinorUnits(String(parsed), currency));
+      } catch {
+        return { error: "error.invalidAmount" };
+      }
+    }
+  } catch {
+    return { error: "error.invalidInput" };
+  }
+  // CAS guard: the version the form READ (R15.3.1 P2 pattern).
+  const versionRaw = formData.get("version");
+  const version =
+    typeof versionRaw === "string" && versionRaw !== "" && Number.isFinite(Number(versionRaw))
+      ? Number(versionRaw)
+      : undefined;
+
+  try {
+    await connectDb();
+    const logger = new MongoOperationLogger();
+    await withAudit(
+      logger,
+      { action: "updateSale", entityType: "sale", userId: user.userId },
+      () => {
+        const saleRepo = new MongoSaleRepository();
+        const movementRepo = new MongoMovementRepository();
+        const creditRepo = new MongoCreditGrantedRepository();
+        const accountRepo = new MongoAccountRepository();
+        const categoryRepo = new MongoCategoryRepository();
+        return updateSale(
+          user.workspaceId!,
+          saleId,
+          { unitPrices, currency, version },
+          saleRepo,
+          movementRepo,
+          creditRepo,
+          accountRepo,
+          categoryRepo,
+          new MongoUnitOfWork(),
+        );
+      },
+    );
+    revalidatePath("/pos/sales");
+    revalidatePath("/pos/catalog");
+    revalidatePath("/credits/granted");
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/movements");
+    revalidatePath("/business-analytics");
+  } catch (error) {
+    return handleActionError(error);
+  }
+
+  return { success: "saleUpdated" };
 }
 
 export type SaleDetailResult =

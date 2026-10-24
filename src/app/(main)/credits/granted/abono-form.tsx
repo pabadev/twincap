@@ -13,22 +13,29 @@ import { useMoneyActionConfirmation } from "../../../../lib/use-money-action-con
 import type { SerializedAccount } from "../../../../core/domain/account";
 import { formatAmount, formatDate } from "../../../../lib/format";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { useActionError } from "../../../../lib/use-action-error";
 import { toDateInputValue } from "../../../../lib/date";
+import { parseMoneyInput } from "../../../../lib/money-input";
 
 export function AbonoForm({
   creditId,
   pending,
   currency,
   accounts,
+  onDone,
 }: {
   creditId: string;
   pending: number;
   currency: string;
   accounts: SerializedAccount[];
+  /** Called once after a successful abono (beta feedback #6): the parent
+   *  hides this inline form so it unmounts — fresh state on the next open
+   *  (this also resets the successShownRef toast guard). */
+  onDone?: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(addAbonoAction, null);
   const t = useT("CreditsGranted");
@@ -57,8 +64,9 @@ export function AbonoForm({
       successShownRef.current = true;
       addToast(tToast(state.success), "success");
       router.refresh();
+      onDone?.();
     }
-  }, [state?.success, addToast, tToast, router]);
+  }, [state?.success, addToast, tToast, router, onDone]);
 
   // U1 error one-shot guard (`use-action-error.ts` note): `translateError`
   // identity is unstable after `router.refresh()` (messages re-import per RSC
@@ -79,7 +87,7 @@ export function AbonoForm({
   // submit time and stored in state so the opened dialog renders them.
   const buildConfirmDetails = (): ConfirmationDetailRow[] => {
     const fd = formRef.current ? new FormData(formRef.current) : null;
-    const amount = Number(fd?.get("amount") ?? 0);
+    const amount = parseMoneyInput(String(fd?.get("amount") ?? "")) ?? 0;
     const accountId = String(fd?.get("accountId") ?? "");
     const date = String(fd?.get("date") ?? toDateInputValue());
     const account = accounts.find((a) => a.id === accountId);
@@ -113,13 +121,12 @@ export function AbonoForm({
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Input
+        <MoneyInput
           id={`amount-${creditId}`}
           name="amount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={t("amount")}
-          min="1"
+          currency={currency}
+          min={1}
           max={pending}
           required
           disabled={isPending}

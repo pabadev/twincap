@@ -16,11 +16,13 @@ import { DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { formatAmount, formatDate } from "../../../../lib/format";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
 import { toDateInputValue } from "../../../../lib/date";
+import { parseMoneyInput } from "../../../../lib/money-input";
 
 interface AbonoFormProps {
   saleId: string;
@@ -85,7 +87,7 @@ export function AbonoForm({ saleId, accounts, pending, onDone }: AbonoFormProps)
   // submit time and stored in state so the opened dialog renders them.
   const buildConfirmDetails = (): ConfirmationDetailRow[] => {
     const fd = formRef.current ? new FormData(formRef.current) : null;
-    const amount = Number(fd?.get("amount") ?? 0);
+    const amount = parseMoneyInput(String(fd?.get("amount") ?? "")) ?? 0;
     const accountId = String(fd?.get("accountId") ?? "");
     const date = String(fd?.get("date") ?? toDateInputValue());
     const account = accounts.find((a) => a.id === accountId);
@@ -112,12 +114,12 @@ export function AbonoForm({ saleId, accounts, pending, onDone }: AbonoFormProps)
       {state?.error && <Alert variant="danger">{translateError(state.error)}</Alert>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Input
+        <MoneyInput
           id="amount"
           name="amount"
-          type="number"
           label={`${t("amount")} (${currency})`}
-          min="1"
+          currency={currency}
+          min={1}
           required
           disabled={isPending}
         />

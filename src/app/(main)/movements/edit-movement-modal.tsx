@@ -9,6 +9,7 @@ import { updateMovementAction } from "./actions";
 import type { SerializedCategory } from "../../../core/domain/category";
 import type { SerializedAccount } from "../../../core/domain/account";
 import { Input } from "../../../components/ui/input";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { Select } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
@@ -139,13 +140,12 @@ export function EditMovementModal({
           max={toDateInputValue()}
         />
 
-        <Input
+        <MoneyInput
           id="edit-amount"
           name="amount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={`${tCommon("amount")} (${account?.currency ?? movement.amount.currency})`}
-          min="1"
+          currency={account?.currency ?? movement.amount.currency}
+          min={1}
           required
           disabled={isPending}
           defaultValue={movement.amount.amount}

@@ -22,11 +22,12 @@ import {
 import { useMoneyActionConfirmation } from "../../../lib/use-money-action-confirmation";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../lib/hooks/use-toast";
 import { useActionError } from "../../../lib/use-action-error";
+import { MoneyInput } from "../../../components/ui/money-input";
 import { DEFAULT_CURRENCY } from "../../../core/domain/currency";
 import { formatAmount } from "../../../lib/format";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 /**
  * List-level host for the "Set / Correct initial balance" dialogs.
@@ -184,7 +185,7 @@ function SetInitialBalanceDialog({ detail, onDone }: BalanceDialogProps) {
 
   const buildConfirmDetails = (): ConfirmationDetailRow[] => {
     const fd = formRef.current ? new FormData(formRef.current) : null;
-    const amount = Number(fd?.get("amount") ?? 0);
+    const amount = parseMoneyInput(String(fd?.get("amount") ?? "")) ?? 0;
     setConfirmAmount(amount);
     return [
       {
@@ -212,13 +213,12 @@ function SetInitialBalanceDialog({ detail, onDone }: BalanceDialogProps) {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {t("setInitialBalanceDescription")}
         </p>
-        <Input
+        <MoneyInput
           id="amount"
           name="amount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={t("balanceToSet")}
-          min="1"
+          currency={currency ?? DEFAULT_CURRENCY}
+          min={1}
           required
           disabled={isPending}
         />
@@ -296,7 +296,7 @@ function CorrectInitialBalanceDialog({ detail, onDone }: BalanceDialogProps) {
 
   const buildConfirmDetails = (): ConfirmationDetailRow[] => {
     const fd = formRef.current ? new FormData(formRef.current) : null;
-    const amount = Number(fd?.get("newAmount") ?? 0);
+    const amount = parseMoneyInput(String(fd?.get("newAmount") ?? "")) ?? 0;
     setConfirmAmount(amount);
     return [
       {
@@ -324,13 +324,12 @@ function CorrectInitialBalanceDialog({ detail, onDone }: BalanceDialogProps) {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {t("correctInitialBalanceDescription")}
         </p>
-        <Input
+        <MoneyInput
           id="newAmount"
           name="newAmount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={t("newBalance")}
-          min="1"
+          currency={currency ?? DEFAULT_CURRENCY}
+          min={1}
           required
           disabled={isPending}
         />

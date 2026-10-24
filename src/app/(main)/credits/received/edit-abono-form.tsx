@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "../../../../i18n/client";
 import { editAbonoAction } from "./actions";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Input } from "../../../../components/ui/input";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../lib/hooks/use-toast";
@@ -14,12 +15,14 @@ export function EditAbonoForm({
   creditId,
   abonoId,
   amount,
+  currency,
   date,
   onCancel,
 }: {
   creditId: string;
   abonoId: string;
   amount: number;
+  currency: string;
   date: string;
   onCancel: () => void;
 }) {
@@ -70,13 +73,12 @@ export function EditAbonoForm({
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           id={`edit-amount-${abonoId}`}
           name="amount"
-          hint={tCommon("moneyNoSeparators")}
-          type="number"
           label={t("amount")}
-          min="1"
+          currency={currency}
+          min={1}
           required
           defaultValue={amount}
           disabled={isPending}

@@ -20,6 +20,7 @@ import { handleActionError } from "../../../lib/handle-action-error";
 import { withAudit } from "../../../lib/with-audit";
 import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
 import { trackAnalytics } from "../../../lib/track-analytics";
+import { parseMoneyInput } from "../../../lib/money-input";
 
 const ids = objectIdGenerator;
 
@@ -32,7 +33,7 @@ export async function createAccountAction(
 
   const name = formData.get("name") as string;
   const currency = formData.get("currency") as CreateAccountInput["currency"];
-  const initialBalance = Number(formData.get("initialBalance") || "0");
+  const initialBalance = parseMoneyInput(String(formData.get("initialBalance") ?? "")) ?? 0;
   const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
     return { error: "error.idempotencyKeyRequired" };
@@ -176,7 +177,7 @@ export async function setInitialBalanceAction(
   if (!user) return { error: "error.unauthorized" };
 
   const accountId = formData.get("accountId") as string;
-  const amount = Number(formData.get("amount") || "0");
+  const amount = parseMoneyInput(String(formData.get("amount") ?? "")) ?? 0;
   const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
     return { error: "error.idempotencyKeyRequired" };
@@ -244,7 +245,7 @@ export async function correctInitialBalanceAction(
   if (!user) return { error: "error.unauthorized" };
 
   const accountId = formData.get("accountId") as string;
-  const newAmount = Number(formData.get("newAmount") || "0");
+  const newAmount = parseMoneyInput(String(formData.get("newAmount") ?? "")) ?? 0;
   const idempotencyKey = formData.get("idempotencyKey") as string;
   if (!idempotencyKey) {
     return { error: "error.idempotencyKeyRequired" };

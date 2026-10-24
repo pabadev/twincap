@@ -38,6 +38,26 @@ export interface AddSaleAbonoInput {
 }
 
 /**
+ * DOM-1 (freeze exception EXC-2, founder 2026-10-19): price edit for a
+ * registered sale — the missing correction path when the recorded total does
+ * not match what was actually agreed/collected ("acepté un pago menor").
+ *
+ * Line-item QUANTITIES are NOT editable in v1 (inventory consumption would
+ * need reversal); only unit PRICES move the total. Prices are indexed by line
+ * position (the same item may appear in two lines).
+ */
+export interface UpdateSaleInput {
+  /**
+   * New unit price per line item, in minor units, aligned to sale.items order
+   * (length must match). Currency is immutable (the account's, ACC-1).
+   */
+  unitPrices: number[];
+  currency: Currency;
+  /** CAS guard: the version the client READ (undefined = fresh server read). */
+  version?: number;
+}
+
+/**
  * H17: read model for the sale detail modal. Plain literals and Dates only —
  * safe to cross the server→client boundary.
  */
@@ -79,6 +99,8 @@ export interface SaleDetailSnapshot {
     };
   }[];
   total: number;
+  /** CAS guard for the DOM-1 price editor (the version the modal READ). */
+  version: number;
   inventoryCostMinor: number | null;
   grossProfitMinor: number | null;
   costComplete: boolean;
@@ -86,6 +108,19 @@ export interface SaleDetailSnapshot {
   pending: number;
   /** True when the pending/abonos come from the linked CreditGranted (H14). */
   hasLinkedCredit: boolean;
+  /**
+   * DOM-1 sale↔debt bridge: the live linked credit's identity + current
+   * terms, so the detail modal can offer editing the debt (principal and
+   * installments) in place. Null when there is no live linked credit.
+   */
+  linkedCredit: {
+    creditId: string;
+    counterparty: string;
+    principal: number;
+    installments?: number;
+    installmentValue: { amount: number; currency: Currency } | null;
+    frequency?: string;
+  } | null;
   abonos: { id: string; amount: { amount: number; currency: Currency }; date: Date }[];
   accountName: string | null;
   currency: Currency;

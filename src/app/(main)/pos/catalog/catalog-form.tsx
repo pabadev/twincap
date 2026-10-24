@@ -9,9 +9,10 @@ import { CATALOG_ITEM_TYPES, PRODUCT_ROLES } from "../../../../core/domain/catal
 import type { CatalogItemType, ProductRole } from "../../../../core/domain/catalog";
 import { INVENTORY_UNITS, quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
 import type { InventoryUnit } from "../../../../core/domain/inventory-units";
-import { CURRENCIES } from "../../../../core/domain/currency";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../../../../core/domain/currency";
 import type { Currency } from "../../../../core/domain/currency";
 import { Input } from "../../../../components/ui/input";
+import { MoneyInput } from "../../../../components/ui/money-input";
 import { Alert } from "../../../../components/ui/alert";
 import { Select } from "../../../../components/ui/select";
 import { Button } from "../../../../components/ui/button";
@@ -134,13 +135,12 @@ export function CatalogForm({ item, onDone }: CatalogFormProps) {
             </p>
           </>
         ) : (
-          <Input
+          <MoneyInput
             id="unitPrice"
             name="unitPrice"
-            hint={tCommon("moneyNoSeparators")}
-            type="number"
             label={currency ? t("unitPrice", { currency }) : t("unitPricePlain")}
-            min="1"
+            currency={currency || DEFAULT_CURRENCY}
+            min={1}
             required
             defaultValue={item?.unitPrice.amount}
             disabled={isPending}

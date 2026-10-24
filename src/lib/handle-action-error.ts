@@ -2,6 +2,7 @@ import { NotFoundError, ConflictError, ValidationError } from "../core/domain/er
 import { DEBT_MODIFIED_MSG, MOVEMENT_MODIFIED_MSG } from "../core/domain/errors";
 import { MoneyError } from "../core/domain/money";
 import { SALE_BORN_CREDIT_DELETE_MSG } from "../core/application/credits-granted/delete-credit-granted";
+import { SALE_BORN_CREDIT_EDIT_MSG } from "../core/application/credits-granted/edit-principal";
 import { reportUnexpectedError } from "./report-unexpected-error";
 
 /**
@@ -102,6 +103,24 @@ export function handleActionError(error: unknown): { error: string } {
         return { error: "error.debtModified" };
       case MOVEMENT_MODIFIED_MSG:
         return { error: "error.movementModified" };
+      // RCA 2026-10-19: sale-born credits are edited through their SALE.
+      case SALE_BORN_CREDIT_EDIT_MSG:
+        return { error: "error.saleBornCreditEdit" };
+      // Ledger-integrity guard (a required derived movement is missing): the
+      // generic conflict message ("resource already exists") was actively
+      // misleading for this case — the founder hit it three times.
+      case "Required movement not found for modern record":
+        return { error: "error.ledgerIntegrity" };
+      // DOM-1 founder case ("cobré menos de lo registrado"): the debt/total
+      // can never drop below what was already collected — the fix is to
+      // correct the recorded payment(s) FIRST. Tell the user exactly that
+      // instead of the generic duplicate-resource conflict.
+      case "New principal is less than total abonos":
+      case "New total is less than the amounts already collected":
+      case "New total is less than amount already paid":
+        return { error: "error.principalBelowCollected" };
+      case "Abono exceeds pending amount":
+        return { error: "error.abonoExceedsPending" };
       default:
         if (error.message.startsWith("Quantity is too precise for ")) {
           return { error: "error.quantityUnitPrecision" };

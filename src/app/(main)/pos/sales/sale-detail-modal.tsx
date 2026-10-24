@@ -5,15 +5,25 @@ import { useT, useLocale } from "../../../../i18n/client";
 import { getSaleDetailAction } from "./actions";
 import type { SaleDetailSnapshot } from "../../../../core/application/sales";
 import { DeleteSaleAbonoButton } from "./delete-sale-abono-button";
+import { EditSalePricesForm } from "./edit-sale-prices-form";
 import { formatAmount, formatDate } from "../../../../lib/format";
 import { Modal } from "../../../../components/ui/modal";
 import { Alert } from "../../../../components/ui/alert";
+import { Button } from "../../../../components/ui/button";
 import { Table } from "../../../../components/ui/table";
 import { quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
 
 interface SaleDetailModalProps {
   saleId: string | null;
+  /** DOM-1: open straight into the price editor (from the card's pencil). */
+  initialEditMode?: boolean;
   onClose: () => void;
+}
+
+/** Newest abonos first (beta feedback #7): business date desc; ties keep
+ *  newest-inserted first (reverse + stable sort). */
+function abonosNewestFirst<T extends { date: Date }>(abonos: readonly T[]): T[] {
+  return [...abonos].reverse().sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 interface DetailState {
@@ -22,13 +32,20 @@ interface DetailState {
   errorKey?: string;
 }
 
-export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
+export function SaleDetailModal({ saleId, initialEditMode, onClose }: SaleDetailModalProps) {
   const t = useT("Sales");
   const tCatalog = useT("Catalog");
   const tCommon = useT("Common");
   const tError = useT("error");
   const locale = useLocale();
   const [detail, setDetail] = useState<DetailState | null>(null);
+  // DOM-1: inline price editor (EXC-2). The sale-born credit is NOT edited
+  // here: RCA 2026-10-19 — its principal is owned by the sale, and the price
+  // edit below cascades it automatically (no principal movement exists).
+  // Initialized from initialEditMode: the list remounts this modal (key
+  // includes the mode) so the pencil opens straight into the editor without
+  // a setState-in-effect (react-hooks rule).
+  const [editingPrices, setEditingPrices] = useState(Boolean(saleId && initialEditMode));
 
   // Loading is derived, not stored: while the fetched record does not match
   // the requested one we are mid-flight. setState only ever runs in async
@@ -59,6 +76,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
 
   const handleClose = () => {
     setDetail(null);
+    setEditingPrices(false);
     onClose();
   };
 
@@ -325,6 +343,33 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
             )}
           </dl>
 
+          {/* DOM-1 (EXC-2): price correction — the sale's only editable
+              surface (quantities/inventory snapshots are not editable in
+              v1; the use case cascades the total to the movement or the
+              linked credit). */}
+          {editingPrices ? (
+            <EditSalePricesForm
+              saleId={snapshot.id}
+              currency={snapshot.currency}
+              version={snapshot.version}
+              lines={snapshot.items.map((item) => ({
+                itemName: item.itemName,
+                quantity: item.quantity,
+                unit: item.unit,
+                unitPrice: item.unitPrice,
+              }))}
+              onDone={() => setEditingPrices(false)}
+            />
+          ) : (
+            <Button variant="secondary" size="sm" onClick={() => setEditingPrices(true)}>
+              {t("editPrices")}
+            </Button>
+          )}
+
+          {/* DOM-1 sale↔debt note: the linked debt is edited THROUGH the price
+              editor above (RCA 2026-10-19) — the cascade lowers the credit
+              with the new total; no separate debt editor here. */}
+
           {(snapshot.abonos.length > 0 || snapshot.hasLinkedCredit) && (
             <div>
               <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -351,7 +396,7 @@ export function SaleDetailModal({ saleId, onClose }: SaleDetailModalProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                      {snapshot.abonos.map((abono) => (
+                      {abonosNewestFirst(snapshot.abonos).map((abono) => (
                         <tr key={abono.id} className="text-zinc-600 dark:text-zinc-400">
                           <td className="py-1.5">{formatDate(abono.date, locale)}</td>
                           <td className="py-1.5 text-right">

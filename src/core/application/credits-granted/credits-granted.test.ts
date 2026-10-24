@@ -5,6 +5,7 @@ import { editAbono } from "./edit-abono";
 import { deleteAbono } from "./delete-abono";
 import { editPrincipal } from "./edit-principal";
 import { deleteCreditGranted } from "./delete-credit-granted";
+import { SALE_BORN_CREDIT_EDIT_MSG } from "./edit-principal";
 import { markAsPaid } from "./mark-as-paid";
 import { writeOffCreditGranted } from "./write-off-credit-granted";
 import {
@@ -2512,5 +2513,246 @@ describe("credit granted — selectable Personal/Business context (EXC-1)", () =
     );
 
     expect(movementRepo.created[0].context).toBe("Business");
+  });
+});
+
+// ─── editPrincipal — installment terms (DOM-1 / EXC-2) ─────────────
+
+describe("editPrincipal — installment terms (DOM-1 / EXC-2)", () => {
+  const accountRepo = fakeAccountRepo();
+
+  it("patches installments/installmentValue/frequency without touching movements", async () => {
+    const credit = makeCredit({ createdAt: new Date("2026-08-01T00:00:00.000Z") });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: "mov-principal",
+          type: "expense",
+          amount: new Money(100000, "COP"),
+          link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-9" },
+        }),
+      ]),
+    });
+
+    const result = await editPrincipal(
+      "user-1",
+      "cg-1",
+      {
+        principal: 100000,
+        currency: "COP",
+        installments: 6,
+        installmentValue: 18000,
+        frequency: "monthly",
+      },
+      creditRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(result.installments).toBe(6);
+    expect(result.installmentValue?.amount).toBe(18000);
+    expect(result.frequency).toBe("monthly");
+    // Terms are informational: the credit write happens; the principal
+    // movement is re-written with the SAME amount (the principal edit path
+    // always cascades when the movement exists) — no NEW movements.
+    expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(1);
+    expect(movementRepo.updated[0].amount.amount).toBe(100000);
+    expect(movementRepo.created).toHaveLength(0);
+  });
+
+  it("keeps current terms when the fields are omitted (patch semantics)", async () => {
+    const credit = makeCredit({
+      installments: 4,
+      installmentValue: new Money(25000, "COP"),
+      frequency: "weekly",
+    });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: "mov-principal",
+          type: "expense",
+          amount: new Money(100000, "COP"),
+          link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-9" },
+        }),
+      ]),
+    });
+
+    const result = await editPrincipal(
+      "user-1",
+      "cg-1",
+      { principal: 100000, currency: "COP" },
+      creditRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(result.installments).toBe(4);
+    expect(result.installmentValue?.amount).toBe(25000);
+    expect(result.frequency).toBe("weekly");
+  });
+
+  it("clears the plan with installments 0 (value 0 → undefined)", async () => {
+    const credit = makeCredit({
+      installments: 4,
+      installmentValue: new Money(25000, "COP"),
+      frequency: "weekly",
+    });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: "mov-principal",
+          type: "expense",
+          amount: new Money(100000, "COP"),
+          link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-9" },
+        }),
+      ]),
+    });
+
+    const result = await editPrincipal(
+      "user-1",
+      "cg-1",
+      { principal: 100000, currency: "COP", installments: 0, installmentValue: 0 },
+      creditRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(result.installments).toBe(0);
+    expect(result.installmentValue).toBeUndefined();
+  });
+
+  it("rejects an unknown frequency", async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: "mov-principal",
+          type: "expense",
+          amount: new Money(100000, "COP"),
+          link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-9" },
+        }),
+      ]),
+    });
+
+    await expect(
+      editPrincipal(
+        "user-1",
+        "cg-1",
+        { principal: 100000, currency: "COP", frequency: "daily" },
+        creditRepo,
+        movementRepo,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects installments > 0 without a positive installment value (R5-D1 parity)", async () => {
+    const credit = makeCredit();
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([
+        makeMovement({
+          id: "mov-principal",
+          type: "expense",
+          amount: new Money(100000, "COP"),
+          link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-9" },
+        }),
+      ]),
+    });
+
+    await expect(
+      editPrincipal(
+        "user-1",
+        "cg-1",
+        { principal: 100000, currency: "COP", installments: 6, installmentValue: 0 },
+        creditRepo,
+        movementRepo,
+        accountRepo,
+        fakeUow(),
+      ),
+    ).rejects.toThrow(ValidationError);
+    // Fail-fast: nothing written.
+    expect(creditRepo.updated).toHaveLength(0);
+  });
+});
+
+// ─── editPrincipal — sale-born block (RCA 2026-10-19) ──────────────
+
+describe("editPrincipal — sale-born credits are edited through the sale", () => {
+  const accountRepo = fakeAccountRepo();
+
+  it("rejects a sale-born credit with SALE_BORN_CREDIT_EDIT_MSG and writes NOTHING", async () => {
+    const credit = makeCredit({ saleId: "sale-1" }, [
+      { id: "ab-1", amount: new Money(20000, "COP"), date: new Date(), accountId: "acc-1" },
+    ]);
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo();
+
+    const error = await editPrincipal(
+      "user-1",
+      "cg-1",
+      { principal: 20000, currency: "COP" },
+      creditRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe(SALE_BORN_CREDIT_EDIT_MSG);
+    // Fail-fast: nothing written (no credit CAS, no movement mirror).
+    expect(creditRepo.updated).toHaveLength(0);
+    expect(movementRepo.updated).toHaveLength(0);
+  });
+
+  it("still allows editing a STANDALONE credit's principal (no saleId)", async () => {
+    const credit = makeCredit(); // no saleId
+    const principalMovement = makeMovement({
+      id: "mov-principal",
+      type: "expense",
+      amount: new Money(100000, "COP"),
+      link: { kind: "creditGrantedPrincipal", refId: "cg-1", opId: "op-8" },
+    });
+    const creditRepo = fakeCreditRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([credit]),
+    });
+    const movementRepo = fakeMovementRepo({
+      findByWorkspaceId: vi.fn().mockResolvedValue([principalMovement]),
+    });
+
+    const result = await editPrincipal(
+      "user-1",
+      "cg-1",
+      { principal: 200000, currency: "COP" },
+      creditRepo,
+      movementRepo,
+      accountRepo,
+      fakeUow(),
+    );
+
+    expect(result.principal.amount).toBe(200000);
+    expect(creditRepo.update).toHaveBeenCalledOnce();
+    expect(movementRepo.updated).toHaveLength(1);
   });
 });

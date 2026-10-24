@@ -69,6 +69,14 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
   const [selected, setSelected] = useState<{ index: number; series: "income" | "expenses" } | null>(
     null,
   );
+  // Beta feedback #12: the native <title> tooltip was NOT good enough on
+  // desktop (founder: "el tooltip no funciona, solo clicando") — a real
+  // hover state now shows the same value pill on mouseenter. The pill
+  // renders desktop-only; on touch devices the tap/click selection keeps
+  // working through the mobile (large) pill variant.
+  const [hovered, setHovered] = useState<{ index: number; series: "income" | "expenses" } | null>(
+    null,
+  );
 
   function handlePointClick(index: number, series: "income" | "expenses") {
     if (selected?.index === index && selected?.series === series) {
@@ -246,6 +254,10 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
         {data.map((d, i) => {
           const isSelectedIncome = selected?.index === i && selected?.series === "income";
           const isSelectedExpenses = selected?.index === i && selected?.series === "expenses";
+          const isHoveredIncome = hovered?.index === i && hovered?.series === "income";
+          const isHoveredExpenses = hovered?.index === i && hovered?.series === "expenses";
+          const incomeEmphasis = isSelectedIncome || isHoveredIncome;
+          const expensesEmphasis = isSelectedExpenses || isHoveredExpenses;
           return (
             <g key={d.month}>
               {/* Income point */}
@@ -253,7 +265,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                 cx={toX(i)}
                 cy={toY(d.income)}
                 r={3}
-                className={`fill-income ${isSelectedIncome ? "stroke-zinc-900 stroke-2 dark:stroke-white" : ""}`}
+                className={`fill-income ${incomeEmphasis ? "stroke-zinc-900 stroke-2 dark:stroke-white" : ""}`}
               >
                 <title>
                   {`${monthName(d.month)} — ${t("income")}: ${
@@ -268,6 +280,8 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                 r={12}
                 fill="transparent"
                 className="cursor-pointer"
+                onMouseEnter={() => setHovered({ index: i, series: "income" })}
+                onMouseLeave={() => setHovered(null)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePointClick(i, "income");
@@ -279,7 +293,7 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                 cx={toX(i)}
                 cy={toY(d.expenses)}
                 r={3}
-                className={`fill-expense ${isSelectedExpenses ? "stroke-zinc-900 stroke-2 dark:stroke-white" : ""}`}
+                className={`fill-expense ${expensesEmphasis ? "stroke-zinc-900 stroke-2 dark:stroke-white" : ""}`}
               >
                 <title>
                   {`${monthName(d.month)} — ${t("expenses")}: ${
@@ -294,6 +308,8 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
                 r={12}
                 fill="transparent"
                 className="cursor-pointer"
+                onMouseEnter={() => setHovered({ index: i, series: "expenses" })}
+                onMouseLeave={() => setHovered(null)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePointClick(i, "expenses");
@@ -314,9 +330,10 @@ export function MonthlyChart({ data, currency, locale, title }: MonthlyChartProp
           );
         })}
 
-        {/* Selected point value label: LARGE on mobile, compact on sm+. */}
+        {/* Selected point value label: LARGE on mobile, compact on sm+.
+            On desktop a hover takes precedence over the click selection. */}
         {selected && renderTapLabel(selected, true)}
-        {selected && renderTapLabel(selected, false)}
+        {hovered ? renderTapLabel(hovered, false) : selected && renderTapLabel(selected, false)}
       </svg>
 
       {/* Non-visual access: the same series as screen-reader text. */}
