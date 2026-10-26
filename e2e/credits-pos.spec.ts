@@ -109,7 +109,7 @@ async function createReceivedCreditInUI(
   await dialog.getByLabel(/^Receiving Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
-    await dialog.getByLabel(/^Installments/).fill(installments);
+    await dialog.getByLabel(/^Number of installments/).fill(installments);
     await dialog.getByLabel(/^Installment value/).fill(installmentValue ?? "");
   }
   await dialog.getByRole("button", { name: /^Add Credit Received$/ }).click();
@@ -145,7 +145,7 @@ async function createGrantedCreditInUI(
   await dialog.getByLabel(/^Paying Account/).selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel(/^Date/).fill(todayInputValue());
   if (installments) {
-    await dialog.getByLabel(/^Installments/).fill(installments);
+    await dialog.getByLabel(/^Number of installments/).fill(installments);
     await dialog.getByLabel(/^Installment value/).fill(installmentValue ?? "");
   }
   await dialog.getByRole("button", { name: /^Add Credit Granted$/ }).click();
@@ -361,9 +361,13 @@ test.describe("Slice 3 — Credits + POS", () => {
 
     const abonoRows = card.locator("tbody tr");
     await expect(abonoRows).toHaveCount(2);
+    // UX-2: the abono history renders NEWEST-FIRST → abono 2 (the split,
+    // total 55,000 = capital 45,000 + interest 10,000) is row 0 and abono 1
+    // (all capital) is row 1.
     await expect(abonoRows.nth(0)).toContainText(/COP\s+55,000/);
-    await expect(abonoRows.nth(1)).toContainText(/COP\s+45,000/);
-    await expect(abonoRows.nth(1)).toContainText(/COP\s+10,000/);
+    await expect(abonoRows.nth(0)).toContainText(/COP\s+45,000/);
+    await expect(abonoRows.nth(0)).toContainText(/COP\s+10,000/);
+    await expect(abonoRows.nth(1)).toContainText(/COP\s+55,000/);
 
     // Financial principle #7: only the interest portion is income. Dashboard
     // income = 10,000 (interest); expenses = 0 (principal outflow is a

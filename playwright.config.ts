@@ -57,8 +57,9 @@ export default defineConfig({
     // Never silently attach to a server with a different build or environment.
     reuseExistingServer: false,
     // `next build && next start` on a loaded dev machine takes ~3-4 min
-    // (typecheck + Turbopack build + static gen); 120s was too tight.
-    timeout: 300_000,
+    // (typecheck + Turbopack build + static gen); 120s was too tight. Cold
+    // CI/Windows machines observed >5 min, so allow up to 15 min.
+    timeout: 900_000,
   },
 
   globalSetup: "./e2e/global-setup.ts",

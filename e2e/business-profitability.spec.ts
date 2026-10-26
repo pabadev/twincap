@@ -265,7 +265,7 @@ test.describe.serial("Business profitability acceptance", () => {
       page.getByText("Expenses you recorded", { exact: true }).locator("xpath=.."),
     ).toContainText(/5,000/);
     await expect(
-      page.getByText("Left after those expenses", { exact: true }).locator("xpath=.."),
+      page.getByRole("region", { name: "Business result for the period" }),
     ).toContainText(/Costs missing/);
     await expect(
       page.getByText("Still to collect from these sales", { exact: true }).locator("xpath=.."),
