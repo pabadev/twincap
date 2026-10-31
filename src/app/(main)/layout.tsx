@@ -34,8 +34,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       <ToastProvider>
         <GlobalMovementProvider defaultCurrency={user.defaultCurrency}>
           {/* The main fills the full space next to the sidebar; page-level
-              ContentContainer(s) cap and center the visual content. */}
-          <main className="flex-1 overflow-auto pt-16 p-4 lg:p-8 lg:pt-8">
+              ContentContainer(s) cap and center the visual content. The extra
+              bottom padding reserves the FAB zone (fixed, GlobalMovementProvider):
+              FAB(56px) + top gap(16px mobile / 32px lg) + breathing room, plus
+              the device safe-area inset so the last row is never covered. */}
+          <main className="flex-1 overflow-auto pt-16 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-8 lg:pt-8 lg:pb-[6.5rem]">
             <ConnectivityNotice />
             {children}
           </main>
