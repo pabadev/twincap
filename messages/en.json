@@ -268,6 +268,7 @@
     "suggestedResult": "Added: {created}. Existing categories skipped: {skipped}.",
     "suggestedError": "Categories could not be added. Please try again.",
     "suggestedAllExist": "You already have all of these categories.",
+    "suggestionAlreadyExists": "Already added",
     "incomeSalary": "Salary",
     "incomeSales": "Sales",
     "incomeFreelance": "Freelance work",
