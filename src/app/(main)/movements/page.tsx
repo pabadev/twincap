@@ -42,7 +42,11 @@ function buildRefLabels(
   return refLabels;
 }
 
-export default async function MovementsPage() {
+export default async function MovementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -124,11 +128,18 @@ export default async function MovementsPage() {
       }
     : null;
 
+  // Scope tab deep-link (audit 2026-10-31): `?ambito=` validated server-side;
+  // anything else falls back to "all" (same contract as dashboard filters).
+  const params = await searchParams;
+  const rawTab = typeof params.ambito === "string" ? params.ambito : undefined;
+  const initialTab = rawTab === "Personal" || rawTab === "Business" ? rawTab : "all";
+
   return (
     <MovementsList
       initialMovements={serializedMovements}
       nextCursor={nextCursor}
       refLabels={refLabels}
+      initialTab={initialTab}
     />
   );
 }

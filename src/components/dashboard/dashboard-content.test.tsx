@@ -47,7 +47,10 @@ vi.mock("../../app/(main)/dashboard/actions", () => ({
 
 // Presentational children are irrelevant to the toggle semantics; stubbed so
 // the render stays stable and focused on the N3 header controls (S9.x).
-vi.mock("./dashboard-filters", () => ({ DashboardFilterBar: () => null }));
+vi.mock("./dashboard-filters", () => ({
+  DashboardScopeTabs: () => null,
+  DashboardSecondaryFilters: () => null,
+}));
 vi.mock("./summary-cards", () => ({ SummaryCards: () => null }));
 vi.mock("./summary-hero", () => ({ SummaryHero: () => null }));
 vi.mock("./summary-attention", () => ({ SummaryAttention: () => null }));

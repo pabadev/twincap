@@ -1,8 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { Tabs } from "../../../../components/ui/tabs";
 import { useT } from "../../../../i18n/client";
 
+/**
+ * Deprecated wrapper kept for its call sites — the visuals/semantics now
+ * come from the shared Tabs kit (variant="link"). Do not add new usages:
+ * use <Tabs> directly.
+ */
 export function CatalogSectionNav({ active }: { active: "catalog" | "receipts" }) {
   const t = useT("Catalog");
   const links = [
@@ -11,26 +16,12 @@ export function CatalogSectionNav({ active }: { active: "catalog" | "receipts" }
   ];
 
   return (
-    <nav aria-label={t("catalogNavigation")} className="mb-6 border-b border-surface-border">
-      <div className="flex gap-2">
-        {links.map((link) => {
-          const selected = active === link.id;
-          return (
-            <Link
-              key={link.id}
-              href={link.href}
-              aria-current={selected ? "page" : undefined}
-              className={`min-h-11 border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                selected
-                  ? "border-primary text-primary"
-                  : "border-transparent text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-              }`}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <Tabs
+      ariaLabel={t("catalogNavigation")}
+      variant="link"
+      value={active}
+      items={links}
+      className="mb-6"
+    />
   );
 }

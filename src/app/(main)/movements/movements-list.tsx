@@ -15,6 +15,7 @@ import { Icon } from "../../../components/ui/icon";
 import { Button } from "../../../components/ui/button";
 import { TouchTarget } from "../../../components/ui/touch-target";
 import { MovementCard } from "../../../components/ui/movement-card";
+import { Tabs } from "../../../components/ui/tabs";
 import { ArrowLeftRight, Download, Loader2, SlidersHorizontal } from "lucide-react";
 import { useQuickMovement } from "../global-movement-provider";
 import { EditMovementModal } from "./edit-movement-modal";
@@ -36,11 +37,14 @@ export function MovementsList({
   initialMovements,
   nextCursor: initialCursor,
   refLabels = {},
+  initialTab = "all",
 }: {
   initialMovements: SerializedMovement[];
   nextCursor: SerializedCursor | null;
   /** Parent counterparty labels (credit/sale/payable id → name) for note derivation. */
   refLabels?: Record<string, string>;
+  /** Validated `?ambito=` URL param — deep-links the scope tab (audit 2026-10-31). */
+  initialTab?: "all" | "Personal" | "Business";
 }) {
   const [movements, setMovements] = useState<SerializedMovement[]>(initialMovements);
   const [nextCursor, setNextCursor] = useState<SerializedCursor | null>(initialCursor);
@@ -58,7 +62,23 @@ export function MovementsList({
   const [selectedAccountId, setSelectedAccountId] = useState("all");
   // UX-7 (beta feedback #9): tabs REPLACE the scope select — the tab IS the
   // scope and the subfilters (account/type/category/dates) narrow within it.
-  const [tab, setTab] = useState<"all" | "Personal" | "Business">("all");
+  // Audit 2026-10-31: the selected scope deep-links in the URL (`?ambito=`)
+  // via the Traveling-filter contract (history.replaceState — no navigation),
+  // restored server-side by page.tsx on navigation/reload.
+  const [tab, setTab] = useState<"all" | "Personal" | "Business">(initialTab);
+
+  // Traveling-filter contract (UX-5 §4.3 pattern): persist the scope in the
+  // URL via history.replaceState — no App Router navigation, no server
+  // re-render, no refetch. page.tsx restores it on reload/navigation.
+  function handleTabChange(value: string) {
+    const next = value as "all" | "Personal" | "Business";
+    setTab(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "all") params.delete("ambito");
+    else params.set("ambito", next);
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }
   const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
   const [selectedCategoryId, setSelectedCategoryId] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -294,7 +314,7 @@ export function MovementsList({
         type="date"
         value={dateFrom}
         onChange={(e) => setDateFrom(e.target.value)}
-        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
       />
     </div>,
     <div key={`to${suffix}`}>
@@ -309,7 +329,7 @@ export function MovementsList({
         type="date"
         value={dateTo}
         onChange={(e) => setDateTo(e.target.value)}
-        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+        className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
       />
     </div>,
   ];
@@ -358,33 +378,20 @@ export function MovementsList({
       {/* Account selector + scope tabs + subfilters (UX-7) */}
       {accounts.length > 0 && (
         <>
-          {/* Scope tabs — mobile + desktop */}
-          <div
-            role="tablist"
-            aria-label={t("scope")}
-            className="mb-4 flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800"
-          >
-            {(["all", "Personal", "Business"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={tab === value}
-                onClick={() => setTab(value)}
-                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  tab === value
-                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white"
-                    : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
-              >
-                {value === "all"
-                  ? t("scopeAll")
-                  : value === "Personal"
-                    ? t("scopePersonal")
-                    : t("scopeBusiness")}
-              </button>
-            ))}
-          </div>
+          {/* Scope tabs — mobile + desktop (shared Tabs kit, audit 2026-10-31):
+              URL-persisted scope (Traveling-filter contract). */}
+          <Tabs
+            ariaLabel={t("scope")}
+            variant="tab"
+            value={tab}
+            onChange={handleTabChange}
+            items={[
+              { id: "all", label: t("scopeAll") },
+              { id: "Personal", label: t("scopePersonal") },
+              { id: "Business", label: t("scopeBusiness") },
+            ]}
+            className="mb-4"
+          />
 
           {/* Mobile: toggle button */}
           <div className="mb-4 sm:hidden">
@@ -393,7 +400,7 @@ export function MovementsList({
               onClick={() => setFiltersOpen((v) => !v)}
               aria-expanded={filtersOpen}
               aria-controls="movements-filters"
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
             >
               <SlidersHorizontal className="h-4 w-4" />
               {t("filters")}

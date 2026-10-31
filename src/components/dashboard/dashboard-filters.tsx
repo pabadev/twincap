@@ -2,6 +2,7 @@
 
 import { useT } from "../../i18n/client";
 import { Select } from "../ui/select";
+import { Tabs } from "../ui/tabs";
 import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
 // R14-K §14c: the filter types live in core; re-exported here so the
@@ -22,23 +23,53 @@ interface FilterOption {
   label: string;
 }
 
-interface DashboardFilterBarProps {
+interface DashboardFilterPartsProps {
   filters: DashboardFilters;
   onFiltersChange: (filters: DashboardFilters) => void;
-  accounts: FilterOption[];
-  categories: FilterOption[];
 }
 
-export function DashboardFilterBar({
+/**
+ * Scope tabs — ALWAYS VISIBLE (fundador, 2026-10-31): the scope is the
+ * primary context of the whole Resumen, in the same language as Movements
+ * (shared Tabs kit). URL persistence lives in dashboard-content
+ * (Traveling-filter contract), unchanged.
+ */
+export function DashboardScopeTabs({ filters, onFiltersChange }: DashboardFilterPartsProps) {
+  const t = useT("Dashboard");
+
+  return (
+    <Tabs
+      ariaLabel={t("filterScope")}
+      variant="tab"
+      value={filters.scope}
+      onChange={(id) => onFiltersChange({ ...filters, scope: id as ScopeFilter })}
+      items={[
+        { id: "all", label: t("filterScopeAll") },
+        { id: "Personal", label: t("filterScopePersonal") },
+        { id: "Business", label: t("filterScopeBusiness") },
+      ]}
+    />
+  );
+}
+
+/**
+ * Secondary filters (period/account/category + active-filter chips) —
+ * progressive disclosure behind the Filtros toggle in dashboard-content.
+ * The scope chip is intentionally ABSENT from the row: the always-visible
+ * tabs above already communicate and clear the scope (quieter by audit).
+ */
+export function DashboardSecondaryFilters({
   filters,
   onFiltersChange,
   accounts,
   categories,
-}: DashboardFilterBarProps) {
+}: DashboardFilterPartsProps & {
+  accounts: FilterOption[];
+  categories: FilterOption[];
+}) {
   const t = useT("Dashboard");
 
-  const hasActiveFilters =
-    filters.scope !== "all" ||
+  const hasSecondaryFilters =
     filters.accountId !== "all" ||
     filters.categoryId !== "all" ||
     (filters.period ?? "month") !== "month";
@@ -58,7 +89,7 @@ export function DashboardFilterBar({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Select
           label={t("periodLabel")}
           value={filters.period ?? "month"}
@@ -66,16 +97,6 @@ export function DashboardFilterBar({
           options={[
             { value: "month", label: t("periodMonth") },
             { value: "year", label: t("periodYear") },
-          ]}
-        />
-        <Select
-          label={t("filterScope")}
-          value={filters.scope}
-          onChange={(e) => updateFilter("scope", e.target.value as ScopeFilter)}
-          options={[
-            { value: "all", label: t("filterScopeAll") },
-            { value: "Personal", label: t("filterScopePersonal") },
-            { value: "Business", label: t("filterScopeBusiness") },
           ]}
         />
         <Select
@@ -91,7 +112,7 @@ export function DashboardFilterBar({
           options={[{ value: "all", label: t("filterCategoryAll") }, ...categories]}
         />
       </div>
-      {hasActiveFilters && (
+      {hasSecondaryFilters && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("periodLabel")}:</span>
           {filters.period === "year" && (
@@ -99,18 +120,6 @@ export function DashboardFilterBar({
               {t("periodYear")}
               <button
                 onClick={() => updateFilter("period", "month")}
-                className="ml-1 inline-flex items-center"
-                aria-label={t("removeFilter")}
-              >
-                <X size={12} />
-              </button>
-            </Badge>
-          )}
-          {filters.scope !== "all" && (
-            <Badge variant="info">
-              {filters.scope === "Personal" ? t("filterScopePersonal") : t("filterScopeBusiness")}
-              <button
-                onClick={() => updateFilter("scope", "all")}
                 className="ml-1 inline-flex items-center"
                 aria-label={t("removeFilter")}
               >

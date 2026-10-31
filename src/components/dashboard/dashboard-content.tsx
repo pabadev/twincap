@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { DashboardFilterBar } from "./dashboard-filters";
+import { DashboardSecondaryFilters, DashboardScopeTabs } from "./dashboard-filters";
 import { SummaryCards } from "./summary-cards";
 import { SummaryHero } from "./summary-hero";
 import { SummaryAttention } from "./summary-attention";
@@ -257,7 +257,7 @@ export function DashboardContent({
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/business-analytics"
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
           >
             <BarChart3 className="h-4 w-4" />
             {t("businessAnalyticsLink")}
@@ -265,7 +265,7 @@ export function DashboardContent({
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
           >
             <MessageSquare className="h-4 w-4" />
             {tFeedback("openFeedback")}
@@ -275,7 +275,7 @@ export function DashboardContent({
             onClick={() => setFiltersOpen((v) => !v)}
             aria-expanded={filtersOpen}
             aria-controls="dashboard-filters"
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
           >
             <SlidersHorizontal className="h-4 w-4" />
             {t("filters")}
@@ -292,6 +292,10 @@ export function DashboardContent({
           <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filtersActive")}</span>
         </div>
       )}
+
+      {/* ── Scope tabs — always visible (foundador 2026-10-31): same primary
+           context as Movements; secondary filters stay behind Filtros ── */}
+      <DashboardScopeTabs filters={filters} onFiltersChange={handleFiltersChange} />
 
       {/* Onboarding banner — shown only while the user still has just the
           seeded fixed Cash account. */}
@@ -316,9 +320,11 @@ export function DashboardContent({
         </Card>
       )}
 
+      {/* Secondary filters (period/account/category) — progressive
+          disclosure behind Filtros; the scope is NOT here (tabs above). */}
       {filtersOpen && (
         <div id="dashboard-filters">
-          <DashboardFilterBar
+          <DashboardSecondaryFilters
             filters={filters}
             onFiltersChange={handleFiltersChange}
             accounts={accountOptions}
@@ -383,7 +389,7 @@ export function DashboardContent({
                   contentClassName="p-3"
                 >
                   {account.isFixed && (
-                    <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                    <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-surface-card dark:text-zinc-400">
                       {t("fixed")}
                     </span>
                   )}
@@ -512,7 +518,7 @@ export function DashboardContent({
                 value={effectiveChartCurrency}
                 onChange={(e) => setChartCurrency(e.target.value)}
                 aria-label={t("chartCurrency")}
-                className="h-9 rounded-md border border-surface-border bg-surface-input px-2 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-9 rounded-md border border-surface-border bg-surface-input px-2 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               >
                 {snapshot.chartCurrencies.map((c) => (
                   <option key={c} value={c}>
