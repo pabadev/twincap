@@ -246,7 +246,7 @@ describe("Modal onRequestClose (C12-1)", () => {
 
   it("routes backdrop click through onRequestClose instead of onClose", () => {
     const { container } = mount(<GuardedHarness initialOpen />);
-    const backdrop = container.querySelector(".absolute.inset-0.bg-black\\/50")!;
+    const backdrop = container.querySelector(".absolute.inset-0.bg-surface-overlay")!;
     act(() => {
       backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
