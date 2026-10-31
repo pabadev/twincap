@@ -28,7 +28,7 @@ export function Card({
     >
       {(title || actions) && (
         <div
-          className={`flex items-center justify-between border-b border-surface-border bg-surface-header px-6 py-4 dark:border-zinc-700 dark:bg-zinc-800 ${headerClassName}`}
+          className={`flex items-center justify-between border-b border-surface-border bg-surface-header px-6 py-4 dark:border-zinc-700 dark:bg-surface-card ${headerClassName}`}
         >
           {title && <h3 className="text-lg font-bold text-zinc-800 dark:text-white">{title}</h3>}
           {actions && <div>{actions}</div>}

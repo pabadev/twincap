@@ -122,7 +122,7 @@ export function PayablesList({
               onClick={() => setFiltersOpen((v) => !v)}
               aria-expanded={filtersOpen}
               aria-controls="payables-filters"
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
             >
               <SlidersHorizontal className="h-4 w-4" />
               {t("filters")}
@@ -150,7 +150,7 @@ export function PayablesList({
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
                   />
                 </div>
                 <div>
@@ -165,7 +165,7 @@ export function PayablesList({
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
                   />
                 </div>
                 <div>
@@ -222,7 +222,7 @@ export function PayablesList({
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -237,7 +237,7 @@ export function PayablesList({
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -290,13 +290,13 @@ export function PayablesList({
                 <div
                   key={payable.id}
                   id={`payable-${payable.id}`}
-                  className={`flex h-full flex-col overflow-hidden rounded-lg border bg-surface-card dark:bg-zinc-900 ${highlightPayableId === payable.id ? "border-primary ring-2 ring-primary/30" : "border-surface-border dark:border-zinc-700"}`}
+                  className={`flex h-full flex-col overflow-hidden rounded-lg border bg-surface-card dark:bg-surface-card ${highlightPayableId === payable.id ? "border-primary ring-2 ring-primary/30" : "border-surface-border dark:border-zinc-700"}`}
                 >
                   {/* Product decision 2026-09-21: cards everywhere — the
                       collapsed card follows the Movements card format
                       (identity + chevron, label/value rows, bordered footer). */}
                   <div
-                    className="flex-1 cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="flex-1 cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-surface-hover"
                     onClick={() => setExpandedId(isExpanded ? null : payable.id)}
                   >
                     <div className="flex items-center justify-between gap-2">

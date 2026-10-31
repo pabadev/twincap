@@ -11,7 +11,7 @@ export default function ClientsLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+            className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-surface-card"
           >
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-40" />

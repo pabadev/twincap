@@ -23,8 +23,8 @@ export default async function NotFoundPage() {
   const t = await getT("NotFound");
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-zinc-950">
-      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-surface-bg">
+      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-surface-card">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
           <Link
             href="/"

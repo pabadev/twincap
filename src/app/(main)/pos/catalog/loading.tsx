@@ -32,7 +32,7 @@ export default function CatalogLoading() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+              className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-surface-card"
             >
               <div className="flex min-h-11 items-start justify-between gap-3">
                 <Skeleton className="h-4 w-32" />

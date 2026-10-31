@@ -57,7 +57,7 @@ export function Toast({ id, message, variant = "info", duration = 4000, onDismis
     <div
       className={`
         flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg
-        transition-all duration-300 ease-in-out
+        transition-[transform,opacity] duration-300 ease-in-out
         ${variantStyles[variant]}
         ${isVisible && !isExiting ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}
       `}
@@ -66,7 +66,7 @@ export function Toast({ id, message, variant = "info", duration = 4000, onDismis
       <span className="flex-1 text-sm font-medium">{message}</span>
       <button
         onClick={handleDismiss}
-        className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        className="ml-2 rounded p-1 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/90 focus-visible:ring-offset-2"
         aria-label={tCommon("dismiss")}
       >
         <Icon icon={X} size="sm" />

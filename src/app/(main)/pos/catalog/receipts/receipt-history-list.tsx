@@ -125,7 +125,7 @@ export function ReceiptHistoryList({
             type="date"
             max={dateTo || undefined}
             defaultValue={dateFrom}
-            className="mt-1 block h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 text-sm text-zinc-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-surface-card dark:text-white"
+            className="mt-1 block h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 text-sm text-zinc-900 focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:bg-surface-card dark:text-white"
           />
         </label>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -135,7 +135,7 @@ export function ReceiptHistoryList({
             type="date"
             min={dateFrom || undefined}
             defaultValue={dateTo}
-            className="mt-1 block h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 text-sm text-zinc-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-surface-card dark:text-white"
+            className="mt-1 block h-10 w-full rounded-md border border-surface-border bg-surface-input px-3 text-sm text-zinc-900 focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:bg-surface-card dark:text-white"
           />
         </label>
         <Button type="submit" variant="secondary">

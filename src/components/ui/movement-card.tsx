@@ -34,7 +34,7 @@ export function MovementCard({ id, fields, children, actions, className = "" }: 
   return (
     <div
       data-id={id}
-      className={`flex h-full flex-col rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900 ${className}`}
+      className={`flex h-full flex-col rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-surface-card ${className}`}
     >
       <dl className="space-y-2">
         {fields.map((field) => {

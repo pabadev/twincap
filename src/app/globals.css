@@ -56,6 +56,7 @@
   --tc-surface-muted: #52525b;
   --tc-surface-input: #e8ecf0;
   --tc-surface-header: #dfe5eb;
+  --tc-surface-hover: #dde3e9;
   --tc-surface-overlay: rgba(0, 0, 0, 0.5);
 }
 
@@ -84,6 +85,7 @@
   --color-surface-muted: var(--tc-surface-muted);
   --color-surface-input: var(--tc-surface-input);
   --color-surface-header: var(--tc-surface-header);
+  --color-surface-hover: var(--tc-surface-hover);
   --color-surface-overlay: var(--tc-surface-overlay);
 
   --font-sans: var(--font-geist-sans);
@@ -116,6 +118,8 @@
   --tc-surface-border: #232a35;
   --tc-surface-muted: #a1a1aa;
   --tc-surface-input: #232a35;
+  --tc-surface-header: #1e242e;
+  --tc-surface-hover: #1d2430;
   --tc-surface-overlay: rgba(0, 0, 0, 0.7);
 }
 

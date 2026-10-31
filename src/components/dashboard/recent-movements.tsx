@@ -42,7 +42,7 @@ export function RecentMovements({ movements, noMovementsMessage }: RecentMovemen
             a link (page navigation) with a >=44px touch target. */}
         <Link
           href="/movements"
-          className="inline-flex h-11 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="inline-flex h-11 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-surface-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:bg-surface-card dark:text-zinc-300 dark:hover:bg-surface-hover"
           aria-label={t("viewAllMovements")}
         >
           {t("viewAll")}

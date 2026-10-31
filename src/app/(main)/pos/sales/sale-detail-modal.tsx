@@ -114,7 +114,7 @@ export function SaleDetailModal({ saleId, initialEditMode, onClose }: SaleDetail
                 {t("paymentMode")}
               </dt>
               <dd>
-                <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                <span className="inline-flex items-center rounded-full bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-surface-card dark:text-zinc-400">
                   {snapshot.paymentMode === "paid-in-full" ? t("paidInFull") : t("onCredit")}
                 </span>
               </dd>

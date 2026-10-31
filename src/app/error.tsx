@@ -33,7 +33,7 @@ export default function RootError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-bg px-4 text-center dark:bg-zinc-950">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-bg px-4 text-center dark:bg-surface-bg">
       <Icon icon={AlertTriangle} size="xl" className="mb-4 text-warning" />
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{t("title")}</h2>
       <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{t("description")}</p>

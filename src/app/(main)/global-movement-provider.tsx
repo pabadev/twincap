@@ -220,7 +220,7 @@ export function GlobalMovementProvider({
                 ref={firstOptionRef}
                 type="button"
                 onClick={openPosSale}
-                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-surface-card dark:hover:bg-surface-hover"
                 aria-label={tMovements("quickAddPosSale")}
               >
                 <Icon icon={ShoppingCart} size="sm" className="text-income" />
@@ -231,7 +231,7 @@ export function GlobalMovementProvider({
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: "income" })}
-                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-surface-card dark:hover:bg-surface-hover"
                 aria-label={tMovements("income")}
               >
                 <Icon icon={TrendingUp} size="sm" className="text-income" />
@@ -242,7 +242,7 @@ export function GlobalMovementProvider({
               <button
                 type="button"
                 onClick={() => openQuickMovement({ type: "expense" })}
-                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                className="flex h-11 min-w-[44px] cursor-pointer items-center gap-2 rounded-full border border-surface-border bg-surface-card px-4 shadow-md hover:bg-surface-input focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-700 dark:bg-surface-card dark:hover:bg-surface-hover"
                 aria-label={tMovements("expense")}
               >
                 <Icon icon={TrendingDown} size="sm" className="text-expense" />
@@ -274,7 +274,7 @@ export function GlobalMovementProvider({
             <button
               type="button"
               onClick={() => setLoadState("idle")}
-              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-surface-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
             >
               {tErrors("retry")}
             </button>
@@ -321,7 +321,7 @@ export function GlobalMovementProvider({
             <button
               type="button"
               onClick={() => setPosLoadState("idle")}
-              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-surface-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
             >
               {tErrors("retry")}
             </button>

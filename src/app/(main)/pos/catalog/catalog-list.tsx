@@ -186,9 +186,9 @@ export function CatalogList({
         open={autoOpen || undefined}
         className="rounded-lg border border-surface-border dark:border-zinc-700"
       >
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800/50">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-zinc-600 hover:bg-surface-card dark:text-zinc-400 dark:hover:bg-surface-hover/50">
           {title}
-          <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+          <span className="ml-2 rounded-full bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-surface-card dark:text-zinc-400">
             {groupItems.length}
           </span>
         </summary>

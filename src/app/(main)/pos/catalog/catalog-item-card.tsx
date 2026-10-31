@@ -36,7 +36,7 @@ export function CatalogItemCard({
   return (
     <article
       id={id ? `catalog-item-${id}` : undefined}
-      className={`flex min-h-40 flex-col rounded-lg border bg-surface-card px-4 py-3 transition-shadow dark:bg-zinc-900 ${
+      className={`flex min-h-40 flex-col rounded-lg border bg-surface-card px-4 py-3 transition-shadow dark:bg-surface-card ${
         highlighted
           ? "border-primary ring-2 ring-primary/30"
           : "border-surface-border dark:border-zinc-700"

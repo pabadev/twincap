@@ -55,7 +55,7 @@ export function SearchInput({
           hideIcon ? "pl-4" : "pl-10"
         } ${
           hasValue ? "pr-10" : "pr-4"
-        } text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500`}
+        } text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500`}
         {...inputProps}
       />
       {hasValue && (

@@ -92,7 +92,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                   className={`flex items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors cursor-pointer ${
                     selectedKind === value
                       ? "border-primary bg-primary/5 text-primary"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-surface-card dark:text-zinc-300 dark:hover:border-zinc-600"
                   }`}
                 >
                   <Icon icon={icon} size="md" />
@@ -113,7 +113,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
               required
               maxLength={2000}
               placeholder={t("messagePlaceholder")}
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder:text-zinc-500"
+              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-zinc-700 dark:bg-surface-card dark:text-white dark:placeholder:text-zinc-500"
             />
           </FormField>
 

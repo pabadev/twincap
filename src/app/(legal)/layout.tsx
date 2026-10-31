@@ -13,8 +13,8 @@ export default async function LegalLayout({ children }: { children: React.ReactN
   const t = await getT("Legal");
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-zinc-950">
-      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-surface-bg">
+      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-surface-card">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Link
             href="/"
@@ -41,12 +41,12 @@ export default async function LegalLayout({ children }: { children: React.ReactN
       </header>
 
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        <div className="mx-auto w-full max-w-prose rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm sm:p-8 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="mx-auto w-full max-w-prose rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm sm:p-8 dark:border-zinc-700 dark:bg-surface-card">
           {children}
         </div>
       </main>
 
-      <footer className="border-t border-surface-border bg-surface-card py-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <footer className="border-t border-surface-border bg-surface-card py-6 dark:border-zinc-800 dark:bg-surface-card">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 px-4 text-xs text-zinc-600 sm:flex-row sm:px-6 dark:text-zinc-400">
           <span>© {new Date().getFullYear()} TwinCap</span>
           <nav

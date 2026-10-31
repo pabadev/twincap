@@ -108,7 +108,7 @@ export default async function ClientHistoryPage({
           {requestedPage > 1 ? (
             <Link
               href={previousHref}
-              className="rounded-md border border-surface-border px-3 py-2 text-sm text-zinc-700 hover:bg-surface-bg dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="rounded-md border border-surface-border px-3 py-2 text-sm text-zinc-700 hover:bg-surface-bg dark:text-zinc-200 dark:hover:bg-surface-hover"
             >
               {t("previousPage")}
             </Link>
@@ -121,7 +121,7 @@ export default async function ClientHistoryPage({
           {requestedPage < totalPages ? (
             <Link
               href={nextHref}
-              className="rounded-md border border-surface-border px-3 py-2 text-sm text-zinc-700 hover:bg-surface-bg dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="rounded-md border border-surface-border px-3 py-2 text-sm text-zinc-700 hover:bg-surface-bg dark:text-zinc-200 dark:hover:bg-surface-hover"
             >
               {t("nextPage")}
             </Link>

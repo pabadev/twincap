@@ -1,22 +1,20 @@
-'use client';
+"use client";
 
-import {
-  forwardRef,
-  type ButtonHTMLAttributes,
-  type MouseEvent as ReactMouseEvent,
-} from 'react';
-import { type LucideIcon } from 'lucide-react';
-import { TouchTarget } from './touch-target';
+import { forwardRef, type ButtonHTMLAttributes, type MouseEvent as ReactMouseEvent } from "react";
+import { type LucideIcon } from "lucide-react";
+import { TouchTarget } from "./touch-target";
 
-type ActionIconTone = 'neutral' | 'primary' | 'danger' | 'success' | 'warning';
+type ActionIconTone = "neutral" | "primary" | "danger" | "success" | "warning";
 
-interface ActionIconButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className' | 'onClick'> {
+interface ActionIconButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "className" | "onClick"
+> {
   icon: LucideIcon;
   /** Rendered as both aria-label and native title tooltip. */
   label: string;
   tone?: ActionIconTone;
-  type?: 'button' | 'submit';
+  type?: "button" | "submit";
   disabled?: boolean;
   loading?: boolean;
   onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
@@ -25,15 +23,12 @@ interface ActionIconButtonProps
 
 const toneClasses: Record<ActionIconTone, string> = {
   neutral:
-    'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800',
+    "text-zinc-500 hover:text-zinc-700 hover:bg-surface-hover dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-surface-hover",
   primary:
-    'text-primary hover:text-primary-hover hover:bg-zinc-100 dark:hover:bg-zinc-800',
-  danger:
-    'text-danger hover:bg-danger/10 dark:hover:bg-danger/20',
-  success:
-    'text-success hover:bg-success/10 dark:hover:bg-success/20',
-  warning:
-    'text-warning hover:bg-warning/10 dark:hover:bg-warning/20',
+    "text-primary hover:text-primary-hover hover:bg-surface-hover dark:hover:bg-surface-hover",
+  danger: "text-danger hover:bg-danger/10 dark:hover:bg-danger/20",
+  success: "text-success hover:bg-success/10 dark:hover:bg-success/20",
+  warning: "text-warning hover:bg-warning/10 dark:hover:bg-warning/20",
 };
 
 /**
@@ -45,12 +40,12 @@ export const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonPr
     {
       icon: IconComponent,
       label,
-      tone = 'neutral',
-      type = 'button',
+      tone = "neutral",
+      type = "button",
       disabled,
       loading = false,
       onClick,
-      className = '',
+      className = "",
     },
     ref,
   ) {

@@ -194,7 +194,7 @@ export function MainNav({
           ref={hamburgerRef}
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed left-4 top-4 z-50 rounded-md bg-zinc-200 text-zinc-700 hover:bg-zinc-300 lg:hidden dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          className="fixed left-4 top-4 z-50 rounded-md bg-surface-header text-zinc-700 hover:bg-surface-hover lg:hidden dark:bg-surface-card dark:text-zinc-300 dark:hover:bg-surface-hover"
           aria-label={tCommon("openMenu")}
           aria-controls="mobile-nav"
         >
@@ -215,7 +215,7 @@ export function MainNav({
         id="mobile-nav"
         ref={asideRef}
         inert={!open && !isDesktop ? true : undefined}
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-surface-card shadow-md transition-transform duration-200 ease-in-out dark:bg-zinc-900 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-surface-card shadow-md transition-transform duration-200 ease-in-out dark:bg-surface-card ${
           open ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 lg:static lg:shadow-none`}
       >
@@ -285,7 +285,7 @@ export function MainNav({
                                 className={`flex items-center gap-2.5 rounded-md px-3 text-[13px] font-medium transition-colors ${
                                   isActive
                                     ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-foreground"
-                                    : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                                    : "text-zinc-700 hover:bg-surface-hover hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-surface-hover dark:hover:text-white"
                                 }`}
                               >
                                 {/* Adaptive nav target: 44px when touch is available, 40px for fine-pointer-only devices. */}
@@ -309,7 +309,7 @@ export function MainNav({
                                 setOpen(false);
                                 setFeedbackOpen(true);
                               }}
-                              className="flex w-full items-center gap-2.5 rounded-md px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                              className="flex w-full items-center gap-2.5 rounded-md px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-surface-hover hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-surface-hover dark:hover:text-white"
                               aria-label={t("feedback")}
                             >
                               {/* Adaptive nav target matches the link targets above. */}
@@ -344,7 +344,7 @@ export function MainNav({
                   <button
                     type="button"
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                     aria-label={theme === "dark" ? t("switchToLightMode") : t("switchToDarkMode")}
                   >
                     {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -352,7 +352,7 @@ export function MainNav({
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                     aria-label={tCommon("switchLang")}
                   >
                     <Languages className="h-4 w-4" />
@@ -361,7 +361,7 @@ export function MainNav({
                   <button
                     type="button"
                     onClick={() => setShowLogoutConfirm(true)}
-                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>{t("exit")}</span>
@@ -382,7 +382,7 @@ export function MainNav({
                 <Link
                   href="/register"
                   onClick={() => setOpen(false)}
-                  className="block rounded-md border border-zinc-300 px-3 text-center text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="block rounded-md border border-zinc-300 px-3 text-center text-[13px] font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                 >
                   {/* TouchTarget expands the ~30px link hit area to >=44px (RTT-1). */}
                   <TouchTarget as="span">{t("register")}</TouchTarget>
@@ -391,7 +391,7 @@ export function MainNav({
                   <button
                     type="button"
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                     aria-label={theme === "dark" ? t("switchToLightMode") : t("switchToDarkMode")}
                   >
                     {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -399,7 +399,7 @@ export function MainNav({
                   <button
                     type="button"
                     onClick={toggleLocale}
-                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
                     aria-label={tCommon("switchLang")}
                   >
                     <Languages className="h-4 w-4" />

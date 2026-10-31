@@ -101,12 +101,16 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
+      {/* Backdrop — surface-overlay token (theme-aware) */}
+      <div
+        className="absolute inset-0 bg-surface-overlay"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
       {/* Dialog — capped to the viewport; the body scrolls, header/actions stay visible */}
       <div
         ref={dialogRef}
-        className={`relative flex ${dialogHeightClass} w-full ${dialogSizeClass} flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card ${dialogPaddingClass} shadow-xl dark:border-surface-border dark:bg-surface-card`}
+        className={`relative flex ${dialogHeightClass} w-full ${dialogSizeClass} flex-col overflow-hidden overscroll-contain rounded-lg border border-surface-border bg-surface-card ${dialogPaddingClass} shadow-xl dark:border-surface-border dark:bg-surface-card`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -120,8 +124,8 @@ export function Modal({
           <button
             type="button"
             onClick={handleClose}
-            className="ml-auto cursor-pointer rounded-md p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
             aria-label={closeLabel || tCommon("close")}
+            className="ml-auto cursor-pointer rounded-md p-1 text-zinc-500 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-zinc-400 dark:hover:text-zinc-300"
           >
             <svg
               className="h-5 w-5"

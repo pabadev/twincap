@@ -109,7 +109,7 @@ export function AbonoForm({
       ref={formRef}
       action={formAction}
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-zinc-800"
+      className="space-y-3 rounded-md border border-surface-border bg-surface-bg p-4 dark:border-zinc-700 dark:bg-surface-card"
     >
       <IdempotencyField />
       <input type="hidden" name="tzOffset" value={new Date().getTimezoneOffset()} />

@@ -772,7 +772,7 @@ export function SaleForm({
                           className={`px-3 py-2 text-sm ${comboAvailable ? "cursor-pointer" : "cursor-not-allowed opacity-50"} ${
                             isActive
                               ? "bg-primary/10 text-primary"
-                              : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                              : "text-zinc-700 hover:bg-surface-hover dark:text-zinc-300 dark:hover:bg-surface-hover"
                           } ${inCart ? "italic" : ""}`}
                         >
                           <span>{item.name}</span>
@@ -995,7 +995,7 @@ export function SaleForm({
                           />
                         </div>
                         {item.formulaVersions.length > 0 && (
-                          <div className="mt-2 space-y-2 rounded-md bg-zinc-100 p-2 dark:bg-zinc-800">
+                          <div className="mt-2 space-y-2 rounded-md bg-surface-card p-2 dark:bg-surface-card">
                             <div>
                               <Select
                                 id={`formula-version-${idx}`}
@@ -1129,7 +1129,7 @@ export function SaleForm({
                           </div>
                         )}
                         {selectedComboVersion && (
-                          <div className="mt-2 rounded-md bg-zinc-100 p-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                          <div className="mt-2 rounded-md bg-surface-card p-2 text-xs text-zinc-600 dark:bg-surface-card dark:text-zinc-300">
                             <div className="flex items-center justify-between gap-2">
                               <p className="font-medium">
                                 {t("comboUsed", {

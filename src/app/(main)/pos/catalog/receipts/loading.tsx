@@ -39,7 +39,7 @@ export default function ReceiptHistoryLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-surface-card"
           >
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">

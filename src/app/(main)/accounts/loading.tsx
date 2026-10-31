@@ -12,7 +12,7 @@ export default function AccountsLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-lg border border-surface-border bg-surface-card px-4 py-3 dark:border-zinc-700 dark:bg-surface-card"
           >
             <Skeleton className="mb-2 h-5 w-40" />
             <div className="space-y-2">

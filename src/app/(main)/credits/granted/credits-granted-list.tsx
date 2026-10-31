@@ -152,7 +152,7 @@ export function CreditsGrantedList({
               onClick={() => setFiltersOpen((v) => !v)}
               aria-expanded={filtersOpen}
               aria-controls="credits-granted-filters"
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
             >
               <SlidersHorizontal className="h-4 w-4" />
               {t("filters")}
@@ -180,7 +180,7 @@ export function CreditsGrantedList({
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
                   />
                 </div>
                 <div>
@@ -195,7 +195,7 @@ export function CreditsGrantedList({
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                    className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
                   />
                 </div>
                 <div>
@@ -255,7 +255,7 @@ export function CreditsGrantedList({
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -270,7 +270,7 @@ export function CreditsGrantedList({
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
               />
             </div>
             <div>
@@ -345,13 +345,13 @@ export function CreditsGrantedList({
                   key={credit.id}
                   id={`credit-${credit.id}`}
                   data-credit-id={credit.id}
-                  className={`flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card transition-colors dark:border-zinc-700 dark:bg-zinc-900 ${isDimmed ? "opacity-60" : ""} ${highlightActive === credit.id ? "animate-pulse bg-amber-100 ring-2 ring-amber-400 motion-reduce:animate-none dark:bg-amber-950" : ""}`}
+                  className={`flex h-full flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-card transition-colors dark:border-zinc-700 dark:bg-surface-card ${isDimmed ? "opacity-60" : ""} ${highlightActive === credit.id ? "animate-pulse bg-amber-100 ring-2 ring-amber-400 motion-reduce:animate-none dark:bg-amber-950" : ""}`}
                 >
                   {/* Beta feedback: the collapsed card follows the Movements
                       card format — row 1 identity + chevron, then label/value
                       rows, then a bordered footer with count + actions. */}
                   <div
-                    className="flex-1 cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-zinc-800"
+                    className="flex-1 cursor-pointer px-4 py-3 hover:bg-surface-bg dark:hover:bg-surface-hover"
                     onClick={() => setExpandedId(isExpanded ? null : credit.id)}
                   >
                     <div className="flex items-center justify-between gap-2">

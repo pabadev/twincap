@@ -85,7 +85,7 @@ export default async function AccountsPage() {
                   card's top-right corner (z-10, absolute) so it never adds a
                   row and keeps every card the same height in the grid. */}
                 {account.isFixed && (
-                  <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                  <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-surface-card dark:text-zinc-400">
                     {t("fixed")}
                   </span>
                 )}

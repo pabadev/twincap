@@ -24,9 +24,9 @@ export default async function HelpPage() {
   const tLanding = await getT("Landing");
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-zinc-950">
+    <div className="flex min-h-screen flex-col bg-surface-bg dark:bg-surface-bg">
       {/* Header */}
-      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-zinc-900">
+      <header className="border-b border-surface-border bg-surface-card dark:border-zinc-800 dark:bg-surface-card">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
           <Link
             href="/"
@@ -40,7 +40,7 @@ export default async function HelpPage() {
 
       {/* Content */}
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        <div className="mx-auto w-full max-w-prose rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm sm:p-8 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="mx-auto w-full max-w-prose rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm sm:p-8 dark:border-zinc-700 dark:bg-surface-card">
           {/* Title */}
           <header className="mb-8 border-b border-surface-border pb-6 dark:border-zinc-700">
             <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-white">
@@ -60,7 +60,7 @@ export default async function HelpPage() {
                   key={qKey}
                   className="group rounded-md border border-zinc-200 dark:border-zinc-700"
                 >
-                  <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:text-white dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-surface-card dark:text-white dark:hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
                     {tHelp(qKey)}
                   </summary>
                   <div className="border-t border-zinc-200 px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
@@ -72,7 +72,7 @@ export default async function HelpPage() {
           </section>
 
           {/* Contact support */}
-          <section className="mt-8 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+          <section className="mt-8 rounded-md border border-zinc-200 bg-surface-header p-4 dark:border-zinc-700 dark:bg-surface-card/50">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               {tHelp("contactTitle")}
             </h2>
@@ -98,7 +98,7 @@ export default async function HelpPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-surface-border bg-surface-card py-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <footer className="border-t border-surface-border bg-surface-card py-6 dark:border-zinc-800 dark:bg-surface-card">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 px-4 text-xs text-zinc-600 sm:flex-row sm:px-6 dark:text-zinc-400">
           <span>© {new Date().getFullYear()} TwinCap</span>
           <nav
