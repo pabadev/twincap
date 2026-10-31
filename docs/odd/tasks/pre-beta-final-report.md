@@ -1,0 +1,103 @@
+# Ronda final pre-beta — Matriz de hallazgos (§69) y Reporte final (§73)
+
+> Cierre del mandato `docs/Prompt pre-beta.md` (2026-09-30 → 2026-10-31).
+> Las evidencias puntuales de cada fase viven en `docs/AUDIT-AND-PLAN.md` (líneas
+> de continuidad por fecha) y los trackers de `docs/odd/tasks/`.
+
+---
+
+## §69 — Matriz final de hallazgos
+
+| ID   | Hallazgo                                                                                                                                                                                 | Severidad | Estado                              | Evidencia                                                                       | Corrección                                                                                                                     | Test                                                    | Fuera de beta                             |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------------- |
+| H-1  | Créditos sale-born: la edición de capital fallaba desde R9 (`Required movement not found` → toast engañoso)                                                                              | P1        | ✅ Corregido                        | Tracker `beta-feedback-round.md` §2026-10-19 RCA repro Mongo real               | Cascada documentada EXC-2: updateSale sale-born solo edita el agregado; `editPrincipal` RECHAZA con `error.saleBornCreditEdit` | `update-sale.test` FOUNDER REPRO + suite sales          | —                                         |
+| H-2  | UX-6 dinero: "últimos 2 dígitos como decimales" en USD (minor units invisibles)                                                                                                          | P1        | ✅ Mitigado                         | RCA en tracker ampliado (2 patas: type=number reshape + convención minor units) | `MoneyInput` (preview "Se registrará:" = valor real registrado) + `parseMoneyInput` server-side en 26 lecturas                 | `money-input.test` 13 casos; E2E P4                     | UX-6b (mayor-units) decision del fundador |
+| H-3  | Dashboard mostraba el mes SIGUIENTE a fin de mes de noche (ventana civil derivada del reloj UTC del servidor)                                                                            | P1        | ✅ Corregido                        | Captura fundador + RCA en tracker 2026-09-30                                    | Cookie `CLIENT_TZ_OFFSET` + `computeDashboardWindow` server                                                                    | `client-tz.test` +5                                     | —                                         |
+| H-4  | CI E2E roja post-push: asserts desincronizados del copy/layout nuevo (passaron specs nunca corridos contra la ronda)                                                                     | P1        | ✅ Corregido                        | RCA 2026-10-26 (3 fallos, commits `2c8ae06`/CI run `40417752887`)               | Fix de asserts + webServer timeout 900s; lección §69: correr el pack antes del push                                            | Pack E2E local 55/55 (51.6 min) + CI verde              | —                                         |
+| H-5  | UX-7: el TAB contaba como filtro → full-fetch siempre y sin paginación en Personales/Negocio (reporte del fundador)                                                                      | P2        | ✅ Corregido                        | Auditoría `movements-list.tsx:128` + repro visual con 60 datos bulk             | Paginación scope server-side (`findPaged(context)`), tab sale del `activeFilterCount`; commits `0a335bd`                       | `movements-list.test` +3; `movement-repository.test` +2 | Resto de listas sin paginar (H-11)        |
+| H-6  | FAB tapaba texto en todas las vistas (reporte del fundador)                                                                                                                              | P2        | ✅ Corregido                        | Capturas @375 + `layout.tsx` sin padding reservado                              | Padding `pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-[6.5rem]`; commit `2b7b893`                                       | Visual @375                                             | —                                         |
+| H-7  | Resumen: Filtros arriba de la línea de tabs (distinto de Movements; reporte del fundador)                                                                                                | P3        | ✅ Corregido                        | `dashboard-content.tsx` diseño previo                                           | Botón movido en una fila tras los tabs; commit `ca53146`                                                                       | `dashboard-content.test` +3 (orden DOM + aria)          | —                                         |
+| H-8  | i18n: `messages/en.json` con valores EN ESPAÑOL en claves visibles (`invoiceAnother`, `saleRegisteredTitle`)                                                                             | P1        | ⏳ PENDIENTE aviso fundador (R3.13) | Hallazgo 2026-10-26 en tracker                                                  | Fix de 2 valores es/en — trivial, requiere orden del fundador                                                                  | i18n parity suite existe                                | —                                         |
+| H-9  | Flakiness documentado: replset setup clash puntual (batch stress, setTimeout) y corridas serpenteantes CI-*                                                                              | P3        | 📋 Aceptado (registro)              | §69-obs primera corrida stress (2026-10-31; retry limpio 51/51)                 | Patrón conocido: correr batch limpio antes de declarar; CI retries inherent                                                    | Batch limpio documentado                                | —                                         |
+| H-10 | Deuda estructural: listas no-paginadas (sales/clients/credits/payables/transfers/catalog) + full-fetch de dashboard/analytics                                                            | P3        | 📋 Documentada                      | Auditoría 2026-10-31 (`grep findByWorkspaceId` across app)                      | Fuera de alcance de la ronda; patrón de paginación por scope ya existe para extender                                           | —                                                       | Sí (hasta escala de datos la exija)       |
+| H-11 | Pulido visual minor: selects truncados @1280; header sticky tapa títulos al anclar (scroll-margin-top)                                                                                   | P3        | 📋 Documentada                      | Revisión visual 2026-10-31 (punto 2)                                            | —                                                                                                                              | —                                                       | Sí                                        |
+| H-12 | Baseline de duración de tests recalibrado por cambio de hardware del fundador (HP14 → ThinkPad T14 Gen 2)                                                                                | P3        | ✅ Cerrado                          | §69-obs: 21–32 min → ~4.2 min; causa aportada por el fundador                   | Baselines actualizados en tracker                                                                                              | Suite 1921/1921 (~253s)                                 | —                                         |
+| H-13 | `.env.e2e` ausente localmente (gitignored, el canon vive en CI)                                                                                                                          | P3        | ✅ Resuelto local                   | fallo del loader en corrida local                                               | Recreado espejando el job E2E de CI                                                                                            | pack local 9/9                                          | —                                         |
+| H-14 | Credenciales Atlas aparecieron en salidas de terminal locales durante la sesión                                                                                                          | P3        | ⚠️ Rotación sugerida                | Transcript de sesión (`.env.local` no está commiteado)                          | Sugerida rotación de la credencial de DB user; riesgo menor (máquina local)                                                    | —                                                       | —                                         |
+| H-15 | Página sale detail / business analytics muestran "Faltan costos"/"costo desconocido" honestos (comportamiento verificado, NO hallazgo abierto — re-afirmación del contrato P1 de costos) | —         | ✅ VERificado por E2E-12            | E2E `business-profitability.spec`                                               | —                                                                                                                              | E2E-12                                                  | —                                         |
+
+**Saldo:** 0 hallazgos P0 abiertos. 1 P1 pendiente de aviso del fundador (H-8, fix trivial). El resto: cerrados, documentados o post-beta explícitos.
+
+---
+
+## §73 — Reporte final
+
+### A. Resumen ejecutivo
+
+- **¿Qué tan cerca está TwinCap de beta?** A un paso de cierre formal: todos los gates técnicos del mandato están completados y verificados (tsc, lint, build, suite completa 1921/1921, pack E2E 55/55, aislamiento, backup/restore con prueba de uso, índices de producción, revisión visual responsive). Quedan reskeys humanos del founder: app-check visual con SUS datos, comprobación tema claro/oscuro de la landing, y el H-8 (2 claves i18n).
+- **¿Qué estaba pendiente?** (1) re-corrida de stress suites + suite completa; (2) pack E2E + revisión visual responsive; Fases 3–6: aislamiento, backup/restore, índices Atlas, matriz + reporte. + 3 ajustes del fundador solicitados en el camino.
+- **¿Qué corregiste?** W1/W2 de asserts E2E, el deferred suite failure (3 stress timeouts ambientales), H-1 (sale-born editing, latente desde R9), H-3 (tz), H-5/H-6/H-7 (sugerencias del fundador → código), UX-6 en su pata de preview honesto + parser server-side.
+- **¿Qué queda?** Fase 6 (este documento); tema claro/oscuro landing (tracker propio); H-8; UX-6b (decisión mayor-units); deuda H-10 post-beta.
+- **¿Qué bloquea beta?** Ningún gate técnico. Los 3 reskeys arriba son decisiones/acciones humanas del fundador.
+
+### B. Hallazgos
+
+Ver matriz §69 (H-1..H-15).
+
+### C. Cambios y commits de cierre
+
+- `2b7b893` fix(layout) FAB zone · `0a335bd` feat(movements) scope pagination · `ca53146` fix(dashboard) Filtros under tabs · `d5fe340` + `d011241` docs · (ronda completa previa: `e4e3dab` UX-1..7+DOM-1, `2c8ae06` CI fixes, series de nicho de rentabilidad P0–P4).
+- 12 archivos de código + 5 de documentación en el cierre (2026-10-31).
+
+### D. Tests ejecutados (invención cero; hechos con duración real)
+
+| Corrida                                                            | Resultado | Duración |
+| ------------------------------------------------------------------ | --------- | -------- |
+| Suite completa `pnpm test` (200 archivos)                          | 1921/1921 | ~253s    |
+| Batch stress (3 suites)                                            | 51/51     | ~63s     |
+| Focused post-ajustes (9 archivos)                                  | 74/74     | ~17s     |
+| Focused repos/list/dashboard push                                  | 37/37     | ~6s      |
+| E2E `dashboard-isolation` (Playwright)                             | 5/5       | 35.8s    |
+| E2E targeted (dashboard-period + rejection-paths + measure-scroll) | 9/9       | 1.8m     |
+| E2E pack completo en CI                                            | 55/55     | 4m56s    |
+| CI Quality                                                         | ✅        | 4m32s    |
+
+### E. E2E con cobertura real nueva (esta ronda)
+
+- `business-profitability.spec.ts` (E2E-11 valoración→venta→detalle inmutable→período; E2E-12 servicio, costo desconocido, crédito, gastos)
+- `dashboard-period.spec.ts` (comparativas ▲/▼ por moneda, selector Mes/Año `?periodo=`, alertas gasto atípico y saldo negativo)
+- `dashboard-isolation.spec.ts` (incluye el test explícito de NO-fuga cross-tenant)
+- `rejection-paths.spec.ts` (P3 oversell, P4 overpay, P5 Volver a facturar, P6 toast exact-once)
+- `measure-scroll.spec.ts`, `pos-acceptance.spec.ts` (E2E-01..10), `credits-pos.spec.ts`, `negative-balance.spec.ts`, `audit-sweep.spec.ts`, `multi-currency.spec.ts`
+
+### F. Producción (verificado vs no verificable)
+
+- **Verificado contra el cluster (read-only o procedimiento establecido):** 6 contratos de índices Atlas OK; backup 26 colecciones/2903 docs; restore en DB temporaria con verificación 26/26 + prueba de uso (registro + workspace + membership creados contra lo restaurado; datos restaurados intactos); cleanup ejecutado.
+- **No verificado por el agente:** app-check visual del fundador sobre producción (paso del runbook); deploy de Vercel de los últimos commits (el CI cubre build; el deploy automático por push a master es known-verde en el historial); tema claro/oscuro de la landing.
+- **Depende de externo:** Vercel, GitHub Actions, Atlas M0 (sin backups automáticos — runbook manual semanal vigente).
+
+### G. Documentación actualizada
+
+- `docs/AUDIT-AND-PLAN.md` (líneas de continuidad por fecha; pendientes (1)(2) y Fases 3–5 cerrados con evidencia)
+- `docs/odd/tasks/beta-feedback-round.md` (contrato UX-7 actualizado)
+- `docs/PROJECT-RULES.md` §8.1 (matriz de cuentas: `updateSale`, términos de crédito, `receiveInventoryReceipt`)
+- `docs/BACKUP-RESTORE-RUNBOOK.md` — vigente, sin cambios (ciclo ejecutado tal cual)
+- Este archivo (`docs/odd/tasks/pre-beta-final-report.md`) — §69 + §73
+
+### H. Pendientes post-beta (explícitos)
+
+1. **COGS evolucionado** (más allá del costo promedio móvil + costo desconocido explícito de esta ronda).
+2. **Compras como módulo completo** (prohibido inventarlo hasta ahora).
+3. **Paginación del resto de listas** + full-fetch por ventanas en dashboard/analytics (H-10).
+4. **Conversión FX** entre monedas (hoy agregado por moneda sin conversiones).
+5. **UX-6b:** convención mayor-units para monedas exp≥2 (decisión del fundador).
+6. **Monitoreo/prod hardening** del ciclo post-beta (alert >30/min, SIEM externo) —monitor verificado, observabilidad de negocio sin hacer.
+
+---
+
+## Pendientes de cierre FORMAL (acciones humanas del fundador)
+
+1. **App-check visual** con sus datos reales tras el restore (runbook §3.2 ya ejecutado técnicamente).
+2. **Comprobar tema claro/oscuro + CTAs** de la landing (tracker `landing-page-refresh.md`).
+3. **Aprobar H-8** (fix de 2 claves i18n) — R3.13.
+4. Declarar el cierre formal de la ronda cuando lo considere completo.

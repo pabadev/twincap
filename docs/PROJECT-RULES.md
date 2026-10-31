@@ -131,30 +131,32 @@ src/
 
 ### 8.1. Matriz de cuentas afectadas (mínimo obligatorio)
 
-| Operación                           | Cuenta(s) afectada(s)                                      |
-| ----------------------------------- | ---------------------------------------------------------- |
-| createMovement                      | cuenta                                                     |
-| updateMovement amount               | cuenta                                                     |
-| updateMovement account A→B          | **A + B**                                                  |
-| deleteMovement                      | cuenta                                                     |
-| createTransfer                      | origen + destino                                           |
-| updateTransfer sourceAmount         | origen                                                     |
-| updateTransfer destinationAmount    | destino                                                    |
-| updateTransfer source + destination | origen + destino                                           |
-| updateTransfer account change       | no aplica al diseño actual (no se permite cambiar cuentas) |
-| deleteTransfer                      | origen + destino                                           |
-| createSale                          | cuenta                                                     |
-| updateSale                          | no aplica (no existe use case updateSale)                  |
-| deleteSale                          | cuenta(s) de los movements eliminados (venta + abonos)     |
-| createAbono                         | cuenta                                                     |
-| editAbono                           | cuenta                                                     |
-| deleteAbono                         | cuenta                                                     |
-| editPrincipal                       | cuenta                                                     |
-| deleteCreditReceived                | cuenta(s) afectadas                                        |
-| deleteCreditGranted                 | cuenta(s) afectadas                                        |
-| deletePayable                       | cuenta(s) afectadas                                        |
-| writeOff                            | cuenta afectada                                            |
-| cualquier operación nueva           | debe añadirse a la matriz                                  |
+| Operación                                              | Cuenta(s) afectada(s)                                                                              |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| createMovement                                         | cuenta                                                                                             |
+| updateMovement amount                                  | cuenta                                                                                             |
+| updateMovement account A→B                             | **A + B**                                                                                          |
+| deleteMovement                                         | cuenta                                                                                             |
+| createTransfer                                         | origen + destino                                                                                   |
+| updateTransfer sourceAmount                            | origen                                                                                             |
+| updateTransfer destinationAmount                       | destino                                                                                            |
+| updateTransfer source + destination                    | origen + destino                                                                                   |
+| updateTransfer account change                          | no aplica al diseño actual (no se permite cambiar cuentas)                                         |
+| deleteTransfer                                         | origen + destino                                                                                   |
+| createSale                                             | cuenta                                                                                             |
+| deleteSale                                             | cuenta(s) de los movements eliminados (venta + abonos)                                             |
+| createAbono                                            | cuenta                                                                                             |
+| editAbono                                              | cuenta                                                                                             |
+| deleteAbono                                            | cuenta                                                                                             |
+| editPrincipal                                          | cuenta                                                                                             |
+| deleteCreditReceived                                   | cuenta(s) afectadas                                                                                |
+| deleteCreditGranted                                    | cuenta(s) afectadas                                                                                |
+| deletePayable                                          | cuenta(s) afectadas                                                                                |
+| writeOff                                               | cuenta afectada                                                                                    |
+| updateSale (DOM-1, EXC-2)                              | cuenta(s) del movimiento `salePayment` (contado) o del crédito sale-born (a crédito); touchAccount |
+| editCreditGranted/Received (capital + términos, DOM-1) | cuenta (touchAccount en la cascada)                                                                |
+| receiveInventoryReceipt                                | cuenta de pago (touchAccount; movimiento solo si pago hoy > 0 — a crédito queda payable)           |
+| cualquier operación nueva                              | debe añadirse a la matriz                                                                          |
 
 ### 8.2. Prohibición de Promise.all con ClientSession
 
