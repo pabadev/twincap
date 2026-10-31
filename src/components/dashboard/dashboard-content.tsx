@@ -270,32 +270,35 @@ export function DashboardContent({
             <MessageSquare className="h-4 w-4" />
             {tFeedback("openFeedback")}
           </button>
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            aria-controls="dashboard-filters"
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            {t("filters")}
-            {activeFilterCount > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
         </div>
       </div>
-      {activeFilterCount > 0 && (
-        <div className="-mt-4">
-          <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filtersActive")}</span>
-        </div>
-      )}
 
       {/* ── Scope tabs — always visible (foundador 2026-10-31): same primary
            context as Movements; secondary filters stay behind Filtros ── */}
       <DashboardScopeTabs filters={filters} onFiltersChange={handleFiltersChange} />
+
+      {/* ── Filtros disclosure — founder review (2026-10-31): sits BELOW the
+           tabs line (same composition as Movements), out of the header. ── */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          aria-controls="dashboard-filters"
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {t("filters")}
+          {activeFilterCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {activeFilterCount > 0 && (
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filtersActive")}</span>
+        )}
+      </div>
 
       {/* Onboarding banner — shown only while the user still has just the
           seeded fixed Cash account. */}

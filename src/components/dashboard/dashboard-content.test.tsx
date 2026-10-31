@@ -48,7 +48,9 @@ vi.mock("../../app/(main)/dashboard/actions", () => ({
 // Presentational children are irrelevant to the toggle semantics; stubbed so
 // the render stays stable and focused on the N3 header controls (S9.x).
 vi.mock("./dashboard-filters", () => ({
-  DashboardScopeTabs: () => null,
+  // marker keeps the DOM-order contract testable: the founder review moves the
+  // Filtros button BELOW the scope tabs line (same composition as Movements).
+  DashboardScopeTabs: () => <div data-testid="dashboard-scope-tabs" />,
   DashboardSecondaryFilters: () => null,
 }));
 vi.mock("./summary-cards", () => ({ SummaryCards: () => null }));
@@ -115,6 +117,51 @@ function toggleButton(container: HTMLElement, label: string): HTMLButtonElement 
   if (!button) throw new Error(`toggle button "${label}" not found`);
   return button as HTMLButtonElement;
 }
+
+describe("DashboardContent Filtros placement (foundator review 2026-10-31)", () => {
+  it("sits the Filtros disclosure BELOW the scope tabs line (Movements composition)", () => {
+    const { container } = mount(<DashboardContent {...baseProps} />);
+    const tabs = container.querySelector('[data-testid="dashboard-scope-tabs"]');
+    const filtersButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-controls="dashboard-filters"]',
+    );
+    // DOM order = visual order: the tabs marker must appear earlier in the
+    // document order than the Filtros button.
+    expect(tabs).not.toBeNull();
+    expect(filtersButton).not.toBeNull();
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT);
+    let seenTabs = false;
+    while (walker.nextNode()) {
+      if (walker.currentNode === tabs) seenTabs = true;
+      if (walker.currentNode === filtersButton) break;
+    }
+    expect(seenTabs).toBe(true);
+  });
+
+  it("keeps the aria semantics intact (expanded + controlled panel id)", () => {
+    const { container } = mount(<DashboardContent {...baseProps} />);
+    const filtersButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-controls="dashboard-filters"]',
+    );
+    expect(filtersButton?.getAttribute("aria-expanded")).toBe("false");
+
+    act(() => {
+      filtersButton!.click();
+    });
+    const panel = container.querySelector("#dashboard-filters");
+    expect(panel).not.toBeNull();
+    const expandedAgain = container.querySelector<HTMLButtonElement>(
+      'button[aria-controls="dashboard-filters"]',
+    );
+    expect(expandedAgain?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("shows the active-filters hint next to the badge only when filters are active", () => {
+    const { container } = mount(<DashboardContent {...baseProps} />);
+    // No filters set (defaults "all") → no hint text.
+    expect(container.textContent).not.toContain("filtersActive");
+  });
+});
 
 describe("DashboardContent chart toggles (R-9/R-10a, H-18)", () => {
   it("provides a direct route from the summary to business profitability", () => {
