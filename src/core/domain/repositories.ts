@@ -169,12 +169,15 @@ export interface MovementRepository {
   /**
    * Cursor-based paginated query across all workspace movements.
    * @param cursor Optional `{ date, createdAt, id }` of the last item from the previous page.
+   * @param context Optional `MovementContext` filter: when set, only movements of
+   *   that business context (the UX-7 scope tab source of truth) page server-side.
    * @returns `{ items, nextCursor }` — `nextCursor` is `null` when no more pages.
    */
   findPaged(
     workspaceId: string,
     limit: number,
     cursor?: { date: Date; createdAt: Date; id: string },
+    context?: "Personal" | "Business",
   ): Promise<{ items: Movement[]; nextCursor: { date: Date; createdAt: Date; id: string } | null }>;
   /**
    * Persist a new movement.

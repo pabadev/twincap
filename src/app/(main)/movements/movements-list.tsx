@@ -67,6 +67,38 @@ export function MovementsList({
   // restored server-side by page.tsx on navigation/reload.
   const [tab, setTab] = useState<"all" | "Personal" | "Business">(initialTab);
 
+  // Founder review (2026-10-31): switching tabs (without other subfilters)
+  // rerequests the SCOPE's first page server-side — each tab is now its own
+  // server-paged stream. A sequence guard ignores stale responses from quick
+  // tab toggles (the tab switch itself uses history.replaceState: the client
+  // is the only place this refetch can happen).
+  const [scopeSwitching, setScopeSwitching] = useState(false);
+  const scopeSeqRef = useRef(0);
+  async function loadScopeFirstPage(next: "all" | "Personal" | "Business") {
+    const seq = ++scopeSeqRef.current;
+    setScopeSwitching(true);
+    try {
+      const result = await listMovementsPagedAction(
+        PAGE_SIZE,
+        undefined,
+        next !== "all" ? next : undefined,
+      );
+      if (scopeSeqRef.current !== seq) return;
+      setMovements(result.items);
+      setNextCursor(result.nextCursor);
+      setFullData(null);
+    } catch {
+      if (scopeSeqRef.current !== seq) return;
+      // Fail-open: clear the accumulated list rather than lie — same policy as
+      // the R5-B full-fetch failure path shows an empty state honestly.
+      setMovements([]);
+      setNextCursor(null);
+      setFullData(null);
+    } finally {
+      if (scopeSeqRef.current === seq) setScopeSwitching(false);
+    }
+  }
+
   // Traveling-filter contract (UX-5 §4.3 pattern): persist the scope in the
   // URL via history.replaceState — no App Router navigation, no server
   // re-render, no refetch. page.tsx restores it on reload/navigation.
@@ -78,6 +110,17 @@ export function MovementsList({
     else params.set("ambito", next);
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    // Narrowing subfilters keep the full-fetch view (tab filter applies
+    // client-side over fullData); the paged view refetches the new scope.
+    if (
+      selectedAccountId === "all" &&
+      selectedType === "all" &&
+      selectedCategoryId === "all" &&
+      !dateFrom &&
+      !dateTo
+    ) {
+      void loadScopeFirstPage(next);
+    }
   }
   const [selectedType, setSelectedType] = useState<"all" | "income" | "expense">("all");
   const [selectedCategoryId, setSelectedCategoryId] = useState("all");
@@ -124,15 +167,18 @@ export function MovementsList({
   }, [initialMovements, initialCursor]);
 
   const activeFilterCount = useMemo(() => {
+    // Founder review (2026-10-31): the TAB is NOT a filter anymore — each tab
+    // pages over its own server-side scope (findPaged context) instead of
+    // triggering the full-workspace fetch. Only real narrowing filters
+    // (account/type/category/dates) still use the full-fetch contract (R5-B).
     let count = 0;
-    if (tab !== "all") count++;
     if (selectedAccountId !== "all") count++;
     if (selectedType !== "all") count++;
     if (selectedCategoryId !== "all") count++;
     if (dateFrom) count++;
     if (dateTo) count++;
     return count;
-  }, [tab, selectedAccountId, selectedType, selectedCategoryId, dateFrom, dateTo]);
+  }, [selectedAccountId, selectedType, selectedCategoryId, dateFrom, dateTo]);
 
   const filtersActive = activeFilterCount > 0;
 
@@ -169,13 +215,19 @@ export function MovementsList({
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const result = await listMovementsPagedAction(PAGE_SIZE, nextCursor);
+      // UX-7 scope (foundator 2026-10-31): pages belong to the ACTIVE tab's
+      // context (server-side findPaged filter); "all" pages the full stream.
+      const result = await listMovementsPagedAction(
+        PAGE_SIZE,
+        nextCursor,
+        tab !== "all" ? tab : undefined,
+      );
       setMovements((prev) => [...prev, ...result.items]);
       setNextCursor(result.nextCursor);
     } finally {
       setLoadingMore(false);
     }
-  }, [nextCursor, loadingMore]);
+  }, [nextCursor, loadingMore, tab]);
 
   // R13-H3: export the FULL filtered set (server-side query) using the current
   // client-side filter state, then trigger a browser download.
@@ -434,13 +486,14 @@ export function MovementsList({
         />
       ) : (
         <>
-          {filtersLoading && (
+          {(filtersLoading || scopeSwitching) && (
             <p className="flex items-center justify-center gap-2 py-6 text-sm text-zinc-600 dark:text-zinc-400">
               <Icon icon={Loader2} size="sm" className="animate-spin" />
               {tCommon("loading")}
             </p>
           )}
           {!filtersLoading &&
+            !scopeSwitching &&
             (orderedMovements.length === 0 ? (
               <EmptyState
                 icon={<Icon icon={ArrowLeftRight} size="xl" />}

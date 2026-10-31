@@ -58,6 +58,7 @@ export class MongoMovementRepository implements MovementRepository {
     workspaceId: string,
     limit: number,
     cursor?: { date: Date; createdAt: Date; id: string },
+    context?: "Personal" | "Business",
   ): Promise<{
     items: Movement[];
     nextCursor: { date: Date; createdAt: Date; id: string } | null;
@@ -65,6 +66,12 @@ export class MongoMovementRepository implements MovementRepository {
     const query: Record<string, unknown> = {
       workspaceId: new Types.ObjectId(workspaceId),
     };
+
+    // UX-7 scope tab (foundator 2026-10-31): server-side context filter so each
+    // tab pages over its own subset instead of the full workspace stream.
+    if (context) {
+      query.context = context;
+    }
 
     if (cursor) {
       // Compound cursor: { date: -1, createdAt: -1 } sort

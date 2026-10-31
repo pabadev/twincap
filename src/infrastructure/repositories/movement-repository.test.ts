@@ -171,6 +171,32 @@ describe("MongoMovementRepository orphan guard (R8)", () => {
     expect(nextCursor).toBeDefined();
   });
 
+  // UX-7 scope (foundator 2026-10-31): each tab pages server-side over its own
+  // MovementContext subset. No context → the full workspace stream (unchanged).
+  it("findPaged filters by scope context when provided", async () => {
+    const account = fakeAccountDoc();
+    const category = fakeCategoryDoc();
+    const personal = fakeMovementDoc({
+      accountId: account._id,
+      categoryId: category._id,
+      context: "Personal",
+    });
+
+    movementFind.mockImplementation(() => pagedExecResult([personal], 10));
+    categoryFind.mockImplementation(() => execResult([category]));
+    accountFind.mockImplementation(() => execResult([account]));
+
+    const { items } = await repo.findPaged(UID, 10, undefined, "Business");
+    expect(movementFind.mock.calls[0][0].context).toBe("Business");
+    expect(items).toHaveLength(1);
+
+    // "all" (no scope) must NOT constrain the query.
+    movementFind.mockClear();
+    movementFind.mockImplementation(() => pagedExecResult([personal], 10));
+    await repo.findPaged(UID, 10, undefined, undefined);
+    expect(movementFind.mock.calls[0][0].context).toBeUndefined();
+  });
+
   it("uses the complete sort tuple in its cursor when timestamps tie", async () => {
     const account = fakeAccountDoc();
     const category = fakeCategoryDoc();

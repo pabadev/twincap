@@ -11,6 +11,7 @@ export async function listMovementsPaged(
   limit: number,
   movementRepo: MovementRepository,
   cursor?: { date: Date; createdAt: Date; id: string },
+  context?: "Personal" | "Business",
 ): Promise<PagedMovementsResult> {
-  return movementRepo.findPaged(userId, limit, cursor);
+  return movementRepo.findPaged(userId, limit, cursor, context);
 }

@@ -24,9 +24,21 @@ vi.mock("../global-movement-provider", () => ({
 }));
 
 vi.mock("./actions", () => ({
-  listAccountsAction: async () => [],
+  // One account so the scope tabs render (accounts.length > 0 gate); the load
+  // more / scope pagination tests never read its fields beyond id/name/currency.
+  listAccountsAction: async () => [
+    {
+      id: "acc-1",
+      workspaceId: "ws-1",
+      name: "Caja",
+      currency: "COP",
+      isFixed: true,
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+    },
+  ],
   listCategoriesAction: async () => [],
   listMovementsPagedAction: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  listAllMovementsAction: vi.fn().mockResolvedValue([]),
   exportMovementsCsvAction: async () => null,
 }));
 
@@ -164,5 +176,81 @@ describe("MovementsList load more (T5 regression)", () => {
       button!.click();
     });
     expect(mockLoadMore).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MovementsList scope pagination (foundator review 2026-10-31)", () => {
+  const CURSOR = {
+    date: "2026-09-01T00:00:00.000Z",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    id: "m-1",
+  };
+
+  it('pages the ACTIVE tab context server-side ("Personal" scope reaches the action)', async () => {
+    const { listMovementsPagedAction } = await import("./actions");
+    const mock = vi.mocked(listMovementsPagedAction);
+    mock.mockClear();
+    mock.mockResolvedValueOnce({ items: [], nextCursor: null });
+
+    const { container } = mount(
+      <MovementsList initialMovements={[movement()]} nextCursor={CURSOR} initialTab="Personal" />,
+    );
+    const button = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("loadMore"),
+    );
+    act(() => {
+      button!.click();
+    });
+    expect(mock).toHaveBeenCalledWith(50, CURSOR, "Personal");
+  });
+
+  it('switching tabs refetches the new scope first page without the full fetch ("all" falls back)', async () => {
+    const { listMovementsPagedAction, listAllMovementsAction } = await import("./actions");
+    const mockPaged = vi.mocked(listMovementsPagedAction);
+    const mockAll = vi.mocked(listAllMovementsAction as ReturnType<typeof vi.fn>);
+    mockPaged.mockClear();
+    mockAll.mockClear();
+    mockPaged.mockResolvedValue({
+      items: [
+        movement({ id: "p-1", context: "Personal" }),
+        movement({ id: "p-2", context: "Personal" }),
+      ],
+      nextCursor: null,
+    });
+
+    const { container } = mount(
+      <MovementsList initialMovements={[movement()]} nextCursor={null} />,
+    );
+    // Tabs mount after the async accounts fetch resolves (listAccountsAction).
+    await act(async () => {});
+    const personalTab = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ).find((t) => t.textContent?.includes("scopePersonal"));
+    act(() => {
+      personalTab!.click();
+    });
+
+    // Tab switch = ONE scoped first-page request, NO full-workspace fetch.
+    expect(mockPaged).toHaveBeenCalledWith(50, undefined, "Personal");
+    expect(mockAll).not.toHaveBeenCalled();
+  });
+
+  it("switching back to all requests the unscoped stream", async () => {
+    const { listMovementsPagedAction } = await import("./actions");
+    const mock = vi.mocked(listMovementsPagedAction);
+    mock.mockClear();
+    mock.mockResolvedValue({ items: [], nextCursor: null });
+
+    const { container } = mount(
+      <MovementsList initialMovements={[movement()]} nextCursor={null} initialTab="Personal" />,
+    );
+    await act(async () => {});
+    const allTab = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
+      (t) => t.textContent?.includes("scopeAll"),
+    );
+    act(() => {
+      allTab!.click();
+    });
+    expect(mock).toHaveBeenCalledWith(50, undefined, undefined);
   });
 });

@@ -50,6 +50,17 @@ export default async function MovementsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  // Scope tab deep-link (audit 2026-10-31): `?ambito=` validated server-side;
+  // anything else falls back to "all" (same contract as dashboard filters).
+  // Founder review (2026-10-31): the scope also pages SERVER-side — the first
+  // page belongs to the active tab, so deep links load the tab's own pages.
+  const params = await searchParams;
+  const rawTab = typeof params.ambito === "string" ? params.ambito : undefined;
+  const initialTab =
+    rawTab === "Personal" || rawTab === "Business"
+      ? (rawTab as "Personal" | "Business")
+      : undefined;
+
   await connectDb();
   const movementRepo = new MongoMovementRepository();
   const creditReceivedRepo = new MongoCreditReceivedRepository();
@@ -76,7 +87,7 @@ export default async function MovementsPage({
     payableRepo.findByWorkspaceId(user.workspaceId!),
     saleRepo.findByWorkspaceId(user.workspaceId!),
     clientRepo.findByWorkspaceId(user.workspaceId!),
-    listMovementsPaged(user.workspaceId!, PAGE_SIZE, movementRepo),
+    listMovementsPaged(user.workspaceId!, PAGE_SIZE, movementRepo, undefined, initialTab),
     transferRepo.findByWorkspaceId(user.workspaceId!),
     listAccounts(user.workspaceId!, accountRepo),
   ]);
@@ -130,9 +141,7 @@ export default async function MovementsPage({
 
   // Scope tab deep-link (audit 2026-10-31): `?ambito=` validated server-side;
   // anything else falls back to "all" (same contract as dashboard filters).
-  const params = await searchParams;
-  const rawTab = typeof params.ambito === "string" ? params.ambito : undefined;
-  const initialTab = rawTab === "Personal" || rawTab === "Business" ? rawTab : "all";
+  // (initialTab is resolved above so the first page fetch is scope-aware.)
 
   return (
     <MovementsList
