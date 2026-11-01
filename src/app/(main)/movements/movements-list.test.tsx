@@ -73,8 +73,10 @@ function movement(overrides: Partial<SerializedMovement> = {}): SerializedMoveme
 // — stub global fetch and assert the REQUEST URL instead of a server action.
 function stubFetch(respond: { items: SerializedMovement[]; nextCursor: null }) {
   const calls: string[] = [];
-  const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any) => {
-    calls.push(String(input?.url ?? input));
+  const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: URL | RequestInfo) => {
+    calls.push(
+      String(typeof input === "string" ? input : ((input as URL).href ?? (input as Request).url)),
+    );
     return {
       ok: true,
       json: async () => respond,
