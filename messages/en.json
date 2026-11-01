@@ -832,8 +832,8 @@
     "closeSaleDescription": "You have unsaved changes. If you leave now, you will lose the entered data.",
     "continueEditing": "Continue editing",
     "leaveWithoutSaving": "Leave without saving",
-    "saleRegisteredTitle": "Venta registrada",
-    "invoiceAnother": "Volver a facturar"
+    "saleRegisteredTitle": "Sale registered",
+    "invoiceAnother": "Invoice another"
   },
   "Export": {
     "button": "Export CSV",
@@ -1147,7 +1147,16 @@
     "notAvailable": "Not available",
     "needsCost": "Costs missing",
     "incompleteHint": "{count} sales include products without a recorded cost. The amount left is not complete yet.",
-    "plainLanguageNote": "Sales count on the day you make them, even if they have not been paid yet. The result uses expenses you recorded under Business; unrecorded expenses are not deducted. Amounts in different currencies are not combined."
+    "plainLanguageNote": "Sales count on the day you make them, even if they have not been paid yet. The result uses expenses you recorded under Business; unrecorded expenses are not deducted. Amounts in different currencies are not combined.",
+    "presetThisMonth": "This month",
+    "presetLastMonth": "Last month",
+    "presetThisYear": "This year",
+    "presetCustom": "Custom",
+    "businessCardTitle": "Business results",
+    "businessCardSubtitle": "Amounts in {currency}",
+    "activityCard": "Period activity",
+    "breakdownCard": "Result breakdown",
+    "resultLine": "Period result"
   },
   "Help": {
     "title": "Help center",
