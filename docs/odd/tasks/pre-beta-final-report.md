@@ -102,9 +102,13 @@ Ver matriz §69 (H-1..H-15).
 
 ---
 
+## Pendientes POST-cierre (registrados por el fundador)
+
+- **Retirar la vista `/business-analytics`** — el fundador (2026-11-01): la vista quedó reemplazada por el tab Negocio del Resumen. La ruta queda viva SOLO como drill-down temporal hasta el retiro. Recordatorios del retiro: portar/ajustar E2E-11/12 (que apuntan a la página) y evaluar el destino del link del sidebar ("Resumen del negocio") y del hero ("Ver resumen del negocio").
+
 ## Pendientes de cierre FORMAL (acciones humanas del fundador)
 
-1. **App-check visual** con sus datos reales tras el restore (runbook §3.2 ya ejecutado técnicamente).
+1. ~~**App-check visual** con sus datos reales tras el restore~~ — **COMPLETADO (2026-11-01):** entorno preparado por el agente (backup fresco `backups/2026-10-31-222143` → restore verificado a `globalmoney_app_check` → `next dev` apuntado a la copia en `:3011`); el fundador recorrió el producto sobre la copia con su sesión real: Resumen con los tres scopes y el bloque de Negocio (rangos de chips cambiando `desde/hasta` por URL), Movimientos en los tres tabs con paginación por cursor, detalle de venta, business-analytics, cuentas, clientes, créditos otorgados/recibidos, payables, catálogo y receipts (evidencia: log de `dev` de la sesión). **Veredicto del fundador: "check ok".**
 2. **Comprobar tema claro/oscuro + CTAs** de la landing (tracker `landing-page-refresh.md`).
-3. **Aprobar H-8** (fix de 2 claves i18n) — R3.13.
+3. ~~**Aprobar H-8**~~ — **COMPLETADO (2026-10-31):** aprobado y corregido (`575e0ee`).
 4. Declarar el cierre formal de la ronda cuando lo considere completo.
