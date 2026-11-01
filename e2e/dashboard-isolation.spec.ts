@@ -28,6 +28,20 @@ function yearlyOutOfMonthDate(): string | null {
   return `${now.getFullYear()}-01-02`;
 }
 
+/**
+ * The value container of the hero card "How much do I have available?"
+ * (SummaryHero card #1 — the all-time balance per currency lives here since
+ * the "Total Balance" summary card was dropped; see waitForSnapshotValue
+ * users in slice 4 and negative-balance).
+ */
+function heroAvailable(page: Page): Locator {
+  return page
+    .getByText("How much do I have available?", { exact: true })
+    .first()
+    .locator("xpath=following-sibling::div")
+    .first();
+}
+
 /** The <p> value node that follows a summary-card label (single-currency path). */
 function summaryValue(page: Page, label: string): Locator {
   return page.getByText(label).first().locator("xpath=following-sibling::p").first();
@@ -110,8 +124,11 @@ test.describe("Slice 4 — Dashboard + Isolation", () => {
     await waitForSnapshotValue(page, summaryValue(page, "Income this month"), /\+COP\s+100,000/);
     // Expenses this month: −COP 30,000.
     await waitForSnapshotValue(page, summaryValue(page, "Expenses this month"), /COP\s+30,000/);
-    // Total balance (all-time): 100,000 + 10,000 − 30,000 = COP 80,000.
-    await waitForSnapshotValue(page, summaryValue(page, "Total Balance"), /COP\s+80,000/);
+    // All-time balance: 100,000 + 10,000 − 30,000 = COP 80,000. The summary
+    // cards no longer render a "Total Balance" card (SummaryCards redesign,
+    // H-16..H-22 batch) — the all-time figure lives in the hero card
+    // "How much do I have available?".
+    await waitForSnapshotValue(page, heroAvailable(page), /COP\s+80,000/);
     // Loans this month card: no credits seeded → borrowed/lent COP 0.
     // (Pre-beta §5.1 zero-sign contract: a zero amount carries NO sign —
     // "−0" is a lie; the card renders "Borrowed: COP 0".)

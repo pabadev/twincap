@@ -270,7 +270,9 @@ test.describe.serial("Pre-beta regression paths — P3..P6", () => {
     await expect(panel).toBeVisible({ timeout: 90_000 });
 
     // Re-bill from the panel WITHOUT closing the dialog (founder flow A-#2).
-    await panel.getByRole("button", { name: /Volver a facturar/ }).click();
+    // Bilingual: the pack runs in EN ("Invoice another"); ES keyboard intent
+    // kept so a future ES-locale run keeps matching.
+    await panel.getByRole("button", { name: /Invoice another|Volver a facturar/ }).click();
     // The form is back (clean slate inside the SAME dialog).
     await expect(dialog.getByLabel(/^Payment Mode/)).toBeVisible();
 

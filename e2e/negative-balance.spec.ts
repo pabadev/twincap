@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Locator } from "@playwright/test";
 import {
   registerUser,
   waitForSnapshotValue,
@@ -30,6 +30,19 @@ async function freshUser(page: Page): Promise<Credentials> {
   return { email, password: "Password123!" };
 }
 
+/**
+ * The value container of the hero card "How much do I have available?"
+ * (all-time balance per currency; mirrors dashboard-isolation's helper —
+ * the "Total Balance" summary card was dropped by the H-16..H-22 batch).
+ */
+function heroAvailable(page: Page): Locator {
+  return page
+    .getByText("How much do I have available?", { exact: true })
+    .first()
+    .locator("xpath=following-sibling::div")
+    .first();
+}
+
 /** The <p> value node that follows a summary-card label (mirrors slice 4). */
 function summaryValue(page: Page, label: string): ReturnType<Page["locator"]> {
   return page.getByText(label).first().locator("xpath=following-sibling::p").first();
@@ -46,7 +59,6 @@ async function setInitialBalanceInUI(
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
   await dialog.getByLabel("Balance to set").fill(amount);
   await dialog.getByRole("button", { name: "Set Initial Balance" }).click();
   // UX-6: confirm the informed-confirmation dialog that opens over the form.
@@ -137,8 +149,10 @@ test.describe("R15.3 §11 — Saldo negativo", () => {
     await page.reload();
     await expect(efectivoRow).toContainText(/-COP\s+5,000/);
 
-    // Dashboard Total Balance derives the same negative value from movements.
+    // Dashboard all-time balance derives the same negative value from
+    // movements — hero card "How much do I have available?" (the summary
+    // cards no longer render a "Total Balance" card).
     await page.goto("/dashboard");
-    await waitForSnapshotValue(page, summaryValue(page, "Total Balance"), /[-−]COP\s+5,000/);
+    await waitForSnapshotValue(page, heroAvailable(page), /[-−]COP\s+5,000/);
   });
 });

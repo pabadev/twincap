@@ -130,8 +130,14 @@ export async function login(
   await page.goto("/login");
   await page.getByLabel(/^Email/i).fill(email);
   await page.getByLabel(/^Password/i).fill(password);
-  await page.getByRole("button", { name: /Sign in/i }).click();
-  await page.waitForURL("**/dashboard");
+  // The UI commits the action result once the post-action RSC refresh lands;
+  // under the loaded CI serial chain that refresh can stall past a single
+  // 30s wait (same documented stall as the wrong-password case). Bounded
+  // retry: re-click Sign in (idempotent credential auth) until /dashboard.
+  await expect(async () => {
+    await page.getByRole("button", { name: /Sign in/i }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
 }
 
 /**
@@ -154,7 +160,13 @@ export async function confirmDialog(
 ): Promise<void> {
   const dialog = page.getByRole("dialog", { name: title });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
+  // Amount-visible wait (70faab4) only applies to dialogs that CARRY an
+  // Amount label. Text-only confirmations (e.g. credit write-off) have no
+  // labeled input, and a mandatory get would target a ghost element.
+  const amount = dialog.getByLabel(/^Amount/);
+  if ((await amount.count()) > 0) {
+    await expect(amount).toBeVisible();
+  }
   await dialog.getByRole("button", { name: confirm }).click();
 }
 
@@ -296,24 +308,14 @@ async function createManualMovementInUI(
   const dialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(dialog).toBeVisible();
 
-  await dialog.getByLabel("Context", { exact: true }).selectOption({ label: context });
-  console.log(
-    `[DBG-CTX] select value now: ${await dialog
-      .locator('select[name="context"]')
-      .evaluate((el) => (el as HTMLSelectElement).value)}`,
-  );
+  // H-16 fix (2026-11-01): the context select is REQUIRED; seeding callers
+  // that omit it default to Personal (previous behavior). Passing
+  // `label: undefined` to selectOption selects NOTHING and the submit is
+  // natively blocked (the dialog reported "never closes" in CI).
+  const resolvedContext = context ?? "Personal";
+  await dialog.getByLabel("Context", { exact: true }).selectOption({ label: resolvedContext });
   await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
-  console.log(
-    `[DBG-CTX] select value after Account: ${await dialog
-      .locator('select[name="context"]')
-      .evaluate((el) => (el as HTMLSelectElement).value)}`,
-  );
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
-  console.log(
-    `[DBG-CTX] select value after Type: ${await dialog
-      .locator('select[name="context"]')
-      .evaluate((el) => (el as HTMLSelectElement).value)}`,
-  );
   // exact: the movement category select — without it, the inline
   // "Add category" trigger button (same dialog) substring-matches too.
   await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
@@ -321,11 +323,6 @@ async function createManualMovementInUI(
   await dialog.getByLabel("Note").fill(note);
   // Anchored so "Date" never substring-matches a sibling field label.
   await dialog.getByLabel(/^Date/).fill(date);
-  console.log(
-    `[DBG-CTX] select value after all fills: ${await dialog
-      .locator('select[name="context"]')
-      .evaluate((el) => (el as HTMLSelectElement).value)}`,
-  );
   // Dialog-scoped: the page header also has an "Add Movement" button.
   await dialog.getByRole("button", { name: "Add Movement" }).click();
 
