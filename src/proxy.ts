@@ -1,21 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDb } from './infrastructure/db/connection';
-import { reportUnexpectedErrorAndWait } from './lib/report-unexpected-error';
+import { NextRequest, NextResponse } from "next/server";
+import { connectDb } from "./infrastructure/db/connection";
+import { reportUnexpectedErrorAndWait } from "./lib/report-unexpected-error";
 
-const DEFAULT_LOCALE = 'es';
-const LOCALES = ['es', 'en'];
+const DEFAULT_LOCALE = "es";
+const LOCALES = ["es", "en"];
 
 function getLocaleFromRequest(request: NextRequest): string {
   // 1. Check cookie
-  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
   if (cookieLocale && LOCALES.includes(cookieLocale)) return cookieLocale;
 
   // 2. Check Accept-Language header
-  const acceptLanguage = request.headers.get('accept-language');
+  const acceptLanguage = request.headers.get("accept-language");
   if (acceptLanguage) {
     const preferred = acceptLanguage
-      .split(',')
-      .map((lang) => lang.split(';')[0].trim().substring(0, 2))
+      .split(",")
+      .map((lang) => lang.split(";")[0].trim().substring(0, 2))
       .find((lang) => LOCALES.includes(lang));
     if (preferred) return preferred;
   }
@@ -37,15 +37,13 @@ function getLocaleFromRequest(request: NextRequest): string {
  * there per the Next.js CSP guide.
  */
 function buildCspHeader(nonce: string): string {
-  const isDev = process.env.NODE_ENV === 'development';
-  const isProd = process.env.NODE_ENV === 'production';
+  const isDev = process.env.NODE_ENV === "development";
+  const isProd = process.env.NODE_ENV === "production";
 
   const directives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
-    isDev
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    isDev ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
     ...(isDev ? [] : ["style-src-attr 'unsafe-inline'"]),
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
@@ -60,10 +58,10 @@ function buildCspHeader(nonce: string): string {
     "worker-src 'self'",
     // Only in production: the app is served over HTTPS (Vercel); on a local
     // http://localhost it would break asset loading.
-    ...(isProd ? ['upgrade-insecure-requests'] : []),
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
   ];
 
-  return directives.join('; ');
+  return directives.join("; ");
 }
 
 export async function proxy(request: NextRequest) {
@@ -85,25 +83,25 @@ export async function proxy(request: NextRequest) {
   // Per-request CSP nonce. Next.js parses 'nonce-…' from the Content-Security
   // Policy and applies it automatically to its own scripts/inline styles; the
   // inline theme script in the root layout reads it from the x-nonce header.
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const cspHeader = buildCspHeader(nonce);
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-nonce', nonce);
-  requestHeaders.set('Content-Security-Policy', cspHeader);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", cspHeader);
 
   const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
-  response.headers.set('Content-Security-Policy', cspHeader);
-  response.headers.set('x-locale', locale);
-  response.cookies.set('NEXT_LOCALE', locale, {
-    path: '/',
+  response.headers.set("Content-Security-Policy", cspHeader);
+  response.headers.set("x-locale", locale);
+  response.cookies.set("NEXT_LOCALE", locale, {
+    path: "/",
     maxAge: 60 * 60 * 24 * 365,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
   });
   return response;
 }
@@ -114,10 +112,23 @@ export const config = {
       // Same route coverage as before (pages only, excluding api/_next/files),
       // plus the prefetch exclusions recommended by the CSP guide: prefetched
       // RSC payloads are not documents and need no CSP/nonce.
-      source: '/((?!api|_next|.*\\..*).*)',
+      // CRITICAL (foundator report 2026-10-31): server-action POSTs are ALSO
+      // excluded. They match the page path (`POST /movements?...`), and this
+      // proxy re-issues the NEXT_LOCALE cookie on the response — a mutating
+      // cookie on an action response makes the Next 16 router re-render the
+      // current route in the same roundtrip (docs/server-actions.md: the
+      // response then carries a full page payload). On the movements list the
+      // re-render suspends its segment, swaps in loading.tsx and REMOUNTS
+      // MovementsList, resetting the client-side accumulated "Cargar más"
+      // state. Server actions carry only their return value when the proxy
+      // leaves them alone; explicit revalidatePath calls keep re-rendering by
+      // their own contract. Also note: connectDb() warm-up is not lost here —
+      // every server action already calls it directly.
+      source: "/((?!api|_next|.*\\..*).*)",
       missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+        { type: "header", key: "next-action" },
       ],
     },
   ],
