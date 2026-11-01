@@ -202,6 +202,7 @@ test.describe.serial("Pre-beta regression paths — P3..P6", () => {
     await page.getByRole("button", { name: "Add Movement" }).click();
     const movementDialog = page.getByRole("dialog", { name: /New Movement/i });
     await expect(movementDialog).toBeVisible();
+    await expect(movementDialog.getByLabel(/^Amount/)).toBeVisible();
     await movementDialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
     await movementDialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
     await movementDialog.getByLabel("Type").selectOption({ label: "Income" });

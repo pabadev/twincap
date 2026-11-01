@@ -46,6 +46,7 @@ async function setInitialBalanceInUI(
   await row.getByRole("button", { name: /Set Initial Balance/i }).click();
   const dialog = page.getByRole("dialog", { name: /Set Initial Balance/i });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
   await dialog.getByLabel("Balance to set").fill(amount);
   await dialog.getByRole("button", { name: "Set Initial Balance" }).click();
   // UX-6: confirm the informed-confirmation dialog that opens over the form.

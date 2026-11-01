@@ -87,6 +87,7 @@ async function createMovementInUI(
   await page.getByRole("button", { name: "Add Movement" }).click();
   const dialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
 
   await dialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
   await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });

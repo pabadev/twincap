@@ -57,6 +57,7 @@ test.describe("Movements scope pagination (foundator 2026-10-31)", () => {
       await add.click();
       const dialog = page.getByRole("dialog", { name: /New Movement/i });
       await expect(dialog).toBeVisible();
+      await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
       await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
       // Context must be picked EXPLICITLY: a movement submitted without it is
       // "neutral" (no context) and is deliberately excluded from both scope

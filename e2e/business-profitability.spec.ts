@@ -238,6 +238,7 @@ test.describe.serial("Business profitability acceptance", () => {
     await page.goto("/movements");
     await page.getByRole("button", { name: "Add Movement" }).click();
     const movement = page.getByRole("dialog", { name: /New Movement/i });
+    await expect(movement.getByLabel(/^Amount/)).toBeVisible();
     await movement.getByLabel("Context").selectOption({ label: "Business" });
     await movement.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
     await movement.getByLabel("Type").selectOption({ label: "Expense" });

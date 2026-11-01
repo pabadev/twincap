@@ -28,6 +28,7 @@ async function createAccountInUI(
   await page.getByRole("button", { name: /Add Account/i }).click();
   const dialog = page.getByRole("dialog", { name: /Add Account/i });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
   await dialog.getByLabel("Account Name").fill(name);
   // Fase 1 (Ronda Producto 1): the currency select is neutral (no default);
   // callers that omit `currency` get COP.

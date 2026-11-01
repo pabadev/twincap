@@ -154,6 +154,7 @@ export async function confirmDialog(
 ): Promise<void> {
   const dialog = page.getByRole("dialog", { name: title });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Amount/)).toBeVisible();
   await dialog.getByRole("button", { name: confirm }).click();
 }
 
@@ -296,8 +297,23 @@ async function createManualMovementInUI(
   await expect(dialog).toBeVisible();
 
   await dialog.getByLabel("Context", { exact: true }).selectOption({ label: context });
+  console.log(
+    `[DBG-CTX] select value now: ${await dialog
+      .locator('select[name="context"]')
+      .evaluate((el) => (el as HTMLSelectElement).value)}`,
+  );
   await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
+  console.log(
+    `[DBG-CTX] select value after Account: ${await dialog
+      .locator('select[name="context"]')
+      .evaluate((el) => (el as HTMLSelectElement).value)}`,
+  );
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
+  console.log(
+    `[DBG-CTX] select value after Type: ${await dialog
+      .locator('select[name="context"]')
+      .evaluate((el) => (el as HTMLSelectElement).value)}`,
+  );
   // exact: the movement category select — without it, the inline
   // "Add category" trigger button (same dialog) substring-matches too.
   await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
@@ -305,6 +321,11 @@ async function createManualMovementInUI(
   await dialog.getByLabel("Note").fill(note);
   // Anchored so "Date" never substring-matches a sibling field label.
   await dialog.getByLabel(/^Date/).fill(date);
+  console.log(
+    `[DBG-CTX] select value after all fills: ${await dialog
+      .locator('select[name="context"]')
+      .evaluate((el) => (el as HTMLSelectElement).value)}`,
+  );
   // Dialog-scoped: the page header also has an "Add Movement" button.
   await dialog.getByRole("button", { name: "Add Movement" }).click();
 

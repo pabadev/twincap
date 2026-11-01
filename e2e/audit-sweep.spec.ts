@@ -100,6 +100,7 @@ async function seedRichData(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Add Movement" }).click();
   const movDialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(movDialog).toBeVisible();
+  await expect(movDialog.getByLabel(/^Amount/)).toBeVisible();
   await movDialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
   await movDialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
   await movDialog.getByLabel("Type").selectOption({ label: "Income" });
