@@ -128,7 +128,6 @@
     "createPassword": "Create password"
   },
   "Dashboard": {
-    "businessAnalyticsLink": "View business summary",
     "welcomeBack": "Welcome back",
     "welcomeUser": "Welcome, {name}",
     "onboardingTitle": "Create your accounts",
@@ -1123,14 +1122,11 @@
   },
   "BusinessAnalytics": {
     "summaryTitle": "Your business at a glance",
-    "intro": "See how much you sold, what remained after product costs, and the expenses you recorded. Expenses are deducted from the period total; you do not need to assign them to each sale.",
     "period": "Choose a period",
     "from": "From",
     "to": "To",
     "invalidRange": "The start date must be on or before the end date.",
-    "apply": "View summary",
     "empty": "There are no sales or business expenses in this period.",
-    "currency": "Currency: {currency}",
     "sales": "You sold",
     "salesCount": "Sales made",
     "averageSale": "Average sale",

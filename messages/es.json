@@ -128,7 +128,6 @@
     "createPassword": "Crear contraseña"
   },
   "Dashboard": {
-    "businessAnalyticsLink": "Ver resumen del negocio",
     "welcomeBack": "Bienvenido de nuevo",
     "welcomeUser": "Bienvenido, {name}",
     "onboardingTitle": "Crea tus cuentas",
@@ -1123,14 +1122,11 @@
   },
   "BusinessAnalytics": {
     "summaryTitle": "Así va tu negocio",
-    "intro": "Aquí ves cuánto vendiste, cuánto te quedó después del costo de tus productos y qué gastos registraste. Los gastos se restan al total del período; no necesitas asignarlos a cada venta.",
     "period": "Elige el período",
     "from": "Desde",
     "to": "Hasta",
     "invalidRange": "La fecha inicial debe ser anterior o igual a la fecha final.",
-    "apply": "Ver resumen",
     "empty": "No hay ventas ni gastos de negocio en este período.",
-    "currency": "Moneda: {currency}",
     "sales": "Vendiste",
     "salesCount": "Ventas realizadas",
     "averageSale": "Promedio por venta",

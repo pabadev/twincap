@@ -165,10 +165,12 @@ describe("DashboardContent Filtros placement (foundator review 2026-10-31)", () 
 });
 
 describe("DashboardContent chart toggles (R-9/R-10a, H-18)", () => {
-  it("provides a direct route from the summary to business profitability", () => {
+  it("renders NO business-summary header link (route retired to the Negocio tab)", () => {
     const { container } = mount(<DashboardContent {...baseProps} />);
-    const link = container.querySelector<HTMLAnchorElement>('a[href="/business-analytics"]');
-    expect(link?.textContent).toContain("businessAnalyticsLink");
+    // Founder retirement (2026-11-01): /business-analytics is gone; the
+    // business block lives only in the Negocio tab and the sidebar deep-links
+    // to /dashboard?scope=Business. No header link may remain.
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/business-analytics"]')).toBeNull();
   });
 
   it("marks the monthly toggle pressed when chartView is monthly (S9.1)", () => {

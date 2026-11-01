@@ -502,7 +502,6 @@ export async function updateSaleAction(
     revalidatePath("/accounts");
     revalidatePath("/dashboard");
     revalidatePath("/movements");
-    revalidatePath("/business-analytics");
   } catch (error) {
     return handleActionError(error);
   }

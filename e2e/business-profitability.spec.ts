@@ -68,8 +68,23 @@ async function sellProduct(page: Page, itemName: string): Promise<void> {
 
 async function openBusinessSummary(page: Page): Promise<void> {
   const today = todayInputValue();
-  await page.goto(`/business-analytics?desde=${today}&hasta=${today}`);
-  await expect(page.getByRole("heading", { name: "Your business at a glance" })).toBeVisible();
+  // Founder retirement (2026-11-01): /business-analytics is gone — the block
+  // lives in the Resumen's Negocio tab, addressed via the validated deep link.
+  await page.goto(`/dashboard?scope=Business&desde=${today}&hasta=${today}`);
+  const block = page.getByTestId("business-summary");
+  await expect(block.getByRole("heading", { name: "Your business at a glance" })).toBeVisible();
+}
+
+/** The business block; every label below is scoped to it. */
+function businessBlock(page: Page): ReturnType<Page["getByTestId"]> {
+  return page.getByTestId("business-summary");
+}
+
+/** The <dd> that follows one card's <dt> label (breakdown rows and activity
+ * card rows share the dt/dd pattern; several labels repeat across cards, so
+ * callers pass .first() or a card scope when needed). */
+function valueAfterLabel(scope: ReturnType<typeof businessBlock>, label: string) {
+  return scope.getByText(label, { exact: true }).first().locator("xpath=following-sibling::dd[1]");
 }
 
 // These walks include several transactional writes (catalog, valuation,
@@ -149,18 +164,11 @@ test.describe.serial("Business profitability acceptance", () => {
     await expect(unchangedSaleRow).toContainText(/60,000/);
 
     await openBusinessSummary(page);
-    await expect(page.getByText("You sold", { exact: true }).locator("xpath=..")).toContainText(
-      /100,000/,
-    );
-    await expect(
-      page.getByText("Recorded cost of products", { exact: true }).locator("xpath=.."),
-    ).toContainText(/40,000/);
-    await expect(
-      page.getByText("Left after product costs", { exact: true }).locator("xpath=.."),
-    ).toContainText(/60,000/);
-    await expect(
-      page.getByText("Expenses you recorded", { exact: true }).locator("xpath=.."),
-    ).toContainText(/0|—/);
+    const block = businessBlock(page);
+    await expect(valueAfterLabel(block, "You sold")).toContainText(/100,000/);
+    await expect(valueAfterLabel(block, "Recorded cost of products")).toContainText(/40,000/);
+    await expect(valueAfterLabel(block, "Left after product costs")).toContainText(/60,000/);
+    await expect(valueAfterLabel(block, "Expenses you recorded")).toContainText(/0|—/);
   });
 
   test("E2E-12 — unknown product cost stays incomplete and service sales have no inventory cost", async ({
@@ -250,28 +258,19 @@ test.describe.serial("Business profitability acceptance", () => {
     await expect(movement).toBeHidden({ timeout: 90_000 });
 
     await openBusinessSummary(page);
-    await expect(page.getByText("Sales made", { exact: true }).locator("xpath=..")).toContainText(
-      "2",
-    );
-    await expect(page.getByText("Average sale", { exact: true }).locator("xpath=..")).toContainText(
-      /62,500/,
-    );
+    const block = businessBlock(page);
+    await expect(valueAfterLabel(block, "Sales made")).toContainText("2");
+    await expect(valueAfterLabel(block, "Average sale")).toContainText(/62,500/);
+    await expect(valueAfterLabel(block, "Recorded cost of products")).toContainText(/0|—/);
+    await expect(valueAfterLabel(block, "Left after product costs")).toContainText(/Costs missing/);
+    await expect(valueAfterLabel(block, "Expenses you recorded")).toContainText(/5,000/);
     await expect(
-      page.getByText("Recorded cost of products", { exact: true }).locator("xpath=.."),
-    ).toContainText(/0|—/);
-    await expect(
-      page.getByText("Left after product costs", { exact: true }).locator("xpath=.."),
+      block.getByRole("region", { name: "Business result for the period" }),
     ).toContainText(/Costs missing/);
-    await expect(
-      page.getByText("Expenses you recorded", { exact: true }).locator("xpath=.."),
-    ).toContainText(/5,000/);
-    await expect(
-      page.getByRole("region", { name: "Business result for the period" }),
-    ).toContainText(/Costs missing/);
-    await expect(
-      page.getByText("Still to collect from these sales", { exact: true }).locator("xpath=.."),
-    ).toContainText(/100,000/);
-    await expect(page.getByText(/sales include products without a recorded cost/i)).toBeVisible();
-    await expect(page.getByText("Top items by sales amount", { exact: true })).toBeVisible();
+    await expect(valueAfterLabel(block, "Still to collect from these sales")).toContainText(
+      /100,000/,
+    );
+    await expect(block.getByText(/sales include products without a recorded cost/i)).toBeVisible();
+    await expect(block.getByText("Top items by sales amount", { exact: true })).toBeVisible();
   });
 });

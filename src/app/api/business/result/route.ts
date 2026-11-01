@@ -20,7 +20,7 @@ import { reportUnexpectedErrorAndWait } from "../../../../lib/report-unexpected-
  * H-23 (fundador 2026-11-01): the business-result read lives on a ROUTE
  * HANDLER (same page-proxy exclusion rationale as the movements pagination:
  * pure JSON, no flight, no cookie writes). Same pipeline as the
- * /business-analytics page.
+ * Serves the Resumen's Negocio tab (BusinessSummaryBlock).
  *
  * GET /api/business/result?from=YYYY-MM-DD&to=YYYY-MM-DD
  */

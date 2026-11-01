@@ -15,7 +15,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { TouchTarget } from "../ui/touch-target";
-import { Wallet, SlidersHorizontal, BarChart3 } from "lucide-react";
+import { Wallet, SlidersHorizontal } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
 import { formatAmountParts } from "../../lib/format";
 import { useT } from "../../i18n/client";
@@ -273,16 +273,10 @@ export function DashboardContent({
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/business-analytics"
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
-          >
-            <BarChart3 className="h-4 w-4" />
-            {t("businessAnalyticsLink")}
-          </Link>
-          {/* H-17 (fundador 2026-10-31): the comments affordance lives ONLY
-              in the sidebar (MainNav) — removed from the Resumen header to
-              keep the dashboard header to navigation links. */}
+          {/* Founder retirement (2026-11-01): /business-analytics is gone —
+              the business block lives ONLY in the Negocio tab below. The
+              header keeps no link; the sidebar "Resumen del negocio" item
+              deep-links to /dashboard?scope=Business. */}
         </div>
       </div>
 

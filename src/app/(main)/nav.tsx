@@ -2,9 +2,8 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useT, useLocale } from "../../i18n/client";
-import { usePathname } from "next/navigation";
 import { logoutAction } from "../(auth)/actions";
 import {
   Languages,
@@ -39,6 +38,14 @@ import { FeedbackDialog } from "../../components/feedback/feedback-widget";
 
 interface NavItem {
   href: string;
+  /**
+   * Founder retirement of /business-analytics (2026-11-01): the "Resumen del
+   * negocio" entry is a DEEP-LINK to the Resumen's Negocio tab. When set,
+   * every param/value must match the CURRENT URL for the item to be active —
+   * so /dashboard (plain Resumen) and /dashboard?scope=Business never light
+   * up at the same time.
+   */
+  activeQuery?: Record<string, string>;
   key: string;
   icon: typeof LayoutDashboard;
   color: string;
@@ -70,7 +77,8 @@ const NAV_GROUPS: readonly { headerKey: string | null; items: readonly NavItem[]
     items: [
       { href: "/pos/sales", key: "posSales", icon: ShoppingCart, color: "text-income" },
       {
-        href: "/business-analytics",
+        href: "/dashboard?scope=Business",
+        activeQuery: { scope: "Business" },
         key: "businessAnalytics",
         icon: BarChart3,
         color: "text-income",
@@ -129,7 +137,27 @@ export function MainNav({
   const tCommon = useT("Common");
   const locale = useLocale();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
+
+  /**
+   * Active-state resolution (founder retirement 2026-11-01): exercise the
+   * same pathname containment as before, but validate `activeQuery` params
+   * against the live URL so the plain /dashboard entry does not light up
+   * while the Negocio-tab deep link is the active destination (and vice
+   * versa). Webkit-style sidebar strength: at most one of the two lights up.
+   */
+  function isNavItemActive(item: NavItem): boolean {
+    const basePath = item.href.split("?")[0];
+    if (!pathname.startsWith(basePath)) return false;
+    if (item.activeQuery) {
+      return Object.entries(item.activeQuery).every(([k, v]) => searchParams.get(k) === v);
+    }
+    // The generic Resumen entry yields to its Business deep link while the
+    // Negocio tab is active; elsewhere it behaves exactly as before.
+    if (item.href === "/dashboard" && searchParams.get("scope") === "Business") return false;
+    return item.href === "/dashboard" ? pathname === "/dashboard" : true;
+  }
 
   function toggleLocale() {
     const next = locale === "es" ? "en" : "es";
@@ -263,10 +291,7 @@ export function MainNav({
                           </li>
                         )}
                         {group.items.map((item) => {
-                          const isActive =
-                            item.href === "/dashboard"
-                              ? pathname === "/dashboard"
-                              : pathname.startsWith(item.href);
+                          const isActive = isNavItemActive(item);
                           const isFirst = rendered++ === 0;
                           return (
                             <li key={item.href}>
