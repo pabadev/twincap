@@ -69,6 +69,19 @@ function movement(overrides: Partial<SerializedMovement> = {}): SerializedMoveme
   };
 }
 
+// H-23 (fetch-contract): the pagination reads go through /api/movements/page
+// — stub global fetch and assert the REQUEST URL instead of a server action.
+function stubFetch(respond: { items: SerializedMovement[]; nextCursor: null }) {
+  const calls: string[] = [];
+  const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any) => {
+    calls.push(String(input?.url ?? input));
+    return {
+      ok: true,
+      json: async () => respond,
+    } as Response;
+  });
+  return { calls, spy };
+}
 const baseProps = {
   initialMovements: [movement()],
   nextCursor: null,
@@ -153,10 +166,7 @@ describe("MovementsList load more (T5 regression)", () => {
   });
 
   it("calls the load more handler once when clicked", async () => {
-    const { listMovementsPagedAction } = await import("./actions");
-    const mockLoadMore = vi.mocked(listMovementsPagedAction);
-    mockLoadMore.mockClear();
-    mockLoadMore.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const { calls } = stubFetch({ items: [], nextCursor: null });
 
     const { container } = mount(
       <MovementsList
@@ -175,7 +185,9 @@ describe("MovementsList load more (T5 regression)", () => {
     act(() => {
       button!.click();
     });
-    expect(mockLoadMore).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("/api/movements/page?");
+    expect(calls[0]).toContain("limit=50");
   });
 });
 
@@ -187,10 +199,7 @@ describe("MovementsList scope pagination (foundator review 2026-10-31)", () => {
   };
 
   it('pages the ACTIVE tab context server-side ("Personal" scope reaches the action)', async () => {
-    const { listMovementsPagedAction } = await import("./actions");
-    const mock = vi.mocked(listMovementsPagedAction);
-    mock.mockClear();
-    mock.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const { calls } = stubFetch({ items: [], nextCursor: null });
 
     const { container } = mount(
       <MovementsList initialMovements={[movement()]} nextCursor={CURSOR} initialTab="Personal" />,
@@ -201,22 +210,25 @@ describe("MovementsList scope pagination (foundator review 2026-10-31)", () => {
     act(() => {
       button!.click();
     });
-    expect(mock).toHaveBeenCalledWith(50, CURSOR, "Personal");
+    // The fetch URL carries the scoped page contract: limit + cursor + context.
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("/api/movements/page?");
+    expect(calls[0]).toContain("limit=50");
+    expect(calls[0]).toContain("scope=Personal");
+    expect(calls[0]).toContain("cursorDate=" + encodeURIComponent(CURSOR.date));
+    expect(calls[0]).toContain("cursorId=" + encodeURIComponent(CURSOR.id));
   });
 
   it('switching tabs refetches the new scope first page without the full fetch ("all" falls back)', async () => {
-    const { listMovementsPagedAction, listAllMovementsAction } = await import("./actions");
-    const mockPaged = vi.mocked(listMovementsPagedAction);
-    const mockAll = vi.mocked(listAllMovementsAction as ReturnType<typeof vi.fn>);
-    mockPaged.mockClear();
-    mockAll.mockClear();
-    mockPaged.mockResolvedValue({
+    const { calls } = stubFetch({
       items: [
         movement({ id: "p-1", context: "Personal" }),
         movement({ id: "p-2", context: "Personal" }),
       ],
       nextCursor: null,
     });
+    const mockAll = await import("./actions").then((m) => m.listAllMovementsAction);
+    vi.mocked(mockAll).mockClear();
 
     const { container } = mount(
       <MovementsList initialMovements={[movement()]} nextCursor={null} />,
@@ -231,15 +243,13 @@ describe("MovementsList scope pagination (foundator review 2026-10-31)", () => {
     });
 
     // Tab switch = ONE scoped first-page request, NO full-workspace fetch.
-    expect(mockPaged).toHaveBeenCalledWith(50, undefined, "Personal");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("scope=Personal");
     expect(mockAll).not.toHaveBeenCalled();
   });
 
   it("switching back to all requests the unscoped stream", async () => {
-    const { listMovementsPagedAction } = await import("./actions");
-    const mock = vi.mocked(listMovementsPagedAction);
-    mock.mockClear();
-    mock.mockResolvedValue({ items: [], nextCursor: null });
+    const { calls } = stubFetch({ items: [], nextCursor: null });
 
     const { container } = mount(
       <MovementsList initialMovements={[movement()]} nextCursor={null} initialTab="Personal" />,
@@ -251,6 +261,8 @@ describe("MovementsList scope pagination (foundator review 2026-10-31)", () => {
     act(() => {
       allTab!.click();
     });
-    expect(mock).toHaveBeenCalledWith(50, undefined, undefined);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("limit=50");
+    expect(calls[0]).not.toContain("scope=");
   });
 });

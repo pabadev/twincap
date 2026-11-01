@@ -4,7 +4,6 @@ import {
   createMovement,
   deleteMovement,
   updateMovement,
-  listMovementsPaged,
   filterMovementsWithLiveParents,
 } from "../../../core/application/movements";
 import type { CreateMovementInput } from "../../../core/application/movements";
@@ -310,48 +309,6 @@ export interface SerializedCursor {
   date: string;
   createdAt: string;
   id: string;
-}
-
-export interface PagedMovementsResult {
-  items: SerializedMovement[];
-  nextCursor: SerializedCursor | null;
-}
-
-export async function listMovementsPagedAction(
-  limit: number,
-  cursor?: SerializedCursor,
-  scope?: "Personal" | "Business",
-): Promise<PagedMovementsResult> {
-  const user = await getCurrentUser();
-  if (!user) return { items: [], nextCursor: null };
-
-  // UX-7 scope (foundator 2026-10-31): the context tab pages SERVER-side; an
-  // unvalidated scope value falls back to the full ("all") stream — same
-  // defensive contract as the ?ambito= deep-link in page.tsx.
-  const context = scope === "Personal" || scope === "Business" ? scope : undefined;
-
-  await connectDb();
-  const movementRepo = new MongoMovementRepository();
-  const result = await listMovementsPaged(
-    user.workspaceId!,
-    limit,
-    movementRepo,
-    cursor
-      ? { date: new Date(cursor.date), createdAt: new Date(cursor.createdAt), id: cursor.id }
-      : undefined,
-    context,
-  );
-
-  return {
-    items: serializeEntities(result.items),
-    nextCursor: result.nextCursor
-      ? {
-          date: result.nextCursor.date.toISOString(),
-          createdAt: result.nextCursor.createdAt.toISOString(),
-          id: result.nextCursor.id,
-        }
-      : null,
-  };
 }
 
 /**

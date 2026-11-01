@@ -22,16 +22,45 @@ import { EditMovementModal } from "./edit-movement-modal";
 import {
   listAccountsAction,
   listCategoriesAction,
-  listMovementsPagedAction,
   listAllMovementsAction,
   exportMovementsCsvAction,
+  type SerializedCursor,
 } from "./actions";
-import type { SerializedCursor } from "./actions";
 import { downloadCsv } from "../../../lib/download-csv";
 import { businessDateToInputValue } from "../../../lib/date";
 import { useToast } from "../../../lib/hooks/use-toast";
 
 const PAGE_SIZE = 50;
+
+/**
+ * H-23: the pagination reads go through the API route handler
+ * (`/api/movements/page`) — NOT a server action. Actions invoked from client
+ * components run inside the page proxy and can carry the current-route
+ * re-render flight in their response, which remounts this list and resets
+ * the accumulated "Cargar más" state (the first-click bug of the founder
+ * report). A route handler returns pure JSON: no flight, no remount.
+ */
+async function fetchPagedMovements(
+  limit: number,
+  cursor: SerializedCursor | undefined,
+  scope: "Personal" | "Business" | undefined,
+): Promise<PagedMovementsResult> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (scope) params.set("scope", scope);
+  if (cursor) {
+    params.set("cursorDate", cursor.date);
+    params.set("cursorCreatedAt", cursor.createdAt);
+    params.set("cursorId", cursor.id);
+  }
+  const res = await fetch(`/api/movements/page?${params.toString()}`, { cache: "no-store" });
+  if (!res.ok) return { items: [], nextCursor: null };
+  return (await res.json()) as PagedMovementsResult;
+}
+
+interface PagedMovementsResult {
+  items: SerializedMovement[];
+  nextCursor: SerializedCursor | null;
+}
 
 export function MovementsList({
   initialMovements,
@@ -78,7 +107,7 @@ export function MovementsList({
     const seq = ++scopeSeqRef.current;
     setScopeSwitching(true);
     try {
-      const result = await listMovementsPagedAction(
+      const result = await fetchPagedMovements(
         PAGE_SIZE,
         undefined,
         next !== "all" ? next : undefined,
@@ -215,9 +244,7 @@ export function MovementsList({
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      // UX-7 scope (foundator 2026-10-31): pages belong to the ACTIVE tab's
-      // context (server-side findPaged filter); "all" pages the full stream.
-      const result = await listMovementsPagedAction(
+      const result = await fetchPagedMovements(
         PAGE_SIZE,
         nextCursor,
         tab !== "all" ? tab : undefined,

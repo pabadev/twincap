@@ -9,10 +9,30 @@ import { Tabs } from "../ui/tabs";
 import { Input } from "../ui/input";
 import { SummaryTable } from "./summary-table";
 import { formatAmount } from "../../lib/format";
-import {
-  getBusinessResultAction,
-  type BusinessSummaryRow,
-} from "../../app/(main)/dashboard/actions";
+
+interface BusinessSummaryRow {
+  currency: string;
+  salesMinor: number;
+  saleCount: number;
+  averageSaleMinor: number | null;
+  knownCostMinor: number;
+  grossProfitMinor: number | null;
+  expensesMinor: number;
+  receivableMinor: number;
+  registeredResultMinor: number | null;
+  incompleteSales: number;
+  topItems: Array<{ itemId: string; name: string; salesMinor: number }>;
+}
+
+/** H-23: the block reads via the API route handler (pure JSON, no route
+ * re-render flight — the server-action carrier caused the dialog/reset
+ * races inside the page proxy). */
+async function fetchBusinessResult(from: string, to: string): Promise<BusinessSummaryRow[]> {
+  const res = await fetch(`/api/business/result?from=${from}&to=${to}`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { rows: BusinessSummaryRow[] };
+  return data.rows;
+}
 import type { CurrencyTotal } from "../../core/application/compute-category-summary";
 
 const PRESETS = ["thisMonth", "lastMonth", "thisYear", "custom"] as const;
@@ -74,7 +94,7 @@ function rangeForPreset(
  * range via onRangeChange and the dashboard-content refetches the whole
  * snapshot with it (one range per tab — tables, tops, recent, chart and the
  * flow cards all share the window). The block only fetches ITS OWN aggregate
- * rows (getBusinessResultAction) for the same range. URL persistence lives in
+ * rows (fetch to /api/business/result) for the same range. URL persistence lives in
  * handleFiltersChange (the ?desde/?hasta params written there).
  * Range presets render through the shared Tabs kit — a Select would be the
  * same 4 options with 2 taps instead of 0 (widget contraction rule).
@@ -117,7 +137,7 @@ export function BusinessSummaryBlock({
   useEffect(() => {
     const seq = ++seqRef.current;
     let cancelled = false;
-    getBusinessResultAction(range.from, range.to)
+    fetchBusinessResult(range.from, range.to)
       .then((result) => {
         if (!cancelled && seqRef.current === seq) setRows(result ?? []);
       })

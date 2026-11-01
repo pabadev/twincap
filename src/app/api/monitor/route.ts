@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import {
-  computeFingerprint,
-  reportError,
-} from '../../../infrastructure/monitoring/error-monitor';
-import { MongoMonitorGuard } from '../../../infrastructure/monitoring/monitor-guard';
-import { sanitizeContext } from '../../../infrastructure/monitoring/sanitize';
-import { connectDb } from '../../../infrastructure/db/connection';
-import { monitorRateLimiter } from '../../../infrastructure/auth/rate-limiter';
-import { resolveClientIp } from '../../../infrastructure/auth/client-ip';
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { computeFingerprint, reportError } from "../../../infrastructure/monitoring/error-monitor";
+import { MongoMonitorGuard } from "../../../infrastructure/monitoring/monitor-guard";
+import { sanitizeContext } from "../../../infrastructure/monitoring/sanitize";
+import { connectDb } from "../../../infrastructure/db/connection";
+import { monitorRateLimiter } from "../../../infrastructure/auth/rate-limiter";
+import { resolveClientIp } from "../../../infrastructure/auth/client-ip";
 
 /**
  * Route handler for client-side error reporting (R13-D).
@@ -36,7 +33,7 @@ const MONITOR_BODY = z.object({
   message: z.string().min(1).max(500),
   name: z.string().max(100).optional(),
   stack: z.string().max(4000).optional(),
-  severity: z.enum(['fatal', 'error', 'warning']).optional(),
+  severity: z.enum(["fatal", "error", "warning"]).optional(),
   code: z.string().max(200).optional(),
   expected: z.boolean().optional(),
   context: z
@@ -64,7 +61,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const ip = resolveClientIp(request.headers);
     const rate = await monitorRateLimiter.check(`monitor:${ip}`);
     if (!rate.allowed) {
-      return NextResponse.json({ ok: false, reason: 'rate_limited' }, { status: 429 });
+      return NextResponse.json({ ok: false, reason: "rate_limited" }, { status: 429 });
     }
 
     // Anti-spike guard (R14-G §6): while a GLOBAL cooldown is active (too many
@@ -74,18 +71,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     const guard = new MongoMonitorGuard();
     const cooldown = await guard.checkGlobalCooldown();
     if (cooldown.inCooldown) {
-      return NextResponse.json({ ok: false, reason: 'global_cooldown' }, { status: 429 });
+      return NextResponse.json({ ok: false, reason: "global_cooldown" }, { status: 429 });
     }
 
-    const raw = await request
-      .json()
-      .catch(() => {
-        return null;
-      });
+    const raw = await request.json().catch(() => {
+      return null;
+    });
 
     const parsed = MONITOR_BODY.safeParse(raw);
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, reason: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ ok: false, reason: "invalid_payload" }, { status: 400 });
     }
 
     const body = parsed.data;
@@ -107,7 +102,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // quota; a fresh fingerprint beyond the budget is rejected.
     const fpGate = await guard.limitFingerprints(ip, fingerprint);
     if (!fpGate.allowed) {
-      return NextResponse.json({ ok: false, reason: 'fingerprint_quota' }, { status: 429 });
+      return NextResponse.json({ ok: false, reason: "fingerprint_quota" }, { status: 429 });
     }
     // Only NEW fingerprints feed the GLOBAL spike counter — repeats of known
     // fingerprints are legitimate and must never re-arm the global cooldown.
@@ -116,7 +111,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     // Never trust client severity/defaults: cap at 'error' from unrecognized.
-    const severity = body.severity ?? 'error';
+    const severity = body.severity ?? "error";
 
     await reportError(
       {
@@ -138,7 +133,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(
-      JSON.stringify({ level: 'error', event: 'monitor_route_failed', error: message }),
+      JSON.stringify({ level: "error", event: "monitor_route_failed", error: message }),
     );
     // Fail-safe: never surfacing a 500 for a client error report.
     return NextResponse.json({ ok: true });
