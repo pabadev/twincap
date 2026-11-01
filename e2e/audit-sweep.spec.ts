@@ -100,6 +100,7 @@ async function seedRichData(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Add Movement" }).click();
   const movDialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(movDialog).toBeVisible();
+  await movDialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
   await movDialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
   await movDialog.getByLabel("Type").selectOption({ label: "Income" });
   await movDialog.getByLabel("Category", { exact: true }).selectOption({ label: "Salario" });
@@ -110,6 +111,7 @@ async function seedRichData(page: Page): Promise<void> {
 
   await page.getByRole("button", { name: "Add Movement" }).click();
   await expect(movDialog).toBeVisible();
+  await movDialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
   await movDialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
   await movDialog.getByLabel("Type").selectOption({ label: "Expense" });
   await movDialog.getByLabel("Category", { exact: true }).selectOption({ label: "Comida" });

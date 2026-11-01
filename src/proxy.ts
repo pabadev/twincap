@@ -97,38 +97,43 @@ export async function proxy(request: NextRequest) {
   });
   response.headers.set("Content-Security-Policy", cspHeader);
   response.headers.set("x-locale", locale);
-  response.cookies.set("NEXT_LOCALE", locale, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
+  // H-23 (fundador 2026-10-31 round 2): re-issuing the NEXT_LOCALE cookie on
+  // EVERY response MUTATED cookies on server-action responses — and a
+  // mutating cookie on an action response makes the Next 16 router re-render
+  // the current route in that same roundtrip (docs/server-actions.md). A
+  // read-only action (the movements "Cargar más") then carried a full page
+  // flight whose segment swap remounted the list and reset the accumulated
+  // pagination state ("first click refreshes without appending"). Skip the
+  // redundant set: the cookie is already at the resolved locale (1-year
+  // maxAge from the first page load); re-issue ONLY when the resolved locale
+  // actually differs from the stored one (the language toggle still
+  // persists its switch).
+  if (request.cookies.get("NEXT_LOCALE")?.value !== locale) {
+    response.cookies.set("NEXT_LOCALE", locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+  }
   return response;
 }
 
 export const config = {
   matcher: [
     {
-      // Same route coverage as before (pages only, excluding api/_next/files),
-      // plus the prefetch exclusions recommended by the CSP guide: prefetched
-      // RSC payloads are not documents and need no CSP/nonce.
-      // CRITICAL (foundator report 2026-10-31): server-action POSTs are ALSO
-      // excluded. They match the page path (`POST /movements?...`), and this
-      // proxy re-issues the NEXT_LOCALE cookie on the response — a mutating
-      // cookie on an action response makes the Next 16 router re-render the
-      // current route in the same roundtrip (docs/server-actions.md: the
-      // response then carries a full page payload). On the movements list the
-      // re-render suspends its segment, swaps in loading.tsx and REMOUNTS
-      // MovementsList, resetting the client-side accumulated "Cargar más"
-      // state. Server actions carry only their return value when the proxy
-      // leaves them alone; explicit revalidatePath calls keep re-rendering by
-      // their own contract. Also note: connectDb() warm-up is not lost here —
-      // every server action already calls it directly.
+      // Same route coverage as before (pages only, excluding api/_next/files)
+      // — INCLUDING server-action POSTs (they match the page path), which
+      // REQUIRE this proxy: the CSP nonce + x-locale feed the in-response
+      // route re-renders of revalidating actions. A round-1 fix excluded
+      // next-action requests and BROKE every revalidating action's payload
+      // (dialogs never closed — no CSP/nonce coherence). The redundant
+      // cookie-set removal above is the actual surgical fix for the
+      // read-only pagination flight bug.
       source: "/((?!api|_next|.*\\..*).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
-        { type: "header", key: "next-action" },
       ],
     },
   ],

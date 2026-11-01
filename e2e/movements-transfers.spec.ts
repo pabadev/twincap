@@ -93,6 +93,7 @@ async function createMovementInUI(
   const dialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(dialog).toBeVisible();
 
+  await dialog.getByLabel("Context", { exact: true }).selectOption({ label: "Personal" });
   await dialog.getByLabel("Account").selectOption({ label: `${account} (COP)` });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
   await dialog.getByLabel("Category", { exact: true }).selectOption({ label: category });
