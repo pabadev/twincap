@@ -278,12 +278,16 @@ async function createManualMovementInUI(
     amount,
     date,
     note,
+    context,
   }: {
     type: "income" | "expense";
     category: string;
     amount: string;
     date: string;
     note: string;
+    /** H-16: the alta REQUIRES an explicit context (native required).
+     * Defaults to "Personal" so seeding callers keep their prior behavior. */
+    context?: "Personal" | "Business";
   },
 ): Promise<void> {
   await page.goto("/movements");
@@ -291,6 +295,7 @@ async function createManualMovementInUI(
   const dialog = page.getByRole("dialog", { name: /New Movement/i });
   await expect(dialog).toBeVisible();
 
+  await dialog.getByLabel("Context", { exact: true }).selectOption({ label: context });
   await dialog.getByLabel("Account").selectOption({ label: "Efectivo (COP)" });
   await dialog.getByLabel("Type").selectOption({ label: type === "income" ? "Income" : "Expense" });
   // exact: the movement category select — without it, the inline

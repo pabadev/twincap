@@ -124,5 +124,36 @@ describe("MovementForm account currency", () => {
     expect(currencyInput(container)?.value).toBe("USD");
     expect(container.textContent).toContain("amount (USD)");
     unmount();
+    unmount();
+  });
+});
+
+// H-16 (fundador 2026-10-31): the alta REQUIRES an explicit movement context
+// — a submitted-without-context movement is "neutral" and deliberately stays
+// OUT of both scope tabs (would render Personales/Negocio incomplete).
+describe("MovementForm context required (H-16)", () => {
+  it("marks the context select as native-required to block empty submits", () => {
+    const { container, unmount } = mountedForm();
+    const contextSelect = container.querySelector<HTMLSelectElement>('select[name="context"]');
+    expect(contextSelect).not.toBeNull();
+    expect(contextSelect!.required).toBe(true);
+    // The placeholder option carries an empty value so the browser's native
+    // constraint blocks submits until a context is chosen.
+    const placeholderOption = contextSelect!.options[0];
+    expect(placeholderOption.value).toBe("");
+    unmount();
+  });
+
+  it("keeps the server-side EXC-1 default available for non-UI callers", () => {
+    // The movement DTO keeps `context?: MovementContext` (optional + 'Personal'
+    // default server-side): the requirement lives in the UI layer only. The
+    // action reads the field defensively (actions.ts isMovementContext guard).
+    const { container, unmount } = mountedForm();
+    const contextSelect = container.querySelector<HTMLSelectElement>('select[name="context"]');
+    expect(contextSelect).not.toBeNull();
+    // No preselected option value beyond the empty placeholder.
+    expect(contextSelect!.selectedIndex).toBe(0);
+    unmount();
+    unmount();
   });
 });
