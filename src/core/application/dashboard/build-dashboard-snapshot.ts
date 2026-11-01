@@ -9,6 +9,7 @@ import type {
 import type { SerializedCategory } from "../../domain/category";
 import type { Movement } from "../../domain/movement";
 import { computeDashboardSummary } from "../compute-dashboard-summary";
+import { computeBusinessRangeSummary } from "../compute-dashboard-summary";
 import { computeCategorySummary } from "../compute-category-summary";
 import { computeYearlyEvolution } from "../compute-yearly-evolution";
 import { computeContextSummary } from "../compute-context-summary";
@@ -114,6 +115,39 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     filteredMovements = filteredMovements.filter((m) => m.categoryId === filters.categoryId);
   }
 
+  // H-19 (fundador 2026-10-31): on the Business tab the tab's own range
+  // (filters.from/to) drives the period-scoped set — cards, categories,
+  // financing, recent movements (and their headlines). The CHART keeps the
+  // COMPLETE series of the scope-filtered set (foundador 2026-10-31 round 2:
+  // "siempre visible y mostrándose completo" — only the context reacts,
+  // never a shortened window). Civil bounds: [from T00Z, to+1d T00Z).
+  const businessFrom =
+    filters.scope === "Business" &&
+    typeof filters.from === "string" &&
+    typeof filters.to === "string"
+      ? new Date(`${filters.from}T00:00:00.000Z`)
+      : null;
+  const businessToExclusive =
+    businessFrom !== null && filters.to
+      ? (() => {
+          const d = new Date(`${filters.to}T00:00:00.000Z`);
+          d.setUTCDate(d.getUTCDate() + 1);
+          return d;
+        })()
+      : null;
+  const businessWindow =
+    businessFrom !== null &&
+    businessToExclusive !== null &&
+    !Number.isNaN(businessFrom.getTime()) &&
+    !Number.isNaN(businessToExclusive.getTime());
+  const rangeMovements = businessWindow
+    ? filteredMovements.filter((m) => {
+        const fromMs = businessFrom!.getTime();
+        const toMs = businessToExclusive!.getTime();
+        return m.date.getTime() >= fromMs && m.date.getTime() < toMs;
+      })
+    : filteredMovements;
+
   // N2: clip the scope/account/category-filtered set to the CURRENT PERIOD
   // for every period-scoped component. The granularity comes from the §6
   // selector (filters.period, default "month" — historical baseline). Same
@@ -123,9 +157,11 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
   // filters untouched.
   const period: DashboardPeriod = filters.period ?? "month";
   const { current: currentPeriodKey } = resolveDashboardPeriod(period, civilNow);
-  const currentPeriodMetrics = filteredMovements.filter(
-    (m) => dashboardPeriodKeyOf(period, m.date) === currentPeriodKey,
-  );
+  // H-19 business window: the range IS the period clip — the period-key
+  // resolver (month/year of "now") must not further shrink a custom window.
+  const currentPeriodMetrics = businessWindow
+    ? rangeMovements
+    : filteredMovements.filter((m) => dashboardPeriodKeyOf(period, m.date) === currentPeriodKey);
   // Historical name kept for the period-scoped consumer set (cards,
   // financing, categories, recent movements, context summary): the docs
   // above ("N2 … current civil month") hold for the month baseline.
@@ -225,18 +261,36 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
   // multi-month series); `monthlyIncome`/`monthlyExpenses`/`financing*` only
   // count the current-civil-month key, so the cards stay current-month even
   // though the 6-month buckets hold real data for every window month.
-  const {
-    monthlyIncome,
-    monthlyExpenses,
-    financingInflow,
-    financingOutflow,
-    months: monthlyData,
-  } = computeDashboardSummary({
+  //
+  // H-19 business window: scope Business + range → totals and buckets come
+  // from computeBusinessRangeSummary over [from, to) — and the CHART keeps
+  // the complete series (computeDashboardSummary over the scope-filtered
+  // full set — founder: "mostrarse completo siempre"; only the context
+  // reacts, never a shortened window).
+  const completeSummary = computeDashboardSummary({
     movements: filteredMovements,
     currency,
     now: civilNow,
     period,
   });
+  const rangeSummary = businessWindow
+    ? computeBusinessRangeSummary({
+        movements: filteredMovements,
+        currency,
+        from: businessFrom!,
+        toExclusive: businessToExclusive!,
+      })
+    : null;
+
+  const monthlyIncome = businessWindow ? rangeSummary!.income : completeSummary.monthlyIncome;
+  const monthlyExpenses = businessWindow ? rangeSummary!.expenses : completeSummary.monthlyExpenses;
+  const financingInflow = businessWindow
+    ? rangeSummary!.financingInflow
+    : completeSummary.financingInflow;
+  const financingOutflow = businessWindow
+    ? rangeSummary!.financingOutflow
+    : completeSummary.financingOutflow;
+  const monthlyData = completeSummary.months;
 
   // beta round 3: per-currency financing breakdown of the CURRENT month —
   // every currency with a financing-capital movement appears with its own
@@ -284,6 +338,9 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     currency: c.currency,
   }));
 
+  // FOUNDER REVIEW (2026-10-31 round 2): the chart is ALWAYS the COMPLETE
+  // series of the scope-filtered set (reacciona al contexto, nunca al rango
+  // corto) — the yearly evolution applies in every scope again.
   const yearly = computeYearlyEvolution({
     movements: filteredMovements,
     currency,
@@ -309,11 +366,15 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     chartCurrencies = distinctCurrencies;
     chartDataByCurrency = {};
     for (const c of distinctCurrencies) {
+      // FOUNDER REVIEW (2026-10-31 round 2): the chart series is ALWAYS the
+      // complete series of the scope-filtered set (never clipped by the
+      // business range — "mostrarse completo siempre").
       chartDataByCurrency[c] = {
         monthly: computeDashboardSummary({
           movements: filteredMovements,
           currency: c,
           now: civilNow,
+          period,
         }).months,
         yearly: computeYearlyEvolution({
           movements: filteredMovements,
@@ -401,12 +462,15 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
   // §5.1: per-currency current-vs-previous period comparison over the FULL
   // filtered set (both periods must be inside the read window — the caller
   // already widened it to cover the previous civil year). Pure aggregator;
-  // the client never recomputes financial figures.
-  const periodComparison = computePeriodComparison({
-    movements: filteredMovements,
-    period,
-    civilNow,
-  });
+  // the client never recomputes financial figures. H-19: null in the
+  // business window (no deterministic counterpart for an arbitrary range).
+  const periodComparison = businessWindow
+    ? null
+    : computePeriodComparison({
+        movements: filteredMovements,
+        period,
+        civilNow,
+      });
 
   // §7.1: negative-balance alerts — derived presentation data from the
   // snapshot balances (independent of the selected period). Informativo
@@ -462,7 +526,7 @@ export function buildDashboardSnapshot(input: BuildDashboardSnapshotInput): Dash
     incomeTotals,
     expenseTotals,
     monthlyData,
-    yearlyData: yearly.months,
+    yearlyData: yearly?.months ?? [],
     recentMovements,
     dataAsOf: civilNow.toISOString(),
     attentionTotals,

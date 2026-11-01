@@ -29,6 +29,16 @@ export interface DashboardFilters {
    * Optional+additive: undefined = "month" (the historical baseline).
    */
   period?: DashboardPeriod;
+  /**
+   * H-19 (fundador 2026-10-31): on scope = "Business" the tab's OWN civil
+   * range (chips presets / Desde-Hasta) DRIVES the whole dashboard
+   * aggregation — one range per tab, so tables, tops, recent, chart and the
+   * flow cards all reflect the same window. Civil dates as YYYY-MM-DD; the
+   * build maps them to at-midnight-UTC window bounds exactly like the
+   * business page. Ignored (never set) for other scopes.
+   */
+  from?: string;
+  to?: string;
 }
 
 /** Per-currency summary of the balances + current-month income/expenses. */
@@ -165,8 +175,11 @@ export interface DashboardSnapshot {
    * duration). Rows exist only for currencies with data in EITHER period,
    * COP-first. Percentage fields are null when the previous period has no
    * comparable base — the UI renders a safe placeholder, never Infinity/NaN.
+   * H-19: NULL inside the Business tab's own range window — an arbitrary
+   * range has no deterministic previous counterpart; the UI renders its
+   * no-reference hint.
    */
-  periodComparison: PeriodComparisonRow[];
+  periodComparison: PeriodComparisonRow[] | null;
   /**
    * §7.1: accounts with a negative balance (derived from the snapshot
    * balances — independent of the selected period). Empty normal state.

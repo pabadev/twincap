@@ -156,3 +156,101 @@ export function computeDashboardSummary(input: {
     months,
   };
 }
+
+/**
+ * H-19 (fundador 2026-10-31): summary of the Negocio tab's OWN civil range.
+ * Same aggregation rules as computeDashboardSummary (economic buckets exclude
+ * financing capital and internal flows; sumSafeMinorUnits everywhere) but the
+ * window is the tab's explicit range [from, toExclusive) and the monthly
+ * series covers EVERY month inside it (bounded — no fixed trailing window),
+ * so the chart and the headline totals share the exact range the founder
+ * selected. One currency per call; never summed cross-currency.
+ */
+export interface BusinessRangeSummary {
+  /** Economic income of the whole range window. */
+  income: number;
+  /** Economic expenses of the whole range window. */
+  expenses: number;
+  /** Financing capital inflow (credit received principals) inside the range. */
+  financingInflow: number;
+  /** Financing capital outflow (credit granted principals) inside the range. */
+  financingOutflow: number;
+  /** One bucket per month inside [from, to), oldest first. */
+  months: MonthBucket[];
+}
+
+export function computeBusinessRangeSummary(input: {
+  movements: Movement[];
+  /** Currency scope — amounts in other currencies are ignored. */
+  currency: string;
+  /** Inclusive civil range start (midnight-UTC convention, D1). */
+  from: Date;
+  /** EXCLUSIVE range end (start of the civil day after `to`). */
+  toExclusive: Date;
+}): BusinessRangeSummary {
+  const { movements, currency } = input;
+  const fromMs = input.from.getTime();
+  const toMs = input.toExclusive.getTime();
+
+  let income = 0;
+  let expenses = 0;
+  let financingInflow = 0;
+  let financingOutflow = 0;
+  const monthlyMap = new Map<string, { income: number; expenses: number }>();
+
+  for (const m of movements) {
+    const epoch = m.date.getTime();
+    if (epoch < fromMs || epoch >= toMs) continue;
+    if (m.amount.currency !== currency) continue;
+
+    const financingCapital = m.link !== undefined && FINANCING_CAPITAL_LINK_KINDS.has(m.link.kind);
+
+    const monthlyKey = utcMonthKey(m.date);
+    // First pass keeps both the range totals and monthly buckets guarded.
+    if (financingCapital) {
+      if (m.type === "income") {
+        financingInflow = sumSafeMinorUnits(
+          [financingInflow, m.amount.amount],
+          "Business-range financing inflow",
+        );
+      } else {
+        financingOutflow = sumSafeMinorUnits(
+          [financingOutflow, m.amount.amount],
+          "Business-range financing outflow",
+        );
+      }
+    }
+
+    if (!countsTowardEconomicResult(m)) continue;
+
+    const bucket = monthlyMap.get(monthlyKey) ?? { income: 0, expenses: 0 };
+    if (m.type === "income") {
+      income = sumSafeMinorUnits([income, m.amount.amount], "Business-range income");
+      bucket.income = sumSafeMinorUnits(
+        [bucket.income, m.amount.amount],
+        "Business-range monthly income",
+      );
+    } else {
+      expenses = sumSafeMinorUnits([expenses, m.amount.amount], "Business-range expenses");
+      bucket.expenses = sumSafeMinorUnits(
+        [bucket.expenses, m.amount.amount],
+        "Business-range monthly expenses",
+      );
+    }
+    monthlyMap.set(monthlyKey, bucket);
+  }
+
+  // Bounded series: one bucket per civil month inside the range, oldest first.
+  const months: MonthBucket[] = [];
+  const cursor = new Date(input.from);
+  cursor.setUTCDate(1);
+  cursor.setUTCHours(0, 0, 0, 0);
+  while (cursor.getTime() < toMs) {
+    const key = utcMonthKey(cursor);
+    const bucket = monthlyMap.get(key) ?? { income: 0, expenses: 0 };
+    months.push({ month: key, ...bucket });
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return { income, expenses, financingInflow, financingOutflow, months };
+}

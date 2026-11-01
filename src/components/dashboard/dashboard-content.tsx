@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { DashboardSecondaryFilters, DashboardScopeTabs } from "./dashboard-filters";
 import { SummaryCards } from "./summary-cards";
+import { BusinessSummaryBlock } from "./business-summary";
 import { SummaryHero } from "./summary-hero";
 import { SummaryAttention } from "./summary-attention";
 import { MonthlyChart } from "./monthly-chart";
@@ -14,7 +15,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { TouchTarget } from "../ui/touch-target";
-import { Wallet, MessageSquare, SlidersHorizontal, BarChart3 } from "lucide-react";
+import { Wallet, SlidersHorizontal, BarChart3 } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
 import { formatAmountParts } from "../../lib/format";
 import { useT } from "../../i18n/client";
@@ -22,7 +23,6 @@ import type { SerializedCategory } from "../../core/domain/category";
 import type { CurrencyTotal } from "../../core/application/compute-category-summary";
 import type { DashboardSnapshot } from "./dashboard-snapshot";
 import { getDashboardSnapshotAction } from "../../app/(main)/dashboard/actions";
-import { FeedbackDialog } from "../feedback/feedback-widget";
 
 interface DashboardAccount {
   id: string;
@@ -49,6 +49,9 @@ interface DashboardContentProps {
   }>;
   /** Aggregate server-side snapshot (initial render); never the raw movements. */
   initialSnapshot: DashboardSnapshot;
+  /** H-19: the Negocio tab's own civil range (URL-restored or the server's
+   * month-to-date proposal; the block refetches itself on change). */
+  initialBusinessRange: { from: string; to: string };
 }
 
 /**
@@ -78,13 +81,15 @@ export function DashboardContent({
   noMovementsMessage,
   positionData,
   initialSnapshot,
+  initialBusinessRange,
 }: DashboardContentProps) {
   const t = useT("Dashboard");
-  const tFeedback = useT("Feedback");
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<"monthly" | "yearly">("monthly");
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // H-19: the Negocio tab's own civil range — parent-owned; the block reports
+  // changes and handleBusinessRangeChange persists + refetches everything.
+  const [businessRange, setBusinessRange] = useState(initialBusinessRange);
   // Filters live behind a toggle: the N1 hero reacts to them (the server
   // rebuilds currencyBreakdown with the active filters), so the bar must not
   // steal the first viewport. Collapsed by default.
@@ -153,6 +158,12 @@ export function DashboardContent({
     if (next.scope !== "all") params.set("scope", next.scope);
     if (next.accountId !== "all") params.set("cuenta", next.accountId);
     if (next.categoryId !== "all") params.set("categoria", next.categoryId);
+    // H-19: the business window travels with the scope (the Negocio tab's
+    // own range; the URL restores it server-side via filtersFromSearchParams).
+    if (next.scope === "Business" && next.from && next.to) {
+      params.set("desde", next.from);
+      params.set("hasta", next.to);
+    }
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
 
@@ -169,6 +180,13 @@ export function DashboardContent({
         // restore them from searchParams. Never let a refetch crash the page.
       }
     });
+  }
+
+  /** H-19: report the Negocio tab's range upward — updates the filters (which
+   * triggers the snapshot refetch with the range) AND keeps the URL contract. */
+  function handleBusinessRangeChange(next: { from: string; to: string }) {
+    setBusinessRange(next);
+    handleFiltersChange({ ...filters, scope: "Business", from: next.from, to: next.to });
   }
 
   const {
@@ -262,14 +280,9 @@ export function DashboardContent({
             <BarChart3 className="h-4 w-4" />
             {t("businessAnalyticsLink")}
           </Link>
-          <button
-            type="button"
-            onClick={() => setFeedbackOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-surface-card dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-surface-hover"
-          >
-            <MessageSquare className="h-4 w-4" />
-            {tFeedback("openFeedback")}
-          </button>
+          {/* H-17 (fundador 2026-10-31): the comments affordance lives ONLY
+              in the sidebar (MainNav) — removed from the Resumen header to
+              keep the dashboard header to navigation links. */}
         </div>
       </div>
 
@@ -351,7 +364,7 @@ export function DashboardContent({
         monthlyIncome={monthlyIncome}
         monthlyExpenses={monthlyExpenses}
         period={period}
-        periodComparison={periodComparison}
+        periodComparison={periodComparison ?? undefined}
         financingInflow={financingInflow}
         financingOutflow={financingOutflow}
         financingBreakdown={snapshot.financingBreakdown}
@@ -360,76 +373,92 @@ export function DashboardContent({
         contextSummary={filters.scope === "all" ? snapshot.contextSummary : undefined}
       />
 
+      {/* ── H-19: BUSINESS BLOCK — only on the Negocio tab. PARENT-CONTROLLED:
+           the block reports the selected range and the whole snapshot
+           refetches with it (one range per tab — tables, tops, recent,
+           chart and flow cards all share the window). ── */}
+      {filters.scope === "Business" && (
+        <BusinessSummaryBlock
+          locale={locale}
+          range={businessRange}
+          onRangeChange={handleBusinessRangeChange}
+        />
+      )}
+
       {/* Cuentas — justo debajo de las cards de resumen: responden "¿en qué
           cuentas está?", la continuación natural de la Pregunta 1 de la Regla
           de Oro, no el detalle de "¿qué pasó?" (N5). Orden validado en beta:
           hero → cards → cuentas → categorías → evolución → atención → detalle. */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          {t("accounts")}
-        </h2>
+      {/* H-18: GLOBAL (account balances are context-free — D3-bis) → hidden
+          on scoped tabs; the global available figure lives in hero #1. */}
+      {filters.scope === "all" && (
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+            {t("accounts")}
+          </h2>
 
-        {accountBalances.length === 0 ? (
-          <Card>
-            {/* H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the compact
+          {accountBalances.length === 0 ? (
+            <Card>
+              {/* H-10 EXCLUSION (UX-10): N1 dashboard minimalism — the compact
                 inline Card text is the approved pattern; a full EmptyState
                 would fight the dashboard's grid language. See
                 openspec/changes/ux-10-implementation/design.md (H-10 Exclusion Register). */}
-            <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-              {noAccountsMessage}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {accountBalances.map((account) => {
-              const parts = formatAmountParts(account.balance, account.currency, locale);
-              return (
-                <Card
-                  key={account.id}
-                  title={account.name}
-                  className="relative"
-                  headerClassName="!px-3 !py-2"
-                  contentClassName="p-3"
-                >
-                  {account.isFixed && (
-                    <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-surface-card dark:text-zinc-400">
-                      {t("fixed")}
-                    </span>
-                  )}
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                      {account.currency}
-                    </span>
-                    {/* §21 + A2 (F4): min-w-0 + break-words keep very large
+              <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+                {noAccountsMessage}
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {accountBalances.map((account) => {
+                const parts = formatAmountParts(account.balance, account.currency, locale);
+                return (
+                  <Card
+                    key={account.id}
+                    title={account.name}
+                    className="relative"
+                    headerClassName="!px-3 !py-2"
+                    contentClassName="p-3"
+                  >
+                    {account.isFixed && (
+                      <span className="absolute right-3 top-3 z-10 inline-block rounded-full border border-zinc-200 bg-surface-card px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-surface-card dark:text-zinc-400">
+                        {t("fixed")}
+                      </span>
+                    )}
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                        {account.currency}
+                      </span>
+                      {/* §21 + A2 (F4): min-w-0 + break-words keep very large
                         balances inside the card (the Card root clips overflow);
                         tabular-nums keeps digits aligned; the currency suffix
                         is in its own whitespace-nowrap span so it never wraps
                         alone. Mobile steps the size down. */}
-                    <span
-                      className={`min-h-[3.5rem] min-w-0 break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl ${
-                        account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
-                      }`}
-                    >
-                      {parts.sign}
-                      {parts.suffixFirst ? (
-                        <>
-                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
-                          <span>{parts.amount}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{parts.amount}</span>{" "}
-                          <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                      <span
+                        className={`min-h-[3.5rem] min-w-0 break-words text-lg font-semibold tabular-nums sm:min-h-0 sm:text-xl ${
+                          account.balance < 0 ? "text-expense" : "text-zinc-900 dark:text-white"
+                        }`}
+                      >
+                        {parts.sign}
+                        {parts.suffixFirst ? (
+                          <>
+                            <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                            <span>{parts.amount}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{parts.amount}</span>{" "}
+                            <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* N5 DETALLE moved up (beta round 3): Movimientos recientes belongs
           right under the accounts cards — "¿dónde está mi dinero?" then
@@ -437,7 +466,10 @@ export function DashboardContent({
           by pushing it below the chart and attention sections. */}
       <RecentMovements movements={recentMovements} noMovementsMessage={noMovementsMessage} />
 
-      {(topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
+      {/* Top tables — H-20 (fundador 2026-10-31): hidden ONLY on the Negocio
+          tab (few business categories made them repeat the summary tables);
+          they stay on Todo and Personal. */}
+      {filters.scope !== "Business" && (topIncomeRows.length > 0 || topExpenseRows.length > 0) && (
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
             {t("topCategories")}
@@ -487,7 +519,11 @@ export function DashboardContent({
         </div>
       </div>
 
-      {/* ── N3 EVOLUCIÓN ─────────────────────────────────────────── */}
+      {/* ── N3 EVOLUCIÓN ───────────────────────────────────────────
+          FOUNDER REVIEW (2026-10-31): the chart REACTS to the filters and is
+          relevant in EVERY scope — it renders in Todo, Personal AND Negocio
+          (in the business window its monthly series is bounded by the tab's
+          own range). It was wrongly hidden on scoped tabs. */}
       <div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
@@ -540,18 +576,27 @@ export function DashboardContent({
         />
       </div>
 
-      {/* ── N4 ATENCIÓN ──────────────────────────────────────────── */}
-      <SummaryAttention
-        attentionTotals={snapshot.attentionTotals}
-        overduePayables={snapshot.overduePayables}
-        negativeBalanceAlerts={negativeBalanceAlerts}
-        atypicalExpenseAlert={atypicalExpenseAlert}
-        locale={locale}
-      />
+      {/* ── N4 ATENCIÓN ──────────────────────────────────────────── H-18:
+          the attention rows derive from RAW credit/payable entities (not the
+          filtered movement set), so they are scope-invariant → hidden on
+          scoped tabs, same criterion as the position summary. */}
+      {filters.scope === "all" && (
+        <SummaryAttention
+          attentionTotals={snapshot.attentionTotals}
+          overduePayables={snapshot.overduePayables}
+          negativeBalanceAlerts={negativeBalanceAlerts}
+          atypicalExpenseAlert={atypicalExpenseAlert}
+          locale={locale}
+        />
+      )}
 
-      <PositionCards positions={positionData} locale={locale} />
-
-      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {/* H-18 (fundador 2026-10-31): scoped tabs (Personal/Negocio) hide the
+          NON-context-reactive global blocks — the position summary is derived
+          from account balances (D3-bis: accounts carry no context), so it
+          would read as duplicated/incoherent data inside a scoped tab. The
+          global available figure already lives in hero #1. Same criterion
+          applied below to the accounts grid and the historical chart. */}
+      {filters.scope === "all" && <PositionCards positions={positionData} locale={locale} />}
     </div>
   );
 }

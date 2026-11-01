@@ -35,6 +35,14 @@ export const dynamic = "force-dynamic";
  * §4.3). Unknown/invalid values are ignored so a stale or tampered URL can
  * never produce a filter select with no matching option.
  */
+function validateCivilDate(value: string | string[] | undefined): string | undefined {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value
+    ? undefined
+    : value;
+}
+
 function filtersFromSearchParams(
   params: Record<string, string | string[] | undefined>,
   accounts: Array<{ id: string }>,
@@ -52,7 +60,21 @@ function filtersFromSearchParams(
   // §6 (pre-beta): period granularity travels with the filters; anything but
   // "year" falls back to the baseline (no optionless select from stale URLs).
   const period = params.periodo === "year" ? "year" : "month";
-  return { scope, accountId, categoryId, period };
+  // H-19: the Negocio tab's own civil range travels too (only for the
+  // Business scope; stale/tampered values fall back to month-to-date).
+  const from = params.desde === undefined ? undefined : undefined;
+  void from;
+  const businessFrom = scope === "Business" ? validateCivilDate(params.desde) : undefined;
+  const businessTo = scope === "Business" ? validateCivilDate(params.hasta) : undefined;
+  return {
+    scope,
+    accountId,
+    categoryId,
+    period,
+    ...(businessFrom !== undefined && businessTo !== undefined
+      ? { from: businessFrom, to: businessTo }
+      : {}),
+  };
 }
 
 export default async function DashboardPage({
@@ -90,6 +112,39 @@ export default async function DashboardPage({
   const clientTzOffset = await getClientTzOffsetMinutes();
   const { from, to } = computeDashboardWindow(new Date(), clientTzOffset);
 
+  // R14-I: same civil-clock basis as buildDashboardSnapshot below — the
+  // tzOffsetMinutes the client already sends. Snapshot reads the union
+  // window (widened below when the Business tab's own range is wider);
+  // balances keep reading FULL history (R7-A semantics unchanged).
+  // H-19: the Negocio tab's own civil range (URL: ?desde/?hasta, validated
+  // by filtersFromSearchParams). Absent/invalid → month-to-date, the same
+  // basis as the business page (the user's civil "today" via the tz cookie).
+  const localNow = new Date();
+  localNow.setTime(localNow.getTime() - clientTzOffset * 60_000);
+  const businessToday = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, "0")}-${String(localNow.getUTCDate()).padStart(2, "0")}`;
+  const monthStart = `${businessToday.slice(0, 7)}-01`;
+  const initialBusinessRange = {
+    from: validateCivilDate(params.desde) ?? monthStart,
+    to: validateCivilDate(params.hasta) ?? businessToday,
+  };
+
+  // H-19: widen the aggregation window when the Business tab's URL range
+  // extends beyond the default union window (the fetch pulls the extra
+  // months; the build clips per business bounds for narrower ranges).
+  const businessRangeActive = params.scope === "Business";
+  const businessLower =
+    businessRangeActive &&
+    new Date(`${initialBusinessRange.from}T00:00:00.000Z`).getTime() < from.getTime()
+      ? new Date(`${initialBusinessRange.from}T00:00:00.000Z`)
+      : from;
+  const businessUpper = businessRangeActive
+    ? (() => {
+        const toExclusive = new Date(`${initialBusinessRange.to}T00:00:00.000Z`);
+        toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+        return toExclusive.getTime() > to.getTime() ? toExclusive : to;
+      })()
+    : to;
+
   const [
     windowedMovements,
     balanceMovements,
@@ -100,7 +155,7 @@ export default async function DashboardPage({
     sales,
     transfers,
   ] = await Promise.all([
-    movementRepo.findByWorkspaceIdAndDateRange(user.workspaceId!, from, to),
+    movementRepo.findByWorkspaceIdAndDateRange(user.workspaceId!, businessLower, businessUpper),
     movementRepo.findByWorkspaceIdForBalance(user.workspaceId!),
     categoryRepo.findByWorkspaceId(user.workspaceId!),
     creditReceivedRepo.findByWorkspaceId(user.workspaceId!),
@@ -133,6 +188,7 @@ export default async function DashboardPage({
   // producing unresolvable filter selects.
   const initialFilters = filtersFromSearchParams(params, accounts, serializedCategories);
 
+  // H-19: widen the aggregation window when the Business tab's URL range
   // R7-A: derive each account's balance from the LIVE (parent-filtered) movements.
   const balanceByAccount = accountBalancesFromMovements(accounts, liveBalanceMovements);
 
@@ -206,6 +262,7 @@ export default async function DashboardPage({
         noMovementsMessage={t("noMovements")}
         positionData={positionData.positions}
         initialSnapshot={initialSnapshot}
+        initialBusinessRange={initialBusinessRange}
       />
     </ContentContainer>
   );

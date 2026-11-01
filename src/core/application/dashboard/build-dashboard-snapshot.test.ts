@@ -127,6 +127,96 @@ const resolveCategoryLabel = (categoryId: string): string => {
   return found?.name ?? "Uncategorized";
 };
 
+// H-19 (fundador 2026-10-31): on the Business tab, filters.from/to bound the
+// WHOLE aggregation — cards, categories, financing, recent AND the chart
+// months (bounded inside the window), with periodComparison null (an
+// arbitrary range has no previous counterpart). Uses the shared movement
+// factory so the fixtures carry real Money instances.
+describe("buildDashboardSnapshot business window (H-19)", () => {
+  it("clips cards/rows/recent to the Business range and nulls the comparison", () => {
+    const prevMonthDate = new Date(Date.UTC(nowYear, nowMonth, 10, 12));
+    prevMonthDate.setUTCMonth(nowMonth - 1);
+    const inRangeDate = inCurrentMonth(5);
+    const outRangeDate = new Date(Date.UTC(nowYear, nowMonth, 28, 12));
+    const filters: DashboardFilters = {
+      scope: "Business",
+      accountId: "all",
+      categoryId: "all",
+      // Range = [1st..15th] of the current month: the 28th movement falls out.
+      from: `${utcMonthKey(inRangeDate)}-01`,
+      to: `${utcMonthKey(inRangeDate)}-15`,
+    };
+    const snapshot = buildDashboardSnapshot(
+      buildInput(
+        [
+          movement({
+            type: "income",
+            amount: 400_000,
+            categoryId: "cat-income",
+            date: inRangeDate,
+            context: "Business",
+          }),
+          movement({
+            type: "expense",
+            amount: 99,
+            categoryId: "cat-food",
+            date: outRangeDate,
+            context: "Business",
+          }),
+          movement({
+            type: "income",
+            amount: 8_000,
+            categoryId: "cat-income",
+            date: prevMonthDate,
+            context: "Business",
+          }),
+        ],
+        filters,
+      ),
+    );
+    expect(snapshot.monthlyIncome).toBe(400_000);
+    // expense movement fell OUTSIDE the window.
+    expect(snapshot.monthlyExpenses).toBe(0);
+    expect(snapshot.recentMovements).toHaveLength(1);
+    expect(snapshot.expenseRows).toHaveLength(0);
+    // The chart stays COMPLETE (founder round 2: "mostrarse completo siempre"
+    // — only the context reacts, the range does not shorten the series).
+    expect(snapshot.monthlyData.length).toBeGreaterThan(0);
+    expect(snapshot.monthlyData.some((b) => b.month !== utcMonthKey(inRangeDate))).toBe(true);
+    // An arbitrary range has no previous counterpart.
+    expect(snapshot.periodComparison).toBeNull();
+    // The balances stay INDEPENDENT (their hide is a client decision only).
+    expect(snapshot.accountBalances).toHaveLength(2);
+  });
+
+  it("activity totals and financing count the range window", () => {
+    const firstOfMonth = new Date(Date.UTC(nowYear, nowMonth, 3, 12));
+    const filters: DashboardFilters = {
+      scope: "Business",
+      accountId: "all",
+      categoryId: "all",
+      from: `${utcMonthKey(firstOfMonth)}-01`,
+      to: `${utcMonthKey(firstOfMonth)}-28`,
+    };
+    const snapshot = buildDashboardSnapshot(
+      buildInput(
+        [
+          movement({
+            type: "income",
+            amount: 250_000,
+            categoryId: "cat-income",
+            date: firstOfMonth,
+            context: "Business",
+          }),
+        ],
+        filters,
+      ),
+    );
+    expect(snapshot.monthlyIncome).toBe(250_000);
+    expect(snapshot.financingInflow).toBe(0);
+  });
+});
+
 const allFilters: DashboardFilters = {
   scope: "all",
   accountId: "all",
@@ -899,7 +989,7 @@ describe("buildDashboardSnapshot — §5.1/§6/§7 (pre-beta round)", () => {
         }),
       ]),
     );
-    const cop = snapshot.periodComparison.find((r) => r.currency === "COP");
+    const cop = snapshot.periodComparison?.find((r) => r.currency === "COP");
     expect(cop).toBeDefined();
     expect(cop!.income).toBe(100_000);
     expect(cop!.prevIncome).toBe(80_000);
@@ -924,7 +1014,7 @@ describe("buildDashboardSnapshot — §5.1/§6/§7 (pre-beta round)", () => {
     // Cards = period income/expenses in the aggregation currency.
     expect(snapshot.monthlyIncome).toBe(10_000);
     expect(snapshot.monthlyExpenses).toBe(3_000);
-    const cop = snapshot.periodComparison.find((r) => r.currency === "COP");
+    const cop = snapshot.periodComparison?.find((r) => r.currency === "COP");
     expect(cop!.income).toBe(10_000);
     expect(cop!.prevIncome).toBe(90_000);
   });

@@ -369,13 +369,14 @@ export function SummaryCards({
   const t = useT("Dashboard");
   const multi = currencyBreakdown && currencyBreakdown.length > 1;
   const period: DashboardPeriod = periodProp ?? "month";
-  // A11: the cross-currency `totalBalance` sum is gone. In mono-currency mode
-  // the single currency's balance IS the total (the sum of every account
-  // balance, all in that currency); multi-currency renders the per-currency
-  // breakdown instead. No cross-currency arithmetic anywhere.
-  const monoBalance =
-    currencyBreakdown && currencyBreakdown.length > 0 ? currencyBreakdown[0].balance : 0;
-  const balanceClass = monoBalance < 0 ? "text-expense" : "text-zinc-900 dark:text-zinc-100";
+  // H-16/flow swap (fundador 2026-10-31): card #3 leaves the global position
+  // ("Balance Total" — duplicated by hero #1 and never scope-reactive) and
+  // becomes the period's CASH FLOW (income − expenses per currency), which
+  // reacts to the scope tab/account/category filters by construction (the
+  // snapshot computes it from filteredMovements). The position stays in the
+  // hero. Flow rows follow the §15.12 rule: color by sign on the amount,
+  // currency code neutral, never summed cross-currency.
+  const flowRows = (currencyBreakdown ?? []).filter((c) => c.result !== 0);
 
   return (
     <>
@@ -460,21 +461,47 @@ export function SummaryCards({
             <div className="shrink-0 rounded-lg bg-info/10 p-2">
               <Icon icon={Wallet} size="md" className="text-info" />
             </div>
-            <div className="min-w-0 flex flex-col justify-center sm:justify-start">
+            <div className="min-h-[3.5rem] min-w-0 flex flex-col justify-center sm:justify-start gap-0.5">
               <p className="text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400">
-                {t("totalBalance")}
+                {period === "month" ? t("monthlyCashFlow") : t("periodCashFlowYear")}
               </p>
-              {multi ? (
-                <MultiCurrencyValue
-                  items={currencyBreakdown!}
-                  field="balance"
-                  locale={locale}
-                  className="text-zinc-900 dark:text-zinc-100"
-                />
+              {flowRows.length === 0 ? (
+                // §15.9-compatible silence: a period without movements draws no
+                // zero line (same minimalism the hero uses).
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">—</p>
               ) : (
-                <p className={`text-base sm:text-lg font-semibold leading-tight ${balanceClass}`}>
-                  <MoneyValue amount={monoBalance} currency={currency} locale={locale} />
-                </p>
+                flowRows.map((row) => {
+                  // §15.3.1 P1.3: one line per currency — never summed.
+                  const parts = formatAmountParts(Math.abs(row.result), row.currency, locale);
+                  return (
+                    <p
+                      key={row.currency}
+                      className="flex items-baseline justify-between gap-2 text-[11px] sm:text-xs leading-tight"
+                    >
+                      <span className="shrink-0 text-zinc-600 dark:text-zinc-400">
+                        {row.currency}
+                      </span>
+                      <span
+                        className={`min-w-0 break-words text-right font-semibold ${
+                          row.result >= 0 ? "text-income" : "text-expense"
+                        }`}
+                      >
+                        {row.result >= 0 ? "+" : "−"}
+                        {parts.suffixFirst ? (
+                          <>
+                            <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>{" "}
+                            <span>{parts.amount}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{parts.amount}</span>{" "}
+                            <span className="whitespace-nowrap shrink-0">{parts.suffix}</span>
+                          </>
+                        )}
+                      </span>
+                    </p>
+                  );
+                })
               )}
             </div>
           </div>

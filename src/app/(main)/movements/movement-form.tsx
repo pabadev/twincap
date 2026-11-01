@@ -208,10 +208,17 @@ export function MovementForm({
               Personal/Business from the start. UI order only — options are NOT
               filtered by context (categories are type-scoped; Account.scope is
               forbidden by D3-bis). */}
+          {/* H-16 (fundador 2026-10-31): contexto OBLIGATORIO en el alta. El
+              alta sin clasificar quedaba "neutral" — invisible en los tabs
+              Personales/Negocio (solo "Todos"). El select nativo con
+              placeholder value="" + required bloquea el submit hasta elegir.
+              La acción sigue aceptando context undefined para llamadas sin UI
+              (default 'Personal' server-side, EXC-1 untouched). */}
           <Select
             id="context"
             name="context"
             label={t("context")}
+            required
             disabled={isPending}
             placeholder={tCommon("select")}
             labelClassName={compactLabelClasses}

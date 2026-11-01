@@ -76,13 +76,21 @@ export function EditMovementModal({
         <input type="hidden" name="version" value={movement.version} />
 
         {/* Founder rule (2026-09-30): Contexto first — UI order only, no
-            filtering by context (D3-bis intact). */}
+            filtering by context (D3-bis intact). EDIT rule (§15.19): the
+            persisted value is the truth and is prefilled; movements WITHOUT a
+            persisted context open UNSELECTED (placeholder + required) — the
+            user classifies on save, never by omission (H-16 fundador
+            2026-10-31: the old `context ?? "Personal"` fallback silently
+            classified legacy movements on every edit). System-linked
+            movements carry no edit affordance at all (persona-link guard). */}
         <Select
           id="edit-context"
           name="context"
           label={t("context")}
+          required
           disabled={isPending}
-          defaultValue={movement.context ?? "Personal"}
+          defaultValue={movement.context}
+          placeholder={tCommon("select")}
           options={MOVEMENT_CONTEXTS.map((c) => ({
             value: c,
             label: c === "Personal" ? t("personal") : t("business"),

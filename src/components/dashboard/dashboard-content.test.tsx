@@ -73,6 +73,7 @@ const baseProps = {
   noMovementsMessage: "noMovements",
   positionData: [],
   initialSnapshot: mockSnapshot,
+  initialBusinessRange: { from: "2026-10-01", to: "2026-10-31" },
 };
 
 interface Mounted {
