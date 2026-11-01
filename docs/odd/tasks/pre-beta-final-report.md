@@ -102,6 +102,16 @@ Ver matriz §69 (H-1..H-15).
 
 ---
 
+## HALLAZGOS DE CI ABIERTOS (2026-11-01, run 41275312180 — 'no corrijas' del fundador: para otra sesión)
+
+- **E2E CI: 29 passed / 4 failed / chain-skips** (módulo serial, decisiones detenidas por los fallos). State of master: Quality verde; E2E con 4 abiertas:
+  1. **auth-accounts:55 — login no redirige a /dashboard** (NUEVA; sospecha principal: el round-2 del proxy — la cookie condicional puede haber quitado un re-issue necesario en el flujo de login; ver raze necesitada).
+  2. **credits-pos:380 — write-off: 'Expenses this month 0'** (persistente desde el primer run; la cadena serial de la semilla no compromete — ahora con contexto: re-hallazgo).
+  3. **dashboard-isolation:94 — el dialog New Movement no cierra en seedFinancialData** (persistente; el helper YA seleciona Contexto — revisar el selectOption con labels del locale EN vs. renderizado).
+  4. **measure-scroll:212 — métricas con rich data** (downstream de la semilla anterior).
+- **Acción de entrada (otra sesión):** correr ISOLATION local (visual) con la captura del dump; y re-verificar el proxy round-2 contra el flujo de login (curl del POST de login con la cookie).
+- La carpeta /api de routes está en master (H-23) — su inclusión en estos fallos: no probada en contra; mantener en la lectura del diagnóstico.
+
 ## Pendientes POST-cierre (registrados por el fundador)
 
 - **Retirar la vista `/business-analytics`** — el fundador (2026-11-01): la vista quedó reemplazada por el tab Negocio del Resumen. La ruta queda viva SOLO como drill-down temporal hasta el retiro. Recordatorios del retiro: portar/ajustar E2E-11/12 (que apuntan a la página) y evaluar el destino del link del sidebar ("Resumen del negocio") y del hero ("Ver resumen del negocio").
