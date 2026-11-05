@@ -126,7 +126,12 @@ export async function createCreditGrantedAction(
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidateMovementData("/credits/granted");
     // R13-H: regular credit-granted creation event (APPENDED) for product analytics.
-    await trackAnalytics("creditGrantedCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("creditGrantedCreated", user.workspaceId!, user.userId, {
+      feature: "creditGranted",
+      action: "created",
+      metricScope: "activation",
+      context,
+    });
   } catch (error) {
     if (!committed) {
       await releaseIdempotency(user.userId, idempotencyKey, "createCreditGranted");
@@ -208,6 +213,12 @@ export async function addAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "paymentAdded",
+    metricScope: "activation",
+  });
+
   return { success: "abonoAdded" };
 }
 
@@ -252,6 +263,12 @@ export async function editAbonoAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "paymentUpdated",
+    metricScope: "retention",
+  });
 
   return { success: "abonoUpdated" };
 }
@@ -308,6 +325,12 @@ export async function editCreditGrantedAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "updated",
+    metricScope: "retention",
+  });
+
   return { success: "creditUpdated" };
 }
 
@@ -347,6 +370,12 @@ export async function deleteAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "paymentDeleted",
+    metricScope: "retention",
+  });
+
   return { success: "abonoDeleted" };
 }
 
@@ -383,6 +412,12 @@ export async function deleteCreditAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "creditDeleted" };
 }
@@ -464,6 +499,12 @@ export async function markAsPaidAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "markedPaid",
+    metricScope: "retention",
+  });
+
   return { success: "creditMarkedAsPaid" };
 }
 
@@ -530,6 +571,12 @@ export async function writeOffCreditAction(
     }
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditGranted",
+    action: "writtenOff",
+    metricScope: "retention",
+  });
 
   return { success: "creditWrittenOff" };
 }

@@ -17,6 +17,7 @@
 /test-results/
 /playwright-report/
 /playwright/.cache/
+/e2e-a11y/storage-state.json
 
 # next.js
 /.next/

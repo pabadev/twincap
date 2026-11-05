@@ -125,7 +125,12 @@ export async function createCreditReceivedAction(
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidateMovementData("/credits/received");
     // R13-H: regular credit-received creation event (APPENDED) for product analytics.
-    await trackAnalytics("creditReceivedCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("creditReceivedCreated", user.workspaceId!, user.userId, {
+      feature: "creditReceived",
+      action: "created",
+      metricScope: "activation",
+      context,
+    });
   } catch (error) {
     if (!committed) {
       await releaseIdempotency(user.userId, idempotencyKey, "createCreditReceived");
@@ -207,6 +212,12 @@ export async function addAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "paymentAdded",
+    metricScope: "activation",
+  });
+
   return { success: "abonoAdded" };
 }
 
@@ -251,6 +262,12 @@ export async function editAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "paymentUpdated",
+    metricScope: "retention",
+  });
+
   return { success: "abonoUpdated" };
 }
 
@@ -275,7 +292,7 @@ export async function editCreditReceivedAction(
       : undefined;
   const installmentValue =
     typeof installmentValueRaw === "string" && installmentValueRaw !== ""
-      ? parseMoneyInput(installmentValueRaw) ?? 0
+      ? (parseMoneyInput(installmentValueRaw) ?? 0)
       : undefined;
   const frequency =
     typeof frequencyRaw === "string" && frequencyRaw !== "" ? frequencyRaw : undefined;
@@ -305,6 +322,12 @@ export async function editCreditReceivedAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "updated",
+    metricScope: "retention",
+  });
 
   return { success: "creditUpdated" };
 }
@@ -345,6 +368,12 @@ export async function deleteAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "paymentDeleted",
+    metricScope: "retention",
+  });
+
   return { success: "abonoDeleted" };
 }
 
@@ -381,6 +410,12 @@ export async function deleteCreditAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "creditDeleted" };
 }
@@ -461,6 +496,12 @@ export async function markAsPaidAction(
     }
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "creditReceived",
+    action: "markedPaid",
+    metricScope: "retention",
+  });
 
   return { success: "creditMarkedAsPaid" };
 }

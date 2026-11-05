@@ -126,7 +126,12 @@ export async function createPayableAction(
     // only leaves a temporarily stale UI cache (R15.1 6b), never a repeated effect.
     revalidateMovementData("/payables");
     // R13-H: regular payable creation event (APPENDED) for product analytics.
-    await trackAnalytics("payableCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("payableCreated", user.workspaceId!, user.userId, {
+      feature: "payables",
+      action: "created",
+      metricScope: "activation",
+      context,
+    });
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
@@ -214,6 +219,12 @@ export async function addAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "payables",
+    action: "paymentAdded",
+    metricScope: "activation",
+  });
+
   return { success: "abonoAdded" };
 }
 
@@ -258,6 +269,12 @@ export async function editAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "payables",
+    action: "paymentUpdated",
+    metricScope: "retention",
+  });
+
   return { success: "abonoUpdated" };
 }
 
@@ -293,6 +310,12 @@ export async function editPayableAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "payables",
+    action: "updated",
+    metricScope: "retention",
+  });
 
   return { success: "payableUpdated" };
 }
@@ -333,6 +356,12 @@ export async function deleteAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "payables",
+    action: "paymentDeleted",
+    metricScope: "retention",
+  });
+
   return { success: "abonoDeleted" };
 }
 
@@ -369,6 +398,12 @@ export async function deletePayableAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "payables",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "payableDeleted" };
 }

@@ -1,17 +1,24 @@
-'use server';
+"use server";
 
-import { connectDb } from '../../../infrastructure/db/connection';
-import { getCurrentUser } from '../../../infrastructure/auth/getCurrentUser';
-import { DefaultAnalyticsAuthorizer } from '../../../infrastructure/auth/analytics-authorizer';
+import { connectDb } from "../../../infrastructure/db/connection";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
+import { DefaultAnalyticsAuthorizer } from "../../../infrastructure/auth/analytics-authorizer";
 import {
   parseExcludedEmails,
   resolveExcludedWorkspaceIds,
-} from '../../../infrastructure/auth/analytics-exclusion';
-import { MongoUserRepository } from '../../../infrastructure/repositories/user-repository';
-import { MongoMembershipRepository } from '../../../infrastructure/repositories/membership-repository';
-import { AnalyticsEventModel } from '../../../infrastructure/models/analytics-event';
-import { Types } from 'mongoose';
-import { notFound, redirect } from 'next/navigation';
+} from "../../../infrastructure/auth/analytics-exclusion";
+import { MongoUserRepository } from "../../../infrastructure/repositories/user-repository";
+import { MongoMembershipRepository } from "../../../infrastructure/repositories/membership-repository";
+import { AnalyticsEventModel } from "../../../infrastructure/models/analytics-event";
+import { Types } from "mongoose";
+import { notFound, redirect } from "next/navigation";
+import { computeAnalyticsMetrics } from "../../../core/application/analytics/compute-analytics-metrics";
+import type {
+  AnalyticsAction,
+  AnalyticsEventName,
+  AnalyticsFeature,
+  AnalyticsMetricScope,
+} from "../../../core/application/ports";
 
 /**
  * Analytics dashboard snapshot (R13-G).
@@ -52,25 +59,34 @@ export interface AnalyticsDashboard {
   totalCreditGrantedCreated: number;
   /** Total payables created (regular appended events). */
   totalPayablesCreated: number;
-  /** Activation rate: % of registered workspaces with ≥3 movementCreated events within 2 days of registration. */
-  activationRate: number;
-  /** Retention 7d: % of registered workspaces active in the last 7 days. */
-  retention7d: number;
-  /** Retention 30d: % of registered workspaces active in the last 30 days. */
-  retention30d: number;
+  activationEligibleWorkspaces: number;
+  activatedWorkspaces: number;
+  activationRate: number | null;
+  retention7dEligibleWorkspaces: number;
+  returned7dWorkspaces: number;
+  retention7d: number | null;
+  retention30dEligibleWorkspaces: number;
+  returned30dWorkspaces: number;
+  retention30d: number | null;
+  /** Distinct workspaces with a value action during the rolling window. */
+  activeWorkspaces7d: number;
+  activeWorkspaces30d: number;
+  activePersonalWorkspaces30d: number;
+  activeBusinessWorkspaces30d: number;
+  featureUsage30d: Array<{ feature: AnalyticsFeature; events: number; workspaces: number }>;
   /** Average movements created per registered workspace (regular events, not the deduplicated first-event). */
   avgMovementsPerUser: number;
 }
 
 export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
   // R13-G hardening: the action re-checks the analytics authorization policy —
   // the page's gate is NOT the only boundary. This keeps metrics private even
   // if the action is invoked from another surface.
   const authorizer = new DefaultAnalyticsAuthorizer();
-  const allowed = await authorizer.canView(user.userId, user.email ?? '');
+  const allowed = await authorizer.canView(user.userId, user.email ?? "");
   if (!allowed) notFound();
 
   await connectDb();
@@ -80,132 +96,47 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
   // AFTER connectDb() per the connection rule. Absent → no exclusion (queries
   // below stay unchanged).
   const excludedEmails = parseExcludedEmails(process.env.ANALYTICS_EXCLUDE_EMAILS);
-  const excludedWorkspaceIds = excludedEmails.length > 0
-    ? await resolveExcludedWorkspaceIds(excludedEmails, {
-        findByEmail: (email) => new MongoUserRepository().findByEmail(email),
-        findWorkspaceIdsByUser: async (userId) =>
-          (await new MongoMembershipRepository().findByUserId(userId)).map(
-            (m) => m.workspaceId,
-          ),
-      })
-    : [];
-  const excluded = excludedWorkspaceIds.length > 0
-    ? { $nin: excludedWorkspaceIds.map((id) => new Types.ObjectId(id)) }
-    : undefined;
+  const excludedWorkspaceIds =
+    excludedEmails.length > 0
+      ? await resolveExcludedWorkspaceIds(excludedEmails, {
+          findByEmail: (email) => new MongoUserRepository().findByEmail(email),
+          findWorkspaceIdsByUser: async (userId) =>
+            (await new MongoMembershipRepository().findByUserId(userId)).map((m) => m.workspaceId),
+        })
+      : [];
+  const excluded =
+    excludedWorkspaceIds.length > 0
+      ? { $nin: excludedWorkspaceIds.map((id) => new Types.ObjectId(id)) }
+      : undefined;
 
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  // Count events by name (unique workspaces for "first" events; every
-  // occurrence for regular events — the latter reflect real usage volume).
-  const [registerEvents, loginEvents, accountEvents, movementEvents, dashboardEvents, saleEvents, movementCreatedEvents, transferCreatedEvents, creditReceivedCreatedEvents, creditGrantedCreatedEvents, payableCreatedEvents] =
-    await Promise.all([
-      AnalyticsEventModel.find({
-        eventName: 'register',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'firstLogin',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'accountCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'firstMovement',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'dashboardViewed',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'saleCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'movementCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'transferCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'creditReceivedCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'creditGrantedCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-      AnalyticsEventModel.find({
-        eventName: 'payableCreated',
-        ...(excluded ? { workspaceId: excluded } : {}),
-      }).lean(),
-    ]);
-
-  const totalRegistered = registerEvents.length;
-  const totalLoggedIn = loginEvents.length;
-  const totalAccountsCreated = accountEvents.length;
-  const totalFirstMovements = movementEvents.length;
-  const totalDashboardViews = dashboardEvents.length;
-  const totalSalesCreated = saleEvents.length;
-  const totalMovementsCreated = movementCreatedEvents.length;
-  const totalTransfersCreated = transferCreatedEvents.length;
-  const totalCreditReceivedCreated = creditReceivedCreatedEvents.length;
-  const totalCreditGrantedCreated = creditGrantedCreatedEvents.length;
-  const totalPayablesCreated = payableCreatedEvents.length;
-
-  // Activation: % of registered workspaces with ≥3 REAL movements within 2 days
-  // of registration. R14-H: use the regular movementCreated events (one doc per
-  // movement) — the deduplicated firstMovement events can never reach ≥3 per
-  // workspace, which made activation unattainable before.
-  let activatedCount = 0;
-  for (const reg of registerEvents) {
-    const regDate = reg.occurredAt as Date;
-    const twoDaysLater = new Date(regDate.getTime() + 2 * 24 * 60 * 60 * 1000);
-    const wsMovements = movementCreatedEvents.filter(
-      (m) =>
-        m.workspaceId.toString() === reg.workspaceId.toString() &&
-        (m.occurredAt as Date) <= twoDaysLater,
-    );
-    if (wsMovements.length >= 3) {
-      activatedCount++;
-    }
-  }
-  const activationRate = totalRegistered > 0
-    ? Math.round((activatedCount / totalRegistered) * 100)
-    : 0;
-
-  // Retention 7d/30d: workspaces with any event in the last 7/30 days.
   const allEvents = await AnalyticsEventModel.find({
-    occurredAt: { $gte: thirtyDaysAgo },
     ...(excluded ? { workspaceId: excluded } : {}),
   }).lean();
-
-  const active7d = new Set(
-    allEvents
-      .filter((e) => (e.occurredAt as Date) >= sevenDaysAgo)
-      .map((e) => e.workspaceId.toString()),
-  );
-  const active30d = new Set(allEvents.map((e) => e.workspaceId.toString()));
-
-  const retention7d = totalRegistered > 0
-    ? Math.round((active7d.size / totalRegistered) * 100)
-    : 0;
-  const retention30d = totalRegistered > 0
-    ? Math.round((active30d.size / totalRegistered) * 100)
-    : 0;
-
-  // Usage: average movements created per registered workspace. R14-H: based on
-  // the regular movementCreated events (real volume) instead of firstMovement
-  // (which always ≈1 per workspace).
-  const avgMovementsPerUser = totalRegistered > 0
-    ? Math.round((totalMovementsCreated / totalRegistered) * 10) / 10
-    : 0;
+  const metricEvents = allEvents.map((event) => ({
+    eventName: event.eventName as AnalyticsEventName,
+    workspaceId: event.workspaceId.toString(),
+    occurredAt: event.occurredAt,
+    feature: event.feature as AnalyticsFeature | undefined,
+    action: event.action as AnalyticsAction | undefined,
+    metricScope: event.metricScope as AnalyticsMetricScope | undefined,
+    context: event.context as "Personal" | "Business" | undefined,
+  }));
+  const metrics = computeAnalyticsMetrics(metricEvents, new Date());
+  const count = (eventName: AnalyticsEventName) =>
+    allEvents.filter((event) => event.eventName === eventName).length;
+  const totalRegistered = metrics.totalRegistered;
+  const totalLoggedIn = count("firstLogin");
+  const totalAccountsCreated = count("accountCreated");
+  const totalFirstMovements = count("firstMovement");
+  const totalDashboardViews = count("dashboardViewed");
+  const totalSalesCreated = count("saleCreated");
+  const totalMovementsCreated = metrics.totalMovementsCreated;
+  const totalTransfersCreated = count("transferCreated");
+  const totalCreditReceivedCreated = count("creditReceivedCreated");
+  const totalCreditGrantedCreated = count("creditGrantedCreated");
+  const totalPayablesCreated = count("payableCreated");
+  const avgMovementsPerUser =
+    totalRegistered > 0 ? Math.round((totalMovementsCreated / totalRegistered) * 10) / 10 : 0;
 
   return {
     totalRegistered,
@@ -219,9 +150,20 @@ export async function getAnalyticsDashboardAction(): Promise<AnalyticsDashboard>
     totalCreditReceivedCreated,
     totalCreditGrantedCreated,
     totalPayablesCreated,
-    activationRate,
-    retention7d,
-    retention30d,
+    activationEligibleWorkspaces: metrics.activationEligibleWorkspaces,
+    activatedWorkspaces: metrics.activatedWorkspaces,
+    activationRate: metrics.activationRate,
+    retention7dEligibleWorkspaces: metrics.retention7dEligibleWorkspaces,
+    returned7dWorkspaces: metrics.returned7dWorkspaces,
+    retention7d: metrics.retention7d,
+    retention30dEligibleWorkspaces: metrics.retention30dEligibleWorkspaces,
+    returned30dWorkspaces: metrics.returned30dWorkspaces,
+    retention30d: metrics.retention30d,
+    activeWorkspaces7d: metrics.activeWorkspaces7d,
+    activeWorkspaces30d: metrics.activeWorkspaces30d,
+    activePersonalWorkspaces30d: metrics.activePersonalWorkspaces30d,
+    activeBusinessWorkspaces30d: metrics.activeBusinessWorkspaces30d,
+    featureUsage30d: metrics.featureUsage30d,
     avgMovementsPerUser,
   };
 }

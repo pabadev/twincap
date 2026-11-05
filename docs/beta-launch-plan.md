@@ -10,18 +10,18 @@
 
 1. **Activation:** ¿el usuario registra movimientos reales?
 2. **Retention:** ¿vuelve a los 7 días? ¿a los 30?
-3. **Willingness to pay:** *"Si mañana TwinCap dejara de ser gratuito, ¿pagarías para seguir usándolo?"* y después *"¿cuánto pagarías?"* (auditoría §37).
+3. **Willingness to pay:** _"Si mañana TwinCap dejara de ser gratuito, ¿pagarías para seguir usándolo?"_ y después _"¿cuánto pagarías?"_ (auditoría §37).
 
 ---
 
 ## 2. Reclutamiento (mix objetivo — auditoría §35)
 
-| Segmento | Cantidad | Perfil |
-|----------|:--------:|--------|
-| Finanzas personales | **5** | Personas que hoy usan Excel/notas para presupuestar |
-| Pequeños negocios | **10** | Negocios con ingresos/gastos regulares, ventas a crédito |
-| Negocios con POS | **5** | Negocios que venden productos con stock y cuentas por cobrar |
-| **Total** | **20** | Rango objetivo 10–20; 20=techo, 10=mínimo viable |
+| Segmento            | Cantidad | Perfil                                                       |
+| ------------------- | :------: | ------------------------------------------------------------ |
+| Finanzas personales |  **5**   | Personas que hoy usan Excel/notas para presupuestar          |
+| Pequeños negocios   |  **10**  | Negocios con ingresos/gastos regulares, ventas a crédito     |
+| Negocios con POS    |  **5**   | Negocios que venden productos con stock y cuentas por cobrar |
+| **Total**           |  **20**  | Rango objetivo 10–20; 20=techo, 10=mínimo viable             |
 
 **Fuentes de reclutamiento (orden sugerido):** red personal del fundador → negocios de barrio/zona → referidos de los primeros testers. Preferir usuarios con dolor visible (hoy usan cuadernos/Excel) sobre curiosos sin necesidad real.
 
@@ -29,14 +29,14 @@
 
 ## 3. Timeline (30 días)
 
-| Día | Actividad |
-|-----|-----------|
-| **0** | Aviso de apertura + guía de bienvenida (1–2 min: qué es, cómo empezar, a quién escribir) |
+| Día     | Actividad                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------- |
+| **0**   | Aviso de apertura + guía de bienvenida (1–2 min: qué es, cómo empezar, a quién escribir)                            |
 | **1–3** | Acompañamiento de onboarding: primer login → creación de cuenta → primer movimiento (objetivo: evitar activation 0) |
-| **7** | Check-in: ¿siguen usando? ¿qué les frena? (correlacionar con retention 7d del dashboard) |
-| **14** | Mid-check: primeras features pedidas, bugs críticos, entrevistas cortas (15 min) |
-| **21** | Recordatorio + segunda ronda de entrevistas; corregir bugs críticos si los hay |
-| **30** | **Cierre**: entrevista final + pregunta de willingness to pay + encuesta post-beta (evento `returned`) |
+| **7**   | Check-in: ¿siguen usando? ¿qué les frena? (correlacionar con retention 7d del dashboard)                            |
+| **14**  | Mid-check: primeras features pedidas, bugs críticos, entrevistas cortas (15 min)                                    |
+| **21**  | Recordatorio + segunda ronda de entrevistas; corregir bugs críticos si los hay                                      |
+| **30**  | **Cierre**: entrevista final + pregunta de willingness to pay + encuesta post-beta (evento `returned`)              |
 
 ---
 
@@ -44,17 +44,20 @@
 
 **Medibles (automáticas):**
 
-| Métrica | Definición | Umbral de alerta |
-|---------|-----------|------------------|
-| Activation | ≥3 movimientos en primeros 2 días | <40% → revisar onboarding |
-| Retention 7d | Workspaces con actividad en últimos 7 días | <30% → revisar valor percibido |
-| Retention 30d | Actividad en últimos 30 días | <20% → crítica |
-| Usage | Movimientos por usuario | <10/mes → poco uso real |
-| POS | Ventas por negocio | <5/mes → si el perfil es POS, falla el fit |
-| Dashboard | Frecuencia de consulta | Sirve para priorizar features |
-| Support | Problemas por usuario | >3 → fricción operativa |
+| Métrica     | Definición                                                                                                        | Umbral de alerta                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Activation  | Workspaces con ≥3 acciones de producto en las primeras 48 h desde el registro / workspaces registrados hace ≥48 h | <40% → revisar onboarding                  |
+| Retorno D7  | Workspaces con una acción de producto entre los días 7–13 / cohortes registradas hace ≥14 días                    | <30% → revisar valor percibido             |
+| Retorno D30 | Workspaces con una acción de producto entre los días 30–36 / cohortes registradas hace ≥37 días                   | <20% → crítica                             |
+| Usage       | Movimientos por usuario                                                                                           | <10/mes → poco uso real                    |
+| POS         | Ventas por negocio                                                                                                | <5/mes → si el perfil es POS, falla el fit |
+| Dashboard   | Frecuencia de consulta                                                                                            | Sirve para priorizar features              |
+| Support     | Problemas por usuario                                                                                             | >3 → fricción operativa                    |
+
+**Lectura de las tasas:** el panel muestra casos/denominador y porcentaje. Los registros que todavía no completan la ventana no entran en la cohorte; si no hay cohortes maduras, la tasa se muestra como no disponible. D7/D30 miden retorno por cohorte y no deben confundirse con los contadores de workspaces activos en los últimos 7/30 días. Se registran las operaciones completadas de movimientos, cuentas, transferencias, créditos recibidos y otorgados, cuentas por pagar, ventas, abonos, clientes, categorías, catálogo e inventario, ajustes de saldo, ediciones, eliminaciones, exportaciones y feedback enviado o persistido tras un fallo de entrega. El panel de uso por función separa estas operaciones; atribuye los eventos históricos de creación por el nombre conocido del evento y las acciones nuevas por módulo explícito. El contexto Personal/Business se muestra cuando la acción lo permite. Registro, inicio de sesión y vistas del dashboard son eventos pasivos y no cuentan como retorno. La activación requiere tres acciones principales de creación/registro financiero en las primeras 48 h; ajustes, ediciones, eliminaciones, configuración, soporte y exportaciones no pueden activarla. Los abonos sí cuentan como una acción de valor; la marca de pagado no genera una segunda señal adicional. Son eventos de acciones completadas, no un cálculo de los registros financieros que siguen vigentes tras ediciones o eliminaciones. Para eventos históricos sin metadatos se conserva la clasificación previa de activación/retención y se infiere el módulo solo para los eventos de creación conocidos; no hay backfill de abonos u operaciones nuevas. La definición nueva recalcula el historial disponible; los porcentajes previos no son comparables como línea base.
 
 **Cualitativas (entrevistas):**
+
 - ¿Qué problema concreto resolvió? (si no sabe decirlo → no hay fit real)
 - Top 3 features pedidas (esto "es oro" — auditoría §36).
 - Bugs críticos que afectan cifras financieras (PRIORIDAD #1 sobre cualquier feature).
@@ -74,11 +77,11 @@
 
 ## 6. Cierre de la beta (día 30+)
 
-| Salida | Definición |
-|--------|-----------|
-| **Éxito** | ≥60% activation, ≥30% retention 7d, ≥50% de entrevistados con willingness to pay → planear monetización (Fase 5) |
-| **Iterar** | Uso real pero sin willingness to pay → ajustar propuesta de valor/pricing, segunda mini-campaña |
-| **Pivotar** | Sin use case claro ni retención → entrevistar a fondo antes de decidir Ronda 14 |
+| Salida      | Definición                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Éxito**   | ≥60% activation, ≥30% retention 7d, ≥50% de entrevistados con willingness to pay → planear monetización (Fase 5) |
+| **Iterar**  | Uso real pero sin willingness to pay → ajustar propuesta de valor/pricing, segunda mini-campaña                  |
+| **Pivotar** | Sin use case claro ni retención → entrevistar a fondo antes de decidir Ronda 14                                  |
 
 **Decisión de Ronda 14:** NO se planifica antes de tener los datos. La beta define el roadmap (features P1: comparación mensual, presupuestos, cashflow, onboarding — según lo que pidan los usuarios reales).
 
@@ -92,17 +95,19 @@
 - [ ] Plantilla de bienvenida + plantilla de entrevista listas.
 - [ ] Canal de soporte (`/help` + email) probado de punta a punta.
 - [x] **P0 (R14-G) — Contrato de índices de seguridad del monitor verificado en Atlas** (paso explícito del auditor 2026-09-07; NO es recomendación informal) — **EJECUTADO 2026-09-07:** `scripts/ensure-monitor-indexes.mjs --apply` (dry-run aprobado previamente por el usuario) materializó `monitorfingerprints` + `monitorcooldowns` y sus 4 índices ANTES de que `/api/monitor` reciba tráfico; `scripts/verify-monitor-indexes.mjs` confirmó `CONTRACT OK` (2 colecciones + 4 índices reales, directo contra Atlas, sin depender de Next.js/Mongoose); re-dry-run idempotente → 4× `[PASS] no-op`. En un deploy futuro, re-ejecutar siempre el verificador:
+
   ```bash
   node --env-file=.env.local scripts/verify-monitor-indexes.mjs
   ```
+
   Debe imprimir `CONTRACT OK — security indexes verified on production.` Detalle del contrato esperado:
 
-  | Colección | Índice | Propiedad esperada | Garantía que aporta |
-  |-----------|--------|--------------------|----------------------|
-  | `monitorfingerprints` | `key_1` | unique sobre `{ key: 1 }` | Cupo por IP/window con E11000 → retry: dos requests concurrentes NO crean dos buckets para la misma IP+ventana |
-  | `monitorfingerprints` | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El estado de la ventana de 15 min desaparece solo |
-  | `monitorcooldowns` | `key_1` | unique sobre `{ key: 1 }` | Singleton `monitor:global` no se duplica entre instancias |
-  | `monitorcooldowns` | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El cooldown global se limpia a los 10 min (extendido mientras está activo) |
+  | Colección             | Índice        | Propiedad esperada          | Garantía que aporta                                                                                            |
+  | --------------------- | ------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+  | `monitorfingerprints` | `key_1`       | unique sobre `{ key: 1 }`   | Cupo por IP/window con E11000 → retry: dos requests concurrentes NO crean dos buckets para la misma IP+ventana |
+  | `monitorfingerprints` | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El estado de la ventana de 15 min desaparece solo                                                              |
+  | `monitorcooldowns`    | `key_1`       | unique sobre `{ key: 1 }`   | Singleton `monitor:global` no se duplica entre instancias                                                      |
+  | `monitorcooldowns`    | `expiresAt_1` | TTL `expireAfterSeconds: 0` | El cooldown global se limpia a los 10 min (extendido mientras está activo)                                     |
 
   Regla: **si el script falla (missing/wrong property), el deploy NO se considera completo** — corregir índices antes de abrir el monitor a tráfico. Los índices viven en el cluster (persisten reinicios e instancias múltiples); una vez presentes, `unique` y TTL son garantías del servidor, no de la app.
   - [ ] Comportamiento post-reinicio: `monitorfingerprints`/`monitorcooldowns` siguen existiendo con los mismos índices (lo verifica el script en un segundo `--env-file` local o desde otra instancia).
@@ -112,12 +117,12 @@
 
 Los límites del monitor NO son números arbitrarios — son política de producto/seguridad a ajustar con datos reales del beta. Documentación de POR QUÉ (auditor 2026-09-07, P1):
 
-| Límite | Valor | Razonamiento |
-|--------|-------|--------------|
-| Cupo por IP | **30 fingerprints únicos / 15 min** | Una app legítima genera pocos fingerprints nuevos por IP en 15 min (el mismo error repetido NO consume cupo — solo fingerprints NUEVOS). 30 da margen generoso a clientes reales y corta a un atacante que falsifica fingerprints para agotar logs/alertas. Multiplica el gate IP 120 req/15 min: un atacante puede llegar a 120 requests, pero solo 30 fingerprints únicos pasan. |
-| Cooldown global | **>30 fingerprints NUEVOS / 5 min** | Detecta un ataque **distribuido** (varias IPs, cada una bajo su cupo): más de 30 fingerprints nunca vistos en todo el producto en 5 min es señal inequívoca de flooding. 5 min es la ventana de observación: suficiente para acumular señal, corta para no reaccionar tarde. |
-| Duración del cooldown | **10 min** | Una vez detectado el flood, se apagan las nuevas fingerprints durante 10 min (2× la ventana de observación): tiempo de sobra para que el atacante se aburra y el operador mire los logs, sin castigar usuarios legítimos (el monitor solo escribe logs de error, no sirve datos de producción). |
-| Throttle de alertas | **1 email / fingerprint / 30 min** | El email es el canal caro: si un error real se repite (p.ej. un endpoint roto que millones de requests golpean), el operador recibe UN email por fingerprint distinto por media hora — suficiente para enterarse, imposible de spamear. Los errores repetidos del MISMO fingerprint no re-alertan (solo `isFirst` al crear el doc). |
+| Límite                | Valor                               | Razonamiento                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cupo por IP           | **30 fingerprints únicos / 15 min** | Una app legítima genera pocos fingerprints nuevos por IP en 15 min (el mismo error repetido NO consume cupo — solo fingerprints NUEVOS). 30 da margen generoso a clientes reales y corta a un atacante que falsifica fingerprints para agotar logs/alertas. Multiplica el gate IP 120 req/15 min: un atacante puede llegar a 120 requests, pero solo 30 fingerprints únicos pasan. |
+| Cooldown global       | **>30 fingerprints NUEVOS / 5 min** | Detecta un ataque **distribuido** (varias IPs, cada una bajo su cupo): más de 30 fingerprints nunca vistos en todo el producto en 5 min es señal inequívoca de flooding. 5 min es la ventana de observación: suficiente para acumular señal, corta para no reaccionar tarde.                                                                                                       |
+| Duración del cooldown | **10 min**                          | Una vez detectado el flood, se apagan las nuevas fingerprints durante 10 min (2× la ventana de observación): tiempo de sobra para que el atacante se aburra y el operador mire los logs, sin castigar usuarios legítimos (el monitor solo escribe logs de error, no sirve datos de producción).                                                                                    |
+| Throttle de alertas   | **1 email / fingerprint / 30 min**  | El email es el canal caro: si un error real se repite (p.ej. un endpoint roto que millones de requests golpean), el operador recibe UN email por fingerprint distinto por media hora — suficiente para enterarse, imposible de spamear. Los errores repetidos del MISMO fingerprint no re-alertan (solo `isFirst` al crear el doc).                                                |
 
 **Regla de ajuste:** estos valores se revisan al cierre del beta con datos reales (métricas §4). Si un usuario legítimo toca el límite (falso positivo), se sube `MAX_FINGERPRINTS_PER_IP` o `GLOBAL_COOLDOWN_THRESHOLD`; si un ataque lo esquiva, se baja. Fuente: `src/infrastructure/monitoring/monitor-guard.ts` (constantes exportadas + tests).
 
@@ -155,4 +160,4 @@ Si cualquier paso falla, el deploy NO está completo: resolver antes de consider
 
 ---
 
-*Documento vivo. Última actualización: 2026-09-07 (R14-J: branch protection + smoke test P0.7, CI sobre master).*
+_Documento vivo. Última actualización: 2026-11-02 (definiciones de activación, retorno por cohorte y actividad reciente; R14-J: branch protection + smoke test P0.7, CI sobre master)._

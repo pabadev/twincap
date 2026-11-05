@@ -6,18 +6,18 @@ Manage accounts and movements, move money between your own accounts, track credi
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16.3.4 (App Router, Turbopack) |
-| UI | React 19, Tailwind CSS 4 |
-| Language | TypeScript 5 (strict) |
-| Database | MongoDB (Mongoose 8 ODM) — Atlas M0 replica set |
-| Auth | jose (JWE A256GCM sessions), bcryptjs |
-| Validation | Zod 4 |
-| Email | Resend (transactional; console fallback in development) |
-| Icons | lucide-react |
-| Testing | Vitest (unit + integration), Playwright (E2E) |
-| Deployment | Vercel |
+| Layer      | Technology                                              |
+| ---------- | ------------------------------------------------------- |
+| Framework  | Next.js 16.3.4 (App Router, Turbopack)                  |
+| UI         | React 19, Tailwind CSS 4                                |
+| Language   | TypeScript 5 (strict)                                   |
+| Database   | MongoDB (Mongoose 8 ODM) — Atlas M0 replica set         |
+| Auth       | jose (JWE A256GCM sessions), bcryptjs                   |
+| Validation | Zod 4                                                   |
+| Email      | Resend (transactional; console fallback in development) |
+| Icons      | lucide-react                                            |
+| Testing    | Vitest (unit + integration), Playwright (E2E)           |
+| Deployment | Vercel                                                  |
 
 ## Architecture
 
@@ -117,29 +117,29 @@ pnpm test          # Vitest single run (unit + integration)
 pnpm test:watch    # watch mode
 ```
 
-The suite has **1,340+ tests across 120 test files**, covering domain logic, use cases, infrastructure adapters, real MongoDB transactions, concurrency, and idempotency.
+The Vitest suite covers domain logic, use cases, infrastructure adapters, MongoDB transactions, concurrency, and idempotency. See the current CI run for the verified test count and result.
 
 End-to-end tests run with Playwright against a local `mongodb-memory-server` seeded through `.env.e2e` (never Atlas):
 
 ```bash
 pnpm test:e2e:install   # one-time: install the Chromium browser
-pnpm test:e2e           # 24 E2E flows across 4 specs
+pnpm test:e2e           # Playwright end-to-end suite
 ```
 
 ## Features
 
-| # | Capability | Description |
-|---|-----------|-------------|
-| 1 | **User Auth** | Register, login, logout, email verification, and password reset (jose A256GCM sessions, bcryptjs, Resend) |
-| 2 | **Accounts** | Create, rename, and delete accounts with opening/initial balance tracking; balances are always derived (no stored balance field) |
-| 3 | **Categories** | Income/expense categories with uniqueness and deletion guards |
-| 4 | **Movements** | Income and expense movements with category-type matching, system-linked deletion guards, optimistic-concurrency (CAS) edits, and a policy that allows negative balances |
-| 5 | **Transfers** | Move funds between your own accounts (same or cross currency) with idempotent replay and CAS; the FX rate is derived from both amounts |
-| 6 | **Credits Received** | Track credits you receive with installment (abono) management and cascade deletes |
-| 7 | **Credits Granted** | Track credits you grant with capital-first amortization, interest-only income, and an uncollectible write-off flow |
-| 8 | **Payables** | Register purchase obligations with total/abono tracking (payable principal is never re-counted as an expense) |
-| 9 | **Clients** | Client records with guarded deletion and create/edit flows shared with the POS |
-| 10 | **POS** | Product catalog + sales with stock management, line items, paid-in-full or on-credit payment, and abono operations |
+| #   | Capability           | Description                                                                                                                                                             |
+| --- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **User Auth**        | Register, login, logout, email verification, and password reset (jose A256GCM sessions, bcryptjs, Resend)                                                               |
+| 2   | **Accounts**         | Create, rename, and delete accounts with opening/initial balance tracking; balances are always derived (no stored balance field)                                        |
+| 3   | **Categories**       | Income/expense categories with uniqueness and deletion guards                                                                                                           |
+| 4   | **Movements**        | Income and expense movements with category-type matching, system-linked deletion guards, optimistic-concurrency (CAS) edits, and a policy that allows negative balances |
+| 5   | **Transfers**        | Move funds between your own accounts (same or cross currency) with idempotent replay and CAS; the FX rate is derived from both amounts                                  |
+| 6   | **Credits Received** | Track credits you receive with installment (abono) management and cascade deletes                                                                                       |
+| 7   | **Credits Granted**  | Track credits you grant with capital-first amortization, interest-only income, and an uncollectible write-off flow                                                      |
+| 8   | **Payables**         | Register purchase obligations with total/abono tracking (payable principal is never re-counted as an expense)                                                           |
+| 9   | **Clients**          | Client records with guarded deletion and create/edit flows shared with the POS                                                                                          |
+| 10  | **POS**              | Product catalog + sales with stock management, line items, paid-in-full or on-credit payment, and abono operations                                                      |
 
 ### Additional capabilities
 
@@ -200,20 +200,20 @@ twincap/
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start the development server (Turbopack) |
-| `pnpm build` | Production build |
-| `pnpm start` | Start the production server |
-| `pnpm lint` | Run ESLint |
-| `pnpm test` | Run Vitest (single run) |
-| `pnpm test:watch` | Run Vitest in watch mode |
-| `pnpm test:e2e` | Run Playwright E2E (local mongod via `.env.e2e`) |
-| `pnpm test:e2e:install` | Install the Playwright Chromium browser |
-| `pnpm e2e:server` | Build and start the server used by the E2E `webServer` |
-| `pnpm format` | Format the codebase with Prettier |
-| `pnpm format:check` | Check formatting without writing |
-| `pnpm migrate:workspace` | Run the workspace migration script |
+| Command                  | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| `pnpm dev`               | Start the development server (Turbopack)               |
+| `pnpm build`             | Production build                                       |
+| `pnpm start`             | Start the production server                            |
+| `pnpm lint`              | Run ESLint                                             |
+| `pnpm test`              | Run Vitest (single run)                                |
+| `pnpm test:watch`        | Run Vitest in watch mode                               |
+| `pnpm test:e2e`          | Run Playwright E2E (local mongod via `.env.e2e`)       |
+| `pnpm test:e2e:install`  | Install the Playwright Chromium browser                |
+| `pnpm e2e:server`        | Build and start the server used by the E2E `webServer` |
+| `pnpm format`            | Format the codebase with Prettier                      |
+| `pnpm format:check`      | Check formatting without writing                       |
+| `pnpm migrate:workspace` | Run the workspace migration script                     |
 
 ## License
 

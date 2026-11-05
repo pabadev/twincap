@@ -154,7 +154,11 @@ export async function createTransferAction(
     revalidatePath("/dashboard");
     revalidatePath("/movements");
     // R13-H: regular transfer creation event (APPENDED) for product analytics.
-    await trackAnalytics("transferCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("transferCreated", user.workspaceId!, user.userId, {
+      feature: "transfers",
+      action: "created",
+      metricScope: "activation",
+    });
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
@@ -251,6 +255,12 @@ export async function updateTransferAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "transfers",
+    action: "updated",
+    metricScope: "retention",
+  });
+
   return { success: "transferUpdated" };
 }
 
@@ -290,6 +300,12 @@ export async function deleteTransferAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "transfers",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "transferDeleted" };
 }

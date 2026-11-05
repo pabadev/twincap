@@ -72,7 +72,7 @@ export interface OperationLogRecord {
   action: string;
   entityType: string;
   entityId?: string;
-  result: 'success' | 'error' | 'duplicate';
+  result: "success" | "error" | "duplicate";
   correlationId?: string;
   durationMs?: number;
   errorCode?: string;
@@ -109,7 +109,7 @@ export interface EmailSender {
 }
 
 /** Purpose of a one-time auth token. */
-export type AuthTokenPurpose = 'password_reset' | 'email_verify';
+export type AuthTokenPurpose = "password_reset" | "email_verify";
 
 /**
  * Persisted record for a hashed one-time auth token.
@@ -133,7 +133,7 @@ export interface AuthTokenRecord {
  * Severity of an error event. `fatal` and `error` are alert-worthy when the
  * event is UNEXPECTED; `warning` never triggers an alert on its own.
  */
-export type ErrorSeverity = 'fatal' | 'error' | 'warning';
+export type ErrorSeverity = "fatal" | "error" | "warning";
 
 /**
  * Extensible structured context for an error event (R13-D).
@@ -220,17 +220,59 @@ export interface ErrorReporter {
  * the beta needs.
  */
 export type AnalyticsEventName =
-  | 'register'
-  | 'firstLogin'
-  | 'accountCreated'
-  | 'firstMovement'
-  | 'dashboardViewed'
-  | 'saleCreated'
-  | 'movementCreated'
-  | 'transferCreated'
-  | 'creditReceivedCreated'
-  | 'creditGrantedCreated'
-  | 'payableCreated';
+  | "register"
+  | "firstLogin"
+  | "accountCreated"
+  | "firstMovement"
+  | "dashboardViewed"
+  | "saleCreated"
+  | "movementCreated"
+  | "transferCreated"
+  | "creditReceivedCreated"
+  | "creditGrantedCreated"
+  | "payableCreated"
+  | "productAction";
+
+export type AnalyticsFeature =
+  | "accounts"
+  | "categories"
+  | "movements"
+  | "transfers"
+  | "creditReceived"
+  | "creditGranted"
+  | "payables"
+  | "sales"
+  | "clients"
+  | "catalog"
+  | "inventory"
+  | "exports"
+  | "support";
+
+export type AnalyticsAction =
+  | "created"
+  | "updated"
+  | "deleted"
+  | "paymentAdded"
+  | "paymentUpdated"
+  | "paymentDeleted"
+  | "markedPaid"
+  | "writtenOff"
+  | "stockAdjusted"
+  | "openingValueSet"
+  | "initialBalanceCorrected"
+  | "configured"
+  | "exported"
+  | "submitted";
+
+export type AnalyticsMetricScope = "activation" | "retention" | "adoption" | "support";
+
+/** Fixed, low-cardinality event metadata. Never include entity IDs, names, amounts, or user text. */
+export interface AnalyticsEventMetadata {
+  feature: AnalyticsFeature;
+  action: AnalyticsAction;
+  metricScope: AnalyticsMetricScope;
+  context?: "Personal" | "Business";
+}
 
 /**
  * Out port for product analytics (R13-G). Deliberately SEPARATE from
@@ -252,6 +294,7 @@ export interface AnalyticsReporter {
     eventName: AnalyticsEventName;
     workspaceId: string;
     userId: string;
+    metadata?: AnalyticsEventMetadata;
   }): Promise<void>;
 }
 
@@ -288,10 +331,7 @@ export interface AnalyticsAuthorizer {
 export interface AuthTokenStore {
   create(record: AuthTokenRecord): Promise<AuthTokenRecord>;
   /** Active (not used, not expired) token hash for a user+purpose, if any. */
-  findActiveByUser(
-    userId: string,
-    purpose: AuthTokenPurpose,
-  ): Promise<AuthTokenRecord | null>;
+  findActiveByUser(userId: string, purpose: AuthTokenPurpose): Promise<AuthTokenRecord | null>;
   /**
    * Atomically consume (mark used) the token ONLY if it is still unused and
    * unexpired. Returns true when THIS caller won (exactly one document
@@ -370,13 +410,13 @@ export interface SessionCookieManager {
  * support needs to follow up with the author.
  */
 export interface FeedbackRecord {
-  kind: 'comment' | 'bug' | 'suggestion';
+  kind: "comment" | "bug" | "suggestion";
   message: string;
   userId: string;
   email?: string;
   locale: string;
   page?: string;
-  result: 'delivered' | 'failed';
+  result: "delivered" | "failed";
   attemptedAt: Date;
 }
 

@@ -1,4 +1,4 @@
-import mongoose, { Schema, type InferSchemaType } from 'mongoose';
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 /**
  * Product analytics events (R13-G).
@@ -19,6 +19,45 @@ export const AnalyticsEventSchema = new Schema(
     workspaceId: { type: Schema.Types.ObjectId, required: true, index: true },
     /** Actor id (NEVER an email). */
     userId: { type: String, required: true },
+    /** Fixed low-cardinality dimensions; never store financial or user-entered values here. */
+    feature: {
+      type: String,
+      enum: [
+        "accounts",
+        "categories",
+        "movements",
+        "transfers",
+        "creditReceived",
+        "creditGranted",
+        "payables",
+        "sales",
+        "clients",
+        "catalog",
+        "inventory",
+        "exports",
+        "support",
+      ],
+    },
+    action: {
+      type: String,
+      enum: [
+        "created",
+        "updated",
+        "deleted",
+        "paymentAdded",
+        "paymentUpdated",
+        "paymentDeleted",
+        "markedPaid",
+        "writtenOff",
+        "stockAdjusted",
+        "openingValueSet",
+        "configured",
+        "exported",
+        "submitted",
+      ],
+    },
+    metricScope: { type: String, enum: ["activation", "retention", "adoption", "support"] },
+    context: { type: String, enum: ["Personal", "Business"] },
     /** When the event occurred. Defaults to now. */
     occurredAt: { type: Date, required: true, default: Date.now },
   },
@@ -31,5 +70,4 @@ AnalyticsEventSchema.index({ workspaceId: 1, eventName: 1, occurredAt: -1 });
 export type AnalyticsEventDocument = InferSchemaType<typeof AnalyticsEventSchema>;
 
 export const AnalyticsEventModel =
-  mongoose.models.AnalyticsEvent ||
-  mongoose.model('AnalyticsEvent', AnalyticsEventSchema);
+  mongoose.models.AnalyticsEvent || mongoose.model("AnalyticsEvent", AnalyticsEventSchema);

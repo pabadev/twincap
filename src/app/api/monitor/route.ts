@@ -6,6 +6,7 @@ import { sanitizeContext } from "../../../infrastructure/monitoring/sanitize";
 import { connectDb } from "../../../infrastructure/db/connection";
 import { monitorRateLimiter } from "../../../infrastructure/auth/rate-limiter";
 import { resolveClientIp } from "../../../infrastructure/auth/client-ip";
+import { getCurrentUser } from "../../../infrastructure/auth/getCurrentUser";
 
 /**
  * Route handler for client-side error reporting (R13-D).
@@ -112,6 +113,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Never trust client severity/defaults: cap at 'error' from unrecognized.
     const severity = body.severity ?? "error";
+    const currentUser = await getCurrentUser();
+    const context = sanitizeContext({
+      ...body.context,
+      // Client supplied identity is only a hint and is never persisted.
+      // Attribute the report to a verified session, or omit identity entirely.
+      userId: currentUser?.userId,
+      workspaceId: currentUser?.workspaceId,
+    });
 
     await reportError(
       {
@@ -121,7 +130,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         severity,
         expected: body.expected ?? false,
         code: body.code,
-        context: body.context ? sanitizeContext(body.context) : undefined,
+        context: Object.keys(context).length > 0 ? context : undefined,
         environment: body.environment,
         release: body.release,
       },

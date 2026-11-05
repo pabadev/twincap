@@ -242,7 +242,12 @@ export async function createSaleAction(
     revalidatePath("/dashboard");
     revalidatePath("/movements");
     // R13-G: track sale creation (analytics, best-effort).
-    await trackAnalytics("saleCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("saleCreated", user.workspaceId!, user.userId, {
+      feature: "sales",
+      action: "created",
+      metricScope: "activation",
+      context: "Business",
+    });
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
@@ -333,6 +338,12 @@ export async function addSaleAbonoAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "sales",
+    action: "paymentAdded",
+    metricScope: "activation",
+  });
+
   return { success: "abonoAdded" };
 }
 
@@ -374,6 +385,12 @@ export async function deleteSaleAbonoAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "sales",
+    action: "paymentDeleted",
+    metricScope: "retention",
+  });
 
   return { success: "abonoDeleted" };
 }
@@ -421,6 +438,12 @@ export async function deleteSaleAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "sales",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "saleDeleted" };
 }
@@ -506,6 +529,12 @@ export async function updateSaleAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "sales",
+    action: "updated",
+    metricScope: "retention",
+  });
+
   return { success: "saleUpdated" };
 }
 
@@ -588,6 +617,11 @@ export async function exportSalesCsvAction(
     const filtered = filterSalesForCsv(serializeEntities(sales), filters, clientNames);
     const csv = buildSalesCsv(filtered, { clientNames, itemNames }, labels);
     const date = businessDateToInputValue(new Date());
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "exports",
+      action: "exported",
+      metricScope: "retention",
+    });
     return { ok: true, csv, filename: `sales_${date}.csv` };
   } catch (error) {
     return { ok: false, error: handleActionError(error).error };

@@ -1,5 +1,5 @@
-import type { AnalyticsEventName } from '../core/application/ports';
-import { MongoAnalyticsRepository } from '../infrastructure/repositories/analytics-repository';
+import type { AnalyticsEventMetadata, AnalyticsEventName } from "../core/application/ports";
+import { MongoAnalyticsRepository } from "../infrastructure/repositories/analytics-repository";
 
 /**
  * Best-effort analytics tracking helper (R13-G).
@@ -13,19 +13,20 @@ export async function trackAnalytics(
   eventName: AnalyticsEventName,
   workspaceId: string,
   userId: string,
+  metadata?: AnalyticsEventMetadata,
 ): Promise<void> {
   // Gate: analytics only runs when explicitly enabled (opt-in, default false).
-  if (process.env.ANALYTICS_ENABLED !== 'true') return;
+  if (process.env.ANALYTICS_ENABLED !== "true") return;
 
   try {
     const repo = new MongoAnalyticsRepository();
-    await repo.track({ eventName, workspaceId, userId });
+    await repo.track({ eventName, workspaceId, userId, metadata });
   } catch (err: unknown) {
     // Fallback safety net: even if the repository were to throw, analytics
     // must NEVER break the operation it accompanies (best-effort invariant).
     const message = err instanceof Error ? err.message : String(err);
     console.error(
-      JSON.stringify({ level: 'warn', event: 'analytics_track_failed', eventName, error: message }),
+      JSON.stringify({ level: "warn", event: "analytics_track_failed", eventName, error: message }),
     );
   }
 }

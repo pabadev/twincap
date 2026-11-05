@@ -129,7 +129,12 @@ export async function createMovementAction(
     // R13-H: regular per-movement event (APPENDED, one doc per movement) so
     // activation can count real movement volume (≥3 in the first 2 days) — the
     // deduplicated firstMovement above is capped at 1 per workspace forever.
-    await trackAnalytics("movementCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("movementCreated", user.workspaceId!, user.userId, {
+      feature: "movements",
+      action: "created",
+      metricScope: "activation",
+      context,
+    });
   } catch (error) {
     if (!committed) {
       // Pre-commit failure only: re-arm the key so the user can retry.
@@ -241,6 +246,12 @@ export async function deleteMovementAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "movements",
+    action: "deleted",
+    metricScope: "retention",
+  });
+
   return { success: "movementDeleted" };
 }
 
@@ -300,6 +311,12 @@ export async function updateMovementAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "movements",
+    action: "updated",
+    metricScope: "retention",
+  });
 
   return { success: "movementUpdated" };
 }
@@ -412,6 +429,11 @@ export async function exportMovementsCsvAction(
     const filtered = filterMovementsForCsv(serializeEntities(movements), filters);
     const csv = buildMovementsCsv(filtered, { accountNames, categoryNames }, labels);
     const date = businessDateToInputValue(new Date());
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "exports",
+      action: "exported",
+      metricScope: "retention",
+    });
     return { ok: true, csv, filename: `movements_${date}.csv` };
   } catch (error) {
     return { ok: false, error: handleActionError(error).error };

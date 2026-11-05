@@ -84,7 +84,11 @@ export async function createAccountAction(
     revalidatePath("/dashboard");
     revalidatePath("/movements");
     // R13-G: track account creation (analytics, best-effort).
-    await trackAnalytics("accountCreated", user.workspaceId!, user.userId);
+    await trackAnalytics("accountCreated", user.workspaceId!, user.userId, {
+      feature: "accounts",
+      action: "created",
+      metricScope: "adoption",
+    });
   } catch (error) {
     if (!committed) {
       await releaseIdempotency(user.userId, idempotencyKey, "createAccount");
@@ -128,6 +132,12 @@ export async function updateAccountAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "accounts",
+    action: "updated",
+    metricScope: "adoption",
+  });
+
   return { success: "accountUpdated" };
 }
 
@@ -165,6 +175,12 @@ export async function deleteAccountAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "accounts",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "accountDeleted" };
 }
@@ -234,6 +250,12 @@ export async function setInitialBalanceAction(
     return handleActionError(error);
   }
 
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "accounts",
+    action: "openingValueSet",
+    metricScope: "adoption",
+  });
+
   return { success: "initialBalanceSet" };
 }
 
@@ -300,6 +322,12 @@ export async function correctInitialBalanceAction(
     }
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "accounts",
+    action: "initialBalanceCorrected",
+    metricScope: "retention",
+  });
 
   return { success: "initialBalanceCorrected" };
 }

@@ -35,6 +35,7 @@ import { MongoOperationLogger } from "../../../../infrastructure/repositories/op
 import { withAudit } from "../../../../lib/with-audit";
 import { assertBusinessDateNotFuture } from "../../../../lib/date";
 import { parseMoneyInput } from "../../../../lib/money-input";
+import { trackAnalytics } from "../../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -89,6 +90,11 @@ export async function configureProductFormulaAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "catalog",
+      action: "configured",
+      metricScope: "adoption",
+    });
     return { success: "formulaCreated" };
   } catch (error) {
     return handleActionError(error);
@@ -133,6 +139,11 @@ export async function configureProductComboAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "catalog",
+      action: "configured",
+      metricScope: "adoption",
+    });
     return { success: "comboCreated" };
   } catch (error) {
     return handleActionError(error);
@@ -242,6 +253,11 @@ export async function receiveInventoryReceiptAction(
     revalidatePath("/pos/sales");
     revalidatePath("/payables");
     revalidatePath("/dashboard");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "inventory",
+      action: "created",
+      metricScope: "activation",
+    });
     return { success: "inventoryReceiptCreated" };
   } catch (error) {
     if (claimedKey && !committed) {
@@ -294,6 +310,11 @@ export async function createCatalogItemAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "catalog",
+      action: "created",
+      metricScope: "adoption",
+    });
     return { success: "catalogItemCreated", item: item.toJSON() };
   } catch (error) {
     return handleActionError(error);
@@ -327,6 +348,11 @@ export async function adjustCatalogStockAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "inventory",
+      action: "stockAdjusted",
+      metricScope: "retention",
+    });
     return { success: "stockAdjusted" };
   } catch (error) {
     return handleActionError(error);
@@ -356,6 +382,11 @@ export async function setOpeningInventoryValueAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "inventory",
+      action: "openingValueSet",
+      metricScope: "adoption",
+    });
     return { success: "openingValueSaved" };
   } catch (error) {
     return handleActionError(error);
@@ -409,6 +440,11 @@ export async function updateCatalogItemAction(
     );
     revalidatePath("/pos/catalog");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "catalog",
+      action: "updated",
+      metricScope: "retention",
+    });
     return { success: "catalogItemUpdated", item: item.toJSON() };
   } catch (error) {
     return handleActionError(error);
@@ -440,6 +476,12 @@ export async function deleteCatalogItemAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "catalog",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "catalogItemDeleted" };
 }

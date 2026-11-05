@@ -21,6 +21,7 @@ import {
 } from "../../../core/application/categories/category-suggestions";
 import { createSuggestedCategories } from "../../../core/application/categories/suggested-categories";
 import { getT } from "../../../i18n/server";
+import { trackAnalytics } from "../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -76,6 +77,13 @@ export async function createSuggestedCategoriesAction(
       revalidatePath("/categories");
       revalidatePath("/movements");
     }
+    if (result.created > 0) {
+      await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+        feature: "categories",
+        action: "configured",
+        metricScope: "adoption",
+      });
+    }
     return { success: "suggestionsAdded", ...result };
   } catch (error) {
     return handleActionError(error);
@@ -98,6 +106,11 @@ export async function createCategoryAction(
     const category = await createCategory(user.workspaceId!, { name, type }, categoryRepo, ids);
     revalidatePath("/categories");
     revalidatePath("/movements");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "categories",
+      action: "created",
+      metricScope: "adoption",
+    });
     return { success: "categoryCreated", category: category.toJSON() };
   } catch (error) {
     return handleActionError(error);
@@ -123,6 +136,12 @@ export async function updateCategoryAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "categories",
+    action: "updated",
+    metricScope: "retention",
+  });
 
   return { success: "categoryUpdated" };
 }
@@ -152,6 +171,12 @@ export async function deleteCategoryAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "categories",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "categoryDeleted" };
 }

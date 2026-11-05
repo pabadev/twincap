@@ -1,16 +1,13 @@
-import type { AnalyticsReporter, AnalyticsEventName } from '../../core/application/ports';
-import { AnalyticsEventModel } from '../models/analytics-event';
-import { isDbConnected } from '../db/connection';
-import { Types } from 'mongoose';
+import type { AnalyticsReporter, AnalyticsEventName } from "../../core/application/ports";
+import { AnalyticsEventModel } from "../models/analytics-event";
+import { isDbConnected } from "../db/connection";
+import { Types } from "mongoose";
 
 /**
  * "First" events that should only be recorded ONCE per workspace.
  * For these, the repository checks for an existing record before inserting.
  */
-const FIRST_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
-  'firstLogin',
-  'firstMovement',
-]);
+const FIRST_EVENTS: ReadonlySet<AnalyticsEventName> = new Set(["firstLogin", "firstMovement"]);
 
 /**
  * MongoDB-backed AnalyticsReporter (R13-G).
@@ -25,19 +22,15 @@ const FIRST_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
  * appended without dedup.
  */
 export class MongoAnalyticsRepository implements AnalyticsReporter {
-  async track(input: {
-    eventName: AnalyticsEventName;
-    workspaceId: string;
-    userId: string;
-  }): Promise<void> {
+  async track(input: Parameters<AnalyticsReporter["track"]>[0]): Promise<void> {
     if (!isDbConnected()) {
       console.error(
         JSON.stringify({
-          level: 'warn',
-          event: 'analytics_track_skipped',
+          level: "warn",
+          event: "analytics_track_skipped",
           eventName: input.eventName,
           workspaceId: input.workspaceId,
-          reason: 'no active mongodb connection',
+          reason: "no active mongodb connection",
         }),
       );
       return;
@@ -57,6 +50,7 @@ export class MongoAnalyticsRepository implements AnalyticsReporter {
               eventName: input.eventName,
               userId: input.userId,
               occurredAt: new Date(),
+              ...input.metadata,
             },
           },
           { upsert: true },
@@ -68,6 +62,7 @@ export class MongoAnalyticsRepository implements AnalyticsReporter {
           workspaceId: new Types.ObjectId(input.workspaceId),
           userId: input.userId,
           occurredAt: new Date(),
+          ...input.metadata,
         });
       }
     } catch (err: unknown) {
@@ -75,8 +70,8 @@ export class MongoAnalyticsRepository implements AnalyticsReporter {
       const message = err instanceof Error ? err.message : String(err);
       console.error(
         JSON.stringify({
-          level: 'warn',
-          event: 'analytics_track_failed',
+          level: "warn",
+          event: "analytics_track_failed",
           eventName: input.eventName,
           workspaceId: input.workspaceId,
           error: message,

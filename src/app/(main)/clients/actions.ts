@@ -11,6 +11,7 @@ import { connectDb } from "../../../infrastructure/db/connection";
 import { objectIdGenerator } from "../../../infrastructure/config/id-generator";
 import { revalidatePath } from "next/cache";
 import { handleActionError } from "../../../lib/handle-action-error";
+import { trackAnalytics } from "../../../lib/track-analytics";
 
 const ids = objectIdGenerator;
 
@@ -52,6 +53,11 @@ export async function createClientAction(
     const client = await createClient(user.workspaceId!, parsed.data, clientRepo, ids);
     revalidatePath("/clients");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "clients",
+      action: "created",
+      metricScope: "adoption",
+    });
     return { success: "clientCreated", client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
@@ -85,6 +91,11 @@ export async function updateClientAction(
     const client = await updateClient(user.workspaceId!, clientId, parsed.data, clientRepo);
     revalidatePath("/clients");
     revalidatePath("/pos/sales");
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "clients",
+      action: "updated",
+      metricScope: "retention",
+    });
     return { success: "clientUpdated", client: client.toJSON() };
   } catch (error) {
     return handleActionError(error);
@@ -117,6 +128,12 @@ export async function deleteClientAction(
   } catch (error) {
     return handleActionError(error);
   }
+
+  await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+    feature: "clients",
+    action: "deleted",
+    metricScope: "retention",
+  });
 
   return { success: "clientDeleted" };
 }
