@@ -63,6 +63,7 @@ interface SaleFormProps {
   clients: SerializedClient[];
   /** Called after a successful create (sale persisted). Also used as the legacy close path. */
   onDone?: () => void;
+  onReceipt?: (saleId: string) => void;
   /**
    * Called when the user explicitly cancels (Cancel Button). The parent wires
    * this to the dirty-check close-guard so unsaved changes trigger a
@@ -129,6 +130,7 @@ export function SaleForm({
   accounts,
   clients,
   onDone,
+  onReceipt,
   onCancel,
   dirtyRef,
 }: SaleFormProps) {
@@ -149,6 +151,7 @@ export function SaleForm({
   // (from the local form state) and swaps the form for a result panel; the
   // user either invoices another sale or closes the modal explicitly.
   const [saleResult, setSaleResult] = useState<{
+    saleId: string;
     total: number;
     currency: string;
     paymentMode: "" | "paid-in-full" | "on-credit";
@@ -200,6 +203,7 @@ export function SaleForm({
     if (!state?.success || consumedSuccessState.current === state) return;
     consumedSuccessState.current = state;
     setSaleResult({
+      saleId: state.saleId ?? "",
       total,
       currency,
       paymentMode,
@@ -616,6 +620,17 @@ export function SaleForm({
           )}
         </dl>
         <div className="flex gap-3 pt-2">
+          {onReceipt && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => saleResult.saleId && onReceipt(saleResult.saleId)}
+              disabled={!saleResult.saleId}
+            >
+              {t("receiptView")}
+            </Button>
+          )}
           <Button type="button" variant="secondary" className="flex-1" onClick={() => onDone?.()}>
             {tCommon("close")}
           </Button>

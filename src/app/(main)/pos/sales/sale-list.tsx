@@ -19,14 +19,24 @@ import { ActionIconButton } from "../../../../components/ui/action-icon-button";
 import { Button } from "../../../../components/ui/button";
 import { Select } from "../../../../components/ui/select";
 import { SearchInput } from "../../../../components/ui/search-input";
-import { Eye, Pencil, ShoppingCart, Download, Loader2, SlidersHorizontal } from "lucide-react";
+import {
+  Eye,
+  Pencil,
+  ShoppingCart,
+  Download,
+  Loader2,
+  SlidersHorizontal,
+  Receipt,
+} from "lucide-react";
 import { downloadCsv } from "../../../../lib/download-csv";
 import { useToast } from "../../../../lib/hooks/use-toast";
-import { exportSalesCsvAction } from "./actions";
+import { exportSalesCsvAction, exportSalesPdfAction } from "./actions";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { MovementCard } from "../../../../components/ui/movement-card";
 import { creditLaunchHref } from "./sale-credit-links";
+import { SaleReceiptModal } from "./sale-receipt-modal";
+import { filterSalesForCsv, summarizeSalesByCurrency } from "./export-csv";
 
 interface SaleListProps {
   sales: SerializedSale[];
@@ -71,6 +81,7 @@ export function SaleList({
     setShowCloseConfirm(false);
   }, []);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
+  const [receiptSaleId, setReceiptSaleId] = useState<string | null>(null);
   // DOM-1 (EXC-2): the pencil opens the detail modal straight into the price
   // editor (founder: the edit was invisible — it lived only inside the eye).
   const [detailEditMode, setDetailEditMode] = useState(false);
@@ -80,6 +91,7 @@ export function SaleList({
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "credit">("all");
   const [search, setSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Sales");
   const tCommon = useT("Common");
@@ -92,20 +104,16 @@ export function SaleList({
   const clientMap = new Map(clients.map((c) => [c.id, c.name]));
   const catalogMap = new Map(catalogItems.map((ci) => [ci.id, ci.name]));
 
-  const filtered = sales.filter((sale) => {
-    if (dateFrom && new Date(sale.date).getTime() < new Date(dateFrom).getTime()) return false;
-    if (dateTo && new Date(sale.date).getTime() > new Date(dateTo + "T23:59:59.999Z").getTime())
-      return false;
-    if (statusFilter === "paid" && sale.paymentMode !== "paid-in-full") return false;
-    if (statusFilter === "credit" && sale.paymentMode !== "on-credit") return false;
-    if (search && sale.clientId) {
-      const clientName = clientMap.get(sale.clientId) ?? "";
-      if (!clientName.toLowerCase().includes(search.toLowerCase())) return false;
-    } else if (search && !sale.clientId) {
-      return false;
-    }
-    return true;
+  const effectiveSales = sales.map((sale) => {
+    const linkedPending = creditPendingBySaleId?.[sale.id];
+    return linkedPending === undefined ? sale : { ...sale, pending: linkedPending };
   });
+  const filtered = filterSalesForCsv(
+    effectiveSales,
+    { dateFrom, dateTo, status: statusFilter, search },
+    Object.fromEntries(clientMap),
+  );
+  const salesTotals = summarizeSalesByCurrency(filtered);
 
   // R13-H3: export the FULL filtered set (server-side query) using the current
   // client-side filter state, then trigger a browser download.
@@ -132,11 +140,45 @@ export function SaleList({
     }
   };
 
+  const handleExportPdf = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const res = await exportSalesPdfAction({ dateFrom, dateTo, status: statusFilter, search });
+      if (!res.ok) {
+        addToast(tExport("failed"), "error");
+        return;
+      }
+      const bytes = Uint8Array.from(atob(res.base64), (character) => character.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = res.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      addToast(tExport("done"), "success");
+    } catch {
+      addToast(tExport("failed"), "error");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={handleExportPdf} disabled={isExportingPdf}>
+            {isExportingPdf ? (
+              <Icon icon={Loader2} size="sm" className="animate-spin" />
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Icon icon={Download} size="sm" />
+                {tExport("pdfButton")}
+              </span>
+            )}
+          </Button>
           <Button variant="secondary" size="sm" onClick={handleExportCsv} disabled={isExporting}>
             {isExporting ? (
               <span className="inline-flex items-center gap-2">
@@ -169,6 +211,10 @@ export function SaleList({
           accounts={accounts}
           clients={clients}
           onDone={closeSaleForm}
+          onReceipt={(saleId) => {
+            closeSaleForm();
+            setReceiptSaleId(saleId);
+          }}
           onCancel={handleSaleRequestClose}
           dirtyRef={saleDirtyRef}
         />
@@ -210,6 +256,7 @@ export function SaleList({
           setDetailEditMode(false);
         }}
       />
+      <SaleReceiptModal saleId={receiptSaleId} onClose={() => setReceiptSaleId(null)} />
 
       {sales.length === 0 ? (
         <EmptyState
@@ -384,6 +431,47 @@ export function SaleList({
 
           {filtered.length === 0 && sales.length > 0 && <EmptyState title={t("noResults")} />}
 
+          {filtered.length > 0 && (
+            <section
+              aria-label={t("salesTotals")}
+              className="mb-4 rounded-lg border border-surface-border bg-surface-card p-4"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  {t("salesTotals")}
+                </h2>
+                <span className="text-xs text-zinc-500">
+                  {t("salesCount", { count: String(filtered.length) })}
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {salesTotals.map((totals) => (
+                  <div key={totals.currency} className="rounded-md bg-surface-input p-3">
+                    <p className="mb-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                      {totals.currency}
+                    </p>
+                    <dl className="space-y-1 text-sm">
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("salesTotal")}</dt>
+                        <dd className="font-medium">
+                          {formatAmount(totals.sales, totals.currency, locale)}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("collectedTotal")}</dt>
+                        <dd>{formatAmount(totals.collected, totals.currency, locale)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("pendingTotal")}</dt>
+                        <dd>{formatAmount(totals.pending, totals.currency, locale)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="space-y-3">
             {filtered.map((sale) => {
               // R15.3.2 P2-2: currency resolution is NEVER silent. Canonical
@@ -495,6 +583,12 @@ export function SaleList({
                           setDetailSaleId(sale.id);
                           setDetailEditMode(false);
                         }}
+                      />
+                      <ActionIconButton
+                        icon={Receipt}
+                        label={t("receiptView")}
+                        tone="primary"
+                        onClick={() => setReceiptSaleId(sale.id)}
                       />
                       <ActionIconButton
                         icon={Pencil}

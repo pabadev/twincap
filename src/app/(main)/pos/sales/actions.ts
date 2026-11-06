@@ -37,9 +37,10 @@ import { withAudit } from "../../../../lib/with-audit";
 import { MongoOperationLogger } from "../../../../infrastructure/repositories/operation-log-repository";
 import { trackAnalytics } from "../../../../lib/track-analytics";
 import { serializeEntities } from "../../../../lib/serialize";
-import { getT } from "../../../../i18n/server";
+import { getLocale, getT } from "../../../../i18n/server";
 import { buildSalesCsv, filterSalesForCsv } from "./export-csv";
 import type { SaleCsvFilters } from "./export-csv";
+import { buildSalesReportPdf } from "./sales-report-pdf";
 import { parseMoneyInput } from "../../../../lib/money-input";
 import { decimalAmountToMinorUnits } from "../../../../core/domain/money";
 
@@ -75,9 +76,9 @@ export async function getSaleFormDataAction(): Promise<{
 }
 
 export async function createSaleAction(
-  _prev: { error?: string; success?: string } | null,
+  _prev: { error?: string; success?: string; saleId?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: string }> {
+): Promise<{ error?: string; success?: string; saleId?: string }> {
   const user = await getCurrentUser();
   if (!user) return { error: "error.unauthorized" };
 
@@ -174,6 +175,7 @@ export async function createSaleAction(
   // mutation did NOT commit. Once the mutation resolves, the key stays
   // consumed even if a post-commit task (revalidatePath, analytics) fails.
   let committed = false;
+  let createdSaleId: string | undefined;
 
   try {
     assertBusinessDateNotFuture(date, tzOffset);
@@ -191,7 +193,7 @@ export async function createSaleAction(
       return { error: "error.duplicateRequest" };
     }
     const logger = new MongoOperationLogger();
-    await withAudit(
+    const createdSale = await withAudit(
       logger,
       {
         action: "createSale",
@@ -229,6 +231,7 @@ export async function createSaleAction(
         );
       },
     );
+    createdSaleId = createdSale.id;
     // Commit point: the sale is persisted (withAudit resolved). From here on
     // the idempotency key MUST NOT be released on failure (R15.3.1 P1.2).
     committed = true;
@@ -256,7 +259,7 @@ export async function createSaleAction(
     return handleActionError(error);
   }
 
-  return { success: "saleCreated" };
+  return { success: "saleCreated", saleId: createdSaleId };
 }
 
 export async function addSaleAbonoAction(
@@ -588,10 +591,12 @@ export async function exportSalesCsvAction(
     const saleRepo = new MongoSaleRepository();
     const clientRepo = new MongoClientRepository();
     const catalogRepo = new MongoCatalogItemRepository();
-    const [sales, clients, catalogItems] = await Promise.all([
+    const creditRepo = new MongoCreditGrantedRepository();
+    const [sales, clients, catalogItems, credits] = await Promise.all([
       saleRepo.findByWorkspaceId(user.workspaceId!),
       clientRepo.findByWorkspaceId(user.workspaceId!),
       catalogRepo.findByWorkspaceId(user.workspaceId!),
+      creditRepo.findByWorkspaceId(user.workspaceId!),
     ]);
 
     const clientNames: Record<string, string> = {};
@@ -612,9 +617,22 @@ export async function exportSalesCsvAction(
       paidInFull: t("paidInFull"),
       onCredit: t("onCredit"),
       noClient: t("noClient"),
+      salesCount: t("salesCount"),
+      salesTotal: t("salesTotal"),
+      collectedTotal: t("collectedTotal"),
+      pendingTotal: t("pendingTotal"),
     };
 
-    const filtered = filterSalesForCsv(serializeEntities(sales), filters, clientNames);
+    const pendingBySaleId = new Map(
+      credits.flatMap((credit) =>
+        credit.saleId ? [[credit.saleId, credit.pending] as const] : [],
+      ),
+    );
+    const effectiveSales = serializeEntities(sales).map((sale) => {
+      const pending = pendingBySaleId.get(sale.id);
+      return pending === undefined ? sale : { ...sale, pending };
+    });
+    const filtered = filterSalesForCsv(effectiveSales, filters, clientNames);
     const csv = buildSalesCsv(filtered, { clientNames, itemNames }, labels);
     const date = businessDateToInputValue(new Date());
     await trackAnalytics("productAction", user.workspaceId!, user.userId, {
@@ -623,6 +641,74 @@ export async function exportSalesCsvAction(
       metricScope: "retention",
     });
     return { ok: true, csv, filename: `sales_${date}.csv` };
+  } catch (error) {
+    return { ok: false, error: handleActionError(error).error };
+  }
+}
+
+export async function exportSalesPdfAction(
+  filters: SaleCsvFilters,
+): Promise<{ ok: true; base64: string; filename: string } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "error.unauthorized" };
+  try {
+    await connectDb();
+    const saleRepo = new MongoSaleRepository();
+    const clientRepo = new MongoClientRepository();
+    const catalogRepo = new MongoCatalogItemRepository();
+    const creditRepo = new MongoCreditGrantedRepository();
+    const [sales, clients, catalogItems, credits] = await Promise.all([
+      saleRepo.findByWorkspaceId(user.workspaceId!),
+      clientRepo.findByWorkspaceId(user.workspaceId!),
+      catalogRepo.findByWorkspaceId(user.workspaceId!),
+      creditRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
+    const clientNames = Object.fromEntries(clients.map((client) => [client.id, client.name]));
+    const itemNames = Object.fromEntries(catalogItems.map((item) => [item.id, item.name]));
+    const pendingBySaleId = new Map(
+      credits.flatMap((credit) =>
+        credit.saleId ? [[credit.saleId, credit.pending] as const] : [],
+      ),
+    );
+    const effectiveSales = serializeEntities(sales).map((sale) => {
+      const pending = pendingBySaleId.get(sale.id);
+      return pending === undefined ? sale : { ...sale, pending };
+    });
+    const filtered = filterSalesForCsv(effectiveSales, filters, clientNames);
+    const t = await getT("Export");
+    const pdf = buildSalesReportPdf({
+      sales: filtered,
+      clientNames,
+      itemNames,
+      filters,
+      locale: await getLocale(),
+      labels: {
+        reportTitle: t("salesReportTitle"),
+        generated: t("generatedAt"),
+        period: t("period"),
+        status: t("status"),
+        statusPaid: t("filterPaid"),
+        statusCredit: t("filterCredit"),
+        client: t("client"),
+        noClient: t("noClient"),
+        salesCount: t("salesCount"),
+        salesTotals: t("salesTotals"),
+        salesTotal: t("salesTotal"),
+        collectedTotal: t("collectedTotal"),
+        pendingTotal: t("pendingTotal"),
+        total: t("total"),
+        paid: t("paid"),
+        pending: t("pending"),
+      },
+    });
+    const base64 = Buffer.from(pdf.output("arraybuffer")).toString("base64");
+    const date = businessDateToInputValue(new Date());
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "exports",
+      action: "exported",
+      metricScope: "retention",
+    });
+    return { ok: true, base64, filename: `sales_${date}.pdf` };
   } catch (error) {
     return { ok: false, error: handleActionError(error).error };
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSalesCsv, filterSalesForCsv } from "./export-csv";
+import { buildSalesCsv, filterSalesForCsv, summarizeSalesByCurrency } from "./export-csv";
 import type { SerializedSale } from "../../../../core/domain/sale";
 
 const labels = {
@@ -14,6 +14,10 @@ const labels = {
   paidInFull: "Contado",
   onCredit: "Crédito",
   noClient: "Cliente minorista",
+  salesCount: "Cantidad de ventas",
+  salesTotal: "Ventas totales",
+  collectedTotal: "Cobrado total",
+  pendingTotal: "Pendiente total",
 };
 
 const refs = {
@@ -110,6 +114,35 @@ describe("buildSalesCsv", () => {
     const csv = buildSalesCsv([s], refs, labels);
     const lines = csv.split("\r\n");
     expect(lines[1]).toBe("2026-09-01,María Pérez,2 unit × Café,6000,4000,2000,COP,Crédito");
+  });
+
+  it("appends period totals and keeps currencies separate", () => {
+    const cop = sale({ paymentMode: "on-credit", pending: 2000 });
+    const usd = sale({
+      id: "usd",
+      total: 12345,
+      pending: 2345,
+      items: [
+        {
+          itemId: "it-1",
+          quantity: 1,
+          unit: "unit",
+          stockQuantity: 1,
+          unitPrice: { amount: 12345, currency: "USD" },
+          subtotal: 12345,
+          formulaSnapshot: undefined,
+          comboSnapshot: undefined,
+        },
+      ],
+    });
+    expect(summarizeSalesByCurrency([usd, cop])).toEqual([
+      { currency: "COP", sales: 6000, collected: 4000, pending: 2000 },
+      { currency: "USD", sales: 12345, collected: 10000, pending: 2345 },
+    ]);
+    const csv = buildSalesCsv([cop, usd], refs, labels);
+    expect(csv).toContain("Cantidad de ventas: 2");
+    expect(csv).toContain("Ventas totales (COP)");
+    expect(csv).toContain("Ventas totales (USD)");
   });
 
   it("fixes decimals to the sale currency exponent (unknown client excluded)", () => {

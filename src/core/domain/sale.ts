@@ -19,6 +19,8 @@ export function isPaymentMode(value: string): value is PaymentMode {
 export interface SaleLineItem {
   /** Reference to a CatalogItem. */
   itemId: string;
+  /** Name captured when the sale was registered; legacy rows may not have it. */
+  itemName?: string;
   /** Quantity in the sale unit, snapshotted for display. */
   quantity: number;
   /** Unit snapshot, defaults to discrete item for legacy sales. */
@@ -99,6 +101,7 @@ export interface SaleInput {
 /** Input for a line item — subtotal is computed, not provided. */
 export interface SaleLineItemInput {
   itemId: string;
+  itemName?: string;
   /** Quantity in the catalog item's sale unit. */
   quantity: number;
   unit?: InventoryUnit;

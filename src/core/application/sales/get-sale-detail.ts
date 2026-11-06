@@ -113,7 +113,7 @@ export async function getSaleDetail(
     paymentMode: sale.paymentMode,
     status: pending === 0 ? "paid" : "pending",
     items: sale.items.map((item) => ({
-      itemName: itemNameById.get(item.itemId) ?? null,
+      itemName: item.itemName ?? itemNameById.get(item.itemId) ?? null,
       quantity: item.quantity,
       unit: item.unit,
       unitPrice: item.unitPrice.toJSON(),

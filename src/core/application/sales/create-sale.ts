@@ -205,6 +205,7 @@ export async function createSale(
     }
     return {
       itemId: item.itemId,
+      itemName: catalogItem.name,
       quantity: item.quantity,
       unit,
       stockQuantity,

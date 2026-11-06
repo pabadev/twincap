@@ -4,6 +4,7 @@ import { INVENTORY_UNITS } from "../../core/domain/inventory-units";
 /** Subdocument shape for a sale line item. */
 export interface SaleLineItemDoc {
   itemId: mongoose.Types.ObjectId;
+  itemName?: string;
   quantity: number;
   unit?: string;
   stockQuantity?: number;
@@ -70,6 +71,7 @@ export type SaleDocument = HydratedDocument<SaleDoc>;
 const SaleLineItemSchema = new Schema<SaleLineItemDoc>(
   {
     itemId: { type: Schema.Types.ObjectId, required: true },
+    itemName: { type: String, trim: true },
     quantity: { type: Number, required: true },
     unit: { type: String, enum: INVENTORY_UNITS, default: "unit" },
     stockQuantity: {

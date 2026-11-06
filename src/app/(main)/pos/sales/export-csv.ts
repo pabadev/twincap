@@ -1,12 +1,48 @@
 import type { SerializedSale } from "../../../../core/domain/sale";
 import { businessDateToInputValue } from "../../../../lib/date";
 import { buildCsv, minorUnitsToDecimal } from "../../../../lib/csv";
+import { sumSafeMinorUnits } from "../../../../core/domain/money";
 
 export interface SaleCsvFilters {
   dateFrom?: string; // 'YYYY-MM-DD' inclusive
   dateTo?: string; // 'YYYY-MM-DD' inclusive
   status?: "all" | "paid" | "credit";
   search?: string; // client name substring (case-insensitive)
+}
+
+export interface SaleCurrencyTotals {
+  currency: string;
+  sales: number;
+  collected: number;
+  pending: number;
+}
+
+export function summarizeSalesByCurrency(sales: SerializedSale[]): SaleCurrencyTotals[] {
+  const groups = new Map<string, SerializedSale[]>();
+  for (const sale of sales) {
+    const currency = sale.items[0]?.unitPrice.currency;
+    if (!currency) throw new Error(`Sale ${sale.id} has no currency`);
+    const group = groups.get(currency) ?? [];
+    group.push(sale);
+    groups.set(currency, group);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === "COP" ? -1 : b === "COP" ? 1 : a.localeCompare(b)))
+    .map(([currency, group]) => ({
+      currency,
+      sales: sumSafeMinorUnits(
+        group.map((sale) => sale.total),
+        `Sales total ${currency}`,
+      ),
+      collected: sumSafeMinorUnits(
+        group.map((sale) => sale.total - sale.pending),
+        `Collected total ${currency}`,
+      ),
+      pending: sumSafeMinorUnits(
+        group.map((sale) => sale.pending),
+        `Pending total ${currency}`,
+      ),
+    }));
 }
 
 /**
@@ -63,6 +99,10 @@ export function buildSalesCsv(
     paidInFull: string;
     onCredit: string;
     noClient: string;
+    salesCount: string;
+    salesTotal: string;
+    collectedTotal: string;
+    pendingTotal: string;
   },
 ): string {
   const headers = [
@@ -84,7 +124,10 @@ export function buildSalesCsv(
         throw new Error(`Sale ${s.id} has no line items — cannot resolve currency for CSV export`);
       })();
     const itemsSummary = s.items
-      .map((li) => `${li.quantity} ${li.unit} × ${refs.itemNames[li.itemId] ?? li.itemId}`)
+      .map(
+        (li) =>
+          `${li.quantity} ${li.unit} × ${li.itemName ?? refs.itemNames[li.itemId] ?? li.itemId}`,
+      )
       .join(", ");
     return [
       businessDateToInputValue(s.date),
@@ -97,5 +140,20 @@ export function buildSalesCsv(
       s.paymentMode === "paid-in-full" ? labels.paidInFull : labels.onCredit,
     ];
   });
+  if (sales.length > 0) {
+    rows.push(["", "", `${labels.salesCount}: ${sales.length}`, "", "", "", "", ""]);
+    for (const total of summarizeSalesByCurrency(sales)) {
+      rows.push([
+        "",
+        `${labels.salesTotal} (${total.currency})`,
+        "",
+        minorUnitsToDecimal(total.sales, total.currency),
+        minorUnitsToDecimal(total.collected, total.currency),
+        minorUnitsToDecimal(total.pending, total.currency),
+        total.currency,
+        "",
+      ]);
+    }
+  }
   return buildCsv(headers, rows);
 }

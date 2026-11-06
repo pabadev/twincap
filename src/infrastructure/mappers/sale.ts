@@ -14,6 +14,7 @@ import type { InventoryUnit } from "../../core/domain/inventory-units";
 export function toSaleEntity(doc: SaleDocument, currency: Currency): Sale {
   const items: SaleLineItemInput[] = doc.items.map((item) => ({
     itemId: item.itemId.toString(),
+    itemName: item.itemName,
     quantity: item.quantity,
     unit: item.unit as InventoryUnit | undefined,
     stockQuantity: item.stockQuantity,
@@ -87,6 +88,7 @@ export function toSaleDocData(entity: Sale): Record<string, unknown> {
     workspaceId: new Types.ObjectId(entity.workspaceId),
     items: entity.items.map((item) => ({
       itemId: new Types.ObjectId(item.itemId),
+      itemName: item.itemName,
       quantity: item.quantity,
       unit: item.unit,
       stockQuantity: item.stockQuantity,

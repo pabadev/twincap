@@ -11,6 +11,8 @@
 >
 > **Continuidad (2026-09-28):** TwinCap no depende de un servicio externo de memoria. La fuente vigente es este documento maestro junto con el tracker activo de la ronda. Los reportes históricos permanecen en el repositorio.
 
+> **CONTINUIDAD VIGENTE (2026-11-06):** la ronda pre-beta cerró formalmente el 2026-11-01. Ronda acumulativa de evolución: `docs/odd/tasks/post-beta-product-round.md`. RP-01 (comprobantes POS PDF/térmicos) tiene implementación local parcial; quedan verificaciones y ajustes UX anotados en el tracker. RP-02 está en curso: Fases 1–2 (totales de ventas y PDF de ventas) implementadas localmente y verificadas con TypeScript, Prettier y 15 pruebas enfocadas; quedan Fases 3–6: PDF del dashboard por scopes, estado de cuenta, inventario y verificación integrada. El tracker admite requerimientos nuevos; su inclusión no autoriza automáticamente su implementación.
+
 > **Dirección comercial y roadmap de producto (fundador, 2026-11-02):** el cierre pre-beta es un hito de preparación técnica, no el cierre de evolución del producto. La hipótesis de planes Gratis/Básico/Pro y los pendientes de captura por voz, comprobantes de negocio, discovery de facturación electrónica y capacidades fiscales opcionales quedan registrados en `docs/PRODUCT-ROADMAP.md`. Son iniciativas pendientes de discovery, diseño y priorización por fase; esta actualización es documental y no autoriza implementación ni cambia el alcance de la beta vigente.
 
 ---
