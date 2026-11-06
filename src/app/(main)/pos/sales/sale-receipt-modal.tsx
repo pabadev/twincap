@@ -19,17 +19,19 @@ export function SaleReceiptModal({
 }) {
   const t = useT("Sales");
   const locale = useLocale();
-  const [sale, setSale] = useState<SaleDetailSnapshot | null>(null);
+  const [loadedSale, setLoadedSale] = useState<{ id: string; sale: SaleDetailSnapshot } | null>(
+    null,
+  );
   const [format, setFormat] = useState<ReceiptFormat>("58mm");
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSaleId, setPreviewSaleId] = useState<string | null>(null);
+  const sale = loadedSale?.id === saleId ? loadedSale.sale : null;
+  const previewOpen = previewSaleId === saleId;
 
   useEffect(() => {
-    setSale(null);
-    setPreviewOpen(false);
     if (!saleId) return;
     let cancelled = false;
     getSaleDetailAction(saleId).then((result) => {
-      if (!cancelled && result.ok) setSale(result.sale);
+      if (!cancelled && result.ok) setLoadedSale({ id: saleId, sale: result.sale });
     });
     return () => {
       cancelled = true;
@@ -37,7 +39,7 @@ export function SaleReceiptModal({
   }, [saleId]);
 
   const buildPdf = () => sale && createSaleReceiptPdf(sale, format, locale);
-  const showPreview = () => setPreviewOpen(true);
+  const showPreview = () => setPreviewSaleId(saleId);
   const receiptHtml = sale ? buildReceiptHtml(sale, format, locale) : "";
 
   return (
