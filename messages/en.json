@@ -888,6 +888,8 @@
     "generatedAt": "Generated",
     "period": "Period",
     "status": "Status",
+    "filterPaid": "Paid in full",
+    "filterCredit": "On credit",
     "salesTotals": "Period totals",
     "salesCount": "Sales count",
     "salesTotal": "Sales",

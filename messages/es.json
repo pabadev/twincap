@@ -888,6 +888,8 @@
     "generatedAt": "Generado",
     "period": "Período",
     "status": "Estado",
+    "filterPaid": "Pagada",
+    "filterCredit": "Con saldo pendiente",
     "salesTotals": "Totales del período",
     "salesCount": "Cantidad de ventas",
     "salesTotal": "Ventas",
