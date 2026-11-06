@@ -21,8 +21,8 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 | ID | Requerimiento | Estado | Prioridad |
 | --- | --- | --- | --- |
-| RP-01 | Comprobantes de venta PDF e impresión térmica desde historial | Planificado | P1 |
-| RP-02 | Reportes descargables: resumen, ventas, clientes e inventario | Plan por fases | P1 |
+| RP-01 | Comprobantes de venta PDF e impresión térmica desde historial | En curso | P1 |
+| RP-02 | Reportes descargables: resumen, ventas, clientes e inventario | En curso | P1 |
 | RP-03+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir | — |
 
 ---
@@ -82,8 +82,9 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 - `jspdf` agregado; PDFs generados para 58 mm, 80 mm y carta.
 - Acceso de comprobante en cierre de venta e historial; descarga e impresión funcionales en la prueba disponible.
 - Vista previa en iframe HTML con ancho del formato; TypeScript, Prettier y pruebas de PDF/formulario pasaron en el entorno.
+- El 2026-11-06 se corrigió la sincronización del modal al cambiar entre ventas: la venta cargada y la vista previa ahora se asocian al ID de venta, evitando un reset de estado por efecto. Commit local `e8971b7`.
 - Pendiente: cierre UX verificado por fundador; suite que depende de MongoMemory falla al iniciar Mongod en este entorno; `next build` bloqueado por fetch de Google Fonts; prueba física en impresoras.
-- RP-01 no se declara cerrado hasta resolver la verificación de la interfaz del cierre, el acceso de historial diferenciado y la validación visual/impresión.
+- RP-01 no se declara cerrado hasta resolver la verificación de la interfaz del cierre, el acceso de historial diferenciado y la validación visual/impresión. El estado actual del checkout incluye el arreglo del modal indicado arriba; no implica que los pendientes de verificación estén resueltos.
 
 ---
 
@@ -138,24 +139,36 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 #### Fase 3 — PDF del resumen del dashboard (los tres scopes)
 
+**Estado:** implementación local; chequeo de tipos aprobado (2026-11-06). La verificación visual y las pruebas enfocadas se acumulan para la Fase 6.
+
 - Agregar “Descargar PDF” en Dashboard.
 - Exportar el scope activo: Todo, Personal o Negocio. Todo respeta filtros existentes; Personal/Negocio respetan clasificación y exclusiones actuales.
 - Incluir período mes/año o rango del tab Negocio, fecha, métricas visibles de resultado/flujo/posición, desglose por moneda, tablas/categorías y notas financieras relevantes.
 - No incluir bloques que no aparecen en el scope o que el producto ya oculta por diseño. Distinguir saldo disponible/posición de resultado económico.
 - Criterios: comprobar que el PDF coincide con la pantalla para cada scope y filtro; movimientos de sistema/legacy excluidos siguen excluidos; no mezclar monedas; rango de Negocio usa fecha civil inclusiva.
 
+**Implementación:** botón de descarga en el encabezado del dashboard y PDF multipágina basado en el snapshot agregado por servidor con filtros activos. Incluye scope, período, filtros legibles, métricas y tablas de categorías por moneda; posición solo en Todo; métricas de negocio para su rango civil consultadas desde el endpoint autenticado existente. No suma monedas entre sí. `tsc --noEmit` pasó; Prettier aplicado. Suites enfocadas y revisión visual quedan pendientes para la verificación integrada.
+
 #### Fase 4 — Estado de cuenta del cliente
+
+**Estado:** implementación local; chequeo de tipos aprobado (2026-11-06). Pruebas enfocadas y revisión visual pendientes para la Fase 6.
 
 - Añadir descarga desde el perfil/historial de cliente: período configurable, ventas, pagos/abonos y saldo actual por venta.
 - Usar las mismas fuentes de verdad de ventas y crédito enlazado; identificar ventas borradas/anuladas según la política existente, sin revivirlas en totales.
 - Contenido compartible, con datos mínimos necesarios; no filtrar información de otros clientes/workspaces.
 - Criterios: saldo y abonos concilian con las pantallas de venta/créditos; cliente sin actividad; pagos parciales; varias monedas separadas; autorización cross-workspace.
 
+**Implementación:** el perfil del cliente ofrece fechas civiles opcionales y genera el PDF con todas las ventas activas del cliente en ese intervalo, no solo la página visible. Un endpoint autenticado verifica el cliente dentro del workspace, pagina la lectura completa y toma el saldo actual del crédito vinculado como fuente de verdad; cada venta incluye sus abonos y saldo pendiente actual. Los totales permanecen separados por moneda.
+
 #### Fase 5 — Reporte de inventario
+
+**Estado:** implementación local; chequeo de tipos aprobado (2026-11-06). Pruebas enfocadas y revisión visual pendientes para la Fase 6.
 
 - Añadir reporte descargable de existencias actuales con artículo, unidad, stock, umbral/alerta si existe y última actualización disponible.
 - Valoración solo si cada dato necesario tiene costo rastreado confiable; si hay faltantes, señalarlos y dejar el valor como incompleto, nunca asumir costo cero.
 - Criterios: respeta productos/servicios/insumos que correspondan al inventario actual, unidades y combos/preparados según modelo existente; reconcile cantidades con el catálogo; sin compras ni historial de proveedores.
+
+**Implementación:** botón PDF desde el catálogo con productos y existencias actuales, disponibilidad derivada de combos, unidades localizadas y valores conocidos agrupados por moneda. Existencias sin costo confiable y combos con valor desconocido se marcan como incompletos; los servicios quedan fuera del inventario físico. El modelo no expone umbral de alerta ni fecha de última actualización, por lo que esos datos no se inventan.
 
 #### Fase 6 — Verificación integrada y cierre
 

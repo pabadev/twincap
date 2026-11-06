@@ -12,7 +12,7 @@ import { SearchInput } from "../../../../components/ui/search-input";
 import { Modal } from "../../../../components/ui/modal";
 import { Button } from "../../../../components/ui/button";
 import { ActionIconButton } from "../../../../components/ui/action-icon-button";
-import { ArrowDownUp, ChefHat, Package, PackagePlus, Pencil, Search } from "lucide-react";
+import { ArrowDownUp, ChefHat, Download, Package, PackagePlus, Pencil, Search } from "lucide-react";
 import { quantityFromBaseUnits } from "../../../../core/domain/inventory-units";
 import { getAvailableComboCount } from "../../../../core/domain/product-combo";
 import { StockControls } from "./stock-controls";
@@ -22,6 +22,7 @@ import { groupCatalogItems, type CatalogDisplayGroup } from "./catalog-groups";
 import { ProductFormulaForm } from "./product-formula-form";
 import { ProductComboForm } from "./product-combo-form";
 import { CatalogSectionNav } from "./catalog-section-nav";
+import { buildInventoryReportPdf } from "./inventory-report-pdf";
 
 export function CatalogList({
   items,
@@ -209,6 +210,31 @@ export function CatalogList({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              buildInventoryReportPdf({
+                items,
+                locale,
+                labels: {
+                  title: t("inventoryReportTitle"),
+                  generated: t("inventoryReportGenerated"),
+                  item: t("inventoryReportItem"),
+                  quantity: t("inventoryReportQuantity"),
+                  value: t("inventoryReportValue"),
+                  unknown: t("inventoryReportUnknown"),
+                  total: t("inventoryReportTotal"),
+                  incomplete: t("inventoryReportIncomplete"),
+                  noItems: t("inventoryReportEmpty"),
+                },
+                unitLabel: (unit) => t(`unit_${unit}`),
+              }).save("twincap-inventory-report.pdf");
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {t("inventoryReportDownload")}
+          </Button>
           <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
             {t("addItem")}
           </Button>

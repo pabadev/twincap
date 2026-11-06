@@ -53,7 +53,7 @@ const credit = {
 describe("ClientActivity linked history", () => {
   it("links a sale only to the credit whose saleId matches", () => {
     const html = renderToStaticMarkup(
-      createElement(ClientActivity, { sales: [sale], credits: [credit] }),
+      createElement(ClientActivity, { clientId: "client-1", sales: [sale], credits: [credit] }),
     );
     expect(html).toContain("/credits/granted?highlight=credit-1");
     expect(html).toContain('data-id="credit-1"');
@@ -61,7 +61,7 @@ describe("ClientActivity linked history", () => {
 
   it("does not show a credit action when the sale has no linked credit", () => {
     const html = renderToStaticMarkup(
-      createElement(ClientActivity, { sales: [sale], credits: [] }),
+      createElement(ClientActivity, { clientId: "client-1", sales: [sale], credits: [] }),
     );
     expect(html).not.toContain("/credits/granted?highlight=");
   });

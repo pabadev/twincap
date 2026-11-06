@@ -96,6 +96,7 @@ export default async function ClientHistoryPage({
       </header>
 
       <ClientActivity
+        clientId={client.id}
         sales={serializeEntities(history.sales)}
         credits={serializeEntities(credits)}
       />

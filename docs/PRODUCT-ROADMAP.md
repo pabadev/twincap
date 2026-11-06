@@ -69,6 +69,8 @@ Todas las iniciativas siguientes están **pendientes de discovery, diseño y pri
 - Validar dispositivos, tamaños de papel, conexión y flujo de reimpresión con tenderos reales antes de comprometer compatibilidad amplia.
 - **Empaquetado hipótesis:** PDF en Básico; impresión térmica en los planes de Negocio, sujeto a validación de uso y soporte.
 
+**Estado de implementación (2026-11-06):** el requerimiento está en curso como RP-01 en `docs/odd/tasks/post-beta-product-round.md`. La generación PDF y las acciones de vista previa/descarga/impresión ya tienen implementación local parcial; faltan validación UX, revisión visual y validación en impresoras. Este estado no convierte la hipótesis de empaquetado en una decisión aprobada.
+
 ### P1 — Discovery de facturación electrónica DIAN
 
 - Medir cuántos negocios objetivo consideran la factura electrónica un requisito para empezar o continuar; identificar segmento, obligación operativa y alternativa actual.

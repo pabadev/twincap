@@ -15,7 +15,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { TouchTarget } from "../ui/touch-target";
-import { Wallet, SlidersHorizontal } from "lucide-react";
+import { Download, Wallet, SlidersHorizontal } from "lucide-react";
 import { isSyntheticCategoryId } from "../../core/domain/synthetic-categories";
 import { formatAmountParts } from "../../lib/format";
 import { useT } from "../../i18n/client";
@@ -23,6 +23,7 @@ import type { SerializedCategory } from "../../core/domain/category";
 import type { CurrencyTotal } from "../../core/application/compute-category-summary";
 import type { DashboardSnapshot } from "./dashboard-snapshot";
 import { getDashboardSnapshotAction } from "../../app/(main)/dashboard/actions";
+import { buildDashboardReportPdf, type BusinessReportRow } from "./dashboard-report-pdf";
 
 interface DashboardAccount {
   id: string;
@@ -84,6 +85,7 @@ export function DashboardContent({
   initialBusinessRange,
 }: DashboardContentProps) {
   const t = useT("Dashboard");
+  const tBusiness = useT("BusinessAnalytics");
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [chartView, setChartView] = useState<"monthly" | "yearly">("monthly");
@@ -147,6 +149,10 @@ export function DashboardContent({
   }, [categories]);
 
   function handleFiltersChange(next: DashboardSnapshot["filters"]) {
+    const normalizedNext =
+      next.scope === "Business" && (!next.from || !next.to)
+        ? { ...next, from: businessRange.from, to: businessRange.to }
+        : next;
     // Traveling-filter contract (UX-5 §4.3): persist filters in the URL so a
     // reload or navigation restores them instead of resetting to 'all'.
     // history.replaceState (NOT router.replace) keeps the URL in sync WITHOUT
@@ -154,15 +160,15 @@ export function DashboardContent({
     // flash, no double refetch. The next hard reload/navigation reads the
     // params in page.tsx.
     const params = new URLSearchParams();
-    if (next.period === "year") params.set("periodo", next.period);
-    if (next.scope !== "all") params.set("scope", next.scope);
-    if (next.accountId !== "all") params.set("cuenta", next.accountId);
-    if (next.categoryId !== "all") params.set("categoria", next.categoryId);
+    if (normalizedNext.period === "year") params.set("periodo", normalizedNext.period);
+    if (normalizedNext.scope !== "all") params.set("scope", normalizedNext.scope);
+    if (normalizedNext.accountId !== "all") params.set("cuenta", normalizedNext.accountId);
+    if (normalizedNext.categoryId !== "all") params.set("categoria", normalizedNext.categoryId);
     // H-19: the business window travels with the scope (the Negocio tab's
     // own range; the URL restores it server-side via filtersFromSearchParams).
-    if (next.scope === "Business" && next.from && next.to) {
-      params.set("desde", next.from);
-      params.set("hasta", next.to);
+    if (normalizedNext.scope === "Business" && normalizedNext.from && normalizedNext.to) {
+      params.set("desde", normalizedNext.from);
+      params.set("hasta", normalizedNext.to);
     }
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
@@ -172,7 +178,10 @@ export function DashboardContent({
       // offset so current-month/current-year derive from the civil date,
       // not the server's UTC clock.
       try {
-        const nextSnapshot = await getDashboardSnapshotAction(next, new Date().getTimezoneOffset());
+        const nextSnapshot = await getDashboardSnapshotAction(
+          normalizedNext,
+          new Date().getTimezoneOffset(),
+        );
         setSnapshot(nextSnapshot);
       } catch {
         // Keep the current snapshot on refetch failure; the filters are
@@ -267,12 +276,91 @@ export function DashboardContent({
   // the active dashboard filters.
   const showOnboarding = accounts.length === 1 && accounts[0].isFixed;
 
+  async function downloadReport() {
+    let businessRows: BusinessReportRow[] = [];
+    if (filters.scope === "Business" && filters.from && filters.to) {
+      try {
+        const response = await fetch(
+          `/api/business/result?from=${encodeURIComponent(filters.from)}&to=${encodeURIComponent(filters.to)}`,
+          { cache: "no-store" },
+        );
+        if (response.ok) {
+          const data = (await response.json()) as { rows?: BusinessReportRow[] };
+          businessRows = data.rows ?? [];
+        }
+      } catch {
+        businessRows = [];
+      }
+    }
+
+    const selectedAccount = accounts.find((account) => account.id === filters.accountId);
+    const selectedCategory = categories.find((category) => category.id === filters.categoryId);
+    const pdf = buildDashboardReportPdf({
+      snapshot,
+      locale,
+      positionData,
+      businessRows,
+      accountLabel: selectedAccount
+        ? `${selectedAccount.name} (${selectedAccount.currency})`
+        : undefined,
+      categoryLabel: selectedCategory?.name,
+      labels: {
+        title: t("reportTitle"),
+        generated: t("reportGenerated"),
+        scope: t("filterScope"),
+        period: t("periodLabel"),
+        account: t("filterAccount"),
+        category: t("filterCategory"),
+        available: t("availableByCurrency"),
+        result: t("periodResult"),
+        income: t("income"),
+        expenses: t("expenses"),
+        financing: t("financingThisMonth"),
+        received: t("financingReceived"),
+        granted: t("financingGranted"),
+        incomeCategories: t("incomeSummary"),
+        expenseCategories: t("expenseSummary"),
+        amount: t("summaryAmount"),
+        position: t("position"),
+        assets: t("activos"),
+        liabilities: t("pasivos"),
+        net: t("netPosition"),
+        recent: t("recentMovements"),
+        date: t("dataAsOf"),
+        type: t("income"),
+        note: tBusiness("plainLanguageNote"),
+        business: tBusiness("summaryTitle"),
+        sales: tBusiness("sales"),
+        salesCount: tBusiness("salesCount"),
+        cost: tBusiness("cost"),
+        expensesRecorded: tBusiness("expenses"),
+        businessResult: tBusiness("finalResult"),
+        collected: tBusiness("collectedFromSales"),
+        receivable: tBusiness("toCollect"),
+        incomplete: tBusiness("needsCost"),
+        all: t("filterScopeAll"),
+        personal: t("filterScopePersonal"),
+        businessScope: t("filterScopeBusiness"),
+        month: t("periodMonth"),
+        year: t("periodYear"),
+        noFilter: t("filterAccountAll"),
+        noData: t("noMovements"),
+        notAvailable: tBusiness("notAvailable"),
+      },
+    });
+    pdf.save("twincap-dashboard-report.pdf");
+  }
+
   return (
     <div className="space-y-8" aria-busy={isPending}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
         <div className="ml-auto flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={downloadReport}>
+            <Download className="mr-2 h-4 w-4" />
+            {t("downloadReport")}
+          </Button>
           {/* Founder retirement (2026-11-01): /business-analytics is gone —
               the business block lives ONLY in the Negocio tab below. The
               header keeps no link; the sidebar "Resumen del negocio" item
