@@ -169,29 +169,6 @@ export function SaleList({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleExportPdf} disabled={isExportingPdf}>
-            {isExportingPdf ? (
-              <Icon icon={Loader2} size="sm" className="animate-spin" />
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Download} size="sm" />
-                {tExport("pdfButton")}
-              </span>
-            )}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleExportCsv} disabled={isExporting}>
-            {isExporting ? (
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Loader2} size="sm" className="animate-spin" />
-                {tExport("exporting")}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Download} size="sm" />
-                {tExport("button")}
-              </span>
-            )}
-          </Button>
           <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
             {t("newSale")}
           </Button>
@@ -266,8 +243,45 @@ export function SaleList({
         />
       ) : (
         <>
-          {/* Mobile: toggle button */}
-          <div className="mb-4 sm:hidden">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="min-w-[min(100%,16rem)] flex-1">
+              <SearchInput
+                ariaLabel={t("filterSearch")}
+                placeholder={t("filterSearch")}
+                clearLabel={tCommon("clearSearch")}
+                value={search}
+                onValueChange={setSearch}
+                inputProps={{ id: "sale-filter-search" }}
+                hideIcon
+              />
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+            >
+              {isExportingPdf ? (
+                <Icon icon={Loader2} size="sm" className="animate-spin" />
+              ) : (
+                <>
+                  <Icon icon={Download} size="sm" />
+                  {tExport("pdfButton")}
+                </>
+              )}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExportCsv} disabled={isExporting}>
+              {isExporting ? (
+                <Icon icon={Loader2} size="sm" className="animate-spin" />
+              ) : (
+                <>
+                  <Icon icon={Download} size="sm" />
+                  {tExport("button")}
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="mb-4">
             <button
               type="button"
               onClick={() => setFiltersOpen((v) => !v)}
@@ -338,96 +352,64 @@ export function SaleList({
                     className="w-40"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="sale-filter-search-mobile"
-                    className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-                  >
-                    {t("filterSearch")}
-                  </label>
-                  <SearchInput
-                    ariaLabel={t("filterSearch")}
-                    placeholder={t("filterSearch")}
-                    clearLabel={tCommon("clearSearch")}
-                    value={search}
-                    onValueChange={setSearch}
-                    inputProps={{ id: "sale-filter-search-mobile" }}
-                    hideIcon
-                  />
-                </div>
               </div>
             </div>
           )}
 
-          {/* Desktop: always visible filter bar */}
-          <div className="mb-4 hidden flex-wrap items-center gap-3 sm:flex">
-            <div>
-              <label
-                htmlFor="sale-filter-dateFrom"
-                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-              >
-                {t("filterDateFrom")}
-              </label>
-              <input
-                id="sale-filter-dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
-              />
+          {/* Date and status filters are disclosed on every breakpoint. */}
+          {filtersOpen && (
+            <div className="mb-4 hidden flex-wrap items-center gap-3 sm:flex">
+              <div>
+                <label
+                  htmlFor="sale-filter-dateFrom"
+                  className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                >
+                  {t("filterDateFrom")}
+                </label>
+                <input
+                  id="sale-filter-dateFrom"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="sale-filter-dateTo"
+                  className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                >
+                  {t("filterDateTo")}
+                </label>
+                <input
+                  id="sale-filter-dateTo"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="sale-filter-status"
+                  className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                >
+                  {t("filterStatus")}
+                </label>
+                <Select
+                  id="sale-filter-status"
+                  options={[
+                    { value: "all", label: t("filterAllStatus") },
+                    { value: "paid", label: t("filterPaid") },
+                    { value: "credit", label: t("filterCredit") },
+                  ]}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as "all" | "paid" | "credit")}
+                  className="w-40"
+                />
+              </div>
             </div>
-            <div>
-              <label
-                htmlFor="sale-filter-dateTo"
-                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-              >
-                {t("filterDateTo")}
-              </label>
-              <input
-                id="sale-filter-dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 rounded-md border border-surface-border bg-surface-input px-3 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:border-surface-border dark:bg-surface-input dark:text-white"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="sale-filter-status"
-                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-              >
-                {t("filterStatus")}
-              </label>
-              <Select
-                id="sale-filter-status"
-                options={[
-                  { value: "all", label: t("filterAllStatus") },
-                  { value: "paid", label: t("filterPaid") },
-                  { value: "credit", label: t("filterCredit") },
-                ]}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as "all" | "paid" | "credit")}
-                className="w-40"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="sale-filter-search"
-                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-              >
-                {t("filterSearch")}
-              </label>
-              <SearchInput
-                ariaLabel={t("filterSearch")}
-                placeholder={t("filterSearch")}
-                clearLabel={tCommon("clearSearch")}
-                value={search}
-                onValueChange={setSearch}
-                inputProps={{ id: "sale-filter-search" }}
-                hideIcon
-              />
-            </div>
-          </div>
+          )}
 
           {filtered.length === 0 && sales.length > 0 && <EmptyState title={t("noResults")} />}
 

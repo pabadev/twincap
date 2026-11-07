@@ -357,10 +357,6 @@ export function DashboardContent({
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{greeting}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={downloadReport}>
-            <Download className="mr-2 h-4 w-4" />
-            {t("downloadReport")}
-          </Button>
           {/* Founder retirement (2026-11-01): /business-analytics is gone —
               the business block lives ONLY in the Negocio tab below. The
               header keeps no link; the sidebar "Resumen del negocio" item
@@ -374,7 +370,7 @@ export function DashboardContent({
 
       {/* ── Filtros disclosure — founder review (2026-10-31): sits BELOW the
            tabs line (same composition as Movements), out of the header. ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
@@ -390,6 +386,10 @@ export function DashboardContent({
             </span>
           )}
         </button>
+        <Button variant="secondary" size="sm" onClick={downloadReport}>
+          <Download className="mr-2 h-4 w-4" />
+          {t("downloadReport")}
+        </Button>
         {activeFilterCount > 0 && (
           <span className="text-xs text-zinc-600 dark:text-zinc-400">{t("filtersActive")}</span>
         )}

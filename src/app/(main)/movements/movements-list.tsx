@@ -24,6 +24,7 @@ import {
   listCategoriesAction,
   listAllMovementsAction,
   exportMovementsCsvAction,
+  exportMovementsPdfAction,
   type SerializedCursor,
 } from "./actions";
 import { downloadCsv } from "../../../lib/download-csv";
@@ -163,6 +164,7 @@ export function MovementsList({
   const [fullData, setFullData] = useState<SerializedMovement[] | null>(null);
   const [editingMovement, setEditingMovement] = useState<SerializedMovement | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const t = useT("Movements");
   const tCommon = useT("Common");
@@ -283,6 +285,47 @@ export function MovementsList({
     }
   }, [
     isExporting,
+    selectedAccountId,
+    tab,
+    selectedType,
+    selectedCategoryId,
+    dateFrom,
+    dateTo,
+    addToast,
+    tExport,
+  ]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const res = await exportMovementsPdfAction({
+        accountId: selectedAccountId,
+        scope: tab,
+        type: selectedType,
+        categoryId: selectedCategoryId,
+        dateFrom,
+        dateTo,
+      });
+      if (!res.ok) {
+        addToast(tExport("failed"), "error");
+        return;
+      }
+      const bytes = Uint8Array.from(atob(res.base64), (character) => character.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = res.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      addToast(tExport("done"), "success");
+    } catch {
+      addToast(tExport("failed"), "error");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }, [
+    isExportingPdf,
     selectedAccountId,
     tab,
     selectedType,
@@ -418,25 +461,6 @@ export function MovementsList({
       <div className="mb-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("title")}</h1>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-11"
-            onClick={handleExportCsv}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Loader2} size="sm" className="animate-spin" />
-                {tExport("exporting")}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Download} size="sm" />
-                {tExport("button")}
-              </span>
-            )}
-          </Button>
           {selectedAccountId && (
             <Button
               variant="primary"
@@ -473,7 +497,7 @@ export function MovementsList({
           />
 
           {/* Mobile: toggle button */}
-          <div className="mb-4 sm:hidden">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setFiltersOpen((v) => !v)}
@@ -489,19 +513,37 @@ export function MovementsList({
                 </span>
               )}
             </button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+            >
+              <Icon
+                icon={isExportingPdf ? Loader2 : Download}
+                size="sm"
+                className={isExportingPdf ? "animate-spin" : undefined}
+              />{" "}
+              {tExport("pdfButton")}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExportCsv} disabled={isExporting}>
+              <Icon
+                icon={isExporting ? Loader2 : Download}
+                size="sm"
+                className={isExporting ? "animate-spin" : undefined}
+              />{" "}
+              {tExport("button")}
+            </Button>
           </div>
 
-          {/* Mobile: collapsible subfilter bar */}
           {filtersOpen && (
-            <div id="movements-filters" className="mb-6 sm:hidden">
-              <div className="grid grid-cols-1 gap-3">{subfilterFields("-mobile")}</div>
+            <div id="movements-filters" className="mb-6">
+              <div className="grid grid-cols-1 gap-3 sm:hidden">{subfilterFields("-mobile")}</div>
+              <div className="hidden gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+                {subfilterFields("")}
+              </div>
             </div>
           )}
-
-          {/* Desktop: always visible subfilter bar */}
-          <div className="mb-6 hidden gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-5">
-            {subfilterFields("")}
-          </div>
         </>
       )}
 

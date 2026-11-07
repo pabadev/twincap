@@ -35,10 +35,12 @@ import { withAudit } from "../../../lib/with-audit";
 import { MongoOperationLogger } from "../../../infrastructure/repositories/operation-log-repository";
 import { MongoUnitOfWork } from "../../../infrastructure/transactions/mongo-unit-of-work";
 import { trackAnalytics } from "../../../lib/track-analytics";
-import { getT } from "../../../i18n/server";
+import { getT, getLocale } from "../../../i18n/server";
 import { buildMovementsCsv, filterMovementsForCsv } from "./export-csv";
 import type { MovementCsvFilters } from "./export-csv";
 import { parseMoneyInput } from "../../../lib/money-input";
+import { jsPDF } from "jspdf";
+import { formatAmount, formatDate } from "../../../lib/format";
 
 const ids = objectIdGenerator;
 
@@ -435,6 +437,63 @@ export async function exportMovementsCsvAction(
       metricScope: "retention",
     });
     return { ok: true, csv, filename: `movements_${date}.csv` };
+  } catch (error) {
+    return { ok: false, error: handleActionError(error).error };
+  }
+}
+
+export async function exportMovementsPdfAction(
+  filters: MovementCsvFilters,
+): Promise<{ ok: true; base64: string; filename: string } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "error.unauthorized" };
+  try {
+    await connectDb();
+    const movementRepo = new MongoMovementRepository();
+    const accountRepo = new MongoAccountRepository();
+    const categoryRepo = new MongoCategoryRepository();
+    const [movements, accounts, categories] = await Promise.all([
+      movementRepo.findByWorkspaceId(user.workspaceId!),
+      accountRepo.findByWorkspaceId(user.workspaceId!),
+      categoryRepo.findByWorkspaceId(user.workspaceId!),
+    ]);
+    const accountNames = Object.fromEntries(accounts.map((item) => [item.id, item.name]));
+    const categoryNames = Object.fromEntries(categories.map((item) => [item.id, item.name]));
+    const locale = await getLocale();
+    const t = await getT("Export");
+    const filtered = filterMovementsForCsv(serializeEntities(movements), filters);
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    let y = 16;
+    pdf.setFontSize(16);
+    pdf.text(t("movementsReportTitle"), 14, y);
+    y += 9;
+    pdf.setFontSize(9);
+    pdf.text(`${t("generatedAt")}: ${formatDate(new Date(), locale)}`, 14, y);
+    y += 8;
+    for (const movement of filtered) {
+      if (y > 275) {
+        pdf.addPage();
+        y = 16;
+      }
+      const date = formatDate(movement.date, locale);
+      const type = movement.type === "income" ? t("income") : t("expense");
+      const amount = formatAmount(movement.amount.amount, movement.amount.currency, locale);
+      const detail = `${date} · ${type} · ${accountNames[movement.accountId] ?? "—"} · ${categoryNames[movement.categoryId] ?? t("noCategory")} · ${amount}`;
+      pdf.text(pdf.splitTextToSize(detail, 180), 14, y);
+      y += 6;
+      if (movement.note) {
+        pdf.text(pdf.splitTextToSize(movement.note, 176), 18, y);
+        y += 6;
+      }
+    }
+    const base64 = Buffer.from(pdf.output("arraybuffer")).toString("base64");
+    const date = businessDateToInputValue(new Date());
+    await trackAnalytics("productAction", user.workspaceId!, user.userId, {
+      feature: "exports",
+      action: "exported",
+      metricScope: "retention",
+    });
+    return { ok: true, base64, filename: `movements_${date}.pdf` };
   } catch (error) {
     return { ok: false, error: handleActionError(error).error };
   }

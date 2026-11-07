@@ -864,6 +864,8 @@
   "Export": {
     "button": "Export CSV",
     "pdfButton": "Export PDF",
+    "movementsReportTitle": "Movements report",
+    "generatedAt": "Generated",
     "exporting": "Exporting…",
     "done": "Export complete.",
     "failed": "Export failed. Try again.",
