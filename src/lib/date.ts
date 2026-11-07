@@ -12,14 +12,14 @@
  *   date. Local getters would shift it ±1 day west of UTC.
  */
 
-import { ValidationError } from '../core/domain/errors';
+import { ValidationError } from "../core/domain/errors";
 
 /** Local calendar date of an instant, formatted for `<input type="date">`. */
 export function toDateInputValue(date?: Date): string {
   const d = date ?? new Date();
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -28,10 +28,14 @@ export function toDateInputValue(date?: Date): string {
  * value for `<input type="date">`. Reads UTC parts explicitly; equivalent to
  * the raw `date.toISOString().slice(0, 10)` but named and TZ-proof.
  */
-export function businessDateToInputValue(date: Date): string {
+export function businessDateToInputValue(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new ValidationError("Invalid business date");
+  }
   const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -69,6 +73,6 @@ export function assertBusinessDateNotFuture(
   now: Date = new Date(),
 ): void {
   if (isFutureBusinessDate(date, tzOffsetMinutes, now)) {
-    throw new ValidationError('Future dates are not allowed');
+    throw new ValidationError("Future dates are not allowed");
   }
 }

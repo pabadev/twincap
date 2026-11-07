@@ -49,6 +49,10 @@ describe("businessDateToInputValue", () => {
     const stored = new Date("2026-01-01T00:00:00Z"); // Dec 31 locally in Bogota
     expect(businessDateToInputValue(stored)).toBe("2026-01-01");
   });
+
+  it("decodes an ISO serialized business date", () => {
+    expect(businessDateToInputValue("2026-09-01T00:00:00.000Z")).toBe("2026-09-01");
+  });
 });
 
 describe("isFutureBusinessDate", () => {
@@ -76,30 +80,22 @@ describe("isFutureBusinessDate", () => {
   });
 
   it("allows any past date", () => {
-    expect(
-      isFutureBusinessDate(new Date("2026-01-01"), 0, new Date("2026-08-29T12:00:00Z")),
-    ).toBe(false);
+    expect(isFutureBusinessDate(new Date("2026-01-01"), 0, new Date("2026-08-29T12:00:00Z"))).toBe(
+      false,
+    );
   });
 });
 
 describe("assertBusinessDateNotFuture", () => {
   it("throws ValidationError for a future business date", () => {
     expect(() =>
-      assertBusinessDateNotFuture(
-        new Date("2026-08-30"),
-        300,
-        new Date("2026-08-29T02:00:00Z"),
-      ),
+      assertBusinessDateNotFuture(new Date("2026-08-30"), 300, new Date("2026-08-29T02:00:00Z")),
     ).toThrow(ValidationError);
   });
 
   it("does not throw for the client's current civil date", () => {
     expect(() =>
-      assertBusinessDateNotFuture(
-        new Date("2026-08-28"),
-        300,
-        new Date("2026-08-29T02:00:00Z"),
-      ),
+      assertBusinessDateNotFuture(new Date("2026-08-28"), 300, new Date("2026-08-29T02:00:00Z")),
     ).not.toThrow();
   });
 });

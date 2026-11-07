@@ -121,7 +121,16 @@ describe("createPayableAction", () => {
 
     expect(result).toEqual({ success: "payableCreated" });
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
-    expect(trackAnalytics).toHaveBeenCalledWith("payableCreated", "user-1", "user-1");
+    expect(trackAnalytics).toHaveBeenCalledWith(
+      "payableCreated",
+      "user-1",
+      "user-1",
+      expect.objectContaining({
+        feature: "payables",
+        action: "created",
+        metricScope: "activation",
+      }),
+    );
     expect(revalidatePath).toHaveBeenCalledTimes(4);
   });
 

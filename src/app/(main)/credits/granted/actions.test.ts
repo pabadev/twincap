@@ -393,7 +393,16 @@ describe("createCreditGrantedAction", () => {
 
     expect(result).toEqual({ success: "creditCreated" });
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
-    expect(trackAnalytics).toHaveBeenCalledWith("creditGrantedCreated", "user-1", "user-1");
+    expect(trackAnalytics).toHaveBeenCalledWith(
+      "creditGrantedCreated",
+      "user-1",
+      "user-1",
+      expect.objectContaining({
+        feature: "creditGranted",
+        action: "created",
+        metricScope: "activation",
+      }),
+    );
     expect(revalidatePath).toHaveBeenCalledTimes(4);
   });
 
