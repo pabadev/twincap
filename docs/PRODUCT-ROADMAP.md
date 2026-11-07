@@ -51,7 +51,10 @@ Las referencias sugieren probar Básico alrededor de $29.900/mes y Pro alrededor
 
 ## 5. Roadmap de capacidades nuevas
 
-Todas las iniciativas siguientes están **pendientes de discovery, diseño y priorización por fase**. Documentarlas no significa que deban implementarse todas ni que deban entrar en la beta actual.
+Las iniciativas siguientes están pendientes de discovery, diseño y priorización, salvo el
+alcance técnico inicial de RP-03, cuya implementación autorizó el fundador el 2026-11-07.
+Documentarlas no significa que deban implementarse todas ni que deban entrar en la beta
+actual; las fases posteriores de RP-03 requieren sus propios criterios y priorización.
 
 ### P0 — Captura de operaciones por voz
 
@@ -93,6 +96,7 @@ Todas las iniciativas siguientes están **pendientes de discovery, diseño y pri
 - Diseñar Membership, invitaciones, roles y permisos por workspace; hoy no hay selector de workspaces ni equipos activos para la beta.
 - Diseñar el modelo de propietario con varios workspaces y lectura consolidada sin mezclar ni romper aislamiento de datos.
 - Añadir billing, entitlements, límites y manejo de impago/cancelación solo con capacidades y precios aprobados.
+- Diseñar e implementar por fases la conexión de agentes IA mediante un servidor MCP remoto compartido por proveedores compatibles. El diseño inicial (RP-03) cubre Claude, ChatGPT/OpenAI, ámbitos Personal/Negocio, OAuth, autorización y consulta de solo lectura; la disponibilidad comercial, el modelo final de roles y las escrituras quedan sujetos a discovery y aprobación por fase. Ver `docs/AI-MCP-ARCHITECTURE.md`.
 
 ## 6. Guardrails de producto
 

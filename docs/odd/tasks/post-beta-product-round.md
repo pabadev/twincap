@@ -19,11 +19,54 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 ## Índice de requerimientos
 
-| ID | Requerimiento | Estado | Prioridad |
-| --- | --- | --- | --- |
-| RP-01 | Comprobantes de venta PDF e impresión térmica desde historial | En curso | P1 |
-| RP-02 | Reportes descargables: resumen, ventas, clientes e inventario | En curso | P1 |
-| RP-03+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir | — |
+| ID     | Requerimiento                                                  | Estado                                                          | Prioridad        |
+| ------ | -------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
+| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                        | P1               |
+| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                        | P1               |
+| RP-03  | Conexión de agentes IA mediante MCP                            | Diseño base aprobado; implementación técnica inicial autorizada | P1 (provisional) |
+| RP-04+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                     | —                |
+
+---
+
+## RP-03 — Diseño base de conexión de agentes IA mediante MCP
+
+**Origen/fecha:** solicitud del fundador, 2026-11-07.
+**Estado:** diseño arquitectónico aprobado por el fundador; implementación técnica inicial autorizada.
+
+**Prioridad:** P1 provisional; el empaquetado premium y la prioridad comercial siguen pendientes.
+**Documento:** `docs/AI-MCP-ARCHITECTURE.md`.
+
+### Alcance de la implementación inicial
+
+1. Endpoint remoto MCP stateless sobre Streamable HTTP en una Route Handler de Next.js/Vercel.
+2. Separar OAuth Authorization Server (login, consentimiento, emisión y revocación de
+   tokens) de MCP Resource Server (metadata y validación de bearer token). Pueden compartir
+   despliegue al principio; no mezclar sus responsabilidades.
+3. Autorización por persona, grant y ámbito. Comenzar con el usuario autenticado y su
+   espacio Personal existente, solo lectura. No usar todavía la identidad de suscripción,
+   no conceder scopes de escritura ni simular roles multiusuario que aún no están activos.
+4. Exponer una herramienta financiera de lectura vertical y acotada que reutilice un caso
+   de uso agregado existente; no acceso directo desde herramientas a repositorios.
+5. Compatibilidad inicial a verificar con Claude y OpenAI; conservar transportes y OAuth
+   desacoplados para clientes MCP compatibles adicionales.
+6. Criterios de salida antes de pasar a Negocio/multiusuario: conexión OAuth de extremo a
+   extremo; audience/issuer/PKCE/redirects validados; revocación efectiva; llamadas sin
+   cookie web; pruebas cross-user, scopes, replay, límites y Vercel; datos y resultados
+   coinciden con TwinCap y no se muta información financiera.
+
+El diseño cubre las bases compartidas para clientes MCP como Claude y OpenAI: ámbitos
+Personal y Negocio aislados, OAuth propio de TwinCap, autorización por
+persona/negocio/capacidad, conector administrable sin heredar los permisos del dueño de
+suscripción, herramientas iniciales de solo lectura, escrituras futuras mediante
+propuesta y confirmación en TwinCap, auditoría, privacidad, Vercel serverless/stateless,
+amenazas, fases, matriz de compatibilidad de proveedores y criterios previos a producción.
+Se distinguen ChatGPT como cliente MCP y un agente propio usando la API de OpenAI; son
+rutas con UX, disponibilidad y facturación diferentes.
+
+Quedan deliberadamente abiertos el actor que habilita el conector, roles/matriz final,
+relación de suscripción y múltiples negocios, consentimiento e historial compartido,
+entitlements/precio, límites, retención, clientes MCP soportados y alcance de escrituras.
+Resolver discovery y priorización antes de ampliar más allá del alcance técnico inicial.
 
 ---
 
