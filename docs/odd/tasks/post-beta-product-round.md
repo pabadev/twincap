@@ -19,24 +19,40 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 ## Índice de requerimientos
 
-| ID     | Requerimiento                                                  | Estado                                                          | Prioridad        |
-| ------ | -------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                        | P1               |
-| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                        | P1               |
-| RP-03  | Conexión de agentes IA mediante MCP                            | Diseño base aprobado; implementación técnica inicial autorizada | P1 (provisional) |
-| RP-04+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                     | —                |
+| ID     | Requerimiento                                                  | Estado                                                                        | Prioridad        |
+| ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------- |
+| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                      | P1               |
+| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                      | P1               |
+| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación | P1 (provisional) |
+| RP-04+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                   | —                |
 
 ---
 
 ## RP-03 — Diseño base de conexión de agentes IA mediante MCP
 
 **Origen/fecha:** solicitud del fundador, 2026-11-07.
-**Estado:** diseño arquitectónico aprobado por el fundador; implementación técnica inicial autorizada.
+**Estado:** implementación local del piloto OpenCode; colecciones/índices de producción listos; falta verificación completa, configuración de Vercel y despliegue aprobado.
 
 **Prioridad:** P1 provisional; el empaquetado premium y la prioridad comercial siguen pendientes.
 **Documento:** `docs/AI-MCP-ARCHITECTURE.md`.
 
 ### Alcance de la implementación inicial
+
+**Implementación local (2026-11-07):** Authorization Server con login existente y
+consentimiento con reautenticación reciente; CIMD de OpenCode verificado; Authorization
+Code + PKCE S256 y callback loopback allowlisted; credenciales aleatorias guardadas como
+hash, access tokens de 10 minutos, refresh rotatorio y revocación por grant; metadata OAuth
+y Resource Server MCP stateless; herramienta agregada Personal de solo lectura; allowlist,
+límite por grant y revocación desde Perfil. La funcionalidad está apagada por defecto.
+TypeScript verificado; pruebas no ejecutadas ni agregadas todavía; OpenCode no conectado.
+Se incluyen scripts operativos para inicializar colecciones vacías e índices MCP, con
+dry-run/lectura por defecto y `--apply` explícito. Por autorización del fundador se
+crearon y verificaron las cuatro colecciones e índices en la base de producción; conteo
+confirmado de documentos: cero en cada colección. La allowlist local usa el userId único
+asociado a la cuenta administradora local, verificada en la base. MCP sigue apagado en
+Vercel, el checkout no está enlazado al proyecto y OpenCode aún no se ha conectado. La
+validación end-to-end y el despliegue quedan pendientes; revisar todos los criterios antes
+de habilitar.
 
 1. Endpoint remoto MCP stateless sobre Streamable HTTP en una Route Handler de Next.js/Vercel.
 2. Separar OAuth Authorization Server (login, consentimiento, emisión y revocación de
@@ -47,14 +63,76 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
    no conceder scopes de escritura ni simular roles multiusuario que aún no están activos.
 4. Exponer una herramienta financiera de lectura vertical y acotada que reutilice un caso
    de uso agregado existente; no acceso directo desde herramientas a repositorios.
-5. Compatibilidad inicial a verificar con Claude y OpenAI; conservar transportes y OAuth
+5. Compatibilidad inicial a verificar con Claude, OpenCode y OpenAI; conservar transportes y OAuth
    desacoplados para clientes MCP compatibles adicionales.
 6. Criterios de salida antes de pasar a Negocio/multiusuario: conexión OAuth de extremo a
    extremo; audience/issuer/PKCE/redirects validados; revocación efectiva; llamadas sin
    cookie web; pruebas cross-user, scopes, replay, límites y Vercel; datos y resultados
    coinciden con TwinCap y no se muta información financiera.
 
-El diseño cubre las bases compartidas para clientes MCP como Claude y OpenAI: ámbitos
+### Diseño técnico concreto para que el piloto OpenCode se pueda implementar
+
+La arquitectura `docs/AI-MCP-ARCHITECTURE.md` es el contrato. Esta secuencia elimina las
+ambigüedades de implementación sin cerrar las decisiones de producto abiertas:
+
+1. **Authorization Server:** email/contraseña actual + sesión web identifica al usuario;
+   consentimiento es reautenticado si la sesión tiene más de 10 minutos. Authorization
+   Code + PKCE S256, `state` obligatorio, redirect URI validada y resource indicator.
+   Login web no se convierte en OAuth.
+2. **Cliente piloto:** CIMD exacto de OpenCode
+   `https://opencode.ai/oauth/opencode/client.json`, catálogo TwinCap allowlisted, metadata
+   HTTPS verificada y bounded (sin redirect, con timeout/límite, URL/host exactos). No DCR
+   abierto ni client secrets para el cliente native público. Conservar callback loopback y
+   permitir puerto dinámico solo con host/path exactos del documento nativo.
+3. **Discovery:** Protected Resource Metadata RFC 9728 para `${APP_BASE_URL}/api/mcp` y
+   Authorization Server Metadata RFC 8414 del issuer `${APP_BASE_URL}`. Publicar issuer,
+   endpoints, scope, `authorization_code`, `refresh_token`, `S256`, cliente público y
+   audience/recurso. `APP_BASE_URL` explícito; nunca derivarlo del request.
+4. **Persistencia:** separar OAuth transaction temporal, grant durable por cada consentimiento
+   y credential individual para code/access/refresh. Permitir varias concesiones del mismo
+   cliente; no inferir dispositivo si el metadata CIMD no lo identifica. Persistir solo
+   hashes SHA-256 de credenciales aleatorias; canje/rotación/replay/revocación con updates
+   atómicos e índices. TTL para credenciales vencidas, no para el grant activo.
+5. **Resource Server:** Route Handler Next `/api/mcp`, Node.js, Streamable HTTP stateless;
+   sin cookie web, body/tiempo/rate bounded y validación de Host/Origin. Token opaco con
+   introspección por llamada; validar resource/audience, expiry, actor, `sessionVersion`,
+   grant y scope. Las APIs no usan el proxy; `connectDb()` ocurre en cada entrada DB antes
+   de crear repos/modelos.
+6. **Tool vertical:** `personal.get_financial_summary`, scope `personal.summary:read`,
+   periodo month/year, no recibe identidad/workspace. Refactorizar el agregador existente
+   del Resumen en un caso de uso compartido y emitir sólo datos planos/minor units por
+   moneda. Nunca tocar escrituras ni leer repositorios desde el callback de protocolo.
+7. **Superficie de usuario:** consentimiento con identidad verificada OpenCode, ámbito,
+   datos que salen hacia el LLM, scope, expiración y revocación; sección Personal
+   “Aplicaciones conectadas” para listar/revocar una conexión o revocarlas todas. Una
+   sesión Go no otorga un scope TwinCap ni se comparte la clave Go.
+8. **Operación inicial:** flag global fail-closed y allowlist de IDs de usuario para piloto;
+   fuera del código/cliente, nunca por email. Primero entorno local con base de prueba y
+   datos sintéticos; luego Vercel Preview solo tras acordar cómo evitar protección Vercel
+   sin publicar secretos. No deploy prod en este requerimiento.
+
+### Criterios de seguridad/interoperabilidad OpenCode
+
+- OpenCode puede descubrir metadata, iniciar OAuth, abrir login/consent, volver al callback
+  loopback, canjear code y llamar la herramienta con un bearer válido sin cookie.
+- `opencode mcp list` conecta; refresh sucede correctamente; `opencode mcp logout`
+  elimina credencial local; revocar desde TwinCap hace fallar la siguiente llamada aunque
+  OpenCode conserve una copia de su token.
+- Rechazar `client_id` desconocido, metadata malformada/redirigida, redirect URI alterada,
+  port/path/host loopback no permitidos, recurso incorrecto, PKCE absent/plain/incorrecto,
+  code duplicado/expirado, grant revocado, token expirado y replay de refresh.
+- Sesión cookie sola no autentica `/api/mcp`; el bearer no funciona contra otra API/audience.
+  Argumentos de herramienta con user/workspace/business IDs son rechazados o ignorados y
+  jamás cambian al actor ni el tenant.
+- Probar múltiples dispositivos OpenCode con grants separados, revocar uno sin cerrar el
+  otro, “revocar todas”, cambio de contraseña/sessionVersion, cold start y Functions
+  paralelas. La UI distingue grants por hora de concesión/último uso, no afirma conocer el
+  nombre físico de cada equipo.
+- Asegurar que prompts, token/API key Go, códigos, datos financieros y texto libre no
+  aparezcan en logs, errors ni telemetry. El output de TwinCap puede quedar expuesto a
+  retención del modelo según el cliente; advertirlo antes del consentimiento.
+
+El diseño cubre las bases compartidas para clientes MCP como Claude, OpenCode y OpenAI: ámbitos
 Personal y Negocio aislados, OAuth propio de TwinCap, autorización por
 persona/negocio/capacidad, conector administrable sin heredar los permisos del dueño de
 suscripción, herramientas iniciales de solo lectura, escrituras futuras mediante
@@ -62,6 +140,12 @@ propuesta y confirmación en TwinCap, auditoría, privacidad, Vercel serverless/
 amenazas, fases, matriz de compatibilidad de proveedores y criterios previos a producción.
 Se distinguen ChatGPT como cliente MCP y un agente propio usando la API de OpenAI; son
 rutas con UX, disponibilidad y facturación diferentes.
+
+OpenCode se incorpora además como cliente prioritario de prueba: el plan OpenCode Go/Go
+Plus paga el uso de modelos dentro de OpenCode y no se comparte con TwinCap. La conexión
+al MCP de TwinCap usa OAuth independiente y permisos revocables. La compatibilidad del
+flujo real de registro de cliente, PKCE, refresh y revocación queda como criterio de la
+fase técnica.
 
 Quedan deliberadamente abiertos el actor que habilita el conector, roles/matriz final,
 relación de suscripción y múltiples negocios, consentimiento e historial compartido,

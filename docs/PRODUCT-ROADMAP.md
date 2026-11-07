@@ -96,7 +96,7 @@ actual; las fases posteriores de RP-03 requieren sus propios criterios y prioriz
 - Diseñar Membership, invitaciones, roles y permisos por workspace; hoy no hay selector de workspaces ni equipos activos para la beta.
 - Diseñar el modelo de propietario con varios workspaces y lectura consolidada sin mezclar ni romper aislamiento de datos.
 - Añadir billing, entitlements, límites y manejo de impago/cancelación solo con capacidades y precios aprobados.
-- Diseñar e implementar por fases la conexión de agentes IA mediante un servidor MCP remoto compartido por proveedores compatibles. El diseño inicial (RP-03) cubre Claude, ChatGPT/OpenAI, ámbitos Personal/Negocio, OAuth, autorización y consulta de solo lectura; la disponibilidad comercial, el modelo final de roles y las escrituras quedan sujetos a discovery y aprobación por fase. Ver `docs/AI-MCP-ARCHITECTURE.md`.
+- Diseñar e implementar por fases la conexión de agentes IA mediante un servidor MCP remoto compartido por proveedores compatibles. El diseño inicial (RP-03) cubre Claude, OpenCode, ChatGPT/OpenAI, ámbitos Personal/Negocio, OAuth, autorización y consulta de solo lectura; la disponibilidad comercial, el modelo final de roles y las escrituras quedan sujetos a discovery y aprobación por fase. OpenCode Go/Go Plus financia el uso de modelos del cliente y no se entrega a TwinCap; el acceso a TwinCap se autoriza por OAuth aparte. Ver `docs/AI-MCP-ARCHITECTURE.md`.
 
 ## 6. Guardrails de producto
 
