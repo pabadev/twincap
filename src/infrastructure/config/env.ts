@@ -2,10 +2,7 @@ import { z } from "zod";
 
 const envSchema = z
   .object({
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .optional()
-      .default("development"),
+    NODE_ENV: z.enum(["development", "test", "production"]).optional().default("development"),
     // Set by Next.js to "phase-production-build" during `next build` (prerender).
     // Used to skip the production-required validation during the build so a
     // local `pnpm build` check does not fail for missing email vars that a real
@@ -15,21 +12,23 @@ const envSchema = z
     AUTH_SECRET: z
       .string()
       .min(1, "AUTH_SECRET is required")
-      .refine((secret) => {
-        try {
-          // Must decode to exactly 32 bytes for jose A256GCM
-          const bytes = Uint8Array.from(
-            atob(secret.replace(/-/g, "+").replace(/_/g, "/")),
-            (c) => c.charCodeAt(0),
-          );
-          return bytes.length === 32;
-        } catch {
-          return false;
-        }
-      }, {
-        message:
-          "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
-      }),
+      .refine(
+        (secret) => {
+          try {
+            // Must decode to exactly 32 bytes for jose A256GCM
+            const bytes = Uint8Array.from(atob(secret.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+              c.charCodeAt(0),
+            );
+            return bytes.length === 32;
+          } catch {
+            return false;
+          }
+        },
+        {
+          message:
+            "AUTH_SECRET must be a base64url-encoded 32-byte key (generate: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')",
+        },
+      ),
     // Transactional email (R13-B). Optional in dev: when RESEND_API_KEY is absent
     // the email sender logs the link to the console instead of sending.
     // REQUIRED in production (R14-E).
@@ -41,6 +40,13 @@ const envSchema = z
     // REQUIRED in production — prevents the localhost fallback in auth-email-deps
     // that would generate broken links in deployed environments (R14-E).
     APP_BASE_URL: z.string().optional(),
+    // MCP starts fail-closed. A pilot user must also appear in the explicit
+    // user-ID allowlist; enabling the feature alone never grants data access.
+    MCP_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((value) => value === "true"),
+    MCP_PILOT_USER_IDS: z.string().optional(),
     // Error monitoring (R13-D). OPT-IN: defaults to false so the phase ships
     // functional but SILENT until the operator explicitly enables it (no
     // surprise for existing installs). Accepts "true"/"false" from the env.
@@ -81,9 +87,18 @@ const envSchema = z
     if (data.NEXT_PHASE === "phase-production-build") return;
 
     const prodRequired: [keyof typeof data, string][] = [
-      ["RESEND_API_KEY", "RESEND_API_KEY is required in production — set RESEND_API_KEY in your environment"],
-      ["RESEND_FROM", "RESEND_FROM is required in production — set RESEND_FROM in your environment"],
-      ["APP_BASE_URL", "APP_BASE_URL is required in production — set APP_BASE_URL to your deployed URL"],
+      [
+        "RESEND_API_KEY",
+        "RESEND_API_KEY is required in production — set RESEND_API_KEY in your environment",
+      ],
+      [
+        "RESEND_FROM",
+        "RESEND_FROM is required in production — set RESEND_FROM in your environment",
+      ],
+      [
+        "APP_BASE_URL",
+        "APP_BASE_URL is required in production — set APP_BASE_URL to your deployed URL",
+      ],
     ];
 
     for (const [key, message] of prodRequired) {

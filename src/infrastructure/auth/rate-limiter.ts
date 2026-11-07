@@ -1,4 +1,4 @@
-import { RateLimitModel } from '../models/rate-limit';
+import { RateLimitModel } from "../models/rate-limit";
 
 /**
  * Max re-entries of `check()` after a genuine E11000 duplicate-key create
@@ -59,10 +59,7 @@ export class MongoRateLimiter {
    * preserved. When E11000 persists past the bound, the last duplicate-key
    * error propagates instead of looping.
    */
-  private async checkWithCreateRetry(
-    key: string,
-    retriesLeft: number,
-  ): Promise<RateLimitResult> {
+  private async checkWithCreateRetry(key: string, retriesLeft: number): Promise<RateLimitResult> {
     const now = new Date();
     const windowStart = new Date(now.getTime() - this.config.windowMs);
     const expiresAt = new Date(now.getTime() + this.config.windowMs);
@@ -147,6 +144,16 @@ export const resendVerificationRateLimiter = new MongoRateLimiter({
 export const monitorRateLimiter = new MongoRateLimiter({
   maxAttempts: 120,
   windowMs: 15 * 60 * 1000, // 15 minutes
+});
+
+export const mcpRateLimiter = new MongoRateLimiter({
+  maxAttempts: 120,
+  windowMs: 15 * 60 * 1000,
+});
+
+export const mcpAuthorizationRateLimiter = new MongoRateLimiter({
+  maxAttempts: 30,
+  windowMs: 15 * 60 * 1000,
 });
 
 // Per-fingerprint alert throttle for the error monitor (R14-G §6): at most

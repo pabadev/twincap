@@ -18,7 +18,13 @@ import { MongoMembershipRepository } from "../repositories/membership-repository
  * membership-based workspaceId fallback: it only runs when the claim lacks
  * workspaceId, and `sessionVersion` is treated as 0.
  */
-export async function getCurrentUser(): Promise<{ userId: string; workspaceId?: string; email?: string } | null> {
+export async function getCurrentUser(): Promise<{
+  userId: string;
+  workspaceId?: string;
+  email?: string;
+  authTime?: number;
+  sessionVersion: number;
+} | null> {
   const payload = await getSessionCookie(joseSessionManager);
   if (!payload?.sub) return null;
 
@@ -45,5 +51,11 @@ export async function getCurrentUser(): Promise<{ userId: string; workspaceId?: 
     }
   }
 
-  return { userId: payload.sub, workspaceId, email: payload.email };
+  return {
+    userId: payload.sub,
+    workspaceId,
+    email: payload.email,
+    authTime: payload.authTime,
+    sessionVersion: user.sessionVersion ?? 0,
+  };
 }

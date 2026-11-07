@@ -244,6 +244,10 @@ describe("Filter-bar label/control association (UX-12, measured inventory)", () 
         catalogItems: [],
         accounts: [accountBase],
         clients: [],
+        // Filter labels live inside the collapsible bar (UX-12); expand it so
+        // the static markup carries the associated labels the measured
+        // inventory counts.
+        defaultFiltersOpen: true,
       }),
     );
     assertAssociations("sale-list", html);

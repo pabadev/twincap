@@ -48,6 +48,12 @@ interface SaleListProps {
   /** R5-D0b: initial payment per sale = the linked credit's first abono. */
   creditInitialPaymentBySaleId?: Record<string, number>;
   creditIdBySaleId?: Record<string, string>;
+  /**
+   * Render the filter bar expanded. Default false (toggle-collapsed as in the
+   * deployed UI); the UX-12 a11y measured-inventory test uses true so the
+   * associated labels exist in static markup.
+   */
+  defaultFiltersOpen?: boolean;
 }
 
 export function SaleList({
@@ -58,6 +64,7 @@ export function SaleList({
   creditPendingBySaleId,
   creditInitialPaymentBySaleId,
   creditIdBySaleId,
+  defaultFiltersOpen = false,
 }: SaleListProps) {
   const [showForm, setShowForm] = useState(false);
   // C12-1: close-guard for the sale form modal — unsaved changes trigger a
@@ -92,7 +99,7 @@ export function SaleList({
   const [search, setSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
   const t = useT("Sales");
   const tCommon = useT("Common");
   const tExport = useT("Export");

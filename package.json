@@ -18,9 +18,13 @@
     "test:e2e:install": "playwright install chromium",
     "migrate:workspace": "node scripts/migrate-workspace.mjs",
     "indexes:verify": "node scripts/verify-all-indexes.mjs",
+    "indexes:ensure:mcp": "node scripts/ensure-mcp-indexes.mjs --apply",
+    "indexes:verify:mcp": "node scripts/verify-mcp-indexes.mjs",
+    "indexes:init:mcp": "node scripts/initialize-mcp-collections.mjs --apply",
     "indexes:ensure:auth-token": "node scripts/ensure-auth-token-indexes.mjs --apply"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.9",
     "jspdf": "^4.2.1",

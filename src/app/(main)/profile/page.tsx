@@ -5,6 +5,8 @@ import { MongoUserRepository } from "../../../infrastructure/repositories/user-r
 import { getT, getLocale } from "../../../i18n/server";
 import { ProfileForm } from "./profile-form";
 import { VerifyBanner } from "./verify-banner";
+import { listActiveGrantsForUser } from "@/infrastructure/mcp/oauth-service";
+import { McpConnections } from "./mcp-connections";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   const snapshot = user.toJSON();
+  const grants = await listActiveGrantsForUser(authUser.userId);
 
   return (
     <div className="mx-auto max-w-xl space-y-8">
@@ -54,6 +57,26 @@ export default async function ProfilePage() {
           wrongPassword: t("wrongPassword"),
           passwordMismatch: t("passwordMismatch"),
           cancel: (await getT("Common"))("cancel"),
+        }}
+      />
+      <McpConnections
+        grants={grants.map((grant) => ({
+          id: String(grant._id),
+          clientName: grant.clientName,
+          capabilities: grant.capabilities,
+          consentedAt: grant.consentedAt.toLocaleString(locale),
+          lastUsedAt: grant.lastUsedAt?.toLocaleString(locale) ?? null,
+        }))}
+        labels={{
+          title: t("mcpTitle"),
+          description: t("mcpDescription"),
+          none: t("mcpNone"),
+          granted: t("mcpGranted"),
+          lastUsed: t("mcpLastUsed"),
+          revoke: t("mcpRevoke"),
+          revokeAll: t("mcpRevokeAll"),
+          permission: t("mcpPermission"),
+          summaryRead: t("mcpSummaryRead"),
         }}
       />
     </div>

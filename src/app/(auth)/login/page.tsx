@@ -1,10 +1,15 @@
-import { getT } from '../../../i18n/server';
-import { loginAction } from '../actions';
-import { AuthForm } from '../auth-form';
-import { Logo } from '../../../components/ui/logo';
+import { getT } from "../../../i18n/server";
+import { loginAction } from "../actions";
+import { AuthForm } from "../auth-form";
+import { Logo } from "../../../components/ui/logo";
 
-export default async function LoginPage() {
-  const t = await getT('Auth');
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; reauth?: string }>;
+}) {
+  const params = await searchParams;
+  const t = await getT("Auth");
   return (
     <>
       <div className="flex justify-center">
@@ -12,13 +17,15 @@ export default async function LoginPage() {
       </div>
       <AuthForm
         action={loginAction}
-        title={t('signIn')}
-        submitLabel={t('signInLabel')}
-        alternateText={t('noAccount')}
+        title={params.reauth === "1" ? t("reauthenticate") : t("signIn")}
+        description={params.reauth === "1" ? t("reauthenticateHint") : undefined}
+        submitLabel={t("signInLabel")}
+        alternateText={t("noAccount")}
         alternateHref="/register"
-        alternateLabel={t('registerLabel')}
+        alternateLabel={t("registerLabel")}
         authMode="login"
-        forgotLabel={t('forgotPassword')}
+        nextUrl={params.next}
+        forgotLabel={t("forgotPassword")}
         forgotHref="/forgot-password"
       />
     </>

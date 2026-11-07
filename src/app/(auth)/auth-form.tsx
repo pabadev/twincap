@@ -15,6 +15,7 @@ type ActionFn = (
 export function AuthForm({
   action,
   title,
+  description,
   submitLabel,
   alternateText,
   alternateHref,
@@ -22,9 +23,11 @@ export function AuthForm({
   authMode,
   forgotLabel,
   forgotHref,
+  nextUrl,
 }: {
   action: ActionFn;
   title: string;
+  description?: string;
   submitLabel: string;
   alternateText: string;
   alternateHref: string;
@@ -32,6 +35,7 @@ export function AuthForm({
   authMode: "login" | "register";
   forgotLabel?: string;
   forgotHref?: string;
+  nextUrl?: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
   const t = useT("Auth");
@@ -44,7 +48,11 @@ export function AuthForm({
       <h2 className="text-center text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
         {title}
       </h2>
+      {description && (
+        <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+      )}
       <form action={formAction} className="mt-8 space-y-5">
+        {authMode === "login" && nextUrl && <input type="hidden" name="next" value={nextUrl} />}
         {state?.error && (
           <Alert variant="danger">{tError(state.error.replace(/^error\./, ""))}</Alert>
         )}

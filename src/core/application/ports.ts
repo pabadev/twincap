@@ -28,6 +28,8 @@ export interface SessionClaims {
   sub: string;
   email?: string;
   workspaceId?: string;
+  /** Unix seconds when the person last supplied a password. */
+  authTime?: number;
   /**
    * Server-only session invalidation version (R14-F §13). Captured at login
    * from the user's `sessionVersion`; incremented on password change/reset so

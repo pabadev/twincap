@@ -31,7 +31,9 @@ export const joseSessionManager: SessionManager = {
         sub: payload.sub as string,
         email: typeof payload.email === "string" ? payload.email : undefined,
         workspaceId: typeof payload.workspaceId === "string" ? payload.workspaceId : undefined,
-        sessionVersion: typeof payload.sessionVersion === "number" ? payload.sessionVersion : undefined,
+        authTime: typeof payload.iat === "number" ? payload.iat : undefined,
+        sessionVersion:
+          typeof payload.sessionVersion === "number" ? payload.sessionVersion : undefined,
       };
     } catch {
       return null;

@@ -1,44 +1,71 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { register } from '../../core/application/auth/register';
-import { login } from '../../core/application/auth/login';
-import { logout } from '../../core/application/auth/logout';
-import { requestPasswordReset } from '../../core/application/auth/request-password-reset';
-import { resetPassword } from '../../core/application/auth/reset-password';
-import { verifyEmail } from '../../core/application/auth/verify-email';
-import { bcryptPasswordHasher } from '../../infrastructure/auth/password';
-import { joseSessionManager } from '../../infrastructure/auth/session';
-import { setSessionCookie, sessionCookieManager } from '../../infrastructure/auth/session-cookie';
-import { MongoUserRepository } from '../../infrastructure/repositories/user-repository';
-import { MongoAccountRepository } from '../../infrastructure/repositories/account-repository';
-import { MongoCategoryRepository } from '../../infrastructure/repositories/category-repository';
-import { MongoWorkspaceRepository } from '../../infrastructure/repositories/workspace-repository';
-import { MongoMembershipRepository } from '../../infrastructure/repositories/membership-repository';
-import { connectDb } from '../../infrastructure/db/connection';
-import { objectIdGenerator } from '../../infrastructure/config/id-generator';
+import { redirect } from "next/navigation";
+import { register } from "../../core/application/auth/register";
+import { login } from "../../core/application/auth/login";
+import { logout } from "../../core/application/auth/logout";
+import { requestPasswordReset } from "../../core/application/auth/request-password-reset";
+import { resetPassword } from "../../core/application/auth/reset-password";
+import { verifyEmail } from "../../core/application/auth/verify-email";
+import { bcryptPasswordHasher } from "../../infrastructure/auth/password";
+import { joseSessionManager } from "../../infrastructure/auth/session";
+import { setSessionCookie, sessionCookieManager } from "../../infrastructure/auth/session-cookie";
+import { MongoUserRepository } from "../../infrastructure/repositories/user-repository";
+import { MongoAccountRepository } from "../../infrastructure/repositories/account-repository";
+import { MongoCategoryRepository } from "../../infrastructure/repositories/category-repository";
+import { MongoWorkspaceRepository } from "../../infrastructure/repositories/workspace-repository";
+import { MongoMembershipRepository } from "../../infrastructure/repositories/membership-repository";
+import { connectDb } from "../../infrastructure/db/connection";
+import { objectIdGenerator } from "../../infrastructure/config/id-generator";
 import {
   loginRateLimiter,
   registerRateLimiter,
   forgotPasswordRateLimiter,
-} from '../../infrastructure/auth/rate-limiter';
+} from "../../infrastructure/auth/rate-limiter";
 import {
   recordLoginFailure,
   resetLoginFailures,
   isEmailLockedOut,
-} from '../../infrastructure/auth/login-attempts';
-import { MongoOperationLogger } from '../../infrastructure/repositories/operation-log-repository';
-import { MongoWorkspaceBootstrapper } from '../../infrastructure/seeding/user-bootstrap';
-import { MongoUnitOfWork } from '../../infrastructure/transactions/mongo-unit-of-work';
-import { buildAuthEmailDeps } from '../../infrastructure/auth/auth-email-deps';
-import { sendVerificationBestEffort } from '../../infrastructure/auth/send-verification-best-effort';
-import { getClientIp } from '../../infrastructure/auth/client-ip';
-import { reportUnexpectedErrorAndWait } from '../../lib/report-unexpected-error';
-import { trackAnalytics } from '../../lib/track-analytics';
-import { ValidationError, ConflictError, ForbiddenError, NotFoundError } from '../../core/domain/errors';
-import { handleActionError } from '../../lib/handle-action-error';
+} from "../../infrastructure/auth/login-attempts";
+import { MongoOperationLogger } from "../../infrastructure/repositories/operation-log-repository";
+import { MongoWorkspaceBootstrapper } from "../../infrastructure/seeding/user-bootstrap";
+import { MongoUnitOfWork } from "../../infrastructure/transactions/mongo-unit-of-work";
+import { buildAuthEmailDeps } from "../../infrastructure/auth/auth-email-deps";
+import { sendVerificationBestEffort } from "../../infrastructure/auth/send-verification-best-effort";
+import { getClientIp } from "../../infrastructure/auth/client-ip";
+import { reportUnexpectedErrorAndWait } from "../../lib/report-unexpected-error";
+import { trackAnalytics } from "../../lib/track-analytics";
+import {
+  ValidationError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "../../core/domain/errors";
+import { handleActionError } from "../../lib/handle-action-error";
 
 const ids = objectIdGenerator;
+
+function safeAuthReturnPath(value: FormDataEntryValue | null): string | null {
+  if (
+    typeof value !== "string" ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\")
+  ) {
+    return null;
+  }
+  try {
+    const parsed = new URL(value, "https://twincap.invalid");
+    if (parsed.origin !== "https://twincap.invalid" || parsed.pathname !== "/oauth/authorize") {
+      return null;
+    }
+    const transactionId = parsed.searchParams.get("tx");
+    if (!transactionId || !/^[0-9a-f-]{36}$/i.test(transactionId)) return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
 
 function getRepos() {
   return {
@@ -57,12 +84,13 @@ function getRepos() {
  * and fail-safe; never changes the action's response contract.
  */
 function reportAuthError(error: unknown): void {
-  const expected = error instanceof ValidationError
-    || error instanceof ForbiddenError
-    || error instanceof NotFoundError
+  const expected =
+    error instanceof ValidationError ||
+    error instanceof ForbiddenError ||
+    error instanceof NotFoundError ||
     // I8: duplicate-email registration is a normal user outcome (ConflictError),
     // never an unexpected crash — the same class as the other expected domain errors.
-    || error instanceof ConflictError;
+    error instanceof ConflictError;
   void reportUnexpectedErrorAndWait(error, { expected });
 }
 
@@ -70,12 +98,12 @@ export async function registerAction(
   _prev: { error: string } | null,
   formData: FormData,
 ): Promise<{ error: string } | null> {
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const confirmPassword = formData.get('confirmPassword') as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
 
   if (password !== confirmPassword) {
-    return { error: 'error.passwordMismatch' };
+    return { error: "error.passwordMismatch" };
   }
 
   // Connect BEFORE the rate limiter (DB-backed) to avoid Mongoose buffering
@@ -87,13 +115,18 @@ export async function registerAction(
   const rateLimitKey = `register:${ip}`;
   const rateLimit = await registerRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'error.tooManyAttempts' };
+    return { error: "error.tooManyAttempts" };
   }
 
   try {
     await connectDb();
     const { userRepo, accountRepo, categoryRepo, workspaceRepo, membershipRepo } = getRepos();
-    const { userId, email: sessionEmail, workspaceId, sessionVersion } = await register(
+    const {
+      userId,
+      email: sessionEmail,
+      workspaceId,
+      sessionVersion,
+    } = await register(
       { email, password },
       userRepo,
       accountRepo,
@@ -105,30 +138,35 @@ export async function registerAction(
       new MongoWorkspaceBootstrapper(accountRepo, categoryRepo),
       new MongoUnitOfWork(),
     );
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
+    await setSessionCookie(joseSessionManager, {
+      sub: userId,
+      email: sessionEmail,
+      workspaceId,
+      sessionVersion,
+    });
     // R13-B2: fire the verification email best-effort (never blocks register).
     // New users have no locale yet; default to 'es' (primary market: LatAm).
     await sendVerificationBestEffort(
-      { id: userId, email: sessionEmail, locale: 'es' },
+      { id: userId, email: sessionEmail, locale: "es" },
       buildAuthEmailDeps(userRepo),
     );
     // Audit the successful registration (no actor exists before this point).
     await new MongoOperationLogger().log({
       userId,
-      action: 'register',
-      entityType: 'auth',
-      result: 'success',
+      action: "register",
+      entityType: "auth",
+      result: "success",
       occurredAt: new Date(),
     });
     // R13-G: track registration event (analytics, best-effort).
-    await trackAnalytics('register', workspaceId, userId);
+    await trackAnalytics("register", workspaceId, userId);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
     reportAuthError(error);
     return handleActionError(error);
   }
 
-  redirect('/');
+  redirect("/");
   return null;
 }
 
@@ -136,8 +174,8 @@ export async function loginAction(
   _prev: { error: string } | null,
   formData: FormData,
 ): Promise<{ error: string } | null> {
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
 
   // Connect BEFORE any model/repo use (the rate limiter hits the DB). In a
   // cold serverless start Mongoose buffers commands with no active connection
@@ -150,7 +188,7 @@ export async function loginAction(
   const rateLimitKey = `login:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await loginRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'error.tooManyAttempts' };
+    return { error: "error.tooManyAttempts" };
   }
 
   // R15.3.2 P2-5: the fixed-window limiter above is keyed by email+IP, so an
@@ -163,66 +201,71 @@ export async function loginAction(
   // getLockoutRemaining() is available for a future UI enhancement.
   const normalizedEmail = email.trim().toLowerCase();
   if (await isEmailLockedOut(normalizedEmail)) {
-    return { error: 'error.tooManyAttempts' };
+    return { error: "error.tooManyAttempts" };
   }
 
   try {
     await connectDb();
     const { userRepo, membershipRepo } = getRepos();
-    const { userId, email: sessionEmail, sessionVersion } = await login(
-      { email, password },
-      userRepo,
-      bcryptPasswordHasher,
-    );
+    const {
+      userId,
+      email: sessionEmail,
+      sessionVersion,
+    } = await login({ email, password }, userRepo, bcryptPasswordHasher);
     // Resolve workspaceId for the session
     const memberships = await membershipRepo.findByUserId(userId);
-    const workspaceId = memberships.find((m) => m.status === 'active')?.workspaceId;
+    const workspaceId = memberships.find((m) => m.status === "active")?.workspaceId;
     // Reset rate limit on successful login
     await loginRateLimiter.reset(rateLimitKey);
     // R15.3.2 P2-5: a successful login also clears the per-email failure
     // history — the lockout exists to stop brute force, not to punish the
     // legitimate owner once they authenticate.
     await resetLoginFailures(normalizedEmail);
-    await setSessionCookie(joseSessionManager, { sub: userId, email: sessionEmail, workspaceId, sessionVersion });
+    await setSessionCookie(joseSessionManager, {
+      sub: userId,
+      email: sessionEmail,
+      workspaceId,
+      sessionVersion,
+    });
     // Audit the successful login (no actor is known before this point).
     await new MongoOperationLogger().log({
       userId,
-      action: 'login',
-      entityType: 'auth',
-      result: 'success',
+      action: "login",
+      entityType: "auth",
+      result: "success",
       occurredAt: new Date(),
     });
     // R13-G: track first login (deduplicated per workspace — only one doc ever).
     if (workspaceId) {
-      await trackAnalytics('firstLogin', workspaceId, userId);
+      await trackAnalytics("firstLogin", workspaceId, userId);
     }
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
     // R15.3.2 P2-5: count ONLY genuine credential failures (login throws
     // ValidationError('Invalid email or password') for BOTH unknown email and
     // wrong password — anti-enumeration). Unexpected errors are NOT user
     // attempts and must not widen the lockout.
-    if (error instanceof ValidationError && error.message === 'Invalid email or password') {
+    if (error instanceof ValidationError && error.message === "Invalid email or password") {
       await recordLoginFailure(normalizedEmail, ip);
     }
     reportAuthError(error);
     return handleActionError(error);
   }
 
-  redirect('/');
+  redirect(safeAuthReturnPath(formData.get("next")) ?? "/");
   return null;
 }
 
 export async function logoutAction() {
   await logout(sessionCookieManager);
-  redirect('/login');
+  redirect("/login");
 }
 
 export async function forgotPasswordAction(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
-  const email = (formData.get('email') as string) || '';
+  const email = (formData.get("email") as string) || "";
 
   // Connect BEFORE the DB-backed rate limiter (avoids Mongoose buffering
   // timeouts in serverless cold starts). connectDb() is a cached no-op once up.
@@ -233,7 +276,7 @@ export async function forgotPasswordAction(
   const rateLimitKey = `forgot:${email.toLowerCase().trim()}:${ip}`;
   const rateLimit = await forgotPasswordRateLimiter.check(rateLimitKey);
   if (!rateLimit.allowed) {
-    return { error: 'error.tooManyAttempts' };
+    return { error: "error.tooManyAttempts" };
   }
 
   try {
@@ -242,7 +285,7 @@ export async function forgotPasswordAction(
     // Anti-enumeration: returns ok even when the email is not registered.
     await requestPasswordReset({ email }, buildAuthEmailDeps(userRepo));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
     reportAuthError(error);
     return handleActionError(error);
   }
@@ -255,9 +298,9 @@ export async function resetPasswordAction(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
-  const email = (formData.get('email') as string) || '';
-  const token = (formData.get('token') as string) || '';
-  const newPassword = (formData.get('newPassword') as string) || '';
+  const email = (formData.get("email") as string) || "";
+  const token = (formData.get("token") as string) || "";
+  const newPassword = (formData.get("newPassword") as string) || "";
 
   try {
     await connectDb();
@@ -270,7 +313,7 @@ export async function resetPasswordAction(
       new MongoUnitOfWork(),
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
     reportAuthError(error);
     return handleActionError(error);
   }
@@ -282,21 +325,17 @@ export async function verifyEmailAction(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
-  const email = (formData.get('email') as string) || '';
-  const token = (formData.get('token') as string) || '';
+  const email = (formData.get("email") as string) || "";
+  const token = (formData.get("token") as string) || "";
 
   try {
     await connectDb();
     const userRepo = new MongoUserRepository();
     // R15.3.2 §26: consume + user update commit atomically — a failed user
     // update rolls the token consumption back (the user keeps their token).
-    await verifyEmail(
-      { email, token },
-      buildAuthEmailDeps(userRepo),
-      new MongoUnitOfWork(),
-    );
+    await verifyEmail({ email, token }, buildAuthEmailDeps(userRepo), new MongoUnitOfWork());
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) throw error;
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
     reportAuthError(error);
     return handleActionError(error);
   }

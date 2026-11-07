@@ -18,14 +18,19 @@ describe("joseSessionManager", () => {
     expect(token.length).toBeGreaterThan(0);
 
     const payload = await joseSessionManager.verify(token);
-    expect(payload).toEqual({ sub: "user-123", email: "user@example.com" });
+    expect(payload).toMatchObject({ sub: "user-123", email: "user@example.com" });
+    // MCP consent re-auth (2026-11-07): verify() surfaces the issued-at
+    // instant as authTime so the OAuth authorize page can require a fresh
+    // login (authTime within 10 minutes).
+    expect(typeof payload?.authTime).toBe("number");
   });
 
   it("supports sessions without an email claim (legacy shape)", async () => {
     const token = await joseSessionManager.create({ sub: "user-123" });
 
     const payload = await joseSessionManager.verify(token);
-    expect(payload).toEqual({ sub: "user-123" });
+    expect(payload).toMatchObject({ sub: "user-123" });
+    expect(typeof payload?.authTime).toBe("number");
   });
 
   it("round-trips the sessionVersion claim (R14-F §13)", async () => {
@@ -35,7 +40,8 @@ describe("joseSessionManager", () => {
     });
 
     const payload = await joseSessionManager.verify(token);
-    expect(payload).toEqual({ sub: "user-123", sessionVersion: 3 });
+    expect(payload).toMatchObject({ sub: "user-123", sessionVersion: 3 });
+    expect(typeof payload?.authTime).toBe("number");
   });
 
   it("omits sessionVersion entirely when not provided (legacy shape)", async () => {

@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "twincap": {
+        "type": "remote",
+        "url": "http://localhost:3000/api/mcp"
+      }
+    }
+  }
+}

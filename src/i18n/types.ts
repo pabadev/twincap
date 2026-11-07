@@ -23,6 +23,7 @@ export type Namespace =
   | "Landing"
   | "SystemNotes"
   | "Profile"
+  | "Mcp"
   | "Feedback"
   | "Analytics"
   | "BusinessAnalytics"

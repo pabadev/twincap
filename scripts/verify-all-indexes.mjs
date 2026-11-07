@@ -41,6 +41,7 @@ const VERIFIERS = [
   "scripts/verify-idempotency-indexes.mjs",
   "scripts/verify-auth-token-indexes.mjs",
   "scripts/verify-inventory-receipt-indexes.mjs",
+  "scripts/verify-mcp-indexes.mjs",
 ];
 
 let failed = 0;
