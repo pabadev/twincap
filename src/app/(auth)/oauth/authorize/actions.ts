@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { Types } from "mongoose";
-import { getCurrentUser } from "@/infrastructure/auth/getCurrentUser";
+import { getCurrentUser, isAuthenticationRecent } from "@/infrastructure/auth/getCurrentUser";
 import { connectDb } from "@/infrastructure/db/connection";
 import { MembershipModel } from "@/infrastructure/models/membership";
 import { WorkspaceModel } from "@/infrastructure/models/workspace";
@@ -29,8 +29,7 @@ async function context(formData: FormData) {
   const user = await getCurrentUser();
   if (
     !user?.workspaceId ||
-    !user.authTime ||
-    Date.now() / 1000 - user.authTime > 600 ||
+    !isAuthenticationRecent(user.authTime) ||
     !isMcpEnabledForUser(user.userId)
   )
     return null;
@@ -53,7 +52,7 @@ async function context(formData: FormData) {
     findPendingAuthorizationTransaction(tx),
     getVerifiedOpenCodeClient().catch(() => null),
   ]);
-  const transaction: any = transactionValue;
+  const transaction = transactionValue;
   if (
     !membership ||
     !workspace ||

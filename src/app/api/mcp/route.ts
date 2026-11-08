@@ -105,7 +105,7 @@ const handler = createMcpHandler(
         if (!grantId || !userId || !isMcpEnabledForUser(userId))
           throw new Error("Authorization expired");
         await connectDb();
-        const grant: any = await getActiveGrantForUser(grantId, userId);
+        const grant = await getActiveGrantForUser(grantId, userId);
         if (!grant || !grant.capabilities.includes(MCP_CAPABILITY))
           throw new Error("Authorization expired");
         const snapshot = await readDashboardSnapshot(
@@ -156,7 +156,7 @@ const handler = createMcpHandler(
         if (!grantId || !userId || !isMcpEnabledForUser(userId))
           throw new Error("Authorization expired");
         await connectDb();
-        const grant: any = await getActiveGrantForUser(grantId, userId);
+        const grant = await getActiveGrantForUser(grantId, userId);
         if (!grant) throw new Error("Authorization expired");
         if (!grant.capabilities.includes(MCP_MOVEMENTS_CAPABILITY))
           return {
@@ -285,7 +285,7 @@ const handler = createMcpHandler(
         if (!grantId || !userId || !isMcpEnabledForUser(userId))
           throw new Error("Authorization expired");
         await connectDb();
-        const grant: any = await getActiveGrantForUser(grantId, userId);
+        const grant = await getActiveGrantForUser(grantId, userId);
         if (!grant) throw new Error("Authorization expired");
         if (!grant.capabilities.includes(MCP_MOVEMENTS_CAPABILITY))
           return {

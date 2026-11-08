@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/infrastructure/auth/getCurrentUser";
+import { getCurrentUser, isAuthenticationRecent } from "@/infrastructure/auth/getCurrentUser";
 import { connectDb } from "@/infrastructure/db/connection";
 import { env } from "@/infrastructure/config/env";
 import {
@@ -104,7 +104,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
     return <Message title={t("authorizationUnavailable")} detail={t("transactionExpired")} />;
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(`/oauth/authorize?tx=${txId}`)}`);
-  if (!user.authTime || Date.now() / 1000 - user.authTime > 600) {
+  if (!isAuthenticationRecent(user.authTime)) {
     redirect(`/login?reauth=1&next=${encodeURIComponent(`/oauth/authorize?tx=${txId}`)}`);
   }
   if (!isMcpEnabledForUser(user.userId))
@@ -112,7 +112,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
       <Message title={t("authorizationUnavailable")} detail={t("pilotNotEnabledForAccount")} />
     );
   await connectDb();
-  const transaction: any = await findPendingAuthorizationTransaction(txId);
+  const transaction = await findPendingAuthorizationTransaction(txId);
   if (
     !transaction ||
     transaction.clientId !== OPENCODE_CLIENT_ID ||

@@ -4,6 +4,10 @@ import { connectDb } from "../db/connection";
 import { MongoUserRepository } from "../repositories/user-repository";
 import { MongoMembershipRepository } from "../repositories/membership-repository";
 
+export function isAuthenticationRecent(authTime?: number): boolean {
+  return typeof authTime === "number" && Date.now() / 1000 - authTime <= 600;
+}
+
 /**
  * Resolves the authenticated current user from the session cookie.
  *

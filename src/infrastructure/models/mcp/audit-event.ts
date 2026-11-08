@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 /** Security events only; never store bearer tokens, prompts, or financial output. */
 const McpAuditEventSchema = new Schema(
@@ -18,9 +18,11 @@ const McpAuditEventSchema = new Schema(
   { versionKey: false, collection: "mcpauditevents" },
 );
 
+type McpAuditEventDocument = InferSchemaType<typeof McpAuditEventSchema>;
+
 McpAuditEventSchema.index({ actorUserId: 1, createdAt: -1 });
 McpAuditEventSchema.index({ grantId: 1, createdAt: -1 });
 
 export const McpAuditEventModel =
-  (mongoose.models.McpAuditEvent as mongoose.Model<any> | undefined) ||
-  mongoose.model<any>("McpAuditEvent", McpAuditEventSchema);
+  (mongoose.models.McpAuditEvent as mongoose.Model<McpAuditEventDocument> | undefined) ||
+  mongoose.model<McpAuditEventDocument>("McpAuditEvent", McpAuditEventSchema);
