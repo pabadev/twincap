@@ -40,6 +40,7 @@ jobs:
       # valores de prueba no-secretos idénticos a los que usan los tests
       # (env.test.ts). Nunca se usan para conectar a datos reales.
       MONGODB_URI: mongodb://localhost:27017/twincap_ci
+      APP_BASE_URL: https://twincap-ci.invalid
       TZ: America/Bogota
     steps:
       - name: Checkout
