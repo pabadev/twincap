@@ -19,14 +19,14 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 ## Índice de requerimientos
 
-| ID     | Requerimiento                                                  | Estado                                                                                            | Prioridad        |
-| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------- |
-| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                                          | P1               |
-| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                                          | P1               |
-| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación                     | P1 (provisional) |
-| RP-04  | Asistente conversacional que prepara borradores financieros    | Spike Gemini listo en desarrollo; proveedor devolvió 503 al probar catálogo; retry acotado        | P1 (provisional) |
-| RP-05  | Actualización de la PWA instalada                              | PWA enviada; CI de `190e357` detectó lint corregido localmente; push y validación prod pendientes | P1               |
-| RP-06+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                                       | —                |
+| ID     | Requerimiento                                                  | Estado                                                                                                 | Prioridad        |
+| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------- |
+| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | Botón del POS rápido corregido y confirmado en local; prueba enfocada 5/5; faltan gates de publicación | P1               |
+| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                                               | P1               |
+| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación                          | P1 (provisional) |
+| RP-04  | Asistente conversacional que prepara borradores financieros    | Spike Gemini listo en desarrollo; proveedor devolvió 503 al probar catálogo; retry acotado             | P1 (provisional) |
+| RP-05  | Actualización de la PWA instalada                              | `72bd800` en master; producción sirve v8 y Redmi confirma caché v8; CI final en curso                  | P1               |
+| RP-06+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                                            | —                |
 
 ---
 
@@ -279,9 +279,10 @@ del fundador; el CI falló antes de iniciar Vitest y build.
 
 ### Verificación pendiente
 
-- No se ejecutaron pruebas automatizadas locales de esta parte, conforme a la instrucción del fundador de dejar las pruebas por ahora. El workflow CI debe pasar Lint/Vitest/build antes de validar la PWA publicada.
-- Después del deployment, abrir la PWA instalada en el Redmi 15 con conexión y esperar el aviso; tocar “Actualizar ahora” debe activar el worker nuevo y recargar TwinCap. Comprobar después que la versión nueva se mantiene al cerrar y abrir la PWA.
-- Confirmar también que una actualización disponible no recarga ni interrumpe la operación mientras la persona no la acepte.
+- No se ejecutaron pruebas automatizadas locales de esta parte, conforme a la instrucción del fundador de dejar las pruebas por ahora. En CI para `72bd800`, instalación, TypeScript, lint y Vitest pasaron; build y E2E siguen en curso al documentar.
+- El deployment está activo: `https://twincap.vercel.app/sw.js` devuelve HTTP 200, `twincap-v8` e incluye el mensaje `SKIP_WAITING`.
+- Verificación en Redmi 15 por ADB: se abrió la PWA instalada de `twincap.vercel.app/dashboard`; Chrome reportó Cache Storage `twincap-v8`, un worker activo y ninguno en espera. No apareció el aviso porque la versión nueva ya estaba activa. La PWA quedó ejecutando v8.
+- Pendiente validar el camino interactivo con una actualización futura en espera: el aviso debe aparecer; “Actualizar ahora” debe activar el worker y recargar; sin aceptar, no debe interrumpirse una operación.
 
 ---
 
@@ -317,6 +318,7 @@ del fundador; el CI falló antes de iniciar Vitest y build.
 - El contenido conserva nombres/precios de venta histórica aunque el catálogo cambie o el artículo se elimine.
 - Una venta de otro workspace no puede consultarse mediante ID manipulado; errores no filtran su existencia.
 - El comprobante no cambia datos, movimientos, existencias ni saldos.
+- El cierre de venta desde el acceso rápido global también debe presentar la acción de comprobante y abrir el modal de ticket.
 - Layout probado en los tres formatos y en viewport móvil/escritorio; no se exige acceso directo a impresora ni corte automático.
 - Pruebas unitarias/de integración de composición, autorización y casos financieros diseñadas y añadidas; ejecutar en la fase final conforme a la regla de tests.
 
@@ -339,6 +341,7 @@ del fundador; el CI falló antes de iniciar Vitest y build.
 
 - `jspdf` agregado; PDFs generados para 58 mm, 80 mm y carta.
 - Acceso de comprobante en cierre de venta e historial; descarga e impresión funcionales en la prueba disponible.
+- El 2026-11-08 se encontró que el acceso POS rápido global no entregaba `onReceipt` a `SaleForm`; se conectó al mismo `SaleReceiptModal` del historial. El fundador confirmó que el botón ahora aparece en local. Se añadió prueba de regresión del callback; suite enfocada `global-movement-provider.test.tsx` pasa 5/5.
 - Vista previa en iframe HTML con ancho del formato; TypeScript, Prettier y pruebas de PDF/formulario pasaron en el entorno.
 - El 2026-11-06 se corrigió la sincronización del modal al cambiar entre ventas: la venta cargada y la vista previa ahora se asocian al ID de venta, evitando un reset de estado por efecto. Commit local `e8971b7`.
 - Pendiente: cierre UX verificado por fundador; suite que depende de MongoMemory falla al iniciar Mongod en este entorno; `next build` bloqueado por fetch de Google Fonts; prueba física en impresoras.
