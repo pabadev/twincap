@@ -20,6 +20,7 @@ import { listAccountsAction, listCategoriesAction } from "./movements/actions";
 import { getSaleFormDataAction } from "./pos/sales/actions";
 import { MovementForm } from "./movements/movement-form";
 import { SaleForm } from "./pos/sales/sale-form";
+import { SaleReceiptModal } from "./pos/sales/sale-receipt-modal";
 import { resolveDefaultAccountId } from "../../lib/movement-form";
 import { Modal } from "../../components/ui/modal";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
@@ -74,6 +75,7 @@ export function GlobalMovementProvider({
   const [posModalOpen, setPosModalOpen] = useState(false);
   const [posData, setPosData] = useState<SaleFormDataPayload | null>(null);
   const [posLoadState, setPosLoadState] = useState<LoadState>("idle");
+  const [receiptSaleId, setReceiptSaleId] = useState<string | null>(null);
   const [dialOpen, setDialOpen] = useState(false);
   const [data, setData] = useState<FormDataPayload | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
@@ -339,6 +341,10 @@ export function GlobalMovementProvider({
             accounts={posData.accounts}
             clients={posData.clients}
             onDone={closePosModal}
+            onReceipt={(saleId) => {
+              closePosModal();
+              setReceiptSaleId(saleId);
+            }}
             onCancel={handlePosRequestClose}
             dirtyRef={saleDirtyRef}
           />
@@ -358,6 +364,7 @@ export function GlobalMovementProvider({
         cancelLabel={tSales("continueEditing")}
         tone="danger"
       />
+      <SaleReceiptModal saleId={receiptSaleId} onClose={() => setReceiptSaleId(null)} />
     </GlobalMovementContext.Provider>
   );
 }

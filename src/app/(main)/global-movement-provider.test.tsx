@@ -29,7 +29,7 @@ vi.mock("./movements/actions", () => ({
 
 const getSaleFormDataAction = vi.fn().mockResolvedValue({
   catalogItems: [],
-  accounts: [],
+  accounts: [{ id: "account-1" }],
   clients: [],
 });
 
@@ -52,9 +52,19 @@ vi.mock("./movements/movement-form", () => ({
   MovementForm: () => null,
 }));
 
-// Stub SaleForm — the POS modal reuses it (same fetch-on-open contract).
+// Stub SaleForm — expose the receipt callback so the quick POS flow can be
+// checked without exercising sale creation in this provider test.
 vi.mock("./pos/sales/sale-form", () => ({
-  SaleForm: () => null,
+  SaleForm: ({ onReceipt }: { onReceipt?: (saleId: string) => void }) => (
+    <button type="button" onClick={() => onReceipt?.("sale-123")}>
+      openReceipt
+    </button>
+  ),
+}));
+
+vi.mock("./pos/sales/sale-receipt-modal", () => ({
+  SaleReceiptModal: ({ saleId }: { saleId: string | null }) =>
+    saleId ? <div data-testid="sale-receipt-modal">receipt:{saleId}</div> : null,
 }));
 
 function TestConsumer() {
@@ -171,6 +181,34 @@ describe("GlobalMovementProvider POS sale in-place modal (B2)", () => {
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     expect(dialog!.textContent).toContain("createSale");
+  });
+
+  it("opens the sale receipt from the quick POS flow", async () => {
+    const { container } = mount(
+      <GlobalMovementProvider defaultCurrency="COP">
+        <TestConsumer />
+      </GlobalMovementProvider>,
+    );
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="quickAdd"]')!.click();
+    });
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="quickAddPosSale"]')!.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      Array.from(container.querySelectorAll("button"))
+        .find((button) => button.textContent === "openReceipt")!
+        .click();
+    });
+
+    expect(container.querySelector('[data-testid="sale-receipt-modal"]')?.textContent).toBe(
+      "receipt:sale-123",
+    );
   });
 
   it("invalidates cached POS data on close: re-fetch on the next open", async () => {
