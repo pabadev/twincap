@@ -19,14 +19,14 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 ## Índice de requerimientos
 
-| ID     | Requerimiento                                                  | Estado                                                                                     | Prioridad        |
-| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------- |
-| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                                   | P1               |
-| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                                   | P1               |
-| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación              | P1 (provisional) |
-| RP-04  | Asistente conversacional que prepara borradores financieros    | Spike Gemini listo en desarrollo; proveedor devolvió 503 al probar catálogo; retry acotado | P1 (provisional) |
-| RP-05  | Actualización de la PWA instalada                              | Implementada localmente; push y validación en producción pendientes                        | P1               |
-| RP-06+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                                | —                |
+| ID     | Requerimiento                                                  | Estado                                                                                           | Prioridad        |
+| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------- |
+| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                                         | P1               |
+| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                                         | P1               |
+| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación                    | P1 (provisional) |
+| RP-04  | Asistente conversacional que prepara borradores financieros    | Spike Gemini listo en desarrollo; proveedor devolvió 503 al probar catálogo; retry acotado       | P1 (provisional) |
+| RP-05  | Actualización de la PWA instalada                              | Commit `fd7c035` enviado; CI bloqueado en instalación de dependencias; validación prod pendiente | P1               |
+| RP-06+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                                      | —                |
 
 ---
 
@@ -250,6 +250,12 @@ mejorar productos de Google: no se envían datos reales. El spike no está dispo
 producción, no guarda operaciones y no decide todavía proveedor o precio. Los dos modelos
 locales probados no resultaron aceptables en el Redmi 15.
 
+El primer CI de `fd7c035` se detuvo en `pnpm install --frozen-lockfile`: pnpm reportó scripts
+ignorados de `onnxruntime-node` y `protobufjs` introducidos por Transformers.js. Se añadieron
+ambos a `allowBuilds` con `false`: el asistente ejecuta Transformers.js solo en el worker del
+navegador y no necesita el adaptador nativo de Node ni scripts de generación. El CI se repetirá
+al enviar esta corrección; no se ejecutaron suites locales por instrucción del fundador.
+
 ---
 
 ## RP-05 — Actualización de la PWA instalada
@@ -270,7 +276,7 @@ locales probados no resultaron aceptables en el Redmi 15.
 
 ### Verificación pendiente
 
-- No se ejecutaron pruebas automatizadas de esta parte antes del push, conforme a la instrucción del fundador de dejar las pruebas por ahora.
+- No se ejecutaron pruebas automatizadas locales de esta parte, conforme a la instrucción del fundador de dejar las pruebas por ahora. El primer workflow CI terminó antes de compilar o probar, en instalación de dependencias; corregir ese gate y repetirlo.
 - Después del deployment, abrir la PWA instalada en el Redmi 15 con conexión y esperar el aviso; tocar “Actualizar ahora” debe activar el worker nuevo y recargar TwinCap. Comprobar después que la versión nueva se mantiene al cerrar y abrir la PWA.
 - Confirmar también que una actualización disponible no recarga ni interrumpe la operación mientras la persona no la acepte.
 

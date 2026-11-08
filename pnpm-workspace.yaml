@@ -1,8 +1,10 @@
 allowBuilds:
-  '@parcel/watcher': true
-  '@swc/core': false
+  "@parcel/watcher": true
+  "@swc/core": false
   core-js: false
   esbuild: true
   mongodb-memory-server: true
+  onnxruntime-node: false
+  protobufjs: false
   sharp: false
   unrs-resolver: false
