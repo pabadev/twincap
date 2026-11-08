@@ -106,7 +106,7 @@ jobs:
       NEXT_LOCALE: en
       RESEND_API_KEY: re_e2e_placeholder_key_not_used
       RESEND_FROM: TwinCap Tests <noreply@test.local>
-      APP_BASE_URL: http://localhost:3000
+      APP_BASE_URL: https://twincap-ci.invalid
     steps:
       - name: Checkout
         uses: actions/checkout@v4
