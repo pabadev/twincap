@@ -8,6 +8,24 @@
  */
 
 import type { TransactionHandle } from "../domain/transaction";
+import type { MovementDraftProposalV1 } from "../domain/assistant/movement-draft-proposal-v1";
+
+/** Provider-neutral interpretation boundary; providers only return proposals. */
+export interface IntentInterpreter {
+  readonly providerId: string;
+  readonly modelId: string;
+  prepareMovementDraft(input: {
+    text: string;
+    locale: "es" | "en";
+    today: string;
+    availableCategories: string[];
+    signal?: AbortSignal;
+  }): Promise<{
+    proposal: MovementDraftProposalV1;
+    raw: string;
+    durationMs: number;
+  }>;
+}
 
 /** Password hashing — bcryptjs cost 12 (design §6). */
 export interface PasswordHasher {

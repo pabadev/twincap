@@ -1,4 +1,4 @@
-const CACHE_NAME = 'twincap-v7';
+const CACHE_NAME = 'twincap-v8';
 // Never precache authenticated routes: cache.addAll would persist the
 // server-rendered HTML of user-specific pages in Cache Storage, leaking one
 // user's data to whoever is served from the offline cache. Only static,
@@ -38,7 +38,10 @@ self.addEventListener('install', (event) => {
       ),
     ),
   );
-  self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

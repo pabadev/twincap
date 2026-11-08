@@ -19,12 +19,14 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 
 ## Índice de requerimientos
 
-| ID     | Requerimiento                                                  | Estado                                                                        | Prioridad        |
-| ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------- |
-| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                      | P1               |
-| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                      | P1               |
-| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación | P1 (provisional) |
-| RP-04+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                   | —                |
+| ID     | Requerimiento                                                  | Estado                                                                                     | Prioridad        |
+| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------- |
+| RP-01  | Comprobantes de venta PDF e impresión térmica desde historial  | En curso                                                                                   | P1               |
+| RP-02  | Reportes descargables: resumen, ventas, clientes e inventario  | En curso                                                                                   | P1               |
+| RP-03  | Conexión de agentes IA mediante MCP                            | Implementación local; colecciones/índices listos; falta prueba y habilitación              | P1 (provisional) |
+| RP-04  | Asistente conversacional que prepara borradores financieros    | Spike Gemini listo en desarrollo; proveedor devolvió 503 al probar catálogo; retry acotado | P1 (provisional) |
+| RP-05  | Actualización de la PWA instalada                              | Implementada localmente; push y validación en producción pendientes                        | P1               |
+| RP-06+ | Reservado para requerimientos que se agreguen durante la ronda | Sin definir                                                                                | —                |
 
 ---
 
@@ -154,6 +156,123 @@ Quedan deliberadamente abiertos el actor que habilita el conector, roles/matriz 
 relación de suscripción y múltiples negocios, consentimiento e historial compartido,
 entitlements/precio, límites, retención, clientes MCP soportados y alcance de escrituras.
 Resolver discovery y priorización antes de ampliar más allá del alcance técnico inicial.
+
+---
+
+## RP-04 — Asistente conversacional que prepara borradores financieros
+
+**Origen/fecha:** solicitud del fundador, 2026-11-08.
+**Estado:** laboratorio local medido en Redmi 15 (sin rendimiento aceptable); spike Gemini server-side con frases y categorías sintéticas. La clave local está configurada; una llamada inicial funcionó antes de enviar catálogo y las posteriores recibieron HTTP 503. Se agregó un retry breve; comprobar clasificación cuando Gemini esté disponible.
+**Prioridad:** P1 provisional.
+**Documento:** `docs/AI-CONVERSATIONAL-ASSISTANT.md`.
+
+### Objetivo
+
+La persona describe una operación con lenguaje natural y TwinCap prepara el formulario
+financiero existente para que ella lo revise, corrija y envíe. Esta experiencia in-app es
+independiente de RP-03/MCP: el asistente no es un cliente MCP ni recibe herramientas de
+escritura.
+
+### Primera prueba propuesta
+
+- La dirección de producto sigue siendo preparar un gasto Personal desde texto y abrir el
+  formulario existente. Transformers.js se mantiene como referencia local; Gemini es ahora
+  el proveedor remoto en evaluación, primero en el laboratorio de desarrollo.
+- La salida del proveedor es una propuesta estructurada no confiable; solo puede contener
+  tipo, importe decimal como texto, nota, fecha civil, sugerencia textual de categoría,
+  datos faltantes y una aclaración. Nunca incluye identidad ni IDs financieros.
+- Cuenta, moneda, contexto y categoría final se eligen/resuelven en TwinCap. Si el contexto
+  no queda claro al inicio, permanece vacío y se marca pendiente; no se deduce de la frase,
+  categoría o historial. La persona lo selecciona en el formulario. La cuenta determina la
+  moneda según el principio financiero existente.
+- Si la frase no incluye fecha, TwinCap propone la fecha civil de hoy; el proveedor solo ayuda
+  a interpretar fechas explícitas. Una frase como “gasolina de la moto” puede sugerir la
+  categoría “Moto”. El proveedor recibe de antemano las etiquetas de categorías permitidas
+  (sin IDs); la sugerencia se valida contra las categorías disponibles del contexto elegido.
+  El contexto permanece vacío si no está claro. El laboratorio remoto usa una lista sintética.
+- La propuesta precarga el formulario actual; el guardado sigue exclusivamente por su
+  Server Action y validaciones actuales, después de una acción explícita de la persona.
+- Contrato V1 independiente del proveedor, port `IntentInterpreter` y adaptadores local y
+  Gemini. El spike Gemini corre solo en desarrollo, acepta IDs de frases sintéticas
+  predefinidas, valida la propuesta y no escribe operaciones. La clave nunca pasa al
+  navegador; no habrá fallback remoto silencioso.
+- En el nivel gratuito Google puede usar las solicitudes para mejorar sus productos; no se
+  deben enviar datos financieros reales. Una primera llamada real se hizo solo con la frase
+  sintética fija `expense-gas-10k`; falta ejecutar la matriz completa.
+- No guardar el historial de conversación en el servidor durante el piloto.
+
+### Orden de trabajo y gates
+
+1. Spike con hasta dos modelos ONNX pequeños en Android real: descarga fría/caliente,
+   caché, latencia, memoria, WebGPU/WASM, calidad de español y validez del contrato.
+2. Fijar un set de frases con resultados esperados y umbrales de precisión/latencia antes
+   de seleccionar un modelo. Si el dispositivo no alcanza los gates, mantener captura manual
+   y no fingir que la inferencia ocurrió.
+3. Implementar el flujo de gasto Personal con worker y carga diferida; conectar al formulario
+   existente y nunca dar al modelo capacidad de mutación.
+4. Revisar regresión financiera, seguridad, privacidad, accesibilidad y responsive en
+   mobile/tablet/desktop antes de ampliar a ingresos u otros proveedores/intenciones.
+
+### Evidencia local del spike (2026-11-08)
+
+- Se añadió `@huggingface/transformers` 4.3.2 para el laboratorio de desarrollo `/ai-lab`;
+  carga de pesos solo tras acción explícita, sin guardado financiero. El route devuelve 404
+  fuera de desarrollo.
+- Dos candidatos versionados: Qwen2.5-0.5B-Instruct q4f16 (~483 MB) y Qwen3-0.6B q4f16
+  (~570 MB), además de runtime/tokenizer/config. La prueba local muestra progreso, bytes,
+  duración de carga/inferencia, comparación de campos y rechazo de salida fuera de schema.
+- Gates locales: `tsc --noEmit` pasa; pruebas enfocadas iniciales de parser e i18n **9/9**;
+  Prettier pasa en los archivos tocados.
+- `next build` no pudo verificar el bundle porque el entorno no alcanzó `fonts.googleapis.com`
+  para las fuentes existentes. El laboratorio luego se abrió por ADB en un Redmi 15 conectado.
+- Prueba Redmi 15 (2026-11-08): Qwen3 q4f16 descargó 552.1 MB y reportó carga en 108.4 s con
+  WebGPU; la inferencia falló porque la GPU no soporta `shader-f16`. Qwen2.5 q4 CPU/WASM descargó
+  su variante y reportó carga en 279.7 s; una frase simple permaneció cerca de dos minutos con
+  CPU al 97–100 % sin respuesta y se canceló. El modelo más liviano mejora la carga, pero ambos
+  caminos probados no ofrecen todavía una experiencia aceptable en este Redmi. Una segunda
+  descarga Qwen3 CPU se inició accidentalmente durante una actualización y se detuvo tras 147 MB
+  adicionales; no se completó. El laboratorio ahora comprueba `shader-f16` y exige aceptación
+  explícita antes de descargar CPU/WASM. No continuar descargas grandes en datos móviles.
+  Memoria máxima y calidad de extracción siguen sin medirse; la experiencia para usuarios no
+  está implementada.
+
+**La experiencia financiera para usuarios sigue pendiente de evaluación y diseño.** Por
+solicitud del fundador, se añadió un spike Gemini de desarrollo para comparar la API alojada
+con frases sintéticas fijas. La primera llamada, antes de añadir el catálogo al prompt, tardó
+1.0–1.4 s: importe y nota correctos; Gemini inventó una fecha y omitió campos pendientes. La
+capa TwinCap normaliza la fecha al valor por defecto de hoy, filtra categorías contra las
+etiquetas permitidas y restaura cuenta/categoría/contexto como pendientes. Al añadir la lista
+sintética de categorías, las llamadas siguientes fallaron; el último diagnóstico confirmó
+HTTP 503 del proveedor, no 429 de cuota. Se implementó un reintento breve y acotado para 503;
+todavía no se confirmó en vivo que Gemini elija “Moto” de la lista. Los tests verifican que
+la lista se envía y que la salida queda limitada a esas etiquetas. El nivel gratuito puede usar solicitudes para
+mejorar productos de Google: no se envían datos reales. El spike no está disponible en
+producción, no guarda operaciones y no decide todavía proveedor o precio. Los dos modelos
+locales probados no resultaron aceptables en el Redmi 15.
+
+---
+
+## RP-05 — Actualización de la PWA instalada
+
+**Origen/fecha:** solicitud del fundador, 2026-11-08.
+**Estado:** implementación local lista para publicar; validación en PWA Android de producción pendiente.
+**Prioridad:** P1.
+**Objetivo:** detectar nuevas versiones de TwinCap en una PWA Android ya instalada y actualizar el worker sin dejar al cliente fijado indefinidamente a assets antiguos.
+
+### Comportamiento implementado
+
+- Se incrementó el caché del service worker de `twincap-v7` a `twincap-v8`.
+- El nuevo worker ya no ejecuta `skipWaiting()` automáticamente durante instalación. Si hay una versión esperando y otra activa, la app presenta “Hay una actualización disponible” / “Actualizar ahora”.
+- La persona confirma la actualización; TwinCap envía `SKIP_WAITING` al worker en espera y recarga cuando este toma control. La primera instalación no fuerza una recarga.
+- La app pide actualización al registrar el worker, cuando vuelve a primer plano y al recuperar conexión, además de una comprobación periódica cada seis horas. El registro usa `updateViaCache: "none"` para evitar que el navegador valide el script desde una copia HTTP obsoleta.
+- Se mantiene fuera de caché el HTML de rutas autenticadas y las rutas API/server actions. Solo se almacenan las rutas públicas y assets estáticos definidos por el service worker.
+- Los textos del aviso y botón están en `messages/es.json` y `messages/en.json`.
+
+### Verificación pendiente
+
+- No se ejecutaron pruebas automatizadas de esta parte antes del push, conforme a la instrucción del fundador de dejar las pruebas por ahora.
+- Después del deployment, abrir la PWA instalada en el Redmi 15 con conexión y esperar el aviso; tocar “Actualizar ahora” debe activar el worker nuevo y recargar TwinCap. Comprobar después que la versión nueva se mantiene al cerrar y abrir la PWA.
+- Confirmar también que una actualización disponible no recarga ni interrumpe la operación mientras la persona no la acepte.
 
 ---
 

@@ -80,7 +80,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {SPLASH_SCREENS.map(({ media, href }) => (
           <link key={href} rel="apple-touch-startup-image" media={media} href={href} />
         ))}
-        <ServiceWorkerRegistration />
         {/* Civil-clock bootstrap: the server reads CLIENT_TZ_OFFSET so the
             initial render of current-period windows (dashboard) uses the
             client's calendar date, never the server's UTC clock at month-end
@@ -88,6 +87,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <ClientTzBootstrap />
         <ThemeProvider>
           <TranslationsProvider messages={messages} locale={locale}>
+            <ServiceWorkerRegistration />
             {children}
           </TranslationsProvider>
         </ThemeProvider>
