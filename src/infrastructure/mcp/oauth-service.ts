@@ -1,10 +1,19 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import mongoose, { Types } from "mongoose";
-import { MCP_CAPABILITY } from "./config";
+import { ALLOWED_MCP_CAPABILITIES, MCP_CAPABILITY } from "./config";
 import { createMcpToken, hashMcpToken } from "../auth/mcp-token";
-import { McpAuthorizationGrantModel } from "../models/mcp/authorization-grant";
-import { McpAuthorizationTransactionModel } from "../models/mcp/authorization-transaction";
-import { McpOAuthCredentialModel } from "../models/mcp/oauth-credential";
+import {
+  McpAuthorizationGrantModel,
+  type McpAuthorizationGrantDocument,
+} from "../models/mcp/authorization-grant";
+import {
+  McpAuthorizationTransactionModel,
+  type McpAuthorizationTransactionDocument,
+} from "../models/mcp/authorization-transaction";
+import {
+  McpOAuthCredentialModel,
+  type McpOAuthCredentialDocument,
+} from "../models/mcp/oauth-credential";
 import { UserModel } from "../models/user";
 import { MembershipModel } from "../models/membership";
 import { WorkspaceModel } from "../models/workspace";
@@ -13,6 +22,15 @@ import { McpAuditEventModel } from "../models/mcp/audit-event";
 export const MCP_AUTHORIZATION_CODE_TTL_MS = 5 * 60 * 1000;
 export const MCP_ACCESS_TOKEN_TTL_SECONDS = 10 * 60;
 export const MCP_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+type McpCredentialRecord = mongoose.HydratedDocument<McpOAuthCredentialDocument>;
+type McpGrantRecord = mongoose.HydratedDocument<McpAuthorizationGrantDocument>;
+type McpTransactionRecord = mongoose.HydratedDocument<McpAuthorizationTransactionDocument>;
+type McpTransactionLeanRecord = Pick<McpAuthorizationTransactionDocument, "redirectUri">;
+type McpCredentialLeanRecord = Pick<
+  McpOAuthCredentialDocument,
+  "grantId" | "clientId" | "resource" | "expiresAt" | "codeChallenge"
+> & { _id: Types.ObjectId };
 
 const ACCESS_TOKEN_TTL_MS = MCP_ACCESS_TOKEN_TTL_SECONDS * 1000;
 const REFRESH_TOKEN_TTL_MS = MCP_REFRESH_TOKEN_TTL_SECONDS * 1000;
@@ -62,13 +80,14 @@ export async function findPendingAuthorizationTransaction(transactionId: string)
 }
 
 export async function denyAuthorizationTransaction(transactionId: string): Promise<string | null> {
-  const transaction: any = await McpAuthorizationTransactionModel.findOneAndUpdate(
-    { transactionId, status: "pending", expiresAt: { $gt: new Date() } },
-    { $set: { status: "denied" } },
-    { new: true },
-  )
-    .lean()
-    .exec();
+  const transaction: McpTransactionLeanRecord | null =
+    await McpAuthorizationTransactionModel.findOneAndUpdate(
+      { transactionId, status: "pending", expiresAt: { $gt: new Date() } },
+      { $set: { status: "denied" } },
+      { new: true },
+    )
+      .lean()
+      .exec();
   return transaction?.redirectUri ?? null;
 }
 
@@ -85,15 +104,42 @@ export async function approveAuthorizationTransaction(input: {
 
   try {
     await session.withTransaction(async () => {
-      const transaction: any = await McpAuthorizationTransactionModel.findOneAndUpdate(
-        {
-          transactionId: input.transactionId,
-          status: "pending",
-          expiresAt: { $gt: new Date() },
-        },
-        { $set: { status: "completed" } },
-        { new: true, session },
-      ).exec();
+      const pendingTransaction = await McpAuthorizationTransactionModel.findOne({
+        transactionId: input.transactionId,
+        status: "pending",
+        expiresAt: { $gt: new Date() },
+      })
+        .session(session)
+        .exec();
+      if (!pendingTransaction) return;
+
+      const requestedCapabilities = new Set(
+        pendingTransaction.requestedCapabilities?.length
+          ? pendingTransaction.requestedCapabilities
+          : [MCP_CAPABILITY],
+      );
+      const grantedCapabilities = new Set(input.grantedCapabilities);
+      if (
+        !grantedCapabilities.has(MCP_CAPABILITY) ||
+        [...grantedCapabilities].some(
+          (capability) =>
+            !ALLOWED_MCP_CAPABILITIES.includes(capability) ||
+            !requestedCapabilities.has(capability),
+        )
+      ) {
+        return;
+      }
+
+      const transaction: McpTransactionRecord | null =
+        await McpAuthorizationTransactionModel.findOneAndUpdate(
+          {
+            transactionId: input.transactionId,
+            status: "pending",
+            expiresAt: { $gt: new Date() },
+          },
+          { $set: { status: "completed" } },
+          { new: true, session },
+        ).exec();
       if (!transaction) return;
 
       const grantId = new Types.ObjectId().toString();
@@ -105,7 +151,7 @@ export async function approveAuthorizationTransaction(input: {
         personalWorkspaceId: input.personalWorkspaceId,
         resource: transaction.resource,
         sessionVersion: input.sessionVersion,
-        capabilities: input.grantedCapabilities,
+        capabilities: [...grantedCapabilities],
         consentedAt: new Date(),
         status: "active",
       };
@@ -163,7 +209,7 @@ export async function exchangeAuthorizationCode(input: {
 }): Promise<McpTokenResponse | null> {
   if (!validCodeVerifier(input.codeVerifier)) return null;
   const codeHash = hashMcpToken(input.code);
-  const codeRecord: any = await McpOAuthCredentialModel.findOne({
+  const codeRecord: McpCredentialLeanRecord | null = await McpOAuthCredentialModel.findOne({
     tokenHash: codeHash,
     credentialType: "authorization_code",
     status: "active",
@@ -182,7 +228,7 @@ export async function exchangeAuthorizationCode(input: {
   let result: McpTokenResponse | null = null;
   try {
     await session.withTransaction(async () => {
-      const consumed: any = await McpOAuthCredentialModel.findOneAndUpdate(
+      const consumed: McpCredentialRecord | null = await McpOAuthCredentialModel.findOneAndUpdate(
         {
           _id: codeRecord._id,
           status: "active",
@@ -193,7 +239,7 @@ export async function exchangeAuthorizationCode(input: {
       ).exec();
       if (!consumed) return;
 
-      const grant: any = await McpAuthorizationGrantModel.findOne({
+      const grant: McpGrantRecord | null = await McpAuthorizationGrantModel.findOne({
         _id: consumed.grantId,
         clientId: input.clientId,
         resource: input.resource,
@@ -224,7 +270,7 @@ export async function rotateRefreshToken(input: {
   resource: string;
 }): Promise<McpTokenResponse | null> {
   const tokenHash = hashMcpToken(input.refreshToken);
-  const prior: any = await McpOAuthCredentialModel.findOne({
+  const prior = (await McpOAuthCredentialModel.findOne({
     tokenHash,
     credentialType: "refresh_token",
     expiresAt: { $gt: new Date() },
@@ -232,7 +278,8 @@ export async function rotateRefreshToken(input: {
     resource: input.resource,
   })
     .lean()
-    .exec();
+    .exec()) as
+    (Pick<McpOAuthCredentialDocument, "grantId" | "status"> & { _id: Types.ObjectId }) | null;
   if (!prior) return null;
 
   if (prior.status === "consumed") {
@@ -245,7 +292,7 @@ export async function rotateRefreshToken(input: {
   let result: McpTokenResponse | null = null;
   try {
     await session.withTransaction(async () => {
-      const consumed: any = await McpOAuthCredentialModel.findOneAndUpdate(
+      const consumed: McpCredentialRecord | null = await McpOAuthCredentialModel.findOneAndUpdate(
         {
           _id: prior._id,
           status: "active",
@@ -256,7 +303,7 @@ export async function rotateRefreshToken(input: {
       ).exec();
       if (!consumed) return;
 
-      const grant: any = await McpAuthorizationGrantModel.findOne({
+      const grant: McpGrantRecord | null = await McpAuthorizationGrantModel.findOne({
         _id: consumed.grantId,
         clientId: input.clientId,
         resource: input.resource,
@@ -284,7 +331,10 @@ export async function rotateRefreshToken(input: {
 
   // A concurrent or replayed refresh that lost the atomic consume race revokes
   // the grant family. This is intentionally fail-closed for duplicate use.
-  const afterRace: any = await McpOAuthCredentialModel.findById(prior._id).lean().exec();
+  const afterRace = await McpOAuthCredentialModel.findById(prior._id)
+    .select({ status: 1 })
+    .lean()
+    .exec();
   if (afterRace?.status === "consumed") await revokeGrant(prior.grantId);
   return null;
 }
@@ -358,11 +408,11 @@ async function issueTokenPair(input: {
 }
 
 export async function revokeToken(token: string): Promise<void> {
-  const credential: any = await McpOAuthCredentialModel.findOne({
+  const credential = (await McpOAuthCredentialModel.findOne({
     tokenHash: hashMcpToken(token),
   })
     .lean()
-    .exec();
+    .exec()) as { grantId: string } | null;
   if (credential) await revokeGrant(credential.grantId);
 }
 
@@ -373,7 +423,11 @@ export async function revokeGrant(grantId: string, userId?: string): Promise<boo
     await session.withTransaction(async () => {
       const filter: Record<string, unknown> = { _id: grantId, status: "active" };
       if (userId) filter.userId = userId;
-      const grant: any = await McpAuthorizationGrantModel.findOne(filter).session(session).exec();
+      const grant: McpAuthorizationGrantDocument | null = await McpAuthorizationGrantModel.findOne(
+        filter,
+      )
+        .session(session)
+        .exec();
       if (!grant) return;
       const updated = await McpAuthorizationGrantModel.updateOne(
         filter,
@@ -427,24 +481,38 @@ export async function listActiveGrantsForUser(userId: string) {
 }
 
 export async function verifyMcpAccessToken(token: string) {
-  const credential: any = await McpOAuthCredentialModel.findOne({
+  type CredentialRecord = Pick<
+    McpOAuthCredentialDocument,
+    "grantId" | "clientId" | "resource" | "expiresAt"
+  >;
+  const credential = (await McpOAuthCredentialModel.findOne({
     tokenHash: hashMcpToken(token),
     credentialType: "access_token",
     status: "active",
     expiresAt: { $gt: new Date() },
   })
     .lean()
-    .exec();
+    .exec()) as (CredentialRecord & { _id: Types.ObjectId }) | null;
   if (!credential) return null;
 
-  const grant: any = await McpAuthorizationGrantModel.findOne({
+  type GrantRecord = Pick<
+    McpAuthorizationGrantDocument,
+    | "userId"
+    | "personalWorkspaceId"
+    | "clientId"
+    | "resource"
+    | "capabilities"
+    | "sessionVersion"
+    | "status"
+  > & { _id: mongoose.Types.ObjectId };
+  const grant = (await McpAuthorizationGrantModel.findOne({
     _id: credential.grantId,
     status: "active",
     clientId: credential.clientId,
     resource: credential.resource,
   })
     .lean()
-    .exec();
+    .exec()) as GrantRecord | null;
   if (
     !grant ||
     !Types.ObjectId.isValid(grant.userId) ||
@@ -472,7 +540,7 @@ export async function verifyMcpAccessToken(token: string) {
       .lean()
       .exec(),
   ]);
-  const user: any = userValue;
+  const user = userValue as { sessionVersion: number } | null;
   if (
     !user ||
     user.sessionVersion !== grant.sessionVersion ||

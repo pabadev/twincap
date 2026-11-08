@@ -43,5 +43,9 @@ export type McpAuthorizationTransactionDocument = InferSchemaType<
 >;
 
 export const McpAuthorizationTransactionModel =
-  (mongoose.models.McpAuthorizationTransaction as mongoose.Model<any> | undefined) ||
-  mongoose.model<any>("McpAuthorizationTransaction", McpAuthorizationTransactionSchema);
+  (mongoose.models.McpAuthorizationTransaction as
+    mongoose.Model<McpAuthorizationTransactionDocument> | undefined) ||
+  mongoose.model<McpAuthorizationTransactionDocument>(
+    "McpAuthorizationTransaction",
+    McpAuthorizationTransactionSchema,
+  );

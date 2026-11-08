@@ -31,5 +31,5 @@ McpOAuthCredentialSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export type McpOAuthCredentialDocument = InferSchemaType<typeof McpOAuthCredentialSchema>;
 
 export const McpOAuthCredentialModel =
-  (mongoose.models.McpOAuthCredential as mongoose.Model<any> | undefined) ||
-  mongoose.model<any>("McpOAuthCredential", McpOAuthCredentialSchema);
+  (mongoose.models.McpOAuthCredential as mongoose.Model<McpOAuthCredentialDocument> | undefined) ||
+  mongoose.model<McpOAuthCredentialDocument>("McpOAuthCredential", McpOAuthCredentialSchema);

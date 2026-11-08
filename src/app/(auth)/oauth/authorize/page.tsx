@@ -7,6 +7,7 @@ import {
   isMcpEnabledForUser,
   ALLOWED_MCP_CAPABILITIES,
   MCP_CAPABILITY,
+  MCP_MOVEMENTS_CAPABILITY,
   OPENCODE_CLIENT_ID,
 } from "@/infrastructure/mcp/config";
 import {
@@ -56,11 +57,12 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
       !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
       challengeMethod !== "S256" ||
       (resource && resource !== getMcpResource().toString()) ||
-      (scope &&
-        scope
-          .split(" ")
-          .filter(Boolean)
-          .some((value) => !ALLOWED_MCP_CAPABILITIES.includes(value)))
+      (scope !== null &&
+        (!scope.split(" ").filter(Boolean).includes(MCP_CAPABILITY) ||
+          scope
+            .split(" ")
+            .filter(Boolean)
+            .some((value) => !ALLOWED_MCP_CAPABILITIES.includes(value))))
     )
       return <Message title={t("authorizationUnavailable")} detail={t("invalidRequest")} />;
 
@@ -151,19 +153,21 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
         </form>
         <form action={approveMcpConsent}>
           <input type="hidden" name="tx" value={txId} />
-          <label className="mb-3 flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              name="grantMovements"
-              value="on"
-              defaultChecked
-              className="mt-1"
-            />
-            <span>
-              <span className="block font-medium">{t("movementsScopeLabel")}</span>
-              <span className="block text-zinc-600">{t("movementsScopeHint")}</span>
-            </span>
-          </label>
+          {transaction.requestedCapabilities?.includes(MCP_MOVEMENTS_CAPABILITY) && (
+            <label className="mb-3 flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                name="grantMovements"
+                value="on"
+                defaultChecked
+                className="mt-1"
+              />
+              <span>
+                <span className="block font-medium">{t("movementsScopeLabel")}</span>
+                <span className="block text-zinc-600">{t("movementsScopeHint")}</span>
+              </span>
+            </label>
+          )}
           <button className="rounded-lg bg-indigo-600 px-4 py-2 text-white" type="submit">
             {t("approve")}
           </button>

@@ -74,7 +74,12 @@ export async function approveMcpConsent(formData: FormData): Promise<void> {
   // (the screen pre-checks it so a plain re-consent upgrades the grant —
   // the user can untick to keep totals-only).
   const grantedCapabilities: string[] = [MCP_CAPABILITY];
-  if (formData.get("grantMovements") === "on") grantedCapabilities.push(MCP_MOVEMENTS_CAPABILITY);
+  if (formData.get("grantMovements") === "on") {
+    if (!data.transaction.requestedCapabilities?.includes(MCP_MOVEMENTS_CAPABILITY)) {
+      redirect("/oauth/authorize?error=invalid_transaction");
+    }
+    grantedCapabilities.push(MCP_MOVEMENTS_CAPABILITY);
+  }
   const granted = await approveAuthorizationTransaction({
     transactionId: data.tx,
     userId: data.user.userId,

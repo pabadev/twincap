@@ -1,4 +1,8 @@
-import { getMcpIssuer, getMcpResource, MCP_CAPABILITY } from "@/infrastructure/mcp/config";
+import {
+  ALLOWED_MCP_CAPABILITIES,
+  getMcpIssuer,
+  getMcpResource,
+} from "@/infrastructure/mcp/config";
 export const dynamic = "force-dynamic";
 export async function GET() {
   const issuer = getMcpIssuer();
@@ -12,7 +16,7 @@ export async function GET() {
       grant_types_supported: ["authorization_code", "refresh_token"],
       token_endpoint_auth_methods_supported: ["none"],
       code_challenge_methods_supported: ["S256"],
-      scopes_supported: [MCP_CAPABILITY],
+      scopes_supported: ALLOWED_MCP_CAPABILITIES,
       client_id_metadata_document_supported: true,
       authorization_response_iss_parameter_supported: true,
       resource_parameter_supported: true,

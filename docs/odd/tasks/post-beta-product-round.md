@@ -42,9 +42,12 @@ Dar seguimiento a mejoras funcionales de TwinCap posteriores al cierre de la ron
 consentimiento con reautenticación reciente; CIMD de OpenCode verificado; Authorization
 Code + PKCE S256 y callback loopback allowlisted; credenciales aleatorias guardadas como
 hash, access tokens de 10 minutos, refresh rotatorio y revocación por grant; metadata OAuth
-y Resource Server MCP stateless; herramienta agregada Personal de solo lectura; allowlist,
-límite por grant y revocación desde Perfil. La funcionalidad está apagada por defecto.
-TypeScript verificado; pruebas no ejecutadas ni agregadas todavía; OpenCode no conectado.
+y Resource Server MCP stateless; tres herramientas Personal de solo lectura (resumen,
+movimientos individuales y serie mensual); allowlist, límite por grant y revocación desde
+Perfil. La funcionalidad está apagada por defecto. OpenCode solicita los scopes de resumen
+y movimientos; la pantalla permite excluir movimientos y el servidor nunca concede scopes
+no solicitados. TypeScript y Prettier verificados en la revisión actual; pruebas no
+ejecutadas. La reconexión de OpenCode sigue pendiente.
 Se incluyen scripts operativos para inicializar colecciones vacías e índices MCP, con
 dry-run/lectura por defecto y `--apply` explícito. Por autorización del fundador se
 crearon y verificaron las cuatro colecciones e índices en la base de producción; conteo

@@ -39,5 +39,9 @@ McpAuthorizationGrantSchema.index({ userId: 1, clientId: 1, status: 1 });
 export type McpAuthorizationGrantDocument = InferSchemaType<typeof McpAuthorizationGrantSchema>;
 
 export const McpAuthorizationGrantModel =
-  (mongoose.models.McpAuthorizationGrant as mongoose.Model<any> | undefined) ||
-  mongoose.model<any>("McpAuthorizationGrant", McpAuthorizationGrantSchema);
+  (mongoose.models.McpAuthorizationGrant as
+    mongoose.Model<McpAuthorizationGrantDocument> | undefined) ||
+  mongoose.model<McpAuthorizationGrantDocument>(
+    "McpAuthorizationGrant",
+    McpAuthorizationGrantSchema,
+  );

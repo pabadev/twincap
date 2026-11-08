@@ -904,7 +904,12 @@ descripción del tool explícita: "COP decimals=0 → amounts are already whole 
   credits/payables más adelante con pre-registro económico propio.
 - **Consent multi-capability**: la transacción guarda las capabilities pedidas
   (subset validado del scope); la pantalla ofrece la casilla "Detalle de
-  movimientos" marcada por defecto (opt-out) y el grant persiste el array elegido.
+  movimientos" marcada por defecto solo cuando el cliente pidió ese scope (opt-out)
+  y el grant persiste el subconjunto elegido. El perfil OpenCode local solicita
+  explícitamente `personal.summary:read personal.movements:read`; el resumen es
+  obligatorio y el detalle de movimientos es opcional. El Authorization Server anuncia
+  ambos scopes. La Server Action y el caso de uso vuelven a comprobar que los permisos
+  concedidos sean subset de los solicitados y permitidos.
   El token puede quedarse corto si el usuario destilda: las tools mueven el estado
   `missing_capability` con instrucción de reconexión, no un silencio.
 - **Registro de auditoría**: `grant.created` / `grant.revoked` / `token.issued` /
