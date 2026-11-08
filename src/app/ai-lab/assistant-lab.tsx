@@ -6,7 +6,6 @@ import { useLocale, useT } from "../../i18n/client";
 import {
   compareProposal,
   parseProposal,
-  type AssistantModel,
   type EvaluationCase,
   type ModelDevice,
   type Proposal,
@@ -66,8 +65,12 @@ export function AssistantLab() {
       };
     };
     if (!window.isSecureContext || !browserNavigator.gpu) {
-      setWebGpuStatus("unavailable");
-      return;
+      void Promise.resolve().then(() => {
+        if (active) setWebGpuStatus("unavailable");
+      });
+      return () => {
+        active = false;
+      };
     }
 
     browserNavigator.gpu
